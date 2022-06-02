@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "common.proto";
+
+package attestation;
+
+message AttestationRequest {
+    bytes evidence = 1;
+    optional common.User user = 2;
+}
+message AttestationResponse {
+    bytes attestation_results = 1;
+}
+
+service AttestationService {
+    rpc Attestation(AttestationRequest) returns (AttestationResponse) {};
+}

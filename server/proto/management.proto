@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+import "common.proto";
+
+package management;
+
+enum Tee {
+    Sgx = 0;
+    Tdx = 1;
+    SevSnp = 2;
+    Sample = 3;
+}
+
+message GetPolicyRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+}
+message GetPolicyResponse {
+    bytes content = 1;
+}
+
+message GetReferenceDataRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+}
+message GetReferenceDataResponse {
+    bytes content = 1;
+}
+
+message SetPolicyRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+    bytes content = 3;
+}
+message SetPolicyResponse {}
+
+message SetReferenceDataRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+    bytes content = 3;
+}
+message SetReferenceDataResponse {}
+
+message RestoreDefaultPolicyRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+}
+message RestoreDefaultPolicyResponse {}
+
+message RestoreDefaultReferenceDataRequest {
+    Tee tee = 1;
+    optional common.User user = 2;
+}
+message RestoreDefaultReferenceDataResponse {}
+
+service ManagementService {
+    // Get the GetPolicyRequest.user and GetPolicyRequest.tee specified Policy(.rego)
+    rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse) {};
+    // Get the GetReferenceDataRequest.user and GetReferenceDataRequest.tee specified Reference Data(.json)
+    rpc GetReferenceData(GetReferenceDataRequest) returns (GetReferenceDataResponse) {};
+    // Update the SetPolicyRequest.user and SetPolicyRequest.tee specified Policy(.rego) with the content of SetPolicyRequest.content
+    rpc SetPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
+    // Update the SetReferenceDataRequest.user and SetReferenceDataRequest.tee specified Reference Data(.json) with the content of SetReferenceDataRequest.content
+    rpc SetReferenceData(SetReferenceDataRequest) returns (SetReferenceDataResponse) {};
+    // Restore the RestoreDefaultPolicyRequest.user and RestoreDefaultPolicyRequest.tee specified Policy(.rego) to default. 
+    rpc RestoreDefaultPolicy(RestoreDefaultPolicyRequest) returns (RestoreDefaultPolicyResponse) {};
+    // Restore the RestoreDefaultReferenceDataRequest.user and RestoreDefaultReferenceDataRequest.tee specified Reference Data(.json) to default. 
+    rpc RestoreDefaultReferenceData(RestoreDefaultReferenceDataRequest) returns (RestoreDefaultReferenceDataResponse) {};
+}
+
