@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
 use super::*;
-use async_trait::async_trait;
 use crate::default_policy;
 use crate::default_reference_data;
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 
 #[derive(Debug, Default)]
 pub struct Tdx {}
@@ -16,9 +16,9 @@ impl Verifier for Tdx {
         reference_data: Option<String>,
     ) -> Result<AttestationResults> {
         // Use the default policy/reference_data if the input is None.
-        let _policy = policy.unwrap_or(std::include_str!(default_policy!()).to_string());
-        let _reference_data =
-            reference_data.unwrap_or(std::include_str!(default_reference_data!()).to_string());
+        let _policy = policy.unwrap_or_else(|| std::include_str!(default_policy!()).to_string());
+        let _reference_data = reference_data
+            .unwrap_or_else(|| std::include_str!(default_reference_data!()).to_string());
 
         Err(anyhow!("not implemented!"))
     }
