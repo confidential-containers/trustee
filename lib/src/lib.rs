@@ -117,7 +117,7 @@ impl Service {
     /// ```
     pub async fn attestation(
         &self,
-        evidence: &String,
+        evidence: &str,
         policy: Option<String>,
         reference_data: Option<String>,
     ) -> Result<String> {

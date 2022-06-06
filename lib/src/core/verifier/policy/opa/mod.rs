@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-/// Link import cgo function
+// Link import cgo function
 #[link(name = "opa")]
 extern "C" {
     pub fn evaluateGo(policy: GoString, data: GoString, input: GoString) -> *mut c_char;
@@ -46,7 +46,7 @@ pub fn evaluate(policy: String, reference: String, input: String) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{Result, Value, json};
+    use serde_json::{json, Result, Value};
 
     fn dummy_policy() -> Result<String> {
         let policy = r#"
@@ -102,36 +102,29 @@ svn_old_allow {
     fn test_evaluate() {
         let policy = dummy_policy().unwrap();
 
-        let res = evaluate(
-            policy.clone(), 
-            dummy_reference(3), 
-            dummy_input(5, 5)
-        );
-        assert!(res.is_ok(), "OPA execution() should success");
+        let res = evaluate(policy.clone(), dummy_reference(3), dummy_input(5, 5));
+        assert!(res.is_ok(), "OPA execution() should be success");
         let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["allow"] == true, "allow should true");
-        assert!(v["product_id_allow"] == true, "product_id_allow should true");
-        assert!(v["svn_allow"] == true, "svn_allow should true");
-
-
-        let res = evaluate(
-            policy.clone(), 
-            dummy_reference(3), 
-            dummy_input(5, 2)
+        assert!(v["allow"] == true, "allow should be true");
+        assert!(
+            v["product_id_allow"] == true,
+            "product_id_allow should be true"
         );
-        assert!(res.is_ok(), "OPA execution() should success");
-        let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["allow"] == true, "allow should true");
-        assert!(v["product_id_allow"] == true, "product_id_allow should true");
-        assert!(v["svn_old_allow"] == true, "svn_old_allow should true");
+        assert!(v["svn_allow"] == true, "svn_allow should be true");
 
-        let res = evaluate(
-            policy.clone(), 
-            dummy_reference(5), 
-            dummy_input(0, 0)
-        );
-        assert!(res.is_ok(), "OPA execution() should success");
+        let res = evaluate(policy.clone(), dummy_reference(3), dummy_input(5, 2));
+        assert!(res.is_ok(), "OPA execution() should be success");
         let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["allow"] == false, "allow should false");
+        assert!(v["allow"] == true, "allow should be true");
+        assert!(
+            v["product_id_allow"] == true,
+            "product_id_allow should be true"
+        );
+        assert!(v["svn_old_allow"] == true, "svn_old_allow should be true");
+
+        let res = evaluate(policy.clone(), dummy_reference(5), dummy_input(0, 0));
+        assert!(res.is_ok(), "OPA execution() should be success");
+        let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
+        assert!(v["allow"] == false, "allow should be false");
     }
 }

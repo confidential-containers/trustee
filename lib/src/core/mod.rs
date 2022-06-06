@@ -59,7 +59,7 @@ pub struct Attestation {}
 impl Attestation {
     pub async fn evaluate(
         &self,
-        evidence: &String,
+        evidence: &str,
         policy: Option<String>,
         reference_data: Option<String>,
     ) -> Result<String> {
