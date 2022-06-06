@@ -3,12 +3,12 @@ extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
 use crate::core::verifier::policy::opa;
+use crate::default_policy;
+use crate::default_reference_data;
 use async_trait::async_trait;
 use base64;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha384};
-use crate::default_policy;
-use crate::default_reference_data;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Ehd {
@@ -55,11 +55,11 @@ impl Verifier for Sample {
         reference_data: Option<String>,
     ) -> Result<AttestationResults> {
         // Use the default policy/reference_data if the input is None.
-        let policy = policy.unwrap_or(std::include_str!(default_policy!()).to_string());
-        let reference_data =
-            reference_data.unwrap_or(std::include_str!(default_reference_data!()).to_string());
+        let policy = policy.unwrap_or_else(|| std::include_str!(default_policy!()).to_string());
+        let reference_data = reference_data
+            .unwrap_or_else(|| std::include_str!(default_reference_data!()).to_string());
 
-        verify(&evidence)
+        verify(evidence)
             .await
             .context("Evidence's identity verification error.")?;
 
@@ -96,7 +96,7 @@ impl Verifier for Sample {
 }
 
 // Demo to fetch the TCB status from the quote
-fn tcb_status(quote: &String) -> Result<Tcb> {
+fn tcb_status(quote: &str) -> Result<Tcb> {
     debug!("Quote<sample>: {}", &quote);
     let q = serde_json::from_str::<Quote>(quote).context("Deserialize Quote failed.")?;
     Ok(Tcb {
