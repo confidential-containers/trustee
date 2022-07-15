@@ -1,3 +1,4 @@
+use crate::core::policy_engine::opa;
 use anyhow::{anyhow, Result};
 use std::str::FromStr;
 
@@ -9,7 +10,6 @@ extern crate strum;
 extern crate strum_macros;
 
 mod core;
-use crate::core::verifier::policy::opa;
 
 /// The supported TEE types:
 /// - TDX: TDX TEE.
@@ -30,24 +30,18 @@ pub struct Service {
     pub attestation: core::Attestation,
 }
 
+impl Default for Service {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Service {
     /// Create a new attestation service's instance.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use attestation_service::Service;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let service = Service::new();
-    ///     assert!(service.is_ok());
-    /// }
-    /// ```
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             attestation: core::Attestation::default(),
-        })
+        }
     }
 
     /// Attest the received Evidence by the attestation service instance.
@@ -89,7 +83,7 @@ impl Service {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let service = Service::new().unwrap();
+    ///     let service = Service::new();
     ///
     ///     // Attest the evidence with default OPA policy and reference data.
     ///     let res = service.attestation(&evidence(), None, None).await;
@@ -135,37 +129,13 @@ impl Service {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let service = Service::new().unwrap();
-    ///     let res = service.default_policy(
-    ///             TEE::SAMPLE,
-    ///         )
-    ///         .await;
+    ///     let service = Service::new();
+    ///     let res = service.default_policy().await;
     ///     assert!(res.is_ok());
     /// }
     /// ```
-    pub async fn default_policy(&self, tee: TEE) -> Result<String> {
-        self.attestation.policy(tee)
-    }
-
-    /// Get the specific TEE's Open Policy Agent default reference data file.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use attestation_service::{Service, TEE};
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let service = Service::new().unwrap();
-    ///     let res = service.default_reference_data(
-    ///             TEE::SAMPLE,
-    ///         )
-    ///         .await;
-    ///     assert!(res.is_ok());
-    /// }
-    /// ```
-    pub async fn default_reference_data(&self, tee: TEE) -> Result<String> {
-        self.attestation.reference_data(tee)
+    pub async fn default_policy(&self) -> Result<String> {
+        self.attestation.default_policy()
     }
 
     /// Evaluate the input data, policy file, and reference data by the OPA policy engine.
@@ -178,7 +148,7 @@ impl Service {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let service = Service::new().unwrap();
+    ///     let service = Service::new();
     ///     let policy = r#"
     /// package policy
     /// default allow = false
@@ -212,7 +182,7 @@ impl Service {
 
 #[cfg(test)]
 mod tests {
-    use super::{Service, TEE};
+    use super::Service;
     use base64;
     use serde_json::{json, Value};
     use sha2::{Digest, Sha384};
@@ -257,8 +227,10 @@ mod tests {
 
     fn sample_reference(ver: u64) -> String {
         json!({
-            "cpusvn": ver,
-            "svn": ver
+            "reference": {
+                "cpusvn": ver,
+                "svn": ver
+            }
         })
         .to_string()
     }
@@ -278,25 +250,22 @@ allow {
     }
 
     async fn attestation() -> Result<(), String> {
-        let service = Service::new().unwrap();
+        let service = Service::new();
 
         let evidence = sample_evidence();
-        let res = service.attestation(&evidence, None, None).await;
+        let res = service
+            .attestation(&evidence, None, Some(sample_reference(1)))
+            .await;
         assert!(res.is_ok(), "attestation should success");
         let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["result"] == "true".to_string(), "result should true");
-        let policy_info: Value = serde_json::from_str(v["policy_info"].as_str().unwrap()).unwrap();
-        assert!(
-            policy_info["policy_name"] == "policy.rego".to_string(),
-            "policy name should be policy.rego"
-        );
+        assert_eq!(v["allow"], json!(true));
 
         let res = service
             .attestation(&evidence, None, Some(sample_reference(5)))
             .await;
         assert!(res.is_ok(), "attestation should success");
         let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["result"] == "false".to_string(), "result should false");
+        assert_eq!(v["allow"], json!(false));
         Ok(())
     }
 
@@ -318,29 +287,18 @@ allow {
 
     #[tokio::test]
     async fn test_default_policy() {
-        let service = Service::new().unwrap();
-        let value = service.default_policy(TEE::SAMPLE).await;
+        let service = Service::new();
+        let value = service.default_policy().await;
         assert!(value.is_ok(), "get opa's policy should success");
         assert!(
-            value.unwrap() == std::include_str!("./core/verifier/sample/policy.rego"),
+            value.unwrap() == std::include_str!("./core/policy_engine/default_policy.rego"),
             "policy should equal"
         );
     }
 
     #[tokio::test]
-    async fn test_default_reference_data() {
-        let service = Service::new().unwrap();
-        let value = service.default_reference_data(TEE::SAMPLE).await;
-        assert!(value.is_ok(), "get opa's reference data should success");
-        assert!(
-            value.unwrap() == std::include_str!("./core/verifier/sample/reference_data.json"),
-            "reference data should equal"
-        );
-    }
-
-    #[tokio::test]
     async fn test_opa_test() {
-        let service = Service::new().unwrap();
+        let service = Service::new();
         let res = service.opa_test(sample_policy(), sample_reference(1), sample_input(1));
         assert!(res.is_ok(), "opa test should success");
     }

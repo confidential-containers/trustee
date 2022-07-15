@@ -5,7 +5,7 @@ fn real_main() -> Result<(), String> {
     println!("cargo:rerun-if-changed={}", out_dir);
     println!("cargo:rustc-link-search=native={}", out_dir);
     println!("cargo:rustc-link-lib=static=opa");
-    let opa_dir = "./src/core/verifier/policy/opa".to_string();
+    let opa_dir = "./src/core/policy_engine/opa".to_string();
     let opa = Command::new("go")
         .args(&[
             "build",

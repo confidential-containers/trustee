@@ -48,35 +48,22 @@ func evaluateGo(policy string, data string, input string) *C.char {
 		return C.CString("Error:: " + err.Error())
 	}
 
-	// Transform the processed decision into the format rust hopes for
-	inputOPA, ok := rs[0].Expressions[0].Value.(map[string]interface{})
-	if !ok {
-        return C.CString("Error:: unexpected type in first expression")
-	}
 	dataOPA, ok := rs[0].Expressions[1].Value.(map[string]interface{})
 	if !ok {
-        return C.CString("Error:: unexpected type in second expression")
-	}
-	parseInfo := make(map[string]interface{})
-
-	for k, v := range inputOPA {
-		value := [2]interface{}{v, data_map[k]}
-		parseInfo[k] = value
+		return C.CString("Error:: unexpected type in second expression")
 	}
 
 	decisionMap := make(map[string]interface{})
 	// OPA's evaluation results.
 	for k, v := range dataOPA {
-	    decisionMap[k] = v
+		decisionMap[k] = v
 	}
-	// The input and reference data pair.
-	decisionMap["parseInfo"] = parseInfo
 
 	decision, err := json.Marshal(decisionMap)
 	if err != nil {
 		return C.CString("Error:: " + err.Error())
 	}
-	
+
 	return C.CString(string(decision))
 }
 
