@@ -1,20 +1,13 @@
-use super::{AttestationResults, Evidence};
+use super::{Evidence, TeeEvidenceParsedClaim};
 use anyhow::Result;
 use async_trait::async_trait;
 
-pub mod policy;
 pub mod sample;
-pub mod sgx;
-pub mod tdx;
 
 #[async_trait]
 pub trait Verifier {
-    async fn evaluate(
-        &self,
-        evidence: &Evidence,
-        policy: Option<String>,
-        reference_data: Option<String>,
-    ) -> Result<AttestationResults>;
-    fn default_policy(&self) -> Result<String>;
-    fn default_reference_data(&self) -> Result<String>;
+    /// Verify the hardware signature and report data in TEE quote.
+    /// If the verification is successful, a key-value pairs map of TCB status will be returned,
+    /// The policy engine of AS will carry out the verification of TCB status.
+    async fn evaluate(&self, evidence: &Evidence) -> Result<TeeEvidenceParsedClaim>;
 }
