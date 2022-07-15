@@ -46,46 +46,14 @@ pub fn evaluate(policy: String, reference: String, input: String) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{json, Result, Value};
-
-    fn dummy_policy() -> Result<String> {
-        let policy = r#"
-package policy
-        
-# By default, deny requests.
-default allow = false
-
-allow {
-    product_id_allow
-    svn_allow
-}
-
-allow {
-    product_id_allow
-    svn_old_allow
-}
-
-product_id_allow {
-    input.productId >= data.productId
-}
-
-svn_allow {
-    input.svn > data.svn
-}
-
-svn_old_allow {
-    input.svn < data.svn
-    input.svn > 1
-}
-"#;
-
-        Ok(policy.to_string())
-    }
+    use serde_json::{json, Value};
 
     fn dummy_reference(ver: u64) -> String {
         json!({
-            "productId": ver,
-            "svn": ver
+            "reference": {
+                "productId": ver,
+                "svn": ver
+            }
         })
         .to_string()
     }
@@ -100,27 +68,12 @@ svn_old_allow {
 
     #[test]
     fn test_evaluate() {
-        let policy = dummy_policy().unwrap();
+        let policy = std::include_str!("../default_policy.rego").to_string();
 
-        let res = evaluate(policy.clone(), dummy_reference(3), dummy_input(5, 5));
+        let res = evaluate(policy.clone(), dummy_reference(5), dummy_input(5, 5));
         assert!(res.is_ok(), "OPA execution() should be success");
         let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
         assert!(v["allow"] == true, "allow should be true");
-        assert!(
-            v["product_id_allow"] == true,
-            "product_id_allow should be true"
-        );
-        assert!(v["svn_allow"] == true, "svn_allow should be true");
-
-        let res = evaluate(policy.clone(), dummy_reference(3), dummy_input(5, 2));
-        assert!(res.is_ok(), "OPA execution() should be success");
-        let v: Value = serde_json::from_str(&res.unwrap()).unwrap();
-        assert!(v["allow"] == true, "allow should be true");
-        assert!(
-            v["product_id_allow"] == true,
-            "product_id_allow should be true"
-        );
-        assert!(v["svn_old_allow"] == true, "svn_old_allow should be true");
 
         let res = evaluate(policy.clone(), dummy_reference(5), dummy_input(0, 0));
         assert!(res.is_ok(), "OPA execution() should be success");
