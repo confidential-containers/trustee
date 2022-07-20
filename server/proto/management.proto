@@ -4,52 +4,39 @@ import "common.proto";
 
 package management;
 
-enum Tee {
-    Sgx = 0;
-    Tdx = 1;
-    SevSnp = 2;
-    Sample = 3;
-}
-
 message GetPolicyRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
+    optional common.User user = 1;
 }
 message GetPolicyResponse {
     bytes content = 1;
 }
 
 message GetReferenceDataRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
+    optional common.User user = 1;
 }
 message GetReferenceDataResponse {
     bytes content = 1;
 }
 
 message SetPolicyRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
-    bytes content = 3;
+    optional common.User user = 1;
+    bytes content = 2;
 }
 message SetPolicyResponse {}
 
 message SetReferenceDataRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
-    bytes content = 3;
+    optional common.User user = 1;
+    bytes content = 2;
 }
 message SetReferenceDataResponse {}
 
 message RestoreDefaultPolicyRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
+    optional common.User user = 1;
 }
 message RestoreDefaultPolicyResponse {}
 
 message RestoreDefaultReferenceDataRequest {
-    Tee tee = 1;
-    optional common.User user = 2;
+    optional common.User user = 1;
 }
 message RestoreDefaultReferenceDataResponse {}
 
