@@ -24,12 +24,12 @@ impl User {
     }
 
     // Fetch the users working directory.
-    fn workdir(&self, dir: &Path, tee: String) -> PathBuf {
-        dir.join("users").join(&self.id).join(tee)
+    fn workdir(&self, dir: &Path) -> PathBuf {
+        dir.join("users").join(&self.id)
     }
 
-    pub async fn policy(&self, dir: &Path, tee: String) -> Result<Option<String>> {
-        let file = self.workdir(dir, tee).join(POLICY_NAME);
+    pub async fn policy(&self, dir: &Path) -> Result<Option<String>> {
+        let file = self.workdir(dir).join(POLICY_NAME);
         let policy = match file.exists() {
             true => Some(fs::read_to_string(file).await?),
             false => None,
@@ -37,8 +37,8 @@ impl User {
         Ok(policy)
     }
 
-    pub async fn reference_data(&self, dir: &Path, tee: String) -> Result<Option<String>> {
-        let file = self.workdir(dir, tee).join(REFERENCE_DATA_NAME);
+    pub async fn reference_data(&self, dir: &Path) -> Result<Option<String>> {
+        let file = self.workdir(dir).join(REFERENCE_DATA_NAME);
         let reference_data = match file.exists() {
             true => Some(fs::read_to_string(file).await?),
             false => None,
@@ -46,8 +46,8 @@ impl User {
         Ok(reference_data)
     }
 
-    pub async fn set_policy(&self, dir: &Path, tee: String, content: String) -> Result<()> {
-        let path = self.workdir(dir, tee);
+    pub async fn set_policy(&self, dir: &Path, content: String) -> Result<()> {
+        let path = self.workdir(dir);
         if !path.exists() {
             fs::create_dir_all(path.as_path()).await?;
         }
@@ -56,8 +56,8 @@ impl User {
         Ok(())
     }
 
-    pub async fn set_reference_data(&self, dir: &Path, tee: String, content: String) -> Result<()> {
-        let path = self.workdir(dir, tee);
+    pub async fn set_reference_data(&self, dir: &Path, content: String) -> Result<()> {
+        let path = self.workdir(dir);
         if !path.exists() {
             fs::create_dir_all(path.as_path()).await?;
         }
@@ -66,16 +66,16 @@ impl User {
         Ok(())
     }
 
-    pub async fn delete_policy(&self, dir: &Path, tee: String) -> Result<()> {
-        let file = self.workdir(dir, tee).join(POLICY_NAME);
+    pub async fn delete_policy(&self, dir: &Path) -> Result<()> {
+        let file = self.workdir(dir).join(POLICY_NAME);
         if file.exists() {
             fs::remove_file(file.as_path()).await?;
         }
         Ok(())
     }
 
-    pub async fn delete_reference_data(&self, dir: &Path, tee: String) -> Result<()> {
-        let file = self.workdir(dir, tee).join(REFERENCE_DATA_NAME);
+    pub async fn delete_reference_data(&self, dir: &Path) -> Result<()> {
+        let file = self.workdir(dir).join(REFERENCE_DATA_NAME);
         if file.exists() {
             fs::remove_file(file.as_path()).await?;
         }

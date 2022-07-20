@@ -1,12 +1,11 @@
 use anyhow::Result;
-use attestation_service::Service as AS;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 extern crate serde;
-use self::serde::{Deserialize, Serialize};
 use crate::user;
+use crate::ATTESTATION_SERVICE;
 use tonic::transport::Server;
 
 use crate::attestation_api::attestation_service_server::{
@@ -15,15 +14,6 @@ use crate::attestation_api::attestation_service_server::{
 use crate::attestation_api::{AttestationRequest, AttestationResponse};
 
 const DEFAULT_ATTESTATION_SOCK: &str = "127.0.0.1:3000";
-
-// The evidence(.json) must align with the "attestation" definition in:
-// https://github.com/confidential-containers/kbs/blob/main/docs/kbs_attestation_protocol.md#attestation
-// The evidence is deserializes by Attestation Server partially, and it will be deserialized wholly by Attesattion Service Crate.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Evidence {
-    // The evidence's TEE type.
-    pub tee: String,
-}
 
 #[derive(Debug)]
 pub struct Service {
@@ -58,27 +48,26 @@ impl AttestationService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let ev = serde_json::from_str::<Evidence>(&evidence)
-            .map_err(|e| Status::invalid_argument(format!("Deserialize: {}", e)))?;
-
         let policy = user
             .read()
             .await
-            .policy(self.workdir.as_path(), ev.tee.clone())
+            .policy(self.workdir.as_path())
             .await
             .map_err(|e| Status::invalid_argument(format!("Get policy: {}", e)))?;
         let reference_data = user
             .read()
             .await
-            .reference_data(self.workdir.as_path(), ev.tee.clone())
+            .reference_data(self.workdir.as_path())
             .await
             .map_err(|e| Status::invalid_argument(format!("Get reference data: {}", e)))?;
 
-        let attestation_results = AS::new()
-            .map_err(|e| Status::unknown(format!("Create AS: {}", e)))?
+        let attestation_service = Arc::clone(&ATTESTATION_SERVICE);
+
+        let attestation_results = attestation_service
             .attestation(&evidence, policy, reference_data)
             .await
             .map_err(|e| Status::aborted(format!("Attestation: {}", e)))?;
+
         debug!("Attestation Results: {}", &attestation_results);
 
         let res = AttestationResponse {
@@ -97,7 +86,7 @@ pub async fn start_service(
     let socket = socket.unwrap_or(DEFAULT_ATTESTATION_SOCK).parse()?;
     debug!("Attestation listen socket: {}", &socket);
     let service = Service::new(usr, dir);
-    let _server = Server::builder()
+    Server::builder()
         .add_service(AttestationServiceServer::new(service))
         .serve(socket)
         .await?;
@@ -188,34 +177,18 @@ mod tests {
 
         // Default allow
         let res = attestation(&service).await;
-        assert!(res["result"] == "true", "Allow should true");
-        let policy_info: Value =
-            serde_json::from_str(res["policy_info"].as_str().unwrap()).unwrap();
-        assert!(
-            policy_info["policy_name"] == "policy.rego",
-            "Policy name should be policy.rego"
-        );
+        assert_eq!(res["allow"], true);
 
         // Default not allow
         let res = service
             .user
             .write()
             .await
-            .set_reference_data(
-                service.workdir.as_path(),
-                "sample".to_string(),
-                reference(5),
-            )
+            .set_reference_data(service.workdir.as_path(), reference(5))
             .await;
         assert!(res.is_ok(), "Set reference should success");
         let res = attestation(&service).await;
-        assert!(res["result"] == "false", "Allow should not true");
-        let policy_info: Value =
-            serde_json::from_str(res["policy_info"].as_str().unwrap()).unwrap();
-        assert!(
-            policy_info["policy_name"] == "policy.rego",
-            "Policy name should be policy.rego"
-        );
+        assert_eq!(res["allow"], false);
 
         let dir = workdir.join("users").join("default");
         if dir.exists() {
@@ -229,13 +202,7 @@ mod tests {
         let uuid = Uuid::new_v4().to_string();
         let (workdir, service) = create_service(Some(&uuid));
         let res = attestation(&service).await;
-        assert!(res["result"] == "true", "Allow should true");
-        let policy_info: Value =
-            serde_json::from_str(res["policy_info"].as_str().unwrap()).unwrap();
-        assert!(
-            policy_info["policy_name"] == "policy.rego",
-            "Policy name should be policy.rego"
-        );
+        assert_eq!(res["allow"], true);
 
         let dir = workdir.join("users").join(uuid);
         if dir.exists() {
@@ -248,22 +215,15 @@ mod tests {
     async fn test_attestation_not_allow() {
         let uuid = Uuid::new_v4().to_string();
         let (workdir, service) = create_service(Some(&uuid));
-        let tee = "sample".to_string();
         let res = service
             .user
             .write()
             .await
-            .set_reference_data(service.workdir.as_path(), tee, reference(5))
+            .set_reference_data(service.workdir.as_path(), reference(5))
             .await;
         assert!(res.is_ok(), "Set reference should success");
         let res = attestation(&service).await;
-        assert!(res["result"] == "false", "Allow should not true");
-        let policy_info: Value =
-            serde_json::from_str(res["policy_info"].as_str().unwrap()).unwrap();
-        assert!(
-            policy_info["policy_name"] == "policy.rego",
-            "Policy name should be policy.rego"
-        );
+        assert_eq!(res["allow"], false);
 
         let dir = workdir.join("users").join(uuid);
         if dir.exists() {

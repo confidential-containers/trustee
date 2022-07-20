@@ -1,9 +1,6 @@
-use crate::management_api::Tee;
 use crate::user;
+use crate::ATTESTATION_SERVICE;
 use anyhow::Result;
-use attestation_service::Service as AS;
-use attestation_service::TEE;
-use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -21,31 +18,6 @@ use crate::management_api::{
 };
 
 const DEFAULT_MANAGEMENT_SOCK: &str = "127.0.0.1:3001";
-
-impl Tee {
-    // Convert to attestation_service::TEE
-    fn convert_to_tee(&self) -> TEE {
-        match self {
-            Tee::Sgx => TEE::SGX,
-            Tee::Tdx => TEE::TDX,
-            Tee::SevSnp => TEE::SEVSNP,
-            Tee::Sample => TEE::SAMPLE,
-        }
-    }
-}
-
-// Implemenmt for .to_string()
-impl fmt::Display for Tee {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match self {
-            Tee::Sgx => "sgx",
-            Tee::Tdx => "tdx",
-            Tee::SevSnp => "sevsnp",
-            Tee::Sample => "sample",
-        };
-        write!(f, "{}", str)
-    }
-}
 
 #[derive(Debug)]
 pub struct Service {
@@ -74,9 +46,10 @@ impl ManagementService for Service {
             .to_owned();
         debug!("Policy: {}", &policy);
 
+        let attestation_service = Arc::clone(&ATTESTATION_SERVICE);
+
         // Check new policy's syntax
-        AS::new()
-            .map_err(|e| Status::aborted(format!("Create AS: {}", e)))?
+        attestation_service
             .opa_test(policy.clone(), "{}".to_string(), "{}".to_string())
             .map_err(|e| Status::aborted(format!("Syntax: {}", e)))?;
 
@@ -85,11 +58,9 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type isn't supported"))?;
         user.write()
             .await
-            .set_policy(self.workdir.as_path(), tee.to_string(), policy)
+            .set_policy(self.workdir.as_path(), policy)
             .await
             .map_err(|e| Status::aborted(format!("Failure: {}", e)))?;
 
@@ -110,15 +81,9 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type isn't supported"))?;
         user.write()
             .await
-            .set_reference_data(
-                self.workdir.as_path(),
-                tee.to_string(),
-                reference_data.to_owned(),
-            )
+            .set_reference_data(self.workdir.as_path(), reference_data.to_owned())
             .await
             .map_err(|e| Status::aborted(format!("Failure: {}", e)))?;
 
@@ -136,21 +101,17 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type isn't supported"))?;
         let policy = user
             .read()
             .await
-            .policy(self.workdir.as_path(), tee.to_string())
+            .policy(self.workdir.as_path())
             .await
             .map_err(|e| Status::invalid_argument(format!("Get policy: {}", e)))?;
         let policy = match policy {
             Some(policy) => Ok(policy),
             None => {
-                AS::new()
-                    .map_err(|e| Status::aborted(format!("Create AS: {}", e)))?
-                    .default_policy(tee.convert_to_tee())
-                    .await
+                let attestation_service = Arc::clone(&ATTESTATION_SERVICE);
+                attestation_service.default_policy().await
             }
         }
         .map_err(|e| Status::aborted(format!("Get policy: {}", e)))?;
@@ -173,25 +134,16 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type isn't supported"))?;
         let reference_data = user
             .read()
             .await
-            .reference_data(self.workdir.as_path(), tee.to_string())
+            .reference_data(self.workdir.as_path())
             .await
             .map_err(|e| Status::invalid_argument(format!("Get reference data: {}", e)))?;
-        let reference_data = match reference_data {
-            Some(reference_data) => Ok(reference_data),
-            None => {
-                AS::new()
-                    .map_err(|e| Status::aborted(format!("Create AS failed: {}", e)))?
-                    .default_reference_data(tee.convert_to_tee())
-                    .await
-            }
-        }
-        .map_err(|e| Status::aborted(format!("Get reference data: {}", e)))?;
+
+        let reference_data = reference_data.unwrap_or_else(|| "".to_string());
         debug!("Reference: {}", reference_data);
+
         let res = GetReferenceDataResponse {
             content: reference_data.into_bytes(),
         };
@@ -210,11 +162,9 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type is not supported"))?;
         user.write()
             .await
-            .delete_policy(self.workdir.as_path(), tee.to_string())
+            .delete_policy(self.workdir.as_path())
             .await
             .map_err(|e| Status::aborted(format!("Failure: {}", e)))?;
 
@@ -232,11 +182,9 @@ impl ManagementService for Service {
             |_user| Err(Status::invalid_argument("Multiple user is not supported")),
         )?;
 
-        let tee: Tee = Tee::from_i32(request.tee)
-            .ok_or_else(|| Status::invalid_argument("Tee type is not supported"))?;
         user.write()
             .await
-            .delete_reference_data(self.workdir.as_path(), tee.to_string())
+            .delete_reference_data(self.workdir.as_path())
             .await
             .map_err(|e| Status::aborted(format!("Failure: {}", e)))?;
 
@@ -252,7 +200,7 @@ pub async fn start_service(
     let socket = socket.unwrap_or(DEFAULT_MANAGEMENT_SOCK).parse()?;
     debug!("Management listen socket: {}", &socket);
     let service = Service::new(usr, dir);
-    let _server = Server::builder()
+    Server::builder()
         .add_service(ManagementServiceServer::new(service))
         .serve(socket)
         .await?;
@@ -263,7 +211,6 @@ pub async fn start_service(
 mod tests {
     use super::*;
     use crate::management_api::management_service_server::ManagementService;
-    use crate::management_api::Tee;
     use serde_json::{json, Value};
     use std::path::Path;
     use std::sync::Arc;
@@ -279,16 +226,7 @@ mod tests {
     }
 
     fn default_policy() -> String {
-        let policy = r#"package policy
-
-# By default, deny requests.
-default allow = false
-
-allow {
-    input.cpusvn >= data.cpusvn
-    input.svn >= data.svn
-}"#;
-        policy.to_string()
+        std::include_str!("../../lib/src/core/policy_engine/default_policy.rego").to_string()
     }
 
     fn policy() -> String {
@@ -322,10 +260,7 @@ svn {
     }
 
     async fn get_policy(service: &Service) -> GetPolicyResponse {
-        let request = GetPolicyRequest {
-            tee: Tee::Sample as i32,
-            user: None,
-        };
+        let request = GetPolicyRequest { user: None };
         let request = Request::new(request);
         let response = service.get_policy(request).await;
         assert!(response.is_ok(), "Get policy should success");
@@ -337,7 +272,6 @@ svn {
         policy: String,
     ) -> Result<Response<SetPolicyResponse>, Status> {
         let request = SetPolicyRequest {
-            tee: Tee::Sample as i32,
             user: None,
             content: policy.into_bytes(),
         };
@@ -346,10 +280,7 @@ svn {
     }
 
     async fn restore_default_policy(service: &Service) {
-        let request = RestoreDefaultPolicyRequest {
-            tee: Tee::Sample as i32,
-            user: None,
-        };
+        let request = RestoreDefaultPolicyRequest { user: None };
         let request = Request::new(request);
         let response = service.restore_default_policy(request).await;
         assert!(response.is_ok(), "Reset policy should success");
@@ -359,15 +290,6 @@ svn {
     async fn test_xxx_policy() {
         let uuid = Uuid::new_v4().to_string();
         let (workdir, service) = create_service(Some(&uuid));
-
-        // Get default policy
-        let response: GetPolicyResponse = get_policy(&service).await;
-        let content = std::str::from_utf8(&response.content);
-        assert!(content.is_ok(), "Policy content should OK");
-        assert!(
-            content.unwrap().to_string() == default_policy(),
-            "The default policy should equal."
-        );
 
         // Set customized policy
         let res = set_policy(&service, policy()).await;
@@ -447,10 +369,7 @@ allow {
     }
 
     async fn get_reference_data(service: &Service) -> GetReferenceDataResponse {
-        let request = GetReferenceDataRequest {
-            tee: Tee::Sample as i32,
-            user: None,
-        };
+        let request = GetReferenceDataRequest { user: None };
         let request = Request::new(request);
         let response = service.get_reference_data(request).await;
         assert!(response.is_ok(), "Get reference data should success");
@@ -462,7 +381,6 @@ allow {
         reference_data: String,
     ) -> Result<Response<SetReferenceDataResponse>, Status> {
         let request = SetReferenceDataRequest {
-            tee: Tee::Sample as i32,
             user: None,
             content: reference_data.into_bytes(),
         };
@@ -471,10 +389,7 @@ allow {
     }
 
     async fn restore_default_reference_data(service: &Service) {
-        let request = RestoreDefaultReferenceDataRequest {
-            tee: Tee::Sample as i32,
-            user: None,
-        };
+        let request = RestoreDefaultReferenceDataRequest { user: None };
         let request = Request::new(request);
         let response = service.restore_default_reference_data(request).await;
         assert!(response.is_ok(), "Reset reference data should success");
@@ -484,17 +399,6 @@ allow {
     async fn test_xxx_reference_data() {
         let uuid = Uuid::new_v4().to_string();
         let (workdir, service) = create_service(Some(&uuid));
-
-        // Get the default reference data
-        let response = get_reference_data(&service).await;
-        let content = std::str::from_utf8(&response.content);
-        assert!(content.is_ok(), "Reference data content should OK");
-        let v: Value = serde_json::from_str(&content.unwrap()).unwrap();
-        assert!(v["svn"].as_u64().unwrap() == 0, "The default svn == 0.");
-        assert!(
-            v["cpusvn"].as_u64().unwrap() == 0,
-            "The default cpusvn == 0."
-        );
 
         // Set the customized reference data
         let res = set_reference_data(&service, reference(5)).await;
@@ -544,12 +448,7 @@ allow {
         let response = get_reference_data(&service).await;
         let content = std::str::from_utf8(&response.content);
         assert!(content.is_ok(), "Reference data content should OK");
-        let v: Value = serde_json::from_str(&content.unwrap()).unwrap();
-        assert!(v["svn"].as_u64().unwrap() == 0, "The default svn == 0.");
-        assert!(
-            v["cpusvn"].as_u64().unwrap() == 0,
-            "The default cpusvn == 0."
-        );
+        assert!(content.unwrap().to_string().is_empty());
 
         let userdir = workdir.join("users").join(uuid);
         if userdir.exists() {
