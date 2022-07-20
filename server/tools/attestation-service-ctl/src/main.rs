@@ -29,10 +29,6 @@ struct Cli {
     #[clap(subcommand)]
     command: Commands,
 
-    /// Specify the target TEE name.
-    #[clap(long, value_parser, default_value_t = String::from("sample"))]
-    tee: String,
-
     /// The Attestation Server's `management-sock` address.
     #[clap(long, value_parser, default_value_t = String::from(DEFAULT_MANAGEMENT_ADDR))]
     addr: String,
@@ -40,11 +36,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Get, Set or Restore the TEE-specific evaluation `Policy(.rego)`.
+    /// Get, Set or Restore the AS evaluation `Policy(.rego)`.
     #[clap(arg_required_else_help = true)]
     Policy(Policy),
 
-    /// Get, Set or Restore the TEE-specific evaluation `Reference Data(.json)`.
+    /// Get, Set or Restore the AS evaluation `Reference Data(.json)`.
     #[clap(arg_required_else_help = true)]
     ReferenceData(ReferenceData),
 
@@ -69,14 +65,14 @@ struct Policy {
 
 #[derive(Subcommand)]
 enum PolicyCommands {
-    /// Get the TEE-specific evaluation `Policy(.rego)` from Attestation Server.
+    /// Get the AS evaluation `Policy(.rego)` from Attestation Server.
     Get {
         /// Output file path to write the policy.
         #[clap(long, value_parser, default_value_t = String::from("./Policy.rego"))]
         output: String,
     },
 
-    /// Set the TEE-specific evaluation `Policy(.rego)`.
+    /// Set the AS evaluation `Policy(.rego)`.
     #[clap(arg_required_else_help = true)]
     Set {
         /// The path of local `Policy(.rego)` which will be upload to Attestation Server
@@ -84,7 +80,7 @@ enum PolicyCommands {
         policy: String,
     },
 
-    /// Restore the Attestation Server's TEE-specific `Policy(.rego)` to default.
+    /// Restore the Attestation Server's `Policy(.rego)` to default.
     Restore,
 }
 
@@ -96,14 +92,14 @@ struct ReferenceData {
 
 #[derive(Subcommand)]
 enum ReferenceDataCommands {
-    /// Get the TEE-specific `Reference Data(.json)` from Attestation Server.
+    /// Get the `Reference Data(.json)` from Attestation Server.
     Get {
         /// Output file path to write the reference data.
         #[clap(long, value_parser, default_value_t = String::from("./Reference_data.json"))]
         output: String,
     },
 
-    /// Set the TEE-specific evaluation `Reference Data(.json)`.
+    /// Set the AS evaluation `Reference Data(.json)`.
     #[clap(arg_required_else_help = true)]
     Set {
         /// The path of local `Reference Data(.json)` which will be upload to Attestation Server.
@@ -111,7 +107,7 @@ enum ReferenceDataCommands {
         reference_data: String,
     },
 
-    /// Restore the Attestation Server's TEE-specific `Reference Data(.json)` to default.
+    /// Restore the Attestation Server's `Reference Data(.json)` to default.
     Restore,
 }
 
@@ -127,14 +123,14 @@ async fn main() -> Result<()> {
         Commands::Policy(policy) => match policy.command {
             Some(PolicyCommands::Get { output }) => {
                 let output_path = Path::new(&output);
-                management::get_policy_cmd(&args.tee, output_path, &args.addr).await?;
+                management::get_policy_cmd(output_path, &args.addr).await?;
             }
             Some(PolicyCommands::Set { policy }) => {
                 let policy_path = Path::new(&policy);
-                management::set_policy_cmd(&args.tee, policy_path, &args.addr).await?;
+                management::set_policy_cmd(policy_path, &args.addr).await?;
             }
             Some(PolicyCommands::Restore) => {
-                management::restore_default_policy_cmd(&args.tee, &args.addr).await?;
+                management::restore_default_policy_cmd(&args.addr).await?;
             }
             _ => {
                 return Err(anyhow!("Unsupported command, use --help for information"));
@@ -143,15 +139,14 @@ async fn main() -> Result<()> {
         Commands::ReferenceData(ref_data) => match ref_data.command {
             Some(ReferenceDataCommands::Get { output }) => {
                 let output_path = Path::new(&output);
-                management::get_reference_data_cmd(&args.tee, output_path, &args.addr).await?;
+                management::get_reference_data_cmd(output_path, &args.addr).await?;
             }
             Some(ReferenceDataCommands::Set { reference_data }) => {
                 let reference_data_path = Path::new(&reference_data);
-                management::set_reference_data_cmd(&args.tee, reference_data_path, &args.addr)
-                    .await?;
+                management::set_reference_data_cmd(reference_data_path, &args.addr).await?;
             }
             Some(ReferenceDataCommands::Restore) => {
-                management::restore_default_reference_data_cmd(&args.tee, &args.addr).await?;
+                management::restore_default_reference_data_cmd(&args.addr).await?;
             }
             _ => {
                 return Err(anyhow!("Unsupported command, use --help for information"));
