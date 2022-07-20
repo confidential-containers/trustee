@@ -1,4 +1,3 @@
-use crate::management_api::Tee;
 use anyhow::{anyhow, Context, Result};
 use log::Level;
 use std::fs;
@@ -14,23 +13,10 @@ use crate::management_api::{
 
 pub const DEFAULT_MANAGEMENT_ADDR: &str = "https://127.0.0.1:3001";
 
-impl Tee {
-    fn from_str(tee: &str) -> Result<Tee> {
-        match tee {
-            "sgx" => Ok(Tee::Sgx),
-            "tdx" => Ok(Tee::Tdx),
-            "sevsnp" => Ok(Tee::SevSnp),
-            "sample" => Ok(Tee::Sample),
-            _ => Err(anyhow!("TEE: {} is not supported", tee)),
-        }
-    }
-}
-
-pub async fn set_policy_cmd(tee: &str, file: &Path, address: &str) -> Result<()> {
+pub async fn set_policy_cmd(file: &Path, address: &str) -> Result<()> {
     let policy = fs::read_to_string(file).context(anyhow!("Read policy error"))?;
 
     let request = SetPolicyRequest {
-        tee: Tee::from_str(tee)? as i32,
         user: None,
         content: policy.into_bytes(),
     };
@@ -40,11 +26,10 @@ pub async fn set_policy_cmd(tee: &str, file: &Path, address: &str) -> Result<()>
     Ok(())
 }
 
-pub async fn set_reference_data_cmd(tee: &str, file: &Path, address: &str) -> Result<()> {
+pub async fn set_reference_data_cmd(file: &Path, address: &str) -> Result<()> {
     let reference_data = fs::read_to_string(file).context(anyhow!("Read reference data error"))?;
 
     let request = SetReferenceDataRequest {
-        tee: Tee::from_str(tee)? as i32,
         user: None,
         content: reference_data.into_bytes(),
     };
@@ -54,11 +39,8 @@ pub async fn set_reference_data_cmd(tee: &str, file: &Path, address: &str) -> Re
     Ok(())
 }
 
-pub async fn get_policy_cmd(tee: &str, output_path: &Path, address: &str) -> Result<()> {
-    let request = GetPolicyRequest {
-        tee: Tee::from_str(tee)? as i32,
-        user: None,
-    };
+pub async fn get_policy_cmd(output_path: &Path, address: &str) -> Result<()> {
+    let request = GetPolicyRequest { user: None };
 
     let mut client = ManagementServiceClient::connect(address.to_string()).await?;
     let response: GetPolicyResponse = client.get_policy(request).await?.into_inner();
@@ -73,11 +55,8 @@ pub async fn get_policy_cmd(tee: &str, output_path: &Path, address: &str) -> Res
     Ok(())
 }
 
-pub async fn get_reference_data_cmd(tee: &str, output_path: &Path, address: &str) -> Result<()> {
-    let request = GetReferenceDataRequest {
-        tee: Tee::from_str(tee)? as i32,
-        user: None,
-    };
+pub async fn get_reference_data_cmd(output_path: &Path, address: &str) -> Result<()> {
+    let request = GetReferenceDataRequest { user: None };
 
     let mut client = ManagementServiceClient::connect(address.to_string()).await?;
     let response: GetReferenceDataResponse = client.get_reference_data(request).await?.into_inner();
@@ -92,22 +71,16 @@ pub async fn get_reference_data_cmd(tee: &str, output_path: &Path, address: &str
     Ok(())
 }
 
-pub async fn restore_default_policy_cmd(tee: &str, address: &str) -> Result<()> {
-    let request = RestoreDefaultPolicyRequest {
-        tee: Tee::from_str(tee)? as i32,
-        user: None,
-    };
+pub async fn restore_default_policy_cmd(address: &str) -> Result<()> {
+    let request = RestoreDefaultPolicyRequest { user: None };
 
     let mut client = ManagementServiceClient::connect(address.to_string()).await?;
     client.restore_default_policy(request).await?;
     Ok(())
 }
 
-pub async fn restore_default_reference_data_cmd(tee: &str, address: &str) -> Result<()> {
-    let request = RestoreDefaultReferenceDataRequest {
-        tee: Tee::from_str(tee)? as i32,
-        user: None,
-    };
+pub async fn restore_default_reference_data_cmd(address: &str) -> Result<()> {
+    let request = RestoreDefaultReferenceDataRequest { user: None };
 
     let mut client = ManagementServiceClient::connect(address.to_string()).await?;
     client.restore_default_reference_data(request).await?;
