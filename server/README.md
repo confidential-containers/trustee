@@ -57,11 +57,9 @@ enum Tee {
 
 #### GetPolicy
 
-Get the specific TEE's OPA `Policy(.rego)`. The message:
+Get the OPA `Policy(.rego)`. The message:
 ```PROTO
 message GetPolicyRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
 }
@@ -69,11 +67,9 @@ message GetPolicyRequest {
 
 #### GetReferenceData
 
-Get the specific TEE's OPA `Reference Data(.json)`. The message:
+Get the OPA `Reference Data(.json)`. The message:
 ```PROTO
 message GetReferenceDataRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
 }
@@ -81,11 +77,9 @@ message GetReferenceDataRequest {
 
 #### SetPolicy
 
-Set the specific TEE's OPA `Policy(.rego)`. It can make the Attestation Server evaluate the TEE TCB status according to specific user's preference. And it will echo error if the new `Policy(.rego)` syntax is illegal. The message:
+Set the OPA `Policy(.rego)`. It can make the Attestation Server evaluate the TEE TCB status according to specific user's preference. And it will echo error if the new `Policy(.rego)` syntax is illegal. The message:
 ```PROTO
 message SetPolicyRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
     // The "Policy(.rego)" file's content.
@@ -95,11 +89,9 @@ message SetPolicyRequest {
 
 #### SetReferenceData
 
-Set the specific TEE's OPA `Reference Data(.json)`. It can attach a new released program's reference measurement value into the corresponding program's allow list. The message:
+Set the OPA `Reference Data(.json)`. It can attach a new released program's reference measurement value into the corresponding program's allow list. The message:
 ```PROTO
 message SetReferenceDataRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
     // The "Reference Data(.json)" file's content.
@@ -109,11 +101,9 @@ message SetReferenceDataRequest {
 
 #### RestoreDefaultPolicy
 
-Restore the specific TEE's OPA `Policy(.rego)` to default value. The message:
+Restore the OPA `Policy(.rego)` to default value. The message:
 ```PROTO
 message ResetPolicyRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
 }
@@ -121,11 +111,9 @@ message ResetPolicyRequest {
 
 #### RestoreDefaultReferenceData
 
-Restore the specific TEE's OPA `Reference Data(.json)` to default value. The message:
+Restore the OPA Reference Data(.json) to default value. The message:
 ```PROTO
 message ResetReferenceDataRequest {
-    // Supported TEE types
-    Tee tee = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
     optional string user = 2;
 }

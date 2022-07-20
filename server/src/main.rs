@@ -1,9 +1,13 @@
 use anyhow::Result;
+use attestation_service::Service as AttestationService;
 use clap::{App, Arg};
 use shadow_rs::shadow;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub mod management_api {
     tonic::include_proto!("management");
@@ -13,6 +17,11 @@ pub mod attestation_api {
 }
 pub mod common {
     tonic::include_proto!("common");
+}
+
+lazy_static! {
+    pub static ref ATTESTATION_SERVICE: Arc<AttestationService> =
+        Arc::new(AttestationService::new());
 }
 
 #[macro_use]
