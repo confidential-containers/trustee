@@ -37,10 +37,10 @@ which uses JSON structure to organize information. As follows:
 2. **Challenge**: After receiving the request, KBS returns a challenge to KBC and asks KBC to 
 send evidence to prove that its environment (HW-TEE) is safe and reliable.
 3. **Attestation**: KBC sends the evidence and the HW-TEE generated, ephemeral public key to the KBS.
-4. **Response**: The `Reponse` payload includes the resource data requested when sending the initial `Request` to
-the specific KBS resource endpoint. The resource data is is protected by the ephemeral public key
+4. **Response**: The `Response` payload includes the resource data requested when sending the initial `Request` to
+the specific KBS resource endpoint. The resource data is protected by the ephemeral public key
 passed via the previously sent Attestation payload. Within the valid time of the token, KBC can directly 
-request resources or services of KBS by virtue of the token without step 2 and step 3.
+request resources or services from KBS by virtue of the token without going through step 2 and step 3.
 
 ## Request
 
@@ -51,9 +51,9 @@ The payload format of the request is as follows:
 ```json
 {
     "request": {
-        /* Attestation rotocol version number used by KBC */
+        /* Attestation protocol version number used by KBC */
         "version": "0.1.0",
-        /* Types of HW-TEE platforms where KBC is located, such as "tdx", "sev-snp", etc. */
+        /* Type of HW-TEE platforms where KBC is located, such as "tdx", "sev-snp", etc. */
         "tee": "",
         /* Access token to avoid multiple attempts triggered by consecutive requests. */
         "token": "",
@@ -85,10 +85,10 @@ and KBS will reply with a Challenge.
 
 - `extra-params`
 
-In the run-time attesation scenario (TDX, SEV-SNP, SGX), the `extra-params` not be used, so it is keeped empty.
+In the run-time attestation scenario (TDX, SEV-SNP, SGX), the `extra-params` are not used, so it is kept empty.
 However, for the attestation of some special HW-TEE platforms, this field may be used to transfer some specific information,
 for example, some attestations depend on Diffie–Hellman to build a secure channel and transfer secret messages 
-(Such as the SEV(-ES) pre-attesattion).
+(Such as the SEV(-ES) pre-attestation).
 
 ## Challenge
 
@@ -118,13 +118,13 @@ the KBS when some specific HW-TEE needs to be attested.
 
 ## Attestation
 
-After receiving the invitation challenge, KBC collects the attestation evidence of HW-TEE 
+After receiving the invitation challenge, KBC collects the attestation evidence from the HW-TEE 
 platform and organizes it into the following payload format:
 
 ```json
 {
     "evidence": {
-        /* The nonce in the Chanllenge, Its hash needs to be included in HW-TEE evidence and signed by HW-TEE hardware. */
+        /* The nonce in the Challenge; its hash needs to be included in HW-TEE evidence and signed by HW-TEE hardware. */
         "nonce": "",
         /* TEE type name */
         "tee": "",
@@ -142,7 +142,7 @@ platform and organizes it into the following payload format:
 
 - `nonce`
 
-This is the nonce received by KBC in `Chanllenge` to prove the freshness of the evidence to KBS. 
+This is the nonce received by KBC in `Challenge` to prove the freshness of the evidence to KBS. 
 KBS will match the evidence corresponding to the request through this nonce. 
 In addition to providing nonce here, its hash needs to be included in HW-TEE evidence payload and signed by HW-TEE.
 
@@ -152,7 +152,7 @@ Used to declare the type of HW-TEE platform where evidence is from, the valid va
 
 - `tee-pubkey`
 
-After KBC receives the attestation challenge, a pair of temporary asymmetric keys are generated 
+After KBC receives the attestation challenge, an ephemeral asymmetric key pair is generated 
 in HW-TEE. The private key is stored in HW-TEE. The public key and its description information 
 are exported and placed in the `tee-pubkey` field and sent to KBS together with evidence. The 
 hash of the `tee-pubkey` field needs to be included in the custom field of HW-TEE evidence and 
@@ -284,10 +284,10 @@ The following examples illustrate the integration of "RCAR" semantics with HTTPS
 For example, KBC needs to request a key, and the URL is `/kbs/key/key_id`, the steps are as follows:
 
 1. KBC sends `GET /kbs/key/key_id` request. The request payload is the `Request` message in the "RCAR" semantics.
-2. If no token is provided in the request payload or the token is invalid, KBS returns `HTTPS 200` response to KBC, 
+2. If no token is provided in the request payload or the token is invalid, KBS returns `HTTP/1.1 200 OK` response to KBC, 
 but the payload of the response is the `Challenge` message in the "RCAR" semantics. 
 If a valid token is provided in the request payload, KBS directly jumps to step 4.
 3. KBC sends `GET /kbs/key/key_id` request to KBS again, but the payload of this request is the `Attestation` message in the "RCAR" semantics.
-4. KBS returns an `HTTPS 200` response to KBC and the payload is the `Response` message in the "RCAR" semantics.
+4. KBS returns an `HTTP/1.1 200 OK` response to KBC and the payload is the `Response` message in the "RCAR" semantics.
 
 
