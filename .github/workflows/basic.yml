@@ -17,6 +17,16 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Install OPA command line tool
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/v0.42.2/opa_linux_amd64_static
+          chmod 755 ./opa && cp opa /usr/local/bin
+      
+      - name: OPA policy.rego fmt and check
+        run: |
+          opa fmt -d ./lib/src/core/policy_engine/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check ./lib/src/core/policy_engine/default_policy.rego
+
       - name: Install Rust toolchain (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
         with:
