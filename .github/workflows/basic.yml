@@ -21,7 +21,7 @@ jobs:
         run: |
           curl -L -o opa https://openpolicyagent.org/downloads/v0.42.2/opa_linux_amd64_static
           chmod 755 ./opa && cp opa /usr/local/bin
-      
+
       - name: OPA policy.rego fmt and check
         run: |
           opa fmt -d ./lib/src/core/policy_engine/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
@@ -56,4 +56,5 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          # We are getting error in generated code due to derive_partial_eq_without_eq check, so ignore it for now
+          args: -- -D warnings -A clippy::derive_partial_eq_without_eq
