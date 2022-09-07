@@ -1,0 +1,308 @@
+openapi: 3.1.0
+info:
+  title: Key Broker Service (KBS) API
+  description: HTTP based API for describing the communication between a Key
+               Broker Client (KBC) in a confidential guest and a trusted Key
+               Broker Service.
+  version: 0.1.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+- url: http://<kbs>/kbs/v0
+
+paths:
+  /auth:
+    post:
+      operationId: attestationAuth
+      summary: Initiate an attestation authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Request'
+
+      responses:
+        200:
+          description: >-
+            The KBS attestation challenge.
+            The KBS session ID is returned in a cookie named `kbs-session-id`.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: kbs-session-id=1234
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+        400:
+          description: The request content or format is not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+  /attest:
+    post:
+      operationId: attestationEvidence
+      summary: Send an attestation evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Attestation'
+
+      parameters:
+        - in: cookie
+          name: kbs-session-id
+          schema:
+            type: string
+
+      responses:
+        200:
+          description: The attestation evidence is authenticated.
+        401:
+          description: Missing or invalid session ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+
+  /resources/key/<key_id>:
+    get:
+      operationId: getKey
+      summary: Get a key from the Key Broker Service.
+      parameters:
+        - in: cookie
+          name: kbs-session-id
+          schema:
+            type: string
+      responses:
+        200:
+          description: >-
+            The KBS reponse including the key.
+            The KBS session ID is returned in a cookie named `kbs-session-id`.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: kbs-session-id=1234
+          content:
+            application/jwe:
+              schema:
+                $ref: '#/components/schemas/Response'
+        401:
+          description: Missing or invalid session ID
+        403:
+          description: The KBC is not allowed to get that key
+        404:
+          description: The requested key does not exist
+  /resources/token:
+    get:
+      operationId: getToken
+      summary: Get an external resource token from the Key Broker Service.
+      parameters:
+        - in: cookie
+          name: kbs-session-id
+          schema:
+            type: string
+      responses:
+        200:
+          description: >-
+            The KBS reponse including the token.
+            The KBS session ID is returned in a cookie named `kbs-session-id`.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: kbs-session-id=1234
+          content:
+            application/jwt:
+              schema:
+                $ref: '#/components/schemas/Token'
+        401:
+          description: Missing or invalid session ID.
+        403:
+          description: The KBC is not allowed to get a token.
+        404:
+          description: The KBS does not provide token resources.
+
+components:
+  schemas:
+
+    Request:
+      required:
+        - version
+        - tee
+      type: object
+      properties:
+        version:
+          type: string
+        tee:
+          type: string
+          enum: [amd-sev, intel-sgx, intel-tdx]
+        extra-params:
+          description: >-
+            Freely formatted JSON object used for HW-TEE specific attestation
+            processes.
+          type: object
+      description: KBC attestation authentication request
+
+    Challenge:
+      required:
+        - nonce
+      type: object
+      properties:
+        nonce:
+          type: string
+        extra-params:
+          description:
+            Freely formatted JSON object used for HW-TEE specific attestation
+            processes.
+          type: object
+      description:
+        KBS attestation challenge, sent in response to the KBC Request.
+
+    Attestation:
+      required:
+        - tee-pubkey
+        - tee-evidence
+      type: object
+      properties:
+        tee-pubkey:
+          $ref: '#/components/schemas/PublicKey'
+        tee-evidence:
+          description: HW-TEE specific attestation evidence.
+          type: object
+      description: >-
+        KBS attestation challenge, sent in response to the KBC Request.
+
+    Response:
+      required:
+        - protected
+        - encrypted_key
+        - iv
+        - ciphertext
+      type: object
+      properties:
+        protected:
+          description: A Base64-url encoding of '#/components/schemas/KeyHeader'
+          type: string
+        ciphertext:
+          type: string
+          description: A Base64-url encoding of the encrypted reponse data.
+        encrypted_key:
+          type: string
+          description: >-
+            A Base64-url encoding of the encrypted key used for encrypting the
+            response data.
+        iv:
+          type: string
+          description: >-
+            A Base64-url encoding of the encryption algorithm initialisation
+            vector.
+        tag:
+          type: string
+      description: >-
+        A JSON Web Encryption (https://www.rfc-editor.org/rfc/rfc7516)
+        formatted object.
+
+    KeyHeader:
+      required:
+        - alg
+        - enc
+      properties:
+        alg:
+          type: string
+          description: The signature algorithm
+        enc:
+          type: string
+          description: >-
+            Encryption algorithm used to encrypt the response payload.
+
+    Token:
+      required:
+        - token
+      type: object
+      properties:
+        token:
+          description: >-
+            A JSON Web Token (https://jwt.io).
+            The token value is a string, which is made of 3 strings, separated
+            by dots.
+            The first string is a Base64-url encoding of
+            '#/components/schemas/TokenHeader'.
+            The second string is a Base64-url encoding of
+            '#/components/schemas/TokenPayload'.
+            The third string is a Base64-url encoding of the token signature.
+          type: string
+      description: A JSON Web Token (https://jwt.io) formatted object.
+
+    TokenHeader:
+      required:
+        - typ
+        - alg
+      properties:
+        typ:
+          enum: [JWT]
+          type: string
+          description: The JWS header type. This must be `JWT`.
+        alg:
+          type: string
+          description: The signature algorithm
+
+    TokenPayload:
+      required:
+        - ext
+        - iat
+        - iss
+        - tee-pubkey
+      properties:
+        ext:
+          type: integer
+          description: The token expiration date, in seconds since the Epoch.
+        iat:
+          type: integer
+          description: The token issuing time, in seconds since the Epoch.
+        iss:
+          type: string
+          description: The token issuer URL.
+        tee-pubkey:
+          type: object
+          $ref: '#/components/schemas/PublicKey'
+
+    PublicKey:
+      required:
+        - kty
+        - alg
+        - k
+      properties:
+        kty:
+          type: string
+          description: Key type
+        alg:
+          type: string
+          description: Key Algorithm
+        k:
+          type: string
+          description: Key data
+      description: >-
+        A JSON Web Key (https://www.rfc-editor.org/rfc/rfc7517) formatted object.
+
+    ErrorInformation:
+      required:
+        - type
+        - detail
+      properties:
+        type:
+          description: >-
+            https://github.com/confidential-containers/kbs/errors/<problem-type>
+          type: string
+        detail:
+          type: string
+      description: >-
+        A Problem Details for HTTP APIs (https://www.rfc-editor.org/rfc/rfc7807)
+        formatted payload.
