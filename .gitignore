@@ -5,3 +5,6 @@ Cargo.lock
 target
 
 users/
+
+# Local Fs tempfile
+reference_values
