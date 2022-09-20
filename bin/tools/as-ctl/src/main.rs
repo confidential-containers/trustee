@@ -23,7 +23,7 @@ extern crate log;
 shadow!(build);
 
 #[derive(Parser)]
-#[clap(name = "attestation-service-ctl")]
+#[clap(name = "as-ctl")]
 #[clap(author, version, about = "A command line interface for the attestation server.", long_about = None)]
 struct Cli {
     #[clap(subcommand)]
