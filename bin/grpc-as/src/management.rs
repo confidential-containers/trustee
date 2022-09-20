@@ -226,7 +226,7 @@ mod tests {
     }
 
     fn default_policy() -> String {
-        std::include_str!("../../lib/src/core/policy_engine/default_policy.rego").to_string()
+        std::include_str!("../../../default_policy.rego").to_string()
     }
 
     fn policy() -> String {

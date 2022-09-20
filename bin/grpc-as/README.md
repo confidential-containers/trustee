@@ -28,7 +28,7 @@ message AttestationRequest {
     // Attestation evidence: https://github.com/confidential-containers/kbs/blob/main/docs/kbs_attestation_protocol.md#attestatio
     bytes evidence = 1;
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
 }
 ```
 
@@ -61,7 +61,7 @@ Get the OPA `Policy(.rego)`. The message:
 ```PROTO
 message GetPolicyRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
 }
 ```
 
@@ -71,7 +71,7 @@ Get the OPA `Reference Data(.json)`. The message:
 ```PROTO
 message GetReferenceDataRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
 }
 ```
 
@@ -81,7 +81,7 @@ Set the OPA `Policy(.rego)`. It can make the Attestation Server evaluate the TEE
 ```PROTO
 message SetPolicyRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
     // The "Policy(.rego)" file's content.
     bytes content = 3;
 }
@@ -93,7 +93,7 @@ Set the OPA `Reference Data(.json)`. It can attach a new released program's refe
 ```PROTO
 message SetReferenceDataRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
     // The "Reference Data(.json)" file's content.
     bytes content = 3;
 }
@@ -105,7 +105,7 @@ Restore the OPA `Policy(.rego)` to default value. The message:
 ```PROTO
 message ResetPolicyRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
 }
 ```
 
@@ -115,7 +115,7 @@ Restore the OPA Reference Data(.json) to default value. The message:
 ```PROTO
 message ResetReferenceDataRequest {
     // Optional: Designate the user id. It should be kept as "None" currently.
-    optional string user = 2;
+    string user = 2;
 }
 ```
 

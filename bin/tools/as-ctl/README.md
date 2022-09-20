@@ -1,13 +1,13 @@
-# attestation-service-ctl
+# as-ctl
 
-The `attestation-service-ctl` program provides a command line interface for the attestation server interface. It provides the following functions:
+The `as-ctl` program provides a command line interface for the attestation server interface. It provides the following functions:
 - Set/Get each TEE's Open Policy Engine(OPA) `Policy(.rego)` and `Reference Data(.json)` files. The `Reference Data(.json)` contents should come from such as Reference Value Provider Service(RVPS), but this item is not reflected in this implementation.
 - Restore each TEE's `Policy(.rego)` and `Reference Data(.json)` to default value.
 - Provide the Attestation Server's `attestation` endpoint testing functionality.
 
 ## Supported TEEs
 
-Currently the `attestation-service-ctl` supports the following types of TEE:
+Currently the `as-ctl` supports the following types of TEE:
 - `sgx` (Intel SGX)
 - `tdx` (Intel TDX)
 - `sevsnp` (AMD SEV-SNP)
@@ -15,11 +15,11 @@ Currently the `attestation-service-ctl` supports the following types of TEE:
 
 ## Usage
 
-Here are the steps of building and running of this `attestation-service-ctl`:
+Here are the steps of building and running of this `as-ctl`:
 
 ### Build
 
-Build the attestation-service-ctl and Attestation Server.
+Build the as-ctl and Attestation Server.
 ```shell
 $ git clone https://github.com/confidential-containers/attestation-service
 $ cd attestation-service
@@ -33,5 +33,5 @@ Whether AS is deployed remotely or locally, users can run the tool in user mode 
 
 - For help information, run:
 ```shell
-$ ./target/release/attestation-service-ctl --help
+$ ./target/release/as-ctl --help
 ```

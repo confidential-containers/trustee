@@ -1,4 +1,4 @@
-use super::{Evidence, TeeEvidenceParsedClaim};
+use crate::types::{Evidence, TeeEvidenceParsedClaim};
 use anyhow::Result;
 use async_trait::async_trait;
 

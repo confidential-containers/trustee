@@ -5,38 +5,38 @@ import "common.proto";
 package management;
 
 message GetPolicyRequest {
-    optional common.User user = 1;
+    common.User user = 1;
 }
 message GetPolicyResponse {
     bytes content = 1;
 }
 
 message GetReferenceDataRequest {
-    optional common.User user = 1;
+    common.User user = 1;
 }
 message GetReferenceDataResponse {
     bytes content = 1;
 }
 
 message SetPolicyRequest {
-    optional common.User user = 1;
+    common.User user = 1;
     bytes content = 2;
 }
 message SetPolicyResponse {}
 
 message SetReferenceDataRequest {
-    optional common.User user = 1;
+    common.User user = 1;
     bytes content = 2;
 }
 message SetReferenceDataResponse {}
 
 message RestoreDefaultPolicyRequest {
-    optional common.User user = 1;
+    common.User user = 1;
 }
 message RestoreDefaultPolicyResponse {}
 
 message RestoreDefaultReferenceDataRequest {
-    optional common.User user = 1;
+    common.User user = 1;
 }
 message RestoreDefaultReferenceDataResponse {}
 

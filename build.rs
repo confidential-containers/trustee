@@ -5,7 +5,7 @@ fn real_main() -> Result<(), String> {
     println!("cargo:rerun-if-changed={}", out_dir);
     println!("cargo:rustc-link-search=native={}", out_dir);
     println!("cargo:rustc-link-lib=static=opa");
-    let opa_dir = "./src/core/policy_engine/opa".to_string();
+    let opa_dir = "./src/policy_engine/opa".to_string();
     let opa = Command::new("go")
         .args(&[
             "build",
@@ -23,12 +23,19 @@ fn real_main() -> Result<(), String> {
             .to_string());
     }
 
+    tonic_build::compile_protos("bin/grpc-as/proto/management.proto")
+        .map_err(|e| format!("{}", e))?;
+    tonic_build::compile_protos("bin/grpc-as/proto/attestation.proto")
+        .map_err(|e| format!("{}", e))?;
+
     Ok(())
 }
 
-fn main() {
+fn main() -> shadow_rs::SdResult<()> {
     if let Err(e) = real_main() {
         eprintln!("ERROR: {}", e);
         exit(1);
     }
+
+    shadow_rs::new()
 }

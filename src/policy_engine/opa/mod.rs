@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_evaluate() {
-        let policy = std::include_str!("../default_policy.rego").to_string();
+        let policy = std::include_str!("../../../default_policy.rego").to_string();
 
         let res = evaluate(policy.clone(), dummy_reference(5), dummy_input(5, 5));
         assert!(res.is_ok(), "OPA execution() should be success");
