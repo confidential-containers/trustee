@@ -6,7 +6,7 @@ package attestation;
 
 message AttestationRequest {
     bytes evidence = 1;
-    optional common.User user = 2;
+    common.User user = 2;
 }
 message AttestationResponse {
     bytes attestation_results = 1;

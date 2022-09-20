@@ -1,33 +1,34 @@
-use crate::core::policy_engine::opa;
-use anyhow::{anyhow, Result};
-use std::str::FromStr;
+extern crate serde;
 
 #[macro_use]
 extern crate log;
 
 extern crate strum;
+
 #[macro_use]
 extern crate strum_macros;
 
-mod core;
+pub mod policy_engine;
+pub mod types;
+pub mod verifier;
 
-/// The supported TEE types:
-/// - TDX: TDX TEE.
-/// - SGX: SGX TEE.
-/// - SEVSNP: SEV-SNP TEE.
-/// - SAMPLE: A dummy TEE that used to test/demo the attestation service functionalities.
-#[derive(Debug, EnumString)]
-#[strum(ascii_case_insensitive)]
-pub enum TEE {
-    TDX,
-    SGX,
-    SEVSNP,
-    SAMPLE,
+use anyhow::{Context, Result};
+use policy_engine::opa;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::str::FromStr;
+use types::{AttestationResults, Evidence, TEE};
+
+#[macro_export]
+macro_rules! default_policy {
+    () => {
+        "../default_policy.rego"
+    };
 }
 
 #[derive(Debug)]
 pub struct Service {
-    pub attestation: core::Attestation,
+    pub attestation: Attestation,
 }
 
 impl Default for Service {
@@ -40,75 +41,11 @@ impl Service {
     /// Create a new attestation service's instance.
     pub fn new() -> Self {
         Self {
-            attestation: core::Attestation::default(),
+            attestation: Attestation::default(),
         }
     }
 
     /// Attest the received Evidence by the attestation service instance.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use attestation_service::Service;
-    /// use serde_json::json;
-    /// use sha2::{Sha384, Digest};
-    /// use base64;
-    ///
-    /// // sample TEE's evidence
-    /// fn evidence() -> String {
-    ///     let nonce = "the nonce".to_string();
-    ///     let public_key = "the public key".to_string();
-    ///     let pubkey = json!({
-    ///         "algorithm": "".to_string(),
-    ///         "pubkey-length": "".to_string(),
-    ///         "pubkey": public_key
-    ///     }).to_string();
-    ///     let mut hasher = Sha384::new();
-    ///     hasher.update(&nonce);
-    ///     hasher.update(&pubkey);
-    ///     let hash = hasher.finalize();
-    ///     let tee_evidence = json!({
-    ///         "is_debuggable": false,
-    ///         "cpusvn": 1,
-    ///         "svn": 1,
-    ///         "report_data": base64::encode(hash)
-    ///     }).to_string();
-    ///     json!({
-    ///         "nonce": nonce,
-    ///         "tee": "sample".to_string(),
-    ///         "tee-pubkey": pubkey,
-    ///         "tee-evidence": tee_evidence
-    ///     }).to_string()
-    /// }
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let service = Service::new();
-    ///
-    ///     // Attest the evidence with default OPA policy and reference data.
-    ///     let res = service.attestation(&evidence(), None, None).await;
-    ///     assert!(res.is_ok());
-    ///
-    ///     let policy = r#"
-    /// package policy
-    /// default allow = false
-    ///
-    /// allow {
-    ///     input.cpusvn >= data.cpusvn
-    ///     input.svn >= data.svn
-    /// }
-    /// "#.to_string();
-    ///
-    ///     let reference_data = json!({
-    ///        "cpusvn": 1,
-    ///        "svn": 1
-    ///     }).to_string();
-    ///
-    ///     // Attest the evidence with customized OPA policy and reference data.
-    ///     let res = service.attestation(&evidence(), Some(policy), Some(reference_data)).await;
-    ///     assert!(res.is_ok());
-    /// }
-    /// ```
     pub async fn attestation(
         &self,
         evidence: &str,
@@ -121,55 +58,6 @@ impl Service {
     }
 
     /// Get the specific TEE's Open Policy Agent default policy file.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use attestation_service::{Service, TEE};
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let service = Service::new();
-    ///     let res = service.default_policy().await;
-    ///     assert!(res.is_ok());
-    /// }
-    /// ```
-    pub async fn default_policy(&self) -> Result<String> {
-        self.attestation.default_policy()
-    }
-
-    /// Evaluate the input data, policy file, and reference data by the OPA policy engine.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use attestation_service::Service;
-    /// use serde_json::json;
-    ///
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     let service = Service::new();
-    ///     let policy = r#"
-    /// package policy
-    /// default allow = false
-    ///
-    /// allow {
-    ///     input.cpusvn >= data.cpusvn
-    ///     input.svn >= data.svn
-    /// }
-    /// "#.to_string();
-    ///     let reference = json!({
-    ///         "cpusvn": 1,
-    ///         "svn": 1
-    ///     }).to_string();
-    ///     let input = json!({
-    ///         "cpusvn": 2,
-    ///         "svn": 2
-    ///     }).to_string();
-    ///     let res = service.opa_test(policy, reference, input);
-    ///     assert!(res.is_ok());
-    /// }
-    /// ```
     pub fn opa_test(
         &self,
         policy_content: String,
@@ -177,6 +65,78 @@ impl Service {
         input_content: String,
     ) -> Result<String> {
         opa::evaluate(policy_content, reference_content, input_content)
+    }
+
+    /// Get the specific TEE's Open Policy Agent default policy file.
+    pub async fn default_policy(&self) -> Result<String> {
+        self.attestation.default_policy()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Attestation {}
+
+impl Attestation {
+    pub async fn evaluate(
+        &self,
+        evidence: &str,
+        policy: Option<String>,
+        reference_data: Option<String>,
+    ) -> Result<String> {
+        let evidence =
+            serde_json::from_str::<Evidence>(evidence).context("Deserialize Evidence failed.")?;
+        let verifier = TEE::from_str(&evidence.tee)?.to_verifier()?;
+
+        let claims_from_tee_evidence = match verifier.evaluate(&evidence).await {
+            Ok(claims) => claims,
+            Err(e) => {
+                let attestation_results = serde_json::to_string(&AttestationResults::new(
+                    evidence.tee.clone(),
+                    false,
+                    Some(format!("Verifier evaluate failed: {:?}", e)),
+                    None,
+                    None,
+                ))?;
+                return Ok(attestation_results);
+            }
+        };
+
+        let opa_input_data = serde_json::to_string(&claims_from_tee_evidence)?;
+
+        let opa_policy = policy.unwrap_or_else(|| std::include_str!(default_policy!()).to_string());
+        let opa_reference_data = match reference_data {
+            Some(data) => data,
+            None => {
+                let mut data: HashMap<String, Vec<String>> = HashMap::new();
+                let claims_map: HashMap<String, serde_json::Value> =
+                    serde_json::from_value(claims_from_tee_evidence.clone())?;
+                for key in claims_map.keys() {
+                    data.insert(key.to_string(), Vec::new());
+                }
+                serde_json::json!({ "reference": data }).to_string()
+            }
+        };
+        // TODO: Update the reference data with RVPS.
+
+        let opa_output = opa::evaluate(opa_policy, opa_reference_data, opa_input_data)?;
+        let v_opa_output: Value = serde_json::from_str(&opa_output)?;
+
+        let attestation_results = AttestationResults::new(
+            evidence.tee.clone(),
+            v_opa_output["allow"].as_bool().unwrap_or(false),
+            None,
+            Some(opa_output),
+            Some(serde_json::to_string(&claims_from_tee_evidence)?),
+        );
+
+        let results = serde_json::to_string(&attestation_results)?;
+
+        debug!("Attestation Results: {:?}", &attestation_results);
+        Ok(results)
+    }
+
+    pub fn default_policy(&self) -> Result<String> {
+        Ok(std::include_str!(default_policy!()).to_string())
     }
 }
 
@@ -291,7 +251,7 @@ allow {
         let value = service.default_policy().await;
         assert!(value.is_ok(), "get opa's policy should success");
         assert!(
-            value.unwrap() == std::include_str!("./core/policy_engine/default_policy.rego"),
+            value.unwrap() == std::include_str!("../default_policy.rego"),
             "policy should equal"
         );
     }
