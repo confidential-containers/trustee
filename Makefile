@@ -3,7 +3,7 @@ TOP_DIR := .
 CUR_DIR := $(shell pwd)
 PREFIX := /usr/local
 TARGET_DIR := target
-BIN_NAMES := grpc-as as-ctl
+BIN_NAMES := grpc-as grpc-as-ctl
 
 DEBUG ?=
 DESTDIR ?= $(PREFIX)/bin

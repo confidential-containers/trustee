@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "as-ctl"
-path = "bin/tools/as-ctl/src/main.rs"
+name = "grpc-as-ctl"
+path = "bin/tools/grpc-as-ctl/src/main.rs"
 
 [[bin]]
 name = "grpc-as"
