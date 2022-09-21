@@ -34,7 +34,7 @@ This project provides the Attestation Service binary program that can be run as 
 
 ## Tools
 
-- [`grpc-as-ctl`](bin/tools/as-ctl/): A simple tool to configure the policy and reference value of `grpc-as`.
+- [`grpc-as-ctl`](bin/tools/grpc-as-ctl/): A simple tool to configure the policy and reference value of `grpc-as`.
 
 # Usage
 

@@ -23,7 +23,7 @@ extern crate log;
 shadow!(build);
 
 #[derive(Parser)]
-#[clap(name = "as-ctl")]
+#[clap(name = "grpc-as-ctl")]
 #[clap(author, version, about = "A command line interface for the attestation server.", long_about = None)]
 struct Cli {
     #[clap(subcommand)]
