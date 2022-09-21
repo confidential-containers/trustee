@@ -24,8 +24,12 @@ jobs:
 
       - name: OPA policy.rego fmt and check
         run: |
-          opa fmt -d ./lib/src/core/policy_engine/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
-          opa check ./lib/src/core/policy_engine/default_policy.rego
+          opa fmt -d ./default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check ./default_policy.rego
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
       - name: Install Rust toolchain (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
@@ -35,11 +39,9 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - name: Run cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
+      - name: Build
+        run: |
+          make
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
