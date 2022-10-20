@@ -5,7 +5,8 @@
 
 //! reference value for RVPS
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use anyhow::{anyhow, Result};
+use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Default version of ReferenceValue
@@ -75,13 +76,19 @@ fn default_version() -> String {
 }
 
 impl ReferenceValue {
-    pub fn new() -> Self {
-        ReferenceValue {
+    /// Create a new `ReferenceValue`, the `expired`
+    /// field's nanosecond will be set to 0. This avoid
+    /// a rare bug that when the nanosecond of the time
+    /// is not 0, the test case will fail.
+    pub fn new() -> Result<Self> {
+        Ok(ReferenceValue {
             version: REFERENCE_VALUE_VERSION.into(),
             name: String::new(),
-            expired: Utc::now(),
+            expired: Utc::now()
+                .with_nanosecond(0)
+                .ok_or_else(|| anyhow!("set nanosecond failed."))?,
             hash_value: Vec::new(),
-        }
+        })
     }
 
     /// Get version of the ReferenceValue.
@@ -97,7 +104,7 @@ impl ReferenceValue {
 
     /// Get expired time of the ReferenceValue.
     pub fn set_expired(mut self, expired: DateTime<Utc>) -> Self {
-        self.expired = expired;
+        self.expired = expired.with_nanosecond(0).expect("Set nanosecond failed.");
         self
     }
 
@@ -152,6 +159,7 @@ mod test {
     #[test]
     fn reference_value_serialize() {
         let rv = ReferenceValue::new()
+            .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
             .set_expired(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0))
@@ -176,6 +184,7 @@ mod test {
     #[test]
     fn reference_value_deserialize() {
         let rv = ReferenceValue::new()
+            .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
             .set_expired(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0))
