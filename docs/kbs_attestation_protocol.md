@@ -521,3 +521,9 @@ format is used for that purpose:
     "detail": "$detail"
 }
 ```
+
+## OpenAPI Description
+
+The KBS HTTP endpoints and payloads are
+[formally described](https://github.com/confidential-containers/kbs/blob/main/docs/kbs.yaml)
+in an [OpenAPI](https://www.openapis.org/) compliant format.
