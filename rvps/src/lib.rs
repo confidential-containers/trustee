@@ -5,10 +5,10 @@
 
 #![allow(clippy::new_without_default)]
 
-pub mod cache;
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
+pub mod store;
 
 use std::time::SystemTime;
 
@@ -19,8 +19,8 @@ use log::{info, warn};
 use pre_processor::{PreProcessor, PreProcessorAPI, Ware};
 use serde::{Deserialize, Serialize};
 
-pub use cache::Cache;
 pub use reference_value::{ReferenceValue, TrustedDigest};
+pub use store::Store;
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";
@@ -56,15 +56,15 @@ pub trait RVPSAPI {
 }
 
 /// The core of the RVPS, s.t. componants except communication componants.
-pub struct Core<T: Cache> {
+pub struct Core<T: Store> {
     pre_processor: PreProcessor,
     extractors: ExtractorsImpl,
-    cache: T,
+    store: T,
 }
 
-impl<T: Cache> Core<T> {
+impl<T: Store> Core<T> {
     /// Instantiate  a new RVPS Core
-    pub fn new(cache: T) -> Self {
+    pub fn new(store: T) -> Self {
         let pre_processor = PreProcessor::default();
 
         let extractors = ExtractorsImpl::default();
@@ -72,7 +72,7 @@ impl<T: Cache> Core<T> {
         Core {
             pre_processor,
             extractors,
-            cache,
+            store,
         }
     }
 
@@ -83,7 +83,7 @@ impl<T: Cache> Core<T> {
     }
 }
 
-impl<T: Cache> RVPSAPI for Core<T> {
+impl<T: Store> RVPSAPI for Core<T> {
     fn verify_and_extract(&mut self, mut message: Message) -> Result<()> {
         // Judge the version field
         if message.version != MESSAGE_VERSION {
@@ -98,7 +98,7 @@ impl<T: Cache> RVPSAPI for Core<T> {
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
-            let old = self.cache.set(v.name().to_string(), v.clone())?;
+            let old = self.store.set(v.name().to_string(), v.clone())?;
             if let Some(old) = old {
                 info!("Old Reference value of {} is replaced.", old.name());
             }
@@ -108,7 +108,7 @@ impl<T: Cache> RVPSAPI for Core<T> {
     }
 
     fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
-        let rv = self.cache.get(name)?;
+        let rv = self.store.get(name)?;
         match rv {
             None => Ok(None),
             Some(rv) => {
