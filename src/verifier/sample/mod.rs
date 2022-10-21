@@ -65,4 +65,3 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
 
     Ok(claims_map as TeeEvidenceParsedClaim)
 }
-
