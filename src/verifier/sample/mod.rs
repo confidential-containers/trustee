@@ -8,7 +8,7 @@ use serde_json::json;
 use sha2::{Digest, Sha384};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Quote {
+struct SampleTeeEvidence {
     is_debuggable: bool,
     // CPU Security Version Number
     cpusvn: u64,
@@ -22,22 +22,42 @@ pub struct Sample {}
 
 #[async_trait]
 impl Verifier for Sample {
-    async fn evaluate(&self, evidence: &Evidence) -> Result<TeeEvidenceParsedClaim> {
-        verify(evidence)
+    async fn evaluate(&self, nonce: String, evidence: &Evidence) -> Result<TeeEvidenceParsedClaim> {
+        let tee_evidence = serde_json::from_str::<SampleTeeEvidence>(&evidence.tee_evidence)
+            .context("Deserialize Quote failed.")?;
+
+        let mut hasher = Sha384::new();
+        hasher.update(&nonce);
+        hasher.update(&evidence.tee_pubkey);
+        let reference_report_data = base64::encode(hasher.finalize());
+
+        verify_tee_evidence(reference_report_data, &evidence.tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
 
-        let quote = serde_json::from_str::<Quote>(&evidence.tee_evidence)
-            .context("Deserialize Quote failed.")?;
-        debug!("Quote<sample>: {:?}", &quote);
+        debug!("TEE-Evidence<sample>: {:?}", &tee_evidence);
 
-        tcb_status(&quote)
+        parse_tee_evidence(&tee_evidence)
     }
+}
+
+async fn verify_tee_evidence(reference_report_data: String, tee_evidence: &str) -> Result<()> {
+    let quote = serde_json::from_str::<SampleTeeEvidence>(tee_evidence)
+        .context("Deserialize quote failed.")?;
+
+    // Verify the TEE Hardware signature. (Null for sample TEE)
+
+    // Emulate the report data.
+    if quote.report_data != reference_report_data {
+        return Err(anyhow!("Report data verification failed!"));
+    }
+
+    Ok(())
 }
 
 // Dump the TCB status from the quote.
 // Example: CPU SVN, RTMR, etc.
-fn tcb_status(quote: &Quote) -> Result<TeeEvidenceParsedClaim> {
+fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClaim> {
     let claims_map = json!({
         "cpusvn": quote.cpusvn,
         "svn": quote.svn
@@ -46,25 +66,3 @@ fn tcb_status(quote: &Quote) -> Result<TeeEvidenceParsedClaim> {
     Ok(claims_map as TeeEvidenceParsedClaim)
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Ehd {
-    nonce: String,
-    public_key: String,
-}
-
-async fn verify(evidence: &Evidence) -> Result<()> {
-    // Emulate the EHD (report data).
-    let quote = serde_json::from_str::<Quote>(&evidence.tee_evidence)
-        .context("Deserialize quote failed.")?;
-    let mut hasher = Sha384::new();
-    hasher.update(&evidence.nonce);
-    hasher.update(&evidence.tee_pubkey);
-    let hash = hasher.finalize();
-    if quote.report_data != base64::encode(hash) {
-        return Err(anyhow!("Report data verification failed!"));
-    }
-
-    // Verify the TEE Hardware signature. (Null for sample TEE)
-
-    Ok(())
-}
