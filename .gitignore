@@ -4,7 +4,5 @@ Cargo.lock
 # build cache
 target
 
-users/
-
 # Local Fs tempfile
 reference_values
