@@ -32,8 +32,6 @@ impl TEE {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Evidence {
-    pub nonce: String,
-    pub tee: String,
     #[serde(rename = "tee-pubkey")]
     pub tee_pubkey: String,
     #[serde(rename = "tee-evidence")]
