@@ -32,10 +32,6 @@ This project provides the Attestation Service binary program that can be run as 
 
 - [`grpc-as`](bin/grpc-as/): Provide AS APIs based on gRPC protocol.
 
-## Tools
-
-- [`grpc-as-ctl`](bin/tools/grpc-as-ctl/): A simple tool to configure the policy and reference value of `grpc-as`.
-
 # Usage
 
 Build and install AS components:
@@ -46,7 +42,7 @@ cd attestation-service
 make && make install
 ```
 
-`grpc-as` and `grpc-as-ctl` will be installed into `/usr/local/bin`.
+`grpc-as` will be installed into `/usr/local/bin`.
 
 # Architecture
 
