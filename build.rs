@@ -23,8 +23,6 @@ fn real_main() -> Result<(), String> {
             .to_string());
     }
 
-    tonic_build::compile_protos("bin/grpc-as/proto/management.proto")
-        .map_err(|e| format!("{}", e))?;
     tonic_build::compile_protos("bin/grpc-as/proto/attestation.proto")
         .map_err(|e| format!("{}", e))?;
 
