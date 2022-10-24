@@ -24,8 +24,8 @@ jobs:
 
       - name: OPA policy.rego fmt and check
         run: |
-          opa fmt -d ./default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
-          opa check ./default_policy.rego
+          opa fmt -d ./src/policy_engine/opa/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check ./src/policy_engine/opa/default_policy.rego
 
       - name: Install protoc
         run: |
