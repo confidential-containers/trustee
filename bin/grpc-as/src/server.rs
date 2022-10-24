@@ -6,14 +6,10 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
-use crate::as_api::{
-    AttestationRequest, AttestationResponse, GetPolicyRequest, GetPolicyResponse, SetPolicyRequest,
-    SetPolicyResponse,
-};
+use crate::as_api::{AttestationRequest, AttestationResponse};
 
 const DEFAULT_SOCK: &str = "127.0.0.1:3000";
 
-#[derive(Debug, Default)]
 pub struct AttestationServer {
     attestation_service: Arc<RwLock<Service>>,
 }
@@ -53,29 +49,6 @@ impl AttestationService for AttestationServer {
         let res = AttestationResponse {
             attestation_results: results,
         };
-        Ok(Response::new(res))
-    }
-
-    async fn set_policy(
-        &self,
-        request: Request<SetPolicyRequest>,
-    ) -> Result<Response<SetPolicyResponse>, Status> {
-        let request: SetPolicyRequest = request.into_inner();
-        let policy = request.policy.to_owned();
-        debug!("Policy: {}", &policy);
-
-        self.attestation_service.write().await.set_policy(policy);
-
-        Ok(Response::new(SetPolicyResponse {}))
-    }
-
-    async fn get_policy(
-        &self,
-        _request: Request<GetPolicyRequest>,
-    ) -> Result<Response<GetPolicyResponse>, Status> {
-        let policy = self.attestation_service.read().await.policy();
-
-        let res = GetPolicyResponse { policy };
         Ok(Response::new(res))
     }
 }
