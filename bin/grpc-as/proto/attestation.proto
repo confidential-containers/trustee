@@ -11,21 +11,7 @@ message AttestationResponse {
     string attestation_results = 1;
 }
 
-message GetPolicyRequest {
-}
-message GetPolicyResponse {
-    string policy = 1;
-}
-
-message SetPolicyRequest {
-    string policy = 2;
-}
-message SetPolicyResponse {}
-
 service AttestationService {
     rpc AttestationEvaluate(AttestationRequest) returns (AttestationResponse) {};
     // Get the GetPolicyRequest.user and GetPolicyRequest.tee specified Policy(.rego)
-    rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse) {};
-    // Update the SetPolicyRequest.user and SetPolicyRequest.tee specified Policy(.rego) with the content of SetPolicyRequest.content
-    rpc SetPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
 }
