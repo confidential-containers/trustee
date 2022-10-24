@@ -116,11 +116,15 @@ Supported Verifier Drivers:
 
 ## Policy Engine
 
-The AS uses the [Open Policy Agent (OPA)](https://www.openpolicyagent.org/docs/latest/) framework as its policy engine to verify the Attester TCB status.
+The AS supports modular policy engine, which can be specified through the AS configuration. The currently supported policy engines are:
+
+### [Open Policy Agent (OPA)](https://www.openpolicyagent.org/docs/latest/)
+
 OPA is a very flexible and powerful policy engine, AS allows users to define and upload their own policy when performing evidence verification.
-If the user does not need to customize his own policy, AS will use the [default policy](default_policy.rego).
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about the `.rego`.
+
+If the user does not need to customize his own policy, AS will use the [default policy](src/policy_engine/opa/default_policy.rego).
 
 ## Reference Value Provider
 
