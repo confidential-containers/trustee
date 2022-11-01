@@ -13,7 +13,7 @@ use crate::{ReferenceValue, Store};
 
 /// Local directory path to store the reference values,
 /// which is created by sled engine.
-const FILE_PATH: &str = "/opt/attestation-server/reference_values";
+const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values";
 
 /// `LocalFs` implements [`Store`] trait. And
 /// it uses rocksdb inside.

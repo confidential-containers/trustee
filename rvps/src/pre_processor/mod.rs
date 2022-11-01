@@ -31,11 +31,11 @@ pub trait Ware {
 /// [`run`]: Self::run
 #[derive(Clone)]
 pub struct Next<'a> {
-    wares: &'a [Box<dyn Ware>],
+    wares: &'a [Box<dyn Ware + Send + Sync>],
 }
 
 impl<'a> Next<'a> {
-    pub(crate) fn new(wares: &'a [Box<dyn Ware>]) -> Self {
+    pub(crate) fn new(wares: &'a [Box<dyn Ware + Send + Sync>]) -> Self {
         Next { wares }
     }
 
@@ -59,12 +59,12 @@ impl<'a> Next<'a> {
 /// can modify the given [`Message`].
 pub trait PreProcessorAPI {
     fn process(&self, message: &mut Message) -> Result<()>;
-    fn add_ware(&mut self, ware: Box<dyn Ware>) -> &Self;
+    fn add_ware(&mut self, ware: Box<dyn Ware + Send + Sync>) -> &Self;
 }
 
 #[derive(Default)]
 pub struct PreProcessor {
-    wares: Vec<Box<dyn Ware>>,
+    wares: Vec<Box<dyn Ware + Send + Sync>>,
 }
 
 impl PreProcessorAPI for PreProcessor {
@@ -74,7 +74,7 @@ impl PreProcessorAPI for PreProcessor {
         next.run(message, &mut context)
     }
 
-    fn add_ware(&mut self, ware: Box<dyn Ware>) -> &Self {
+    fn add_ware(&mut self, ware: Box<dyn Ware + Send + Sync>) -> &Self {
         self.wares.push(ware);
         self
     }

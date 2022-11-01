@@ -16,6 +16,8 @@ tempfile = "3.3.0"
 base64 = "0.13.0"
 log = "0.4.17"
 sled = "0.34.7"
+strum = "0.24.0"
+strum_macros = "0.24.0"
 
 [dev-dependencies]
 testing_logger = "0.1.1"
