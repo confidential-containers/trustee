@@ -8,8 +8,25 @@
 use crate::reference_value::ReferenceValue;
 
 use anyhow::Result;
+use serde::Deserialize;
 
 pub mod local_fs;
+
+use crate::store::local_fs::LocalFs;
+
+#[derive(Deserialize, Debug, Clone, EnumString)]
+pub enum StoreType {
+    LocalFs,
+}
+
+impl StoreType {
+    #[allow(dead_code)]
+    pub fn to_store(&self) -> Result<Box<dyn Store + Send + Sync>> {
+        match self {
+            StoreType::LocalFs => Ok(Box::new(LocalFs::default()) as Box<dyn Store + Send + Sync>),
+        }
+    }
+}
 
 /// Interface of a `Store`.
 /// We only provide a simple instance here which implements

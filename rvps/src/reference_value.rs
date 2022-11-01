@@ -141,7 +141,7 @@ impl ReferenceValue {
 /// * `name`: The name of the artifact, e.g., `linux-1.1.1`
 /// * `hash_values`: digests that have been verified and can
 /// be trusted, so we can refer them as `trusted digests`.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
 pub struct TrustedDigest {
     /// The resource name.
     pub name: String,

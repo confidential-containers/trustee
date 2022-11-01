@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use rvps::store::StoreType;
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -15,6 +16,8 @@ pub struct Config {
 
     /// Policy Engine type.
     pub policy_engine: String,
+
+    pub rvps_store_type: StoreType,
 }
 
 impl Default for Config {
@@ -27,6 +30,7 @@ impl Default for Config {
         Config {
             work_dir,
             policy_engine: "opa".to_string(),
+            rvps_store_type: StoreType::LocalFs,
         }
     }
 }
@@ -35,7 +39,8 @@ impl TryFrom<&Path> for Config {
     /// Load `Config` from a configuration file like:
     ///    {
     ///        "work_dir": "/var/lib/attestation-service/",
-    ///        "policy_engine": "opa"
+    ///        "policy_engine": "opa",
+    ///        "rvps_store_type": "LocalFs"
     ///    }
     type Error = anyhow::Error;
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {

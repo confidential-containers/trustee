@@ -128,6 +128,6 @@ If the user does not need to customize his own policy, AS will use the [default 
 
 ## Reference Value Provider
 
-In order to verify TCB status, AS needs to obtain the reference value for comparison in advance.
-AS allows users to upload customized reference value sets when they need to perform evidence validation (just as they can upload customized policy).
-If no customized reference value is uploaded, the AS will obtain the reference value from [Reference Value Provider Service](rvps/README.md) (RVPS for short).
+[Reference Value Provider Service](rvps/README.md) (RVPS for short) is a module integrated in the AS to verify,
+store and provide reference values. RVPS receives and verifies the provenance input from the software supply chain,
+stores the measurement values, and generates reference value claims for the AS according to the evidence content when the AS verifies the evidence.
