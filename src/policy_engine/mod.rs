@@ -1,5 +1,6 @@
 use anyhow::Result;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
 
 pub mod opa;
@@ -21,5 +22,9 @@ impl PolicyEngineType {
 }
 
 pub trait PolicyEngine {
-    fn evaluate(&self, reference: String, input: String) -> Result<(bool, String)>;
+    fn evaluate(
+        &self,
+        reference_data_map: HashMap<String, Vec<String>>,
+        input: String,
+    ) -> Result<(bool, String)>;
 }

@@ -16,6 +16,7 @@ pub mod verifier;
 use anyhow::{anyhow, Context, Result};
 use config::Config;
 use policy_engine::{PolicyEngine, PolicyEngineType};
+use rvps::RVPSAPI;
 use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
@@ -25,7 +26,7 @@ use types::{Attestation, AttestationResults, TEE};
 pub struct AttestationService {
     config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
-    reference_values: String,
+    rvps: rvps::Core,
 }
 
 impl AttestationService {
@@ -41,14 +42,13 @@ impl AttestationService {
             .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
             .to_policy_engine(config.work_dir.as_path())?;
 
-        let data: HashMap<String, Vec<String>> = HashMap::new();
-        //TODO: Reference values actually should be generated from RVPS storage when `evaluate` is called.
-        let reference_values = serde_json::json!({ "reference": data }).to_string();
+        let rvps_store = config.rvps_store_type.to_store()?;
+        let rvps = rvps::Core::new(rvps_store);
 
         Ok(Self {
             config,
             policy_engine,
-            reference_values,
+            rvps,
         })
     }
 
@@ -77,20 +77,40 @@ impl AttestationService {
                 }
             };
 
-        let (result, policy_engine_output) = self.policy_engine.evaluate(
-            self.reference_values.clone(),
-            serde_json::to_string(&claims_from_tee_evidence)?,
-        )?;
+        let tcb = serde_json::to_string(&claims_from_tee_evidence)?;
+        let reference_data_map = self
+            .get_reference_data(&tcb)
+            .map_err(|e| anyhow!("Generate reference data failed{:?}", e))?;
+
+        let (result, policy_engine_output) = self
+            .policy_engine
+            .evaluate(reference_data_map, tcb.clone())?;
 
         let attestation_results = AttestationResults::new(
             tee.to_string(),
             result,
             None,
             Some(policy_engine_output),
-            Some(serde_json::to_string(&claims_from_tee_evidence)?),
+            Some(tcb),
         );
         debug!("Attestation Results: {:?}", &attestation_results);
 
         Ok(attestation_results)
+    }
+
+    fn get_reference_data(&self, tcb_claims: &str) -> Result<HashMap<String, Vec<String>>> {
+        let mut data = HashMap::new();
+        let tcb_claims_map: HashMap<String, Vec<String>> = serde_json::from_str(tcb_claims)?;
+        for key in tcb_claims_map.keys() {
+            data.insert(
+                key.to_string(),
+                self.rvps
+                    .get_digests(key)?
+                    .unwrap_or_default()
+                    .hash_values
+                    .clone(),
+            );
+        }
+        Ok(data)
     }
 }

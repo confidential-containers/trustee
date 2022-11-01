@@ -3,8 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#![allow(clippy::new_without_default)]
+extern crate strum;
 
+#[macro_use]
+extern crate strum_macros;
+
+#[allow(clippy::new_without_default)]
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
@@ -56,15 +60,15 @@ pub trait RVPSAPI {
 }
 
 /// The core of the RVPS, s.t. componants except communication componants.
-pub struct Core<T: Store> {
+pub struct Core {
     pre_processor: PreProcessor,
     extractors: ExtractorsImpl,
-    store: T,
+    store: Box<dyn Store + Send + Sync>,
 }
 
-impl<T: Store> Core<T> {
+impl Core {
     /// Instantiate  a new RVPS Core
-    pub fn new(store: T) -> Self {
+    pub fn new(store: Box<dyn Store + Send + Sync>) -> Self {
         let pre_processor = PreProcessor::default();
 
         let extractors = ExtractorsImpl::default();
@@ -77,13 +81,13 @@ impl<T: Store> Core<T> {
     }
 
     /// Add Ware to the Core's Pre-Processor
-    pub fn with_ware(&mut self, ware: Box<dyn Ware>) -> &Self {
+    pub fn with_ware(&mut self, ware: Box<dyn Ware + Send + Sync>) -> &Self {
         self.pre_processor.add_ware(ware);
         self
     }
 }
 
-impl<T: Store> RVPSAPI for Core<T> {
+impl RVPSAPI for Core {
     fn verify_and_extract(&mut self, mut message: Message) -> Result<()> {
         // Judge the version field
         if message.version != MESSAGE_VERSION {

@@ -1,6 +1,7 @@
 use crate::policy_engine::PolicyEngine;
 use anyhow::{anyhow, Result};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::ffi::CStr;
 use std::fs;
 use std::os::raw::c_char;
@@ -44,7 +45,11 @@ impl OPA {
 }
 
 impl PolicyEngine for OPA {
-    fn evaluate(&self, reference: String, input: String) -> Result<(bool, String)> {
+    fn evaluate(
+        &self,
+        reference_data_map: HashMap<String, Vec<String>>,
+        input: String,
+    ) -> Result<(bool, String)> {
         let policy = fs::read_to_string(&self.policy_file_path)
             .map_err(|e| anyhow!("Read OPA policy file failed: {:?}", e))?;
 
@@ -52,6 +57,8 @@ impl PolicyEngine for OPA {
             p: policy.as_ptr() as *const i8,
             n: policy.len() as isize,
         };
+
+        let reference = serde_json::json!({ "reference": reference_data_map }).to_string();
 
         let reference_go = GoString {
             p: reference.as_ptr() as *const i8,
@@ -85,18 +92,16 @@ mod tests {
 
     fn dummy_reference(ver: u64) -> String {
         json!({
-            "reference": {
-                "productId": ver,
-                "svn": ver
-            }
+            "productId": [ver.to_string()],
+            "svn": [ver.to_string()]
         })
         .to_string()
     }
 
     fn dummy_input(product_id: u64, svn: u64) -> String {
         json!({
-            "productId": product_id,
-            "svn": svn
+            "productId": product_id.to_string(),
+            "svn": svn.to_string()
         })
         .to_string()
     }
@@ -107,11 +112,14 @@ mod tests {
             policy_file_path: PathBuf::from("./src/policy_engine/opa/default_policy.rego"),
         };
 
-        let res = opa.evaluate(dummy_reference(5), dummy_input(5, 5));
+        let reference_data: HashMap<String, Vec<String>> =
+            serde_json::from_str(&dummy_reference(5)).unwrap();
+
+        let res = opa.evaluate(reference_data.clone(), dummy_input(5, 5));
         assert!(res.is_ok(), "OPA execution() should be success");
         assert!(res.unwrap().0 == true, "allow should be true");
 
-        let res = opa.evaluate(dummy_reference(5), dummy_input(0, 0));
+        let res = opa.evaluate(reference_data, dummy_input(0, 0));
         assert!(res.is_ok(), "OPA execution() should be success");
         assert!(res.unwrap().0 == false, "allow should be false");
     }
