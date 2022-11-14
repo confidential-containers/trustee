@@ -7,7 +7,7 @@ fn real_main() -> Result<(), String> {
     println!("cargo:rustc-link-lib=static=opa");
     let opa_dir = "./src/policy_engine/opa".to_string();
     let opa = Command::new("go")
-        .args(&[
+        .args([
             "build",
             "-o",
             &format!("{}/libopa.a", out_dir),
