@@ -5,24 +5,24 @@ use serde::{Deserialize, Serialize};
 pub type TeeEvidenceParsedClaim = serde_json::Value;
 
 /// The supported TEE types:
-/// - TDX: TDX TEE.
-/// - SGX: SGX TEE.
-/// - SEVSNP: SEV-SNP TEE.
-/// - SAMPLE: A dummy TEE that used to test/demo the attestation service functionalities.
+/// - Tdx: TDX TEE.
+/// - Sgx: SGX TEE.
+/// - SevSnp: SEV-SNP TEE.
+/// - Sample: A dummy TEE that used to test/demo the attestation service functionalities.
 #[derive(Debug, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum TEE {
-    TDX,
-    SGX,
-    SEVSNP,
-    SAMPLE,
+    Tdx,
+    Sgx,
+    SevSnp,
+    Sample,
 }
 
 impl TEE {
     #[allow(dead_code)]
     pub fn to_verifier(&self) -> Result<Box<dyn Verifier + Send + Sync>> {
         match self {
-            TEE::SAMPLE => {
+            TEE::Sample => {
                 Ok(Box::new(sample::Sample::default()) as Box<dyn Verifier + Send + Sync>)
             }
             _ => Err(anyhow!("TEE is not supported!")),
@@ -31,7 +31,7 @@ impl TEE {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Evidence {
+pub struct Attestation {
     #[serde(rename = "tee-pubkey")]
     pub tee_pubkey: String,
     #[serde(rename = "tee-evidence")]

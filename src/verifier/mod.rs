@@ -1,4 +1,4 @@
-use crate::types::{Evidence, TeeEvidenceParsedClaim};
+use crate::types::{Attestation, TeeEvidenceParsedClaim};
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -9,5 +9,9 @@ pub trait Verifier {
     /// Verify the hardware signature and report data in TEE quote.
     /// If the verification is successful, a key-value pairs map of TCB status will be returned,
     /// The policy engine of AS will carry out the verification of TCB status.
-    async fn evaluate(&self, nonce: String, evidence: &Evidence) -> Result<TeeEvidenceParsedClaim>;
+    async fn evaluate(
+        &self,
+        nonce: String,
+        attestation: &Attestation,
+    ) -> Result<TeeEvidenceParsedClaim>;
 }

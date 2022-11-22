@@ -19,7 +19,7 @@ use policy_engine::{PolicyEngine, PolicyEngineType};
 use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
-use types::{AttestationResults, Evidence, TEE};
+use types::{Attestation, AttestationResults, TEE};
 
 #[allow(dead_code)]
 pub struct AttestationService {
@@ -52,29 +52,30 @@ impl AttestationService {
         })
     }
 
-    /// Evaluate Attestation Evicende.
+    /// Evaluate Attestation Evidence.
     pub async fn evaluate(
         &self,
         tee: &str,
         nonce: &str,
-        evidence: &str,
+        attestation: &str,
     ) -> Result<AttestationResults> {
-        let evidence =
-            serde_json::from_str::<Evidence>(evidence).context("Deserialize Evidence failed.")?;
+        let attestation = serde_json::from_str::<Attestation>(attestation)
+            .context("Failed to deserialize Attestation")?;
         let verifier = TEE::from_str(tee)?.to_verifier()?;
 
-        let claims_from_tee_evidence = match verifier.evaluate(nonce.to_string(), &evidence).await {
-            Ok(claims) => claims,
-            Err(e) => {
-                return Ok(AttestationResults::new(
-                    tee.to_string(),
-                    false,
-                    Some(format!("Verifier evaluate failed: {:?}", e)),
-                    None,
-                    None,
-                ));
-            }
-        };
+        let claims_from_tee_evidence =
+            match verifier.evaluate(nonce.to_string(), &attestation).await {
+                Ok(claims) => claims,
+                Err(e) => {
+                    return Ok(AttestationResults::new(
+                        tee.to_string(),
+                        false,
+                        Some(format!("Verifier evaluate failed: {:?}", e)),
+                        None,
+                        None,
+                    ));
+                }
+            };
 
         let (result, policy_engine_output) = self.policy_engine.evaluate(
             self.reference_values.clone(),
