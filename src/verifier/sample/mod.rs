@@ -22,16 +22,20 @@ pub struct Sample {}
 
 #[async_trait]
 impl Verifier for Sample {
-    async fn evaluate(&self, nonce: String, evidence: &Evidence) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_str::<SampleTeeEvidence>(&evidence.tee_evidence)
+    async fn evaluate(
+        &self,
+        nonce: String,
+        attestation: &Attestation,
+    ) -> Result<TeeEvidenceParsedClaim> {
+        let tee_evidence = serde_json::from_str::<SampleTeeEvidence>(&attestation.tee_evidence)
             .context("Deserialize Quote failed.")?;
 
         let mut hasher = Sha384::new();
         hasher.update(&nonce);
-        hasher.update(&evidence.tee_pubkey);
+        hasher.update(&attestation.tee_pubkey);
         let reference_report_data = base64::encode(hasher.finalize());
 
-        verify_tee_evidence(reference_report_data, &evidence.tee_evidence)
+        verify_tee_evidence(reference_report_data, &attestation.tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
 
