@@ -6,3 +6,5 @@ target
 
 # Local Fs tempfile
 reference_values
+
+test_data/*_output.txt

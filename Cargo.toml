@@ -24,10 +24,13 @@ in-toto = [ "dep:in-toto" ]
 anyhow = "1.0"
 async-trait = "0.1.31"
 base64 = "0.13.0"
+byteorder = "1"
+cc-measurement = { git = "https://github.com/confidential-containers/td-shim" }
 chrono = { version = "0.4.19", features = [ "serde" ] }
 clap = { version = "3.2.6", features = ["derive"] }
 env_logger = "0.9.1"
 futures = "0.3.17"
+hex = "0.4.3"
 # TODO: Replace this with crate.io published version
 in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799", optional = true }
 # TODO: Replace this with kbs-types next published version (0.2.0)
@@ -36,15 +39,18 @@ lazy_static = "1.4.0"
 log = "0.4.17"
 path-clean = "0.1.0"
 prost = "0.11.0"
+ring = { git = "https://github.com/briansmith/ring.git", default-features = false, features = ["alloc"]}
+scroll = { version = "0.11.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
+sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives" , rev = "85cf8bdd" }
 sha2 = "0.10"
 shadow-rs = "0.19.0"
 sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 tempfile = "3.3.0"
-tokio = { version = "1.0" }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 
