@@ -1,0 +1,185 @@
+{
+  "signed": {
+    "_type": "layout",
+    "steps": [
+      {
+        "_type": "step",
+        "pubkeys": [
+          "b7d643dec0a051096ee5d87221b5d91a33daa658699d30903e1cefb90c418401"
+        ],
+        "cert_constraints": [
+          {
+            "common_name": "write-code.example.com",
+            "dns_names": [],
+            "emails": [],
+            "organizations": [
+              "example"
+            ],
+            "roots": [
+              "da6360ef818d52b11f891132609f34907bd48521b33fc96927979b7fce876136"
+            ],
+            "uris": [
+              "spiffe://example.com/write-code"
+            ]
+          }
+        ],
+        "expected_command": [],
+        "threshold": 1,
+        "name": "write-code",
+        "expected_materials": [],
+        "expected_products": [
+          [
+            "ALLOW",
+            "foo.py"
+          ]
+        ]
+      },
+      {
+        "_type": "step",
+        "pubkeys": [
+          "d3ffd1086938b3698618adf088bf14b13db4c8ae19e4e78d73da49ee88492710"
+        ],
+        "expected_command": [
+          "tar",
+          "zcvf",
+          "foo.tar.gz",
+          "foo.py"
+        ],
+        "threshold": 1,
+        "name": "package",
+        "expected_materials": [
+          [
+            "MATCH",
+            "foo.py",
+            "WITH",
+            "PRODUCTS",
+            "FROM",
+            "write-code"
+          ],
+          [
+            "DISALLOW",
+            "*"
+          ]
+        ],
+        "expected_products": [
+          [
+            "ALLOW",
+            "foo.tar.gz"
+          ],
+          [
+            "ALLOW",
+            "foo.py"
+          ]
+        ]
+      }
+    ],
+    "inspect": [
+      {
+        "_type": "inspection",
+        "run": [
+          "tar",
+          "xfz",
+          "foo.tar.gz"
+        ],
+        "name": "untar",
+        "expected_materials": [
+          [
+            "MATCH",
+            "foo.tar.gz",
+            "WITH",
+            "PRODUCTS",
+            "FROM",
+            "package"
+          ],
+          [
+            "DISALLOW",
+            "foo.tar.gz"
+          ]
+        ],
+        "expected_products": [
+          [
+            "MATCH",
+            "foo.py",
+            "WITH",
+            "PRODUCTS",
+            "FROM",
+            "write-code"
+          ],
+          [
+            "DISALLOW",
+            "foo.py"
+          ]
+        ]
+      }
+    ],
+    "keys": {
+      "b7d643dec0a051096ee5d87221b5d91a33daa658699d30903e1cefb90c418401": {
+        "keyid": "b7d643dec0a051096ee5d87221b5d91a33daa658699d30903e1cefb90c418401",
+        "keyid_hash_algorithms": [
+          "sha256",
+          "sha512"
+        ],
+        "keytype": "rsa",
+        "keyval": {
+          "private": "",
+          "public": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAyCTik98953hKl6+B6n5l\n8DVIDwDnvrJfpasbJ3+Rw66YcawOZinRpMxPTqWBKs7sRop7jqsQNcslUoIZLrXP\nr3foPHF455TlrqPVfCZiFQ+O4CafxWOB4mL1NddvpFXTEjmUiwFrrL7PcvQKMbYz\neUHH4tH9MNzqKWbbJoekBsDpCDIxp1NbgivGBKwjRGa281sClKgpd0Q0ebl+RTcT\nvpfZVDbXazQ7VqZkidt7geWq2BidOXZp/cjoXyVneKx/gYiOUv8x94svQMzSEhw2\nLFMQ04A1KnGn1jxO35/fd6/OW32njyWs96RKu9UQVacYHsQfsACPWwmVqgnX/sp5\nujlvSDjyfZu7c5yUQ2asYfQPLvnjG+u7QcBukGf8hAfVgsezzX9QPiK35BKDgBU/\nVk43riJs165TJGYGVuLUhIEhHgiQtwo8pUTJS5npEe5XMDuZoighNdzoWY2nfsBf\np8348k6vJtDMB093/t6V9sTGYQcSbgKPyEQo5Pk6Wd4ZAgMBAAE=\n-----END PUBLIC KEY-----"
+        },
+        "scheme": "rsassa-pss-sha256"
+      },
+      "d3ffd1086938b3698618adf088bf14b13db4c8ae19e4e78d73da49ee88492710": {
+        "keyid": "d3ffd1086938b3698618adf088bf14b13db4c8ae19e4e78d73da49ee88492710",
+        "keyid_hash_algorithms": [
+          "sha256",
+          "sha512"
+        ],
+        "keytype": "rsa",
+        "keyval": {
+          "private": "",
+          "public": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxcz9AucNbkJbQpwTHlEH\nRB+h+MkYKQjw06IgZ8TXlXGqp5pdwTHI5n5iFol0/rksmiZxatHwhth7ryYNC3Vk\n9g/LAs9E60yWytiSgV93EKv65bmhYqiSAkJdyaPKvCb7cG979B4e+HVpdVx6s7Ex\nIoaDRYcX3VIt6V25/SQz5iNUeVlb++QtSfQFEf3lHauoFhWZoCse24nWtYZo+3Ut\nuTmxygp7tU/9NmYb2BXEfUCdgjoCQ1UsFLBQQ4haIdJNOtRFl8KNY09zbMUijKIe\nX0ZvgT877LUtMyydKPEo04/u3DEr9Zba/SkHw43jYE/ojlXeik5uVjLSr3sJLDSP\nHwIDAQAB\n-----END PUBLIC KEY-----"
+        },
+        "scheme": "rsassa-pss-sha256"
+      }
+    },
+    "rootcas": {
+      "da6360ef818d52b11f891132609f34907bd48521b33fc96927979b7fce876136": {
+        "keyid": "da6360ef818d52b11f891132609f34907bd48521b33fc96927979b7fce876136",
+        "keyid_hash_algorithms": [
+          "sha256",
+          "sha512"
+        ],
+        "keytype": "rsa",
+        "keyval": {
+          "private": "",
+          "public": "",
+          "certificate": "-----BEGIN CERTIFICATE-----\nMIIDqjCCApKgAwIBAgIUPwvv/M1i/cE9Uz5YjGlwmowdez4wDQYJKoZIhvcNAQEN\nBQAwKzEQMA4GA1UECgwHZXhhbXBsZTEXMBUGA1UECwwOZXhhbXBsZUNOPXJvb3Qw\nHhcNMjEwODMxMTgzMjIyWhcNMzEwODI5MTgzMjIyWjArMRAwDgYDVQQKDAdleGFt\ncGxlMRcwFQYDVQQLDA5leGFtcGxlQ049cm9vdDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBAOXNjGvdiCQwbm8Hx7gyVtSOmG7ka3aqXYYaMBQiuDf+zIDn\nG7ckQcDPtruqwiJ34Q/xaABuHPhPUI8Urbal7g/BZMIPu5OBL7MFq2l0zPjBhERZ\n1fzNqgR5OjkbBqdfnpiAkYLP3HuCZLueRQylM4uJ4dOMRZkvJIjqUxMfwPUYe8dq\nQLe8hWd+Qpg6iLnqe5KxYqzyh7Lx8xX5nvGhPF7pi8cU7J5iFD9gs+BFeWG1GBQK\natftyJCkcHizlhdey6TviC1eEWsUWHMdRv+HOqLA02BspVROL0H5a4ztkC8KtjYf\nixSLKZYLMe61YU0qCU90xwb/fYwA6Xf/KjY1bX0CAwEAAaOBxTCBwjAdBgNVHQ4E\nFgQUP+lTty3ZA4ioQ9Xxnhy2IgktOAkwZgYDVR0jBF8wXYAUP+lTty3ZA4ioQ9Xx\nnhy2IgktOAmhL6QtMCsxEDAOBgNVBAoMB2V4YW1wbGUxFzAVBgNVBAsMDmV4YW1w\nbGVDTj1yb290ghQ/C+/8zWL9wT1TPliMaXCajB17PjAPBgNVHRMBAf8EBTADAQH/\nMA4GA1UdDwEB/wQEAwIBBjAYBgNVHREEETAPhg1zcGlmZmU6Ly9yb290MA0GCSqG\nSIb3DQEBDQUAA4IBAQDaji2jL7pXjRGk5SoiEEukJC8aPBSewd9OWPv0GoCG7Izf\nu4JFEpdSXS6HaA7IJ/xoQcAoCkBT9Ez+3WR8WhARkzHH7GD93bbg0SBVDPhSNsaN\nTigrz4/QAgDZw4wx7JbwPdJqnSYcf56sjon6bv8P1MPvrq7aUlQaKfqaW8cAPOO+\nppozqHKDN73hwB3Lt9rELAaJcmC9101U4pZlfXifp4tSXcasGG99YWORRbfb8ErK\nHKWaC7Au8PPyVZzfkohEj9/IvRBrqLpkkXApPaYOS++jhtPnxXA5vtK0x7Si1/d4\nqIZsuS6rjTJQGyQ0P1bpOcnMZI26ixuDpkwj6mPe\n-----END CERTIFICATE-----\n"
+        },
+        "scheme": "rsassa-pss-sha256"
+      }
+    },
+    "intermediatecas": {
+      "a6c9536bc35adcd7fefde347b89a6c6d03da63d2955733eb15774b29c7fdb25f": {
+        "keyid": "a6c9536bc35adcd7fefde347b89a6c6d03da63d2955733eb15774b29c7fdb25f",
+        "keyid_hash_algorithms": [
+          "sha256",
+          "sha512"
+        ],
+        "keytype": "rsa",
+        "keyval": {
+          "private": "",
+          "public": "",
+          "certificate": "-----BEGIN CERTIFICATE-----\nMIIDuDCCAqCgAwIBAgIUVuEf/cwQDxh80PJf90rs6meSzSYwDQYJKoZIhvcNAQEL\nBQAwKzEQMA4GA1UECgwHZXhhbXBsZTEXMBUGA1UECwwOZXhhbXBsZUNOPXJvb3Qw\nHhcNMjEwODMxMTgzMjIzWhcNMzEwODI5MTgzMjIzWjAyMRAwDgYDVQQKDAdleGFt\ncGxlMR4wHAYDVQQLDBVleGFtcGxlQ049ZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQC8PzbidS8jxlfJiE1FC4Q8LdxUDrbEMrcp8pP9\n+rcmOxRyypWU1ZX8I90RQ0wZyQeoRHHaPFt80DNsEGeiDL4pmNUkATaz7jmdK9ZM\n4uWD0bgnZnC2UWAiS8GjJaUBKOxmiQIma/d0xFt6p0yLzxd5jMP+U7VdH2GLEK4H\nDsXqWoWB2J82J2z4+amWB0ACaH0Euf2uL9f3iJ54XI0uQPZsmctMiIfEHMeZT5CV\nSoqvvM4LEVB+soQj2nfkXrsjc+shNGYdTYME1dIeVCMibU8/Cu9sgVlyOs8J9Cu6\nG261N40xYcRBldnj5pRILKcYqSpFIqu1+US/jVovRURDi1uPAgMBAAGjgcwwgckw\nHQYDVR0OBBYEFCKp/wOzXuZVbIPtm1v9C40JqUqNMGYGA1UdIwRfMF2AFD/pU7ct\n2QOIqEPV8Z4ctiIJLTgJoS+kLTArMRAwDgYDVQQKDAdleGFtcGxlMRcwFQYDVQQL\nDA5leGFtcGxlQ049cm9vdIIUPwvv/M1i/cE9Uz5YjGlwmowdez4wDwYDVR0TAQH/\nBAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwHwYDVR0RBBgwFoYUc3BpZmZlOi8vZXhh\nbXBsZS5jb20wDQYJKoZIhvcNAQELBQADggEBAFKt6CN1Oy2kLVQsLOxDtu5JPS9V\nIWtACL8c1WbznWV0xqg7Oordbq/wSiMKOjP2t92LdVR8hv1DbIcIqEsWRVaOfLPW\nSk/xgSXFZAQONal34oY/dySHqM2LJ+nMTBwhdX9cyYWgY0eiRys9wVp90MxJ8Ngv\nBc2YHqSL52Pid3SxQrM3dAeGeEOms5uaNxPGPJwvIHMtZLgCFumQO+cu10QWCiXA\n038MKmge74U9L7XxRBKobYbDSCooyhD8oBOTwmHRvd1dPLD62a7EtgP17ndzvqvs\nCeVm1a82NWpujW8QtnNdFE2b5043lrMtKS3CjVT+SSUMRtN6WKAmAH6CRko=\n-----END CERTIFICATE-----\n"
+        },
+        "scheme": "rsassa-pss-sha256"
+      }
+    },
+    "expires": "2030-11-18T16:06:36Z",
+    "readme": ""
+  },
+  "signatures": [
+    {
+      "keyid": "70ca5750c2eda80b18f41f4ec5f92146789b5d68dd09577be422a0159bd13680",
+      "sig": "22df8294daa4dfb27889ae2167ece2db73b67c43a3ef4d4c769c8806768908b0d458a6f3784d67f5b8d8b125aa92f22bca1d88be603e14377bcf41e989b168b1610de9388efd316df3ee01ac4a76db8dc792ae18864ca685c99a01eeee8ad39a448d05400eb568441152c6c9409a7b121ba1ed037055314e6f3c60b8976c5505d1da1f0dbef5a90c14e687bb44e1a6bf89870044d1c6eef5ab1c7f08f9f6aa9e6186c5212c0adf7866462d244c3568f730fadf70bc7e3f3d257012b3dcef417a41985078d6324209a4c0f7aea5eb9546989366f1caf2b5ba3137f093ecdd72f35346778c14d61d2a1f2d580316769c36cf6aea054ed63111332f02ad310767d3",
+      "cert": ""
+    }
+  ]
+}
