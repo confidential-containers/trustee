@@ -11,9 +11,9 @@ use anyhow::*;
 
 use std::collections::HashMap;
 
-use crate::{reference_value::ReferenceValue, Message};
-
 use self::extractor_modules::{ExtractorInstance, ExtractorModuleList};
+
+use super::{Message, ReferenceValue};
 
 /// `Extractors` provides different kinds of `Extractor`s due to
 /// different provenance types, e.g. in-toto, etc.

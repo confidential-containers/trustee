@@ -10,6 +10,7 @@ extern crate strum_macros;
 
 pub mod config;
 pub mod policy_engine;
+pub mod rvps;
 pub mod types;
 pub mod verifier;
 

@@ -8,7 +8,7 @@
 use anyhow::*;
 use std::collections::HashMap;
 
-use crate::reference_value::ReferenceValue;
+use crate::rvps::ReferenceValue;
 
 /// Extractor is a standard interface that all provenance extractors
 /// need to implement. Here reference_value can be modified in the
