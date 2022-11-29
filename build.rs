@@ -4,21 +4,22 @@ fn real_main() -> Result<(), String> {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     println!("cargo:rerun-if-changed={}", out_dir);
     println!("cargo:rustc-link-search=native={}", out_dir);
-    println!("cargo:rustc-link-lib=static=opa");
-    let opa_dir = "./src/policy_engine/opa".to_string();
-    let opa = Command::new("go")
+    println!("cargo:rustc-link-lib=static=cgo");
+    let cgo_dir = "./src/cgo".to_string();
+    let cgo = Command::new("go")
         .args([
             "build",
             "-o",
-            &format!("{}/libopa.a", out_dir),
+            &format!("{}/libcgo.a", out_dir),
             "-buildmode=c-archive",
             "opa.go",
+            "intoto.go",
         ])
-        .current_dir(opa_dir)
+        .current_dir(cgo_dir)
         .output()
         .expect("failed to launch opa compile process");
-    if !opa.status.success() {
-        return Err(std::str::from_utf8(&opa.stderr.to_vec())
+    if !cgo.status.success() {
+        return Err(std::str::from_utf8(&cgo.stderr.to_vec())
             .unwrap()
             .to_string());
     }
