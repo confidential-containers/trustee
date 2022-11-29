@@ -10,7 +10,7 @@ use std::path::PathBuf;
 const POLICY_FILE: &str = "opa/policy.rego";
 
 // Link import cgo function
-#[link(name = "opa")]
+#[link(name = "cgo")]
 extern "C" {
     pub fn evaluateGo(policy: GoString, data: GoString, input: GoString) -> *mut c_char;
 }

@@ -1,0 +1,22 @@
+{
+  "signed": {
+    "_type": "link",
+    "name": "write-code",
+    "materials": {},
+    "products": {
+      "foo.py": {
+        "sha256": "74dc3727c6e89308b39e4dfedf787e37841198b1fa165a27c013544a60502549"
+      }
+    },
+    "byproducts": {},
+    "command": [],
+    "environment": {}
+  },
+  "signatures": [
+    {
+      "keyid": "b7d643dec0a051096ee5d87221b5d91a33daa658699d30903e1cefb90c418401",
+      "sig": "2e1bb03bbd9d052a942633c6bc416ccf802ac67f3bf477d9194b4a5a4f9d6f2982e0d899bbec284322cb0366e450f4d00fe6f04d5bd44eb230b62eb5924ba9c4623888f29dc8cddac7968c0f37b6d66a57ead89d405d7fabc831e1b76c078606be32f7a3b9bbc06af5c067dad6c60162e47922cec59049595e2408cc726fb7cc2ff7f429a3e29939289b275332f4bbabbb23ab7c7b7a6a00506ef1242559248ae1de2bb184cdca4cf1beb35090ed06995257f57cc69258486f954c5f1abb52f4aaeac2f852be82a88f1e39f224506b94cafafa314a7ab3372f1e533cfb297070a184dcf4f63c7d419356b43d2dd35f9c8519204815e31c7f4b09a61ec3bdfc707a99feb6d0de2ad43413896e520badbfa5048a575f7d2c42e48a5adfd44812aa769e3bfd7c199c078e8ba2e895313bed54f1df1252a6a3c323bc24d80fa2fea84532eb8035ad6e94c860d92feea829f4d1bec7bbe9bb4aa33bb947a31ec9b3a10ce1d80a2308bd0f5fa940e8e021dff50f06f80b74411dbeabe34af0ba92955e",
+      "cert": ""
+    }
+  ]
+}
