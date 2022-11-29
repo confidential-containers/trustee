@@ -5,9 +5,6 @@
 
 extern crate strum;
 
-#[macro_use]
-extern crate strum_macros;
-
 #[allow(clippy::new_without_default)]
 pub mod extractors;
 pub mod pre_processor;

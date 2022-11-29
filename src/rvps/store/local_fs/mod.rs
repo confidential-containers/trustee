@@ -9,7 +9,9 @@ use std::path::Path;
 
 use anyhow::*;
 
-use crate::{ReferenceValue, Store};
+use crate::rvps::ReferenceValue;
+
+use super::Store;
 
 /// Local directory path to store the reference values,
 /// which is created by sled engine.
@@ -69,7 +71,7 @@ impl Store for LocalFs {
 mod tests {
     use serial_test::serial;
 
-    use crate::{store::local_fs::LocalFs, ReferenceValue, Store};
+    use crate::rvps::{store::local_fs::LocalFs, ReferenceValue, Store};
 
     const KEY: &str = "test1";
 

@@ -162,7 +162,7 @@ mod test {
             .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
-            .set_expired(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0))
+            .set_expired(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
             .add_hash_value("sha512".into(), "123".into());
 
         assert_eq!(rv.version(), "1.0.0");
@@ -187,7 +187,7 @@ mod test {
             .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
-            .set_expired(Utc.ymd(1970, 1, 1).and_hms(0, 0, 0))
+            .set_expired(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
             .add_hash_value("sha512".into(), "123".into());
 
         assert_eq!(rv.version(), "1.0.0");

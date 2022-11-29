@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Result};
-use rvps::store::StoreType;
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+
+use crate::rvps::store::StoreType;
 
 /// Environment macro for Attestation Service work dir.
 const AS_WORK_DIR: &str = "AS_WORK_DIR";
