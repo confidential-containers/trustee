@@ -11,19 +11,22 @@ path = "bin/grpc-as/src/main.rs"
 anyhow = "1.0"
 async-trait = "0.1.31"
 base64 = "0.13.0"
+chrono = { version = "0.4.19", features = [ "serde" ] }
 clap = { version = "3.2.6", features = ["derive"] }
 env_logger = "0.9.1"
 futures = "0.3.17"
 lazy_static = "1.4.0"
-log = "0.4.14"
+log = "0.4.17"
 prost = "0.11.0"
-rvps = { path = "./rvps/"}
+redis = "0.21.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 sha2 = "0.10"
 shadow-rs = "0.16.3"
+sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
+tempfile = "3.3.0"
 tokio = { version = "1.0", features = ["full"] }
 tonic = "0.8.1"
 uuid = { version = "1.1.2", features = ["v4"] }
@@ -31,3 +34,9 @@ uuid = { version = "1.1.2", features = ["v4"] }
 [build-dependencies]
 shadow-rs = "0.16.3"
 tonic-build = "0.8.0"
+
+[dev-dependencies]
+serial_test = "0.9.0"
+sha2 = "0.10.2"
+testing_logger = "0.1.1"
+walkdir = "2.3.2"

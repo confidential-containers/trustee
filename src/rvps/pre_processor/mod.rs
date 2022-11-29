@@ -7,9 +7,9 @@
 
 use std::collections::HashMap;
 
-use crate::Message;
-
 use anyhow::*;
+
+use super::Message;
 
 /// A Ware loaded in Pre-Processor will process all the messages passing
 /// through the Pre-Processor. A series of Wares organized in order can

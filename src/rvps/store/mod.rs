@@ -5,14 +5,14 @@
 
 //! Store is responsible for storing verified Reference Values
 
-use crate::reference_value::ReferenceValue;
-
 use anyhow::Result;
 use serde::Deserialize;
 
-pub mod local_fs;
+use self::local_fs::LocalFs;
 
-use crate::store::local_fs::LocalFs;
+use super::ReferenceValue;
+
+pub mod local_fs;
 
 #[derive(Deserialize, Debug, Clone, EnumString)]
 pub enum StoreType {
