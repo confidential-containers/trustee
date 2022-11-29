@@ -1,0 +1,17 @@
+[workspace]
+members = ["src/kbs", "src/api_server"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["The Confidential Container Authors"]
+description = "A Generic Key Broker Service (KBS)"
+documentation = "https://github.com/confidential-containers/kbs"
+edition = "2021"
+
+[workspace.dependencies]
+api-server = { path = "src/api_server" }
+anyhow = "1.0"
+async-trait = "0.1.31"
+env_logger = "0.10.0"
+log = "0.4.17"
+tokio = { version = "1.22.0", features = ["full"] }

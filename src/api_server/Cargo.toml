@@ -1,0 +1,14 @@
+[package]
+name = "api-server"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+actix-web = "4"
+anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true
+kbs-types = { version = "0.1.0" }

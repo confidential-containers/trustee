@@ -1,0 +1,14 @@
+[package]
+name = "kbs"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+api-server.workspace = true
+env_logger.workspace = true
+log.workspace = true
+tokio.workspace = true
