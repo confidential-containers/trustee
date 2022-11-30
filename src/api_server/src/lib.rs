@@ -6,9 +6,11 @@
 
 extern crate actix_web;
 extern crate anyhow;
+extern crate base64;
 extern crate env_logger;
 extern crate kbs_types;
 extern crate log;
+extern crate rand;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
