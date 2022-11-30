@@ -6,6 +6,9 @@ use actix_web::{body::BoxBody, web, HttpResponse};
 use anyhow::Result;
 use kbs_types::{Challenge, Request};
 use rand::{thread_rng, Rng};
+use std::sync::{Arc, Mutex};
+
+use crate::session::{Session, SessionMap};
 
 fn nonce() -> Result<String> {
     let mut nonce: Vec<u8> = vec![0; 32];
@@ -17,8 +20,8 @@ fn nonce() -> Result<String> {
     Ok(base64::encode_config(&nonce, base64::STANDARD))
 }
 
-/// This handler uses json extractor
-pub(crate) async fn auth(request: web::Json<Request>) -> HttpResponse {
+/// POST /auth
+pub(crate) async fn auth(request: web::Json<Request>, map: web::Data<SessionMap>) -> HttpResponse {
     log::info!("request: {:?}", &request);
 
     let nonce = match nonce() {
@@ -30,8 +33,14 @@ pub(crate) async fn auth(request: web::Json<Request>) -> HttpResponse {
         }
     };
 
+    let session = Session::from_request(&request);
+    map.sessions
+        .write()
+        .unwrap()
+        .insert(session.id().to_string(), Arc::new(Mutex::new(session)));
+
     HttpResponse::Ok().json(Challenge {
         nonce,
-        extra_params: "extra_params".to_string(),
+        extra_params: "".to_string(),
     })
 }
