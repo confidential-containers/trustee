@@ -9,8 +9,10 @@ edition.workspace = true
 [dependencies]
 actix-web = "4"
 anyhow.workspace = true
+attestation-service = { git = "https://github.com/sameo/attestation-service.git", branch = "topic/http-server" }
 base64.workspace = true
 env_logger.workspace = true
 log.workspace = true
 kbs-types = { version = "0.1.0" }
 rand = "0.8.5"
+uuid = { version = "1.2.2", features = ["serde", "v4"] }
