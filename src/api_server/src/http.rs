@@ -2,13 +2,15 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use actix_web::{body::BoxBody, web, HttpResponse};
+use actix_web::{body::BoxBody, cookie::Cookie, web, HttpResponse};
 use anyhow::Result;
 use kbs_types::{Challenge, Request};
 use rand::{thread_rng, Rng};
 use std::sync::{Arc, Mutex};
 
 use crate::session::{Session, SessionMap};
+
+static KBS_SESSION_ID: &str = "kbs-session-id";
 
 fn nonce() -> Result<String> {
     let mut nonce: Vec<u8> = vec![0; 32];
@@ -34,13 +36,17 @@ pub(crate) async fn auth(request: web::Json<Request>, map: web::Data<SessionMap>
     };
 
     let session = Session::from_request(&request);
+    let response = HttpResponse::Ok()
+        .cookie(Cookie::build(KBS_SESSION_ID, session.id()).finish())
+        .json(Challenge {
+            nonce,
+            extra_params: "".to_string(),
+        });
+
     map.sessions
         .write()
         .unwrap()
         .insert(session.id().to_string(), Arc::new(Mutex::new(session)));
 
-    HttpResponse::Ok().json(Challenge {
-        nonce,
-        extra_params: "".to_string(),
-    })
+    response
 }
