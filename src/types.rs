@@ -64,10 +64,22 @@ impl AttestationResults {
             tcb,
         }
     }
+
+    pub fn allow(&self) -> bool {
+        self.allow
+    }
+
+    pub fn tee(&self) -> &str {
+        &self.tee
+    }
+
+    pub fn output(&self) -> &ResultOutput {
+        &self.output
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ResultOutput {
+pub struct ResultOutput {
     pub verifier_output: Option<String>,
     pub policy_engine_output: Option<String>,
 }
