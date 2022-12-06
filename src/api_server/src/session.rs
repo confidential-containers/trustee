@@ -6,8 +6,10 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie, Expiration,
 };
+use anyhow::Result;
 use attestation_service::types::AttestationResults;
 use kbs_types::{Request, Tee};
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
@@ -15,15 +17,26 @@ use uuid::Uuid;
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
 static SESSION_TIMEOUT: i64 = 5;
 
+fn nonce() -> Result<String> {
+    let mut nonce: Vec<u8> = vec![0; 32];
+
+    thread_rng()
+        .try_fill(&mut nonce[..])
+        .map_err(anyhow::Error::from)?;
+
+    Ok(base64::encode_config(&nonce, base64::STANDARD))
+}
+
 pub(crate) struct Session<'a> {
     cookie: Cookie<'a>,
+    nonce: String,
     tee: Tee,
     tee_extra_params: Option<String>,
     attestation_results: Option<AttestationResults>,
 }
 
 impl<'a> Session<'a> {
-    pub fn from_request(req: &Request) -> Self {
+    pub fn from_request(req: &Request) -> Result<Self> {
         let id = Uuid::new_v4().as_simple().to_string();
         let tee_extra_params = if req.extra_params.is_empty() {
             None
@@ -35,12 +48,13 @@ impl<'a> Session<'a> {
             .expires(OffsetDateTime::now_utc() + Duration::minutes(SESSION_TIMEOUT))
             .finish();
 
-        Session {
+        Ok(Session {
             cookie,
+            nonce: nonce()?,
             tee: req.tee.clone(),
             tee_extra_params,
             attestation_results: None,
-        }
+        })
     }
 
     pub fn id(&self) -> &str {
@@ -49,6 +63,14 @@ impl<'a> Session<'a> {
 
     pub fn cookie(&self) -> Cookie {
         self.cookie.clone()
+    }
+
+    pub fn nonce(&self) -> &str {
+        &self.nonce
+    }
+
+    pub fn tee(&self) -> Tee {
+        self.tee.clone()
     }
 
     pub fn is_authenticated(&self) -> bool {
