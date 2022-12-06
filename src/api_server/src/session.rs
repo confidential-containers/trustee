@@ -27,6 +27,15 @@ fn nonce() -> Result<String> {
     Ok(base64::encode_config(&nonce, base64::STANDARD))
 }
 
+pub(crate) fn tee_to_string(tee: &Tee) -> &str {
+    match tee {
+        Tee::Sev => "sev",
+        Tee::Sgx => "sgx",
+        Tee::Snp => "snp",
+        Tee::Tdx => "tdx",
+    }
+}
+
 pub(crate) struct Session<'a> {
     cookie: Cookie<'a>,
     nonce: String,
@@ -89,6 +98,10 @@ impl<'a> Session<'a> {
 
     pub fn is_valid(&self) -> bool {
         self.is_authenticated() && !self.is_expired()
+    }
+
+    pub fn set_attestation_results(&mut self, attestation_results: AttestationResults) {
+        self.attestation_results = Some(attestation_results)
     }
 }
 
