@@ -53,6 +53,7 @@ impl ApiServer {
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
                 .service(web::resource("/auth").route(web::post().to(http::auth)))
+                .service(web::resource("/attest").route(web::post().to(http::attest)))
         })
         .bind(&self.sockets[..])?
         .run()
