@@ -10,6 +10,7 @@ edition.workspace = true
 anyhow.workspace = true
 api-server.workspace = true
 attestation-service.workspace = true
+clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 log.workspace = true
 tokio.workspace = true
