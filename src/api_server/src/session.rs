@@ -2,24 +2,27 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use actix_web::cookie::{
+    time::{Duration, OffsetDateTime},
+    Cookie, Expiration,
+};
 use attestation_service::types::AttestationResults;
 use kbs_types::{Request, Tee};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-static SESSION_TIMEOUT: u64 = 5 * 60;
+pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
+static SESSION_TIMEOUT: i64 = 5;
 
-pub(crate) struct Session {
-    id: String,
+pub(crate) struct Session<'a> {
+    cookie: Cookie<'a>,
     tee: Tee,
     tee_extra_params: Option<String>,
     attestation_results: Option<AttestationResults>,
-    expires_on: Instant,
 }
 
-impl Session {
+impl<'a> Session<'a> {
     pub fn from_request(req: &Request) -> Self {
         let id = Uuid::new_v4().as_simple().to_string();
         let tee_extra_params = if req.extra_params.is_empty() {
@@ -28,17 +31,24 @@ impl Session {
             Some(req.extra_params.clone())
         };
 
+        let cookie = Cookie::build(KBS_SESSION_ID, id)
+            .expires(OffsetDateTime::now_utc() + Duration::minutes(SESSION_TIMEOUT))
+            .finish();
+
         Session {
-            id,
+            cookie,
             tee: req.tee.clone(),
             tee_extra_params,
             attestation_results: None,
-            expires_on: Instant::now() + Duration::from_secs(SESSION_TIMEOUT),
         }
     }
 
     pub fn id(&self) -> &str {
-        &self.id
+        self.cookie.value()
+    }
+
+    pub fn cookie(&self) -> Cookie {
+        self.cookie.clone()
     }
 
     pub fn is_authenticated(&self) -> bool {
@@ -48,7 +58,11 @@ impl Session {
     }
 
     pub fn is_expired(&self) -> bool {
-        Instant::now() > self.expires_on
+        if let Some(Expiration::DateTime(time)) = self.cookie.expires() {
+            return OffsetDateTime::now_utc() > time;
+        }
+
+        false
     }
 
     pub fn is_valid(&self) -> bool {
@@ -56,11 +70,11 @@ impl Session {
     }
 }
 
-pub(crate) struct SessionMap {
-    pub sessions: RwLock<HashMap<String, Arc<Mutex<Session>>>>,
+pub(crate) struct SessionMap<'a> {
+    pub sessions: RwLock<HashMap<String, Arc<Mutex<Session<'a>>>>>,
 }
 
-impl SessionMap {
+impl<'a> SessionMap<'a> {
     pub fn new() -> Self {
         SessionMap {
             sessions: RwLock::new(HashMap::new()),
