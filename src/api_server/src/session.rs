@@ -8,7 +8,7 @@ use actix_web::cookie::{
 };
 use anyhow::Result;
 use attestation_service::types::AttestationResults;
-use kbs_types::{Request, Tee};
+use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -41,6 +41,7 @@ pub(crate) struct Session<'a> {
     nonce: String,
     tee: Tee,
     tee_extra_params: Option<String>,
+    tee_pub_key: Option<TeePubKey>,
     attestation_results: Option<AttestationResults>,
 }
 
@@ -62,6 +63,7 @@ impl<'a> Session<'a> {
             nonce: nonce()?,
             tee: req.tee.clone(),
             tee_extra_params,
+            tee_pub_key: None,
             attestation_results: None,
         })
     }
@@ -80,6 +82,10 @@ impl<'a> Session<'a> {
 
     pub fn tee(&self) -> Tee {
         self.tee.clone()
+    }
+
+    pub fn tee_public_key(&self) -> Option<TeePubKey> {
+        self.tee_pub_key.clone()
     }
 
     pub fn is_authenticated(&self) -> bool {
@@ -102,6 +108,10 @@ impl<'a> Session<'a> {
 
     pub fn set_attestation_results(&mut self, attestation_results: AttestationResults) {
         self.attestation_results = Some(attestation_results)
+    }
+
+    pub fn set_tee_public_key(&mut self, key: TeePubKey) {
+        self.tee_pub_key = Some(key)
     }
 }
 

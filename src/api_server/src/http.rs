@@ -64,6 +64,7 @@ pub(crate) async fn attest(
                             return HttpResponse::Unauthorized().finish();
                         }
 
+                        session.set_tee_public_key(attestation.tee_pubkey.clone());
                         session.set_attestation_results(results);
                         return HttpResponse::Ok().cookie(session.cookie()).finish();
                     }
@@ -73,7 +74,6 @@ pub(crate) async fn attest(
                             .unwrap();
                     }
                 };
-
             }
         }
     }
