@@ -7,10 +7,21 @@
 extern crate anyhow;
 
 use anyhow::Result;
+use api_server::ApiServer;
+use attestation_service::AttestationService;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    api_server::serve().await.map_err(anyhow::Error::from)
+    let api_server = ApiServer::new(
+        vec![SocketAddr::from((
+            "127.0.0.1".parse::<IpAddr>().unwrap(),
+            8080,
+        ))],
+        Arc::new(AttestationService::new()?),
+    );
+    api_server.serve().await.map_err(anyhow::Error::from)
 }

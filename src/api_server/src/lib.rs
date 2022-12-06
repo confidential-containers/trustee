@@ -16,24 +16,47 @@ extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
+use attestation_service::AttestationService;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 use crate::session::SessionMap;
 
 mod http;
 mod session;
 
-/// Start the HTTP server and serve API requests.
-pub async fn serve() -> Result<()> {
-    log::info!("starting HTTP server at http://localhost:8080");
+/// The KBS API server
+pub struct ApiServer {
+    sockets: Vec<SocketAddr>,
+    attestation_service: Arc<AttestationService>,
+}
 
-    HttpServer::new(|| {
-        App::new()
-            .wrap(middleware::Logger::default())
-            .app_data(web::Data::new(SessionMap::new()))
-            .service(web::resource("/auth").route(web::post().to(http::auth)))
-    })
-    .bind(("127.0.0.1", 8080))?
-    .run()
-    .await
-    .map_err(anyhow::Error::from)
+impl ApiServer {
+    /// Create a new KBS HTTP server
+    pub fn new(sockets: Vec<SocketAddr>, attestation_service: Arc<AttestationService>) -> Self {
+        ApiServer {
+            sockets,
+            attestation_service,
+        }
+    }
+
+    /// Start the HTTP server and serve API requests.
+    pub async fn serve(&self) -> Result<()> {
+        log::info!("Starting HTTP server at {:?}", self.sockets);
+
+        let attestation_service = web::Data::new(self.attestation_service.clone());
+        let sessions = web::Data::new(SessionMap::new());
+
+        HttpServer::new(move || {
+            App::new()
+                .wrap(middleware::Logger::default())
+                .app_data(web::Data::clone(&sessions))
+                .app_data(web::Data::clone(&attestation_service))
+                .service(web::resource("/auth").route(web::post().to(http::auth)))
+        })
+        .bind(&self.sockets[..])?
+        .run()
+        .await
+        .map_err(anyhow::Error::from)
+    }
 }
