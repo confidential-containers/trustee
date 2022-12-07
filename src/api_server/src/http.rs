@@ -14,10 +14,11 @@ use crate::session::{tee_to_string, Session, SessionMap, KBS_SESSION_ID};
 pub(crate) async fn auth(
     request: web::Json<Request>,
     map: web::Data<SessionMap<'_>>,
+    timeout: web::Data<i64>,
 ) -> HttpResponse {
     log::info!("request: {:?}", &request);
 
-    let session = match Session::from_request(&request) {
+    let session = match Session::from_request(&request, *timeout.into_inner()) {
         Ok(s) => s,
         Err(err) => {
             return HttpResponse::InternalServerError()

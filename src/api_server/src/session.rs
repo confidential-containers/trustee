@@ -16,7 +16,6 @@ use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
-static SESSION_TIMEOUT: i64 = 5;
 
 fn nonce() -> Result<String> {
     let mut nonce: Vec<u8> = vec![0; 32];
@@ -47,7 +46,7 @@ pub(crate) struct Session<'a> {
 }
 
 impl<'a> Session<'a> {
-    pub fn from_request(req: &Request) -> Result<Self> {
+    pub fn from_request(req: &Request, timeout: i64) -> Result<Self> {
         let id = Uuid::new_v4().as_simple().to_string();
         let tee_extra_params = if req.extra_params.is_empty() {
             None
@@ -56,7 +55,7 @@ impl<'a> Session<'a> {
         };
 
         let cookie = Cookie::build(KBS_SESSION_ID, id)
-            .expires(OffsetDateTime::now_utc() + Duration::minutes(SESSION_TIMEOUT))
+            .expires(OffsetDateTime::now_utc() + Duration::minutes(timeout))
             .finish();
 
         Ok(Session {
