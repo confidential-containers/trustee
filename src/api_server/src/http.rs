@@ -4,11 +4,30 @@
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
 use attestation_service::AttestationService;
-use kbs_types::{Attestation, Challenge, Request};
+use kbs_types::{Attestation, Challenge, ErrorInformation, Request};
 use std::sync::Arc;
+use strum_macros::EnumString;
 use tokio::sync::Mutex;
 
 use crate::session::{tee_to_string, Session, SessionMap, KBS_SESSION_ID};
+
+const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
+
+#[derive(Debug, EnumString)]
+pub enum ErrorInformationType {
+    ExpiredCookie,
+    FailedAuthentication,
+    InvalidCookie,
+    MissingCookie,
+    VerificationFailed,
+}
+
+fn kbs_error_info(error_type: ErrorInformationType, detail: &str) -> ErrorInformation {
+    ErrorInformation {
+        error_type: format!("{ERROR_TYPE_PREFIX}{error_type:?}"),
+        detail: detail.to_string(),
+    }
+}
 
 /// POST /auth
 pub(crate) async fn auth(
@@ -21,9 +40,10 @@ pub(crate) async fn auth(
     let session = match Session::from_request(&request, *timeout.into_inner()) {
         Ok(s) => s,
         Err(err) => {
-            return HttpResponse::InternalServerError()
-                .message_body(BoxBody::new(format!("{}", err)))
-                .unwrap();
+            return HttpResponse::InternalServerError().json(kbs_error_info(
+                ErrorInformationType::FailedAuthentication,
+                &format!("{err}"),
+            ));
         }
     };
     let response = HttpResponse::Ok().cookie(session.cookie()).json(Challenge {
@@ -46,7 +66,7 @@ pub(crate) async fn attest(
     map: web::Data<SessionMap<'_>>,
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> HttpResponse {
-    if let Some(cookie) = request.cookie(KBS_SESSION_ID) {
+    let error_info = if let Some(cookie) = request.cookie(KBS_SESSION_ID) {
         if let Some(locked_session) = map.sessions.read().await.get(cookie.value()) {
             let mut session = locked_session.lock().await;
 
@@ -63,7 +83,11 @@ pub(crate) async fn attest(
                 {
                     Ok(results) => {
                         if !results.allow() {
-                            return HttpResponse::Unauthorized().finish();
+                            log::error!("Evidence verification failed {:?}", results.output());
+                            kbs_error_info(
+                                ErrorInformationType::VerificationFailed,
+                                "Attestation failure",
+                            );
                         }
 
                         session.set_tee_public_key(attestation.tee_pubkey.clone());
@@ -72,13 +96,22 @@ pub(crate) async fn attest(
                     }
                     Err(err) => {
                         return HttpResponse::InternalServerError()
-                            .message_body(BoxBody::new(format!("{}", err)))
+                            .message_body(BoxBody::new(format!("{err}")))
                             .unwrap();
                     }
                 };
+            } else {
+                log::error!("Expired KBS cookie {}", cookie.value());
+                kbs_error_info(ErrorInformationType::ExpiredCookie, cookie.value())
             }
+        } else {
+            log::error!("Invalid KBS cookie {}", cookie.value());
+            kbs_error_info(ErrorInformationType::InvalidCookie, cookie.value())
         }
-    }
+    } else {
+        log::error!("Missing KBS cookie");
+        kbs_error_info(ErrorInformationType::MissingCookie, "")
+    };
 
-    HttpResponse::Unauthorized().finish()
+    HttpResponse::Unauthorized().json(error_info)
 }
