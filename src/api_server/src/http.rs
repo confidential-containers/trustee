@@ -5,7 +5,8 @@
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
 use attestation_service::AttestationService;
 use kbs_types::{Attestation, Challenge, Request};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::session::{tee_to_string, Session, SessionMap, KBS_SESSION_ID};
 
@@ -31,7 +32,7 @@ pub(crate) async fn auth(
 
     map.sessions
         .write()
-        .unwrap()
+        .await
         .insert(session.id().to_string(), Arc::new(Mutex::new(session)));
 
     response
@@ -45,8 +46,8 @@ pub(crate) async fn attest(
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> HttpResponse {
     if let Some(cookie) = request.cookie(KBS_SESSION_ID) {
-        if let Some(locked_session) = map.sessions.read().unwrap().get(cookie.value()) {
-            let mut session = locked_session.lock().unwrap();
+        if let Some(locked_session) = map.sessions.read().await.get(cookie.value()) {
+            let mut session = locked_session.lock().await;
 
             log::info!("Cookie {} attestation {:?}", session.id(), attestation);
 
