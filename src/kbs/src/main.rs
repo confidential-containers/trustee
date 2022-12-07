@@ -14,6 +14,8 @@ use std::sync::Arc;
 
 use clap::Parser;
 
+static SESSION_TIMEOUT: i64 = 5;
+
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
@@ -21,6 +23,10 @@ struct Cli {
     /// This can be set multiple times.
     #[arg(required = true, short, long)]
     socket: Vec<SocketAddr>,
+
+    /// HTTPS session timeout (in minutes)
+    #[arg(default_value_t = SESSION_TIMEOUT, short, long)]
+    timeout: i64,
 }
 
 #[tokio::main]
@@ -28,6 +34,10 @@ async fn main() -> Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let cli = Cli::parse();
-    let api_server = ApiServer::new(cli.socket, Arc::new(AttestationService::new()?));
+    let api_server = ApiServer::new(
+        cli.socket,
+        Arc::new(AttestationService::new()?),
+        cli.timeout,
+    );
     api_server.serve().await.map_err(anyhow::Error::from)
 }
