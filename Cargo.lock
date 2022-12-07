@@ -249,6 +249,8 @@ dependencies = [
  "kbs-types",
  "log",
  "rand",
+ "strum",
+ "strum_macros",
  "tokio",
  "uuid",
 ]
@@ -1318,7 +1320,7 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.1.0"
-source = "git+https://github.com/virtee/kbs-types.git#63d62ecb4b94b73f45c7213c668d7f31aead286b"
+source = "git+https://github.com/virtee/kbs-types.git#1323214cfe62b1394fb7e3ff4f23bbb2e3f5ea0c"
 dependencies = [
  "serde",
  "serde_json",
