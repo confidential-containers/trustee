@@ -29,14 +29,20 @@ mod session;
 pub struct ApiServer {
     sockets: Vec<SocketAddr>,
     attestation_service: Arc<AttestationService>,
+    http_timeout: i64,
 }
 
 impl ApiServer {
     /// Create a new KBS HTTP server
-    pub fn new(sockets: Vec<SocketAddr>, attestation_service: Arc<AttestationService>) -> Self {
+    pub fn new(
+        sockets: Vec<SocketAddr>,
+        attestation_service: Arc<AttestationService>,
+        http_timeout: i64,
+    ) -> Self {
         ApiServer {
             sockets,
             attestation_service,
+            http_timeout,
         }
     }
 
@@ -46,12 +52,14 @@ impl ApiServer {
 
         let attestation_service = web::Data::new(self.attestation_service.clone());
         let sessions = web::Data::new(SessionMap::new());
+        let http_timeout = self.http_timeout;
 
         HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Logger::default())
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
+                .app_data(web::Data::new(http_timeout))
                 .service(web::resource("/auth").route(web::post().to(http::auth)))
                 .service(web::resource("/attest").route(web::post().to(http::attest)))
         })
