@@ -11,7 +11,8 @@ use attestation_service::types::AttestationResults;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
+use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
