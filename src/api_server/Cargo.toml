@@ -15,4 +15,5 @@ env_logger.workspace = true
 log.workspace = true
 kbs-types = { git = "https://github.com/virtee/kbs-types.git" }
 rand = "0.8.5"
+tokio.workspace = true
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
