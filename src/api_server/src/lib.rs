@@ -25,6 +25,15 @@ use crate::session::SessionMap;
 mod http;
 mod session;
 
+static KBS_PREFIX: &str = "/kbs";
+static KBS_VERSION: &str = "v0";
+
+macro_rules! kbs_path {
+    ($path:expr) => {
+        format!("{}/{}/{}", KBS_PREFIX, KBS_VERSION, $path)
+    };
+}
+
 /// The KBS API server
 pub struct ApiServer {
     sockets: Vec<SocketAddr>,
@@ -60,8 +69,8 @@ impl ApiServer {
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
                 .app_data(web::Data::new(http_timeout))
-                .service(web::resource("/auth").route(web::post().to(http::auth)))
-                .service(web::resource("/attest").route(web::post().to(http::attest)))
+                .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
+                .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
         })
         .bind(&self.sockets[..])?
         .run()
