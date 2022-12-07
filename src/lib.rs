@@ -16,12 +16,13 @@ pub mod verifier;
 
 use anyhow::{anyhow, Context, Result};
 use config::Config;
+pub use kbs_types::{Attestation, Tee};
 use policy_engine::{PolicyEngine, PolicyEngineType};
 use rvps::RVPSAPI;
 use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
-use types::{Attestation, AttestationResults, TEE};
+use types::AttestationResults;
 
 #[allow(dead_code)]
 pub struct AttestationService {
@@ -56,20 +57,20 @@ impl AttestationService {
     /// Evaluate Attestation Evidence.
     pub async fn evaluate(
         &self,
-        tee: &str,
+        tee: Tee,
         nonce: &str,
         attestation: &str,
     ) -> Result<AttestationResults> {
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation")?;
-        let verifier = TEE::from_str(tee)?.to_verifier()?;
+        let verifier = crate::verifier::to_verifier(&tee)?;
 
         let claims_from_tee_evidence =
             match verifier.evaluate(nonce.to_string(), &attestation).await {
                 Ok(claims) => claims,
                 Err(e) => {
                     return Ok(AttestationResults::new(
-                        tee.to_string(),
+                        tee,
                         false,
                         Some(format!("Verifier evaluate failed: {:?}", e)),
                         None,
@@ -87,13 +88,8 @@ impl AttestationService {
             .policy_engine
             .evaluate(reference_data_map, tcb.clone())?;
 
-        let attestation_results = AttestationResults::new(
-            tee.to_string(),
-            result,
-            None,
-            Some(policy_engine_output),
-            Some(tcb),
-        );
+        let attestation_results =
+            AttestationResults::new(tee, result, None, Some(policy_engine_output), Some(tcb));
         debug!("Attestation Results: {:?}", &attestation_results);
 
         Ok(attestation_results)

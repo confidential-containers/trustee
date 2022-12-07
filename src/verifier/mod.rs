@@ -1,8 +1,15 @@
-use crate::types::{Attestation, TeeEvidenceParsedClaim};
+use crate::types::TeeEvidenceParsedClaim;
 use anyhow::Result;
 use async_trait::async_trait;
+use kbs_types::{Attestation, Tee};
 
 pub mod sample;
+
+pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+    match tee {
+        Tee::Sev | Tee::Sgx | Tee::Snp | Tee::Tdx => todo!(),
+    }
+}
 
 #[async_trait]
 pub trait Verifier {
