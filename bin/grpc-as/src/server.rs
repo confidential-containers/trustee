@@ -1,14 +1,23 @@
 use anyhow::Result;
-use attestation_service::AttestationService as Service;
+use attestation_service::{AttestationService as Service, Tee};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
-use crate::as_api::{AttestationRequest, AttestationResponse};
+use crate::as_api::{AttestationRequest, AttestationResponse, Tee as GrpcTee};
 
 const DEFAULT_SOCK: &str = "127.0.0.1:3000";
+
+fn to_kbs_tee(tee: GrpcTee) -> Tee {
+    match tee {
+        GrpcTee::Sev => Tee::Sev,
+        GrpcTee::Sgx => Tee::Sgx,
+        GrpcTee::Snp => Tee::Snp,
+        GrpcTee::Tdx => Tee::Tdx,
+    }
+}
 
 pub struct AttestationServer {
     attestation_service: Arc<RwLock<Service>>,
@@ -37,7 +46,14 @@ impl AttestationService for AttestationServer {
             .attestation_service
             .read()
             .await
-            .evaluate(&request.tee, &request.nonce, &request.evidence)
+            .evaluate(
+                to_kbs_tee(
+                    GrpcTee::from_i32(request.tee)
+                        .ok_or_else(|| Status::aborted(format!("Invalid TEE {}", request.tee)))?,
+                ),
+                &request.nonce,
+                &request.evidence,
+            )
             .await
             .map_err(|e| Status::aborted(format!("Attestation: {}", e)))?;
 
