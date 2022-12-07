@@ -1,0 +1,8 @@
+{
+    "tee-pubkey": {
+	"kty": "key_type",
+	"alg": "algorithm",
+	"k": "my_key"
+    },
+    "tee-evidence": "my_evidence"
+}
