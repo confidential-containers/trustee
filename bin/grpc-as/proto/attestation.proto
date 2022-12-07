@@ -2,8 +2,15 @@ syntax = "proto3";
 
 package attestation;
 
+enum Tee {
+    SEV = 0;
+    SGX = 1;
+    SNP = 2;
+    TDX = 3;
+}
+
 message AttestationRequest {
-    string tee = 1;
+    Tee tee = 1;
     string nonce = 2;
     string evidence = 3;
 }

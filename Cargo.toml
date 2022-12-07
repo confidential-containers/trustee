@@ -21,6 +21,8 @@ env_logger = "0.9.1"
 futures = "0.3.17"
 # TODO: Replace this with crate.io published version
 in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799" }
+# TODO: Replace this with kbs-types next published version (0.2.0)
+kbs-types = { git = "https://github.com/virtee/kbs-types.git" }
 lazy_static = "1.4.0"
 log = "0.4.17"
 path-clean = "0.1.0"

@@ -1,46 +1,11 @@
-use crate::verifier::*;
-use anyhow::{anyhow, Result};
+use kbs_types::Tee;
 use serde::{Deserialize, Serialize};
 
 pub type TeeEvidenceParsedClaim = serde_json::Value;
 
-/// The supported TEE types:
-/// - Tdx: TDX TEE.
-/// - Sgx: SGX TEE.
-/// - SevSnp: SEV-SNP TEE.
-/// - Sample: A dummy TEE that used to test/demo the attestation service functionalities.
-#[derive(Debug, EnumString)]
-#[strum(ascii_case_insensitive)]
-pub enum TEE {
-    Tdx,
-    Sgx,
-    SevSnp,
-    Sample,
-}
-
-impl TEE {
-    #[allow(dead_code)]
-    pub fn to_verifier(&self) -> Result<Box<dyn Verifier + Send + Sync>> {
-        match self {
-            TEE::Sample => {
-                Ok(Box::<sample::Sample>::default() as Box<dyn Verifier + Send + Sync>)
-            }
-            _ => Err(anyhow!("TEE is not supported!")),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Attestation {
-    #[serde(rename = "tee-pubkey")]
-    pub tee_pubkey: String,
-    #[serde(rename = "tee-evidence")]
-    pub tee_evidence: String,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AttestationResults {
-    tee: String,
+    tee: Tee,
     allow: bool,
     output: ResultOutput,
     tcb: Option<String>,
@@ -48,7 +13,7 @@ pub struct AttestationResults {
 
 impl AttestationResults {
     pub fn new(
-        tee: String,
+        tee: Tee,
         allow: bool,
         verifier_output: Option<String>,
         policy_engine_output: Option<String>,
@@ -69,8 +34,8 @@ impl AttestationResults {
         self.allow
     }
 
-    pub fn tee(&self) -> &str {
-        &self.tee
+    pub fn tee(&self) -> Tee {
+        self.tee.clone()
     }
 
     pub fn output(&self) -> &ResultOutput {

@@ -32,7 +32,7 @@ impl Verifier for Sample {
 
         let mut hasher = Sha384::new();
         hasher.update(&nonce);
-        hasher.update(&attestation.tee_pubkey);
+        hasher.update(&attestation.tee_pubkey.k);
         let reference_report_data = base64::encode(hasher.finalize());
 
         verify_tee_evidence(reference_report_data, &attestation.tee_evidence)
