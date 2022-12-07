@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::*;
 use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
 use kbs_types::{Attestation, Tee};
@@ -8,6 +8,9 @@ pub mod sample;
 #[cfg(feature = "az-snp-vtpm-verifier")]
 pub mod az_snp_vtpm;
 
+#[cfg(feature = "snp-verifier")]
+pub mod snp;
+
 #[cfg(feature = "tdx-verifier")]
 pub mod tdx;
 
@@ -16,7 +19,7 @@ pub mod sgx;
 
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
-        Tee::Sev | Tee::Snp | Tee::Cca => todo!(),
+        Tee::Sev | Tee::Cca => todo!(),
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
@@ -32,6 +35,15 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                     Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     todo!()
+                }
+            }
+        }
+        Tee::Snp => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "snp-verifier")] {
+                    Ok(Box::<snp::Snp>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("SNP Verifier not enabled.")
                 }
             }
         }
