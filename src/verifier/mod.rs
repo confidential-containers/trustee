@@ -5,6 +5,12 @@ use kbs_types::{Attestation, Tee};
 
 pub mod sample;
 
+#[cfg(feature = "sample_verifier")]
+pub(crate) fn to_verifier(_tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+    Ok(Box::new(sample::Sample::default()) as Box<dyn Verifier + Send + Sync>)
+}
+
+#[cfg(not(feature = "sample_verifier"))]
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev | Tee::Sgx | Tee::Snp | Tee::Tdx => todo!(),

@@ -10,6 +10,7 @@ path = "bin/grpc-as/src/main.rs"
 [features]
 default = [ "in-toto" ]
 in-toto = []
+sample_verifier = []
 
 [dependencies]
 anyhow = "1.0"
