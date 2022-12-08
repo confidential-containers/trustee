@@ -23,7 +23,7 @@ impl StoreType {
     #[allow(dead_code)]
     pub fn to_store(&self) -> Result<Box<dyn Store + Send + Sync>> {
         match self {
-            StoreType::LocalFs => Ok(Box::new(LocalFs::default()) as Box<dyn Store + Send + Sync>),
+            StoreType::LocalFs => Ok(Box::<LocalFs>::default() as Box<dyn Store + Send + Sync>),
         }
     }
 }
