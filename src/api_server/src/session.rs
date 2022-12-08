@@ -27,6 +27,7 @@ fn nonce() -> Result<String> {
     Ok(base64::encode_config(&nonce, base64::STANDARD))
 }
 
+#[allow(dead_code)]
 pub(crate) struct Session<'a> {
     cookie: Cookie<'a>,
     nonce: String,
@@ -36,6 +37,7 @@ pub(crate) struct Session<'a> {
     attestation_results: Option<AttestationResults>,
 }
 
+#[allow(dead_code)]
 impl<'a> Session<'a> {
     pub fn from_request(req: &Request, timeout: i64) -> Result<Self> {
         let id = Uuid::new_v4().as_simple().to_string();
