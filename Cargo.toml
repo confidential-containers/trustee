@@ -12,8 +12,9 @@ edition = "2021"
 api-server = { path = "src/api_server" }
 anyhow = "1.0"
 async-trait = "0.1.31"
-attestation-service = { git = "https://github.com/sameo/attestation-service.git", branch = "topic/http-server" }
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git" }
 base64 = "0.13.1"
 env_logger = "0.10.0"
 log = "0.4.17"
+serde_json = "1.0.89"
 tokio = { version = "1.23.0", features = ["full"] }

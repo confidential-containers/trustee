@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::Mutex;
 
-use crate::session::{tee_to_string, Session, SessionMap, KBS_SESSION_ID};
+use crate::session::{Session, SessionMap, KBS_SESSION_ID};
 
 const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
 
@@ -75,9 +75,9 @@ pub(crate) async fn attest(
             if !session.is_expired() {
                 match attestation_service
                     .evaluate(
-                        tee_to_string(&session.tee()),
+                        session.tee(),
                         session.nonce(),
-                        &attestation.tee_evidence,
+                        &serde_json::to_string(&attestation).unwrap(),
                     )
                     .await
                 {
