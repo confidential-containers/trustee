@@ -23,7 +23,7 @@ impl TEE {
     pub fn to_verifier(&self) -> Result<Box<dyn Verifier + Send + Sync>> {
         match self {
             TEE::Sample => {
-                Ok(Box::new(sample::Sample::default()) as Box<dyn Verifier + Send + Sync>)
+                Ok(Box::<sample::Sample>::default() as Box<dyn Verifier + Send + Sync>)
             }
             _ => Err(anyhow!("TEE is not supported!")),
         }
