@@ -15,6 +15,7 @@ env_logger.workspace = true
 log.workspace = true
 kbs-types = { git = "https://github.com/virtee/kbs-types.git" }
 rand = "0.8.5"
+serde_json.workspace = true
 strum = "0.24.1"
 strum_macros = "0.24.1"
 tokio.workspace = true
