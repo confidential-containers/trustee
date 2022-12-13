@@ -71,19 +71,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorInformation'
 
-  /resources/key/<key_id>:
+  /resource/{repository}/{type}/{tag}:
     get:
-      operationId: getKey
-      summary: Get a key from the Key Broker Service.
+      operationId: getResource
+      summary: Get a secret resource from the Key Broker Service.
       parameters:
         - in: cookie
           name: kbs-session-id
           schema:
             type: string
+        - name: repository
+          in: path
+          description: A parent path of resource, can be empty to use the default repository.
+          schema:
+            type: string
+          required: false
+        - name: type
+          in: path
+          description: Resource type name
+          schema:
+            type: string
+          required: true
+        - name: tag
+          in: path
+          description: Resource instance tag
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: >-
-            The KBS reponse including the key.
+            The KBS reponse including the resource.
             The KBS session ID is returned in a cookie named `kbs-session-id`.
           headers:
             Set-Cookie:
@@ -97,10 +115,10 @@ paths:
         401:
           description: Missing or invalid session ID
         403:
-          description: The KBC is not allowed to get that key
+          description: The KBC is not allowed to get that resource
         404:
-          description: The requested key does not exist
-  /resources/token:
+          description: The requested resource does not exist
+  /resource/token/{tag}:
     get:
       operationId: getToken
       summary: Get an external resource token from the Key Broker Service.
@@ -109,6 +127,12 @@ paths:
           name: kbs-session-id
           schema:
             type: string
+        - name: tag
+          in: path
+          description: Can be left blank to use default.
+          schema:
+            type: string
+          required: false
       responses:
         200:
           description: >-
@@ -128,7 +152,7 @@ paths:
         403:
           description: The KBC is not allowed to get a token.
         404:
-          description: The KBS does not provide token resources.
+          description: The KBS does not provide token resource.
 
 components:
   schemas:
