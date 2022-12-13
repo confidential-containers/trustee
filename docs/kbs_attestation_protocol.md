@@ -252,7 +252,7 @@ format:
 ``` json
 {
     "kty": "$key_type",
-    "alg": "$key_algorithm"
+    "alg": "$key_algorithm",
     "k": "public_key"
 }
 ```
@@ -383,28 +383,41 @@ A request for protected resource can fail for three reasons:
 3. The requested resource does not exist. The KBS implementation sends an HTTP
    response with a 404 (`Not Found`) status code.
 
-The KBS protocol currently supports two kinds of resources for an attester to
-request: keys and tokens.
+### Secret Resource
 
-### Key Resource
+KBS uses the following path format to locate secret resources:
 
-Keys are generic protected resources that an authenticated attester can get by
-sending a `GET` HTTP request to the `/kbs/v0/resources/key/<key_id>` endpoint.
+```
+/kbs/v0/resource/<repository>/<type>/<tag>
+```
 
-The `<key_id>` resource name is defined by the KBS. There must be a different
-`<key_id>` name for each generic secret or resource that the KBS intends to
-deliver to authenticated attesters.
+Where the URL path parameters are:
+
+- `<repository>`: This is similar to the concept of container image repository (`docker.io/{repository}/{image_name}:{tag}`), 
+which is used to facilitate users to manage different resource groups.
+Its name should be completely set by users.
+This parameter can be empty to use the default repository of KBS.
+- `<type>`: To distinguish different resource types.
+- `<tag>`: To distinguish different resource instances.
 
 The decision to reply successfully to an attester resource request for a
-specific `<key_id>` belongs to the KBS and its underlying attestation service.
+specific resource instance belongs to the KBS and its underlying attestation service.
 The decision is typically based on both the attestation evidence, results and
 provisioned policies for a given attester.
 
 ### Token Resource
 
-Authenticated attesters can also request a token from the KBS, by sending a
-`GET` HTTP request to the `/kbs/v0/resources/token/` endpoint. Attesters can use
-tokens to request additional resources from external (i.e. not the KBS) services.
+Authenticated attesters can also request a token from the KBS.
+Attesters can use tokens to request additional resources from external (i.e. not the KBS) services.
+
+KBS uses the following path format to locate token resource:
+
+```
+/kbs/v0/resource/token/{tag}
+```
+
+Where the URL path parameter `tag` specify some special token requirements,
+it can be left blank and use default token.
 
 #### Token Format
 
@@ -483,7 +496,7 @@ signature.
 
 #### HTTP Response
 
-The token is included in the `/kbs/v0/resources/token/` `GET` HTTP response
+The token is included in the `/kbs/v0/resource/token/` `GET` HTTP response
 body, as JSON content:
 
 ``` json-with-comments
