@@ -55,10 +55,10 @@ impl AttestationService for AttestationServer {
                 &request.evidence,
             )
             .await
-            .map_err(|e| Status::aborted(format!("Attestation: {}", e)))?;
+            .map_err(|e| Status::aborted(format!("Attestation: {e}")))?;
 
         let results = serde_json::to_string(&attestation_results)
-            .map_err(|e| Status::aborted(format!("Parse attestation results: {}", e)))?;
+            .map_err(|e| Status::aborted(format!("Parse attestation results: {e}")))?;
 
         debug!("Attestation Results: {}", &results);
 

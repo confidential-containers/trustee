@@ -72,7 +72,7 @@ impl AttestationService {
                     return Ok(AttestationResults::new(
                         tee,
                         false,
-                        Some(format!("Verifier evaluate failed: {:?}", e)),
+                        Some(format!("Verifier evaluate failed: {e:?}")),
                         None,
                         None,
                     ));
