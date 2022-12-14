@@ -2,15 +2,15 @@ use std::process::{exit, Command};
 
 fn real_main() -> Result<(), String> {
     let out_dir = std::env::var("OUT_DIR").unwrap();
-    println!("cargo:rerun-if-changed={}", out_dir);
-    println!("cargo:rustc-link-search=native={}", out_dir);
+    println!("cargo:rerun-if-changed={out_dir}");
+    println!("cargo:rustc-link-search=native={out_dir}");
     println!("cargo:rustc-link-lib=static=cgo");
     let cgo_dir = "./src/cgo".to_string();
     let cgo = Command::new("go")
         .args([
             "build",
             "-o",
-            &format!("{}/libcgo.a", out_dir),
+            &format!("{out_dir}/libcgo.a"),
             "-buildmode=c-archive",
             "opa.go",
             "intoto.go",
@@ -25,14 +25,14 @@ fn real_main() -> Result<(), String> {
     }
 
     tonic_build::compile_protos("bin/grpc-as/proto/attestation.proto")
-        .map_err(|e| format!("{}", e))?;
+        .map_err(|e| format!("{e}"))?;
 
     Ok(())
 }
 
 fn main() -> shadow_rs::SdResult<()> {
     if let Err(e) = real_main() {
-        eprintln!("ERROR: {}", e);
+        eprintln!("ERROR: {e}");
         exit(1);
     }
 
