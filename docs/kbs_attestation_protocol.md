@@ -540,3 +540,17 @@ format is used for that purpose:
 The KBS HTTP endpoints and payloads are
 [formally described](https://github.com/confidential-containers/kbs/blob/main/docs/kbs.yaml)
 in an [OpenAPI](https://www.openapis.org/) compliant format.
+
+# Acknowledgements
+
+The following individuals were instrumental in the development of this protocol:
+
+* Ding Ma (@Xynnn007)
+* James O. D. Hunt (@jodh-intel)
+* Jia Zhang (@jiazhang0)
+* Jiale Zhang (@jialez0)
+* Samuel Ortiz (@sameo)
+* Sergio Lopez (@slp)
+* Thomas Fossati (@thomas-fossati)
+* Tobin Feldman-Fitzthum (@fitzthum)
+
