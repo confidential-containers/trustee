@@ -6,10 +6,11 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie, Expiration,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use attestation_service::types::AttestationResults;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
+use semver::Version;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -40,6 +41,10 @@ pub(crate) struct Session<'a> {
 #[allow(dead_code)]
 impl<'a> Session<'a> {
     pub fn from_request(req: &Request, timeout: i64) -> Result<Self> {
+        let version = Version::parse(&req.version).map_err(anyhow::Error::from)?;
+        if !crate::VERSION_REQ.matches(&version) {
+            return Err(anyhow!("Invalid Request version {}", req.version));
+        }
         let id = Uuid::new_v4().as_simple().to_string();
         let tee_extra_params = if req.extra_params.is_empty() {
             None

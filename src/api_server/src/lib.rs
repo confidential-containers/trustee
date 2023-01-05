@@ -10,6 +10,8 @@ extern crate attestation_service;
 extern crate base64;
 extern crate env_logger;
 extern crate kbs_types;
+#[macro_use]
+extern crate lazy_static;
 extern crate log;
 extern crate rand;
 extern crate uuid;
@@ -17,6 +19,7 @@ extern crate uuid;
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use attestation_service::AttestationService;
+use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -26,11 +29,27 @@ mod http;
 mod session;
 
 static KBS_PREFIX: &str = "/kbs";
-static KBS_VERSION: &str = "v0";
+static KBS_MAJOR_VERSION: u64 = 0;
+static KBS_MINOR_VERSION: u64 = 1;
+static KBS_PATCH_VERSION: u64 = 0;
+
+lazy_static! {
+    static ref VERSION_REQ: VersionReq = {
+        let kbs_version = Version {
+            major: KBS_MAJOR_VERSION,
+            minor: KBS_MINOR_VERSION,
+            patch: KBS_PATCH_VERSION,
+            pre: Prerelease::EMPTY,
+            build: BuildMetadata::EMPTY,
+        };
+
+        VersionReq::parse(&format!("<={kbs_version}")).unwrap()
+    };
+}
 
 macro_rules! kbs_path {
     ($path:expr) => {
-        format!("{}/{}/{}", KBS_PREFIX, KBS_VERSION, $path)
+        format!("{}/v{}/{}", KBS_PREFIX, KBS_MAJOR_VERSION, $path)
     };
 }
 
