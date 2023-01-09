@@ -19,13 +19,18 @@ extern crate uuid;
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use attestation_service::AttestationService;
+use config::Config;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::session::SessionMap;
 
+/// KBS config
+pub mod config;
+
 mod http;
+mod resource;
 mod session;
 
 static KBS_PREFIX: &str = "/kbs";
@@ -55,6 +60,7 @@ macro_rules! kbs_path {
 
 /// The KBS API server
 pub struct ApiServer {
+    config: Config,
     sockets: Vec<SocketAddr>,
     attestation_service: Arc<AttestationService>,
     http_timeout: i64,
@@ -63,11 +69,13 @@ pub struct ApiServer {
 impl ApiServer {
     /// Create a new KBS HTTP server
     pub fn new(
+        config: Config,
         sockets: Vec<SocketAddr>,
         attestation_service: Arc<AttestationService>,
         http_timeout: i64,
     ) -> Self {
         ApiServer {
+            config,
             sockets,
             attestation_service,
             http_timeout,
@@ -82,14 +90,27 @@ impl ApiServer {
         let sessions = web::Data::new(SessionMap::new());
         let http_timeout = self.http_timeout;
 
+        let repository = self
+            .config
+            .repository_type
+            .to_repository(&self.config.repository_description)?;
+
         HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Logger::default())
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
+                .app_data(web::Data::new(repository.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
+                .service(
+                    web::resource([
+                        kbs_path!("resource/{repository}/{type}/{tag}"),
+                        kbs_path!("resource/{type}/{tag}"),
+                    ])
+                    .route(web::get().to(http::resource)),
+                )
         })
         .bind(&self.sockets[..])?
         .run()
