@@ -7,9 +7,10 @@
 extern crate anyhow;
 
 use anyhow::Result;
-use api_server::ApiServer;
+use api_server::{config::Config, ApiServer};
 use attestation_service::AttestationService;
 use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 
 use clap::Parser;
@@ -27,6 +28,10 @@ struct Cli {
     /// HTTPS session timeout (in minutes)
     #[arg(default_value_t = SESSION_TIMEOUT, short, long)]
     timeout: i64,
+
+    /// KBS config file path.
+    #[arg(default_value_t = String::default(), short, long)]
+    config: String,
 }
 
 #[tokio::main]
@@ -34,7 +39,13 @@ async fn main() -> Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let cli = Cli::parse();
+    let kbs_config = match cli.config.as_str() {
+        "" => Config::default(),
+        _ => Config::try_from(Path::new(&cli.config))?,
+    };
+
     let api_server = ApiServer::new(
+        kbs_config,
         cli.socket,
         Arc::new(AttestationService::new()?),
         cli.timeout,
