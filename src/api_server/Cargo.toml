@@ -8,6 +8,7 @@ edition.workspace = true
 
 [dependencies]
 actix-web = "4"
+aes-gcm = "0.10.1"
 anyhow.workspace = true
 attestation-service.workspace = true
 base64.workspace = true
@@ -16,6 +17,8 @@ lazy_static = "1.4.0"
 log.workspace = true
 kbs-types = { git = "https://github.com/virtee/kbs-types.git" }
 rand = "0.8.5"
+rsa = "0.7.2"
+serde = { version = "1.0", features = ["derive"] }
 serde_json.workspace = true
 semver = "1.0.16"
 strum = "0.24.1"

@@ -9,6 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::Mutex;
 
+use crate::resource::{secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
 
 const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
@@ -19,6 +20,7 @@ pub enum ErrorInformationType {
     FailedAuthentication,
     InvalidCookie,
     MissingCookie,
+    UnAuthenticatedCookie,
     VerificationFailed,
 }
 
@@ -114,4 +116,93 @@ pub(crate) async fn attest(
     };
 
     HttpResponse::Unauthorized().json(error_info)
+}
+
+/// GET /resource/{repository}/{type}/{tag}
+/// GET /resource/{type}/{tag}
+pub(crate) async fn resource(
+    request: HttpRequest,
+    repository: web::Data<Arc<dyn Repository + Send + Sync>>,
+    map: web::Data<SessionMap<'_>>,
+) -> HttpResponse {
+    let cookie = match request.cookie(KBS_SESSION_ID) {
+        None => {
+            log::error!("Missing KBS cookie");
+            return HttpResponse::Unauthorized()
+                .json(kbs_error_info(ErrorInformationType::MissingCookie, ""));
+        }
+        Some(c) => c,
+    };
+
+    let session_map = map.sessions.read().await;
+    let locked_session = match session_map.get(cookie.value()) {
+        None => {
+            log::error!("Invalid KBS cookie {}", cookie.value());
+            return HttpResponse::Unauthorized().json(kbs_error_info(
+                ErrorInformationType::InvalidCookie,
+                cookie.value(),
+            ));
+        }
+        Some(ls) => ls,
+    };
+
+    let session = locked_session.lock().await;
+
+    log::info!("Cookie {} request to get resource", session.id());
+
+    if !session.is_authenticated() {
+        log::error!("UnAuthenticated KBS cookie {}", cookie.value());
+        return HttpResponse::Unauthorized().json(kbs_error_info(
+            ErrorInformationType::UnAuthenticatedCookie,
+            cookie.value(),
+        ));
+    }
+
+    if session.is_expired() {
+        log::error!("Expired KBS cookie {}", cookie.value());
+        return HttpResponse::Unauthorized().json(kbs_error_info(
+            ErrorInformationType::ExpiredCookie,
+            cookie.value(),
+        ));
+    }
+
+    let resource_description = ResourceDesc {
+        repository_name: request
+            .match_info()
+            .get("repository")
+            .unwrap_or("default")
+            .to_string(),
+        resource_type: request.match_info().get("type").unwrap().to_string(),
+        resource_tag: request.match_info().get("tag").unwrap().to_string(),
+    };
+
+    if resource_description.resource_type == "token" {
+        // TODO: Distribute attestation token (Passport).
+        return HttpResponse::NotFound()
+            .message_body(BoxBody::new(
+                "Token resource is unsupported now".to_string(),
+            ))
+            .unwrap();
+    }
+
+    log::info!("Resource description: {:?}", &resource_description);
+
+    if session.tee_public_key().is_none() {
+        return HttpResponse::InternalServerError()
+            .message_body(BoxBody::new("TEE Pubkey not found"))
+            .unwrap();
+    }
+
+    match secret_resource(
+        session.tee_public_key().unwrap(),
+        repository.get_ref(),
+        resource_description,
+    ) {
+        Ok(response) => HttpResponse::Ok()
+            .content_type("application/json")
+            .body(serde_json::to_string(&response).unwrap()),
+        Err(e) => HttpResponse::InternalServerError()
+            .message_body(BoxBody::new(format!("Get Resource failed: {e}")))
+            .unwrap(),
+    }
 }
