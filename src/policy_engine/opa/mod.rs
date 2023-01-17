@@ -7,8 +7,6 @@ use std::fs;
 use std::os::raw::c_char;
 use std::path::PathBuf;
 
-const POLICY_FILE: &str = "opa/policy.rego";
-
 // Link import cgo function
 #[link(name = "cgo")]
 extern "C" {
@@ -31,11 +29,15 @@ pub struct OPA {
 impl OPA {
     pub fn new(work_dir: PathBuf) -> Result<Self> {
         let mut policy_file_path = work_dir;
-        policy_file_path.push(POLICY_FILE);
 
+        policy_file_path.push("opa");
         if !policy_file_path.as_path().exists() {
             fs::create_dir_all(&policy_file_path)
                 .map_err(|e| anyhow!("Create policy dir failed: {:?}", e))?;
+        }
+
+        policy_file_path.push("policy.rego");
+        if !policy_file_path.as_path().exists() {
             let policy = std::include_str!("default_policy.rego").to_string();
             fs::write(&policy_file_path, policy)?;
         }

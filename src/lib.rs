@@ -97,7 +97,7 @@ impl AttestationService {
 
     fn get_reference_data(&self, tcb_claims: &str) -> Result<HashMap<String, Vec<String>>> {
         let mut data = HashMap::new();
-        let tcb_claims_map: HashMap<String, Vec<String>> = serde_json::from_str(tcb_claims)?;
+        let tcb_claims_map: HashMap<String, String> = serde_json::from_str(tcb_claims)?;
         for key in tcb_claims_map.keys() {
             data.insert(
                 key.to_string(),

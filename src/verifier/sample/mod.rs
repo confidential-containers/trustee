@@ -9,11 +9,7 @@ use sha2::{Digest, Sha384};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SampleTeeEvidence {
-    is_debuggable: bool,
-    // CPU Security Version Number
-    cpusvn: u64,
-    // TEE Security Version Number
-    svn: u64,
+    svn: String,
     report_data: String,
 }
 
@@ -63,7 +59,6 @@ async fn verify_tee_evidence(reference_report_data: String, tee_evidence: &str) 
 // Example: CPU SVN, RTMR, etc.
 fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClaim> {
     let claims_map = json!({
-        "cpusvn": quote.cpusvn,
         "svn": quote.svn
     });
 
