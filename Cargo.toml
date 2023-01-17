@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/kbs", "src/api_server"]
+members = ["src/kbs", "src/api_server", "tools/client"]
 
 [workspace.package]
 version = "0.1.0"
