@@ -27,6 +27,8 @@ fn real_main() -> Result<(), String> {
     tonic_build::compile_protos("bin/grpc-as/proto/attestation.proto")
         .map_err(|e| format!("{e}"))?;
 
+    tonic_build::compile_protos("bin/rvps/proto/reference.proto").map_err(|e| format!("{e}"))?;
+
     Ok(())
 }
 

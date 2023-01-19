@@ -6,6 +6,10 @@ pub mod as_api {
     tonic::include_proto!("attestation");
 }
 
+pub mod rvps_api {
+    tonic::include_proto!("reference");
+}
+
 #[macro_use]
 extern crate log;
 shadow!(build);
@@ -14,7 +18,7 @@ mod server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let version = format!(
         "\nv{}\ncommit: {}\nbuildtime: {}",
@@ -34,9 +38,18 @@ async fn main() -> Result<()> {
                 .help("Socket that the server will listen on to accept requests.")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("rvps-addr")
+                .long("rvps-address")
+                .value_name("rvps-addr")
+                .help("Address of Reference Value Provider Service")
+                .required(false)
+                .takes_value(true),
+        )
         .get_matches();
 
-    let server = server::start(matches.value_of("socket"));
+    let rvps_addr = matches.value_of("rvps-addr");
+    let server = server::start(matches.value_of("socket"), rvps_addr);
     tokio::try_join!(server)?;
 
     Ok(())

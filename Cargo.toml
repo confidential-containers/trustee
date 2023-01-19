@@ -6,10 +6,19 @@ edition = "2021"
 [[bin]]
 name = "grpc-as"
 path = "bin/grpc-as/src/main.rs"
+required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
+
+[[bin]]
+name = "rvps"
+path = "bin/rvps/src/main.rs"
+required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
 
 [features]
-default = [ "in-toto" ]
-in-toto = []
+default = [ "rvps-server", "in-toto" ]
+rvps-server = []
+rvps-proxy = [ "tonic" ]
+
+in-toto = [ "dep:in-toto" ]
 
 [dependencies]
 anyhow = "1.0"
@@ -20,14 +29,13 @@ clap = { version = "3.2.6", features = ["derive"] }
 env_logger = "0.9.1"
 futures = "0.3.17"
 # TODO: Replace this with crate.io published version
-in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799" }
+in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799", optional = true }
 # TODO: Replace this with kbs-types next published version (0.2.0)
 kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "50ec211" }
 lazy_static = "1.4.0"
 log = "0.4.17"
 path-clean = "0.1.0"
 prost = "0.11.0"
-redis = "0.21.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 sha2 = "0.10"
@@ -36,8 +44,8 @@ sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 tempfile = "3.3.0"
-tokio = { version = "1.0", features = ["full"] }
-tonic = "0.8.1"
+tokio = { version = "1.0" }
+tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 
 [build-dependencies]
