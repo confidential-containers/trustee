@@ -1,3 +1,9 @@
+//! Attestation Service
+//!
+//! # Features
+//! - `rvps-proxy`: The AS will connect a remote RVPS.
+//! - `rvps-server`: The AS will integrate RVPS functionalities itself.
+
 extern crate serde;
 
 #[macro_use]
@@ -17,38 +23,65 @@ pub mod verifier;
 use anyhow::{anyhow, Context, Result};
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
-use policy_engine::{PolicyEngine, PolicyEngineType};
-use rvps::RVPSAPI;
+use policy_engine::PolicyEngine;
+use rvps::{Message, RVPSAPI};
 use std::collections::HashMap;
-use std::fs;
-use std::str::FromStr;
+
 use types::AttestationResults;
 
-#[allow(dead_code)]
+#[cfg(any(feature = "rvps-proxy", feature = "rvps-server"))]
+use std::{fs, str::FromStr};
+
+#[cfg(any(feature = "rvps-proxy", feature = "rvps-server"))]
+use policy_engine::PolicyEngineType;
+
 pub struct AttestationService {
-    config: Config,
+    _config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
-    rvps: rvps::Core,
+    rvps: Box<dyn RVPSAPI + Send + Sync>,
 }
 
 impl AttestationService {
     /// Create a new Attestation Service instance.
+    #[cfg(feature = "rvps-server")]
     pub fn new() -> Result<Self> {
-        let config = Config::default();
-        if !config.work_dir.as_path().exists() {
-            fs::create_dir_all(&config.work_dir)
+        let _config = Config::default();
+        if !_config.work_dir.as_path().exists() {
+            fs::create_dir_all(&_config.work_dir)
                 .map_err(|e| anyhow!("Create AS work dir failed: {:?}", e))?;
         }
 
-        let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
-            .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
-            .to_policy_engine(config.work_dir.as_path())?;
+        let policy_engine = PolicyEngineType::from_str(&_config.policy_engine)
+            .map_err(|_| anyhow!("Policy Engine {} is not supported", &_config.policy_engine))?
+            .to_policy_engine(_config.work_dir.as_path())?;
 
-        let rvps_store = config.rvps_store_type.to_store()?;
-        let rvps = rvps::Core::new(rvps_store);
+        let rvps_store = _config.rvps_store_type.to_store()?;
+        let rvps = Box::new(rvps::Core::new(rvps_store));
 
         Ok(Self {
-            config,
+            _config,
+            policy_engine,
+            rvps,
+        })
+    }
+
+    /// Create a new Attestation Service, and connect to a remote rvps.
+    #[cfg(feature = "rvps-proxy")]
+    pub async fn new_with_rvps_proxy(rvps_addr: &str) -> Result<Self> {
+        let _config = Config::default();
+        if !_config.work_dir.as_path().exists() {
+            fs::create_dir_all(&_config.work_dir)
+                .map_err(|e| anyhow!("Create AS work dir failed: {:?}", e))?;
+        }
+
+        let policy_engine = PolicyEngineType::from_str(&_config.policy_engine)
+            .map_err(|_| anyhow!("Policy Engine {} is not supported", &_config.policy_engine))?
+            .to_policy_engine(_config.work_dir.as_path())?;
+
+        let rvps = Box::new(rvps::Agent::new(rvps_addr).await?);
+
+        Ok(Self {
+            _config,
             policy_engine,
             rvps,
         })
@@ -82,6 +115,7 @@ impl AttestationService {
         let tcb = serde_json::to_string(&claims_from_tee_evidence)?;
         let reference_data_map = self
             .get_reference_data(&tcb)
+            .await
             .map_err(|e| anyhow!("Generate reference data failed{:?}", e))?;
 
         let (result, policy_engine_output) = self
@@ -95,19 +129,25 @@ impl AttestationService {
         Ok(attestation_results)
     }
 
-    fn get_reference_data(&self, tcb_claims: &str) -> Result<HashMap<String, Vec<String>>> {
+    async fn get_reference_data(&self, tcb_claims: &str) -> Result<HashMap<String, Vec<String>>> {
         let mut data = HashMap::new();
         let tcb_claims_map: HashMap<String, String> = serde_json::from_str(tcb_claims)?;
         for key in tcb_claims_map.keys() {
             data.insert(
                 key.to_string(),
                 self.rvps
-                    .get_digests(key)?
+                    .get_digests(key)
+                    .await?
                     .unwrap_or_default()
                     .hash_values
                     .clone(),
             );
         }
         Ok(data)
+    }
+
+    /// Registry a new reference value
+    pub async fn registry_reference_value(&mut self, message: Message) -> Result<()> {
+        self.rvps.verify_and_extract(message).await
     }
 }

@@ -11,13 +11,17 @@ pub mod pre_processor;
 pub mod reference_value;
 pub mod store;
 
-use std::time::SystemTime;
+#[cfg(feature = "rvps-proxy")]
+pub mod proxy;
+#[cfg(feature = "rvps-proxy")]
+pub use proxy::Agent;
 
-use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
-use extractors::{Extractors, ExtractorsImpl};
-use log::{info, warn};
-use pre_processor::{PreProcessor, PreProcessorAPI, Ware};
+#[cfg(feature = "rvps-server")]
+pub mod server;
+#[cfg(feature = "rvps-server")]
+pub use server::Core;
+
+use anyhow::*;
 use serde::{Deserialize, Serialize};
 
 pub use reference_value::{ReferenceValue, TrustedDigest};
@@ -51,85 +55,8 @@ fn default_version() -> String {
 /// * `verify_and_extract` is responsible for verify a message and
 /// store reference values from it.
 /// * `get_digests` gets trusted digests by the artifact's name.
+#[async_trait::async_trait]
 pub trait RVPSAPI {
-    fn verify_and_extract(&mut self, message: Message) -> Result<()>;
-    fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>>;
-}
-
-/// The core of the RVPS, s.t. componants except communication componants.
-pub struct Core {
-    pre_processor: PreProcessor,
-    extractors: ExtractorsImpl,
-    store: Box<dyn Store + Send + Sync>,
-}
-
-impl Core {
-    /// Instantiate  a new RVPS Core
-    pub fn new(store: Box<dyn Store + Send + Sync>) -> Self {
-        let pre_processor = PreProcessor::default();
-
-        let extractors = ExtractorsImpl::default();
-
-        Core {
-            pre_processor,
-            extractors,
-            store,
-        }
-    }
-
-    /// Add Ware to the Core's Pre-Processor
-    pub fn with_ware(&mut self, ware: Box<dyn Ware + Send + Sync>) -> &Self {
-        self.pre_processor.add_ware(ware);
-        self
-    }
-}
-
-impl RVPSAPI for Core {
-    fn verify_and_extract(&mut self, mut message: Message) -> Result<()> {
-        // Judge the version field
-        if message.version != MESSAGE_VERSION {
-            return Err(anyhow!(
-                "Version unmatched! Need {}, given {}.",
-                MESSAGE_VERSION,
-                message.version
-            ));
-        }
-
-        self.pre_processor.process(&mut message)?;
-
-        let rv = self.extractors.process(message)?;
-        for v in rv.iter() {
-            let old = self.store.set(v.name().to_string(), v.clone())?;
-            if let Some(old) = old {
-                info!("Old Reference value of {} is replaced.", old.name());
-            }
-        }
-
-        Ok(())
-    }
-
-    fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
-        let rv = self.store.get(name)?;
-        match rv {
-            None => Ok(None),
-            Some(rv) => {
-                let now: DateTime<Utc> = DateTime::from(SystemTime::now());
-                if now > *rv.expired() {
-                    warn!("Reference value of {} is expired.", name);
-                    return Ok(None);
-                }
-
-                let hash_values = rv
-                    .hash_values()
-                    .iter()
-                    .map(|pair| pair.value().to_owned())
-                    .collect();
-
-                Ok(Some(TrustedDigest {
-                    name: name.to_owned(),
-                    hash_values,
-                }))
-            }
-        }
-    }
+    async fn verify_and_extract(&mut self, message: Message) -> Result<()>;
+    async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>>;
 }
