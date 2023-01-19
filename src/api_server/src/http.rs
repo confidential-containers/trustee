@@ -31,6 +31,29 @@ fn kbs_error_info(error_type: ErrorInformationType, detail: &str) -> ErrorInform
     }
 }
 
+macro_rules! unauthorized {
+    ($error_type: ident, $reason: expr) => {
+        return HttpResponse::Unauthorized()
+            .json(kbs_error_info(ErrorInformationType::$error_type, $reason))
+    };
+}
+
+macro_rules! internal {
+    ($reason: expr) => {
+        return HttpResponse::InternalServerError()
+            .message_body(BoxBody::new($reason))
+            .unwrap()
+    };
+}
+
+macro_rules! notfound {
+    ($reason: expr) => {
+        return HttpResponse::NotFound()
+            .message_body(BoxBody::new($reason))
+            .unwrap()
+    };
+}
+
 /// POST /auth
 pub(crate) async fn auth(
     request: web::Json<Request>,
@@ -68,54 +91,52 @@ pub(crate) async fn attest(
     map: web::Data<SessionMap<'_>>,
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> HttpResponse {
-    let error_info = if let Some(cookie) = request.cookie(KBS_SESSION_ID) {
-        if let Some(locked_session) = map.sessions.read().await.get(cookie.value()) {
-            let mut session = locked_session.lock().await;
-
-            log::info!("Cookie {} attestation {:?}", session.id(), attestation);
-
-            if !session.is_expired() {
-                match attestation_service
-                    .evaluate(
-                        session.tee(),
-                        session.nonce(),
-                        &serde_json::to_string(&attestation).unwrap(),
-                    )
-                    .await
-                {
-                    Ok(results) => {
-                        if !results.allow() {
-                            log::error!("Evidence verification failed {:?}", results.output());
-                            kbs_error_info(
-                                ErrorInformationType::VerificationFailed,
-                                "Attestation failure",
-                            );
-                        }
-
-                        session.set_tee_public_key(attestation.tee_pubkey.clone());
-                        session.set_attestation_results(results);
-                        return HttpResponse::Ok().cookie(session.cookie()).finish();
-                    }
-                    Err(err) => {
-                        return HttpResponse::InternalServerError()
-                            .message_body(BoxBody::new(format!("{err}")))
-                            .unwrap();
-                    }
-                };
-            } else {
-                log::error!("Expired KBS cookie {}", cookie.value());
-                kbs_error_info(ErrorInformationType::ExpiredCookie, cookie.value())
-            }
-        } else {
-            log::error!("Invalid KBS cookie {}", cookie.value());
-            kbs_error_info(ErrorInformationType::InvalidCookie, cookie.value())
+    let cookie = match request.cookie(KBS_SESSION_ID) {
+        Some(c) => c,
+        None => {
+            log::error!("Missing KBS cookie");
+            unauthorized!(MissingCookie, "");
         }
-    } else {
-        log::error!("Missing KBS cookie");
-        kbs_error_info(ErrorInformationType::MissingCookie, "")
     };
 
-    HttpResponse::Unauthorized().json(error_info)
+    let sessions = map.sessions.read().await;
+    let locked_session = match sessions.get(cookie.value()) {
+        Some(ls) => ls,
+        None => {
+            log::error!("Invalid KBS cookie {}", cookie.value());
+            unauthorized!(InvalidCookie, cookie.value());
+        }
+    };
+
+    let mut session = locked_session.lock().await;
+
+    log::info!("Cookie {} attestation {:?}", session.id(), attestation);
+
+    if session.is_expired() {
+        log::error!("Expired KBS cookie {}", cookie.value());
+        unauthorized!(ExpiredCookie, cookie.value());
+    }
+
+    match attestation_service
+        .evaluate(
+            session.tee(),
+            session.nonce(),
+            &serde_json::to_string(&attestation).unwrap(),
+        )
+        .await
+    {
+        Ok(results) => {
+            if !results.allow() {
+                log::error!("Evidence verification failed {:?}", results.output());
+                unauthorized!(VerificationFailed, "Attestation failure");
+            }
+
+            session.set_tee_public_key(attestation.tee_pubkey.clone());
+            session.set_attestation_results(results);
+            HttpResponse::Ok().cookie(session.cookie()).finish()
+        }
+        Err(err) => internal!(format!("{err}")),
+    }
 }
 
 /// GET /resource/{repository}/{type}/{tag}
@@ -128,8 +149,7 @@ pub(crate) async fn resource(
     let cookie = match request.cookie(KBS_SESSION_ID) {
         None => {
             log::error!("Missing KBS cookie");
-            return HttpResponse::Unauthorized()
-                .json(kbs_error_info(ErrorInformationType::MissingCookie, ""));
+            unauthorized!(MissingCookie, "");
         }
         Some(c) => c,
     };
@@ -138,10 +158,7 @@ pub(crate) async fn resource(
     let locked_session = match session_map.get(cookie.value()) {
         None => {
             log::error!("Invalid KBS cookie {}", cookie.value());
-            return HttpResponse::Unauthorized().json(kbs_error_info(
-                ErrorInformationType::InvalidCookie,
-                cookie.value(),
-            ));
+            unauthorized!(InvalidCookie, cookie.value());
         }
         Some(ls) => ls,
     };
@@ -152,18 +169,12 @@ pub(crate) async fn resource(
 
     if !session.is_authenticated() {
         log::error!("UnAuthenticated KBS cookie {}", cookie.value());
-        return HttpResponse::Unauthorized().json(kbs_error_info(
-            ErrorInformationType::UnAuthenticatedCookie,
-            cookie.value(),
-        ));
+        unauthorized!(UnAuthenticatedCookie, cookie.value());
     }
 
     if session.is_expired() {
         log::error!("Expired KBS cookie {}", cookie.value());
-        return HttpResponse::Unauthorized().json(kbs_error_info(
-            ErrorInformationType::ExpiredCookie,
-            cookie.value(),
-        ));
+        unauthorized!(ExpiredCookie, cookie.value());
     }
 
     let resource_description = ResourceDesc {
@@ -178,19 +189,13 @@ pub(crate) async fn resource(
 
     if resource_description.resource_type == "token" {
         // TODO: Distribute attestation token (Passport).
-        return HttpResponse::NotFound()
-            .message_body(BoxBody::new(
-                "Token resource is unsupported now".to_string(),
-            ))
-            .unwrap();
+        notfound!("Token resource is unsupported now");
     }
 
     log::info!("Resource description: {:?}", &resource_description);
 
     if session.tee_public_key().is_none() {
-        return HttpResponse::InternalServerError()
-            .message_body(BoxBody::new("TEE Pubkey not found"))
-            .unwrap();
+        internal!(format!("TEE Pubkey not found"));
     }
 
     match secret_resource(
@@ -201,8 +206,6 @@ pub(crate) async fn resource(
         Ok(response) => HttpResponse::Ok()
             .content_type("application/json")
             .body(serde_json::to_string(&response).unwrap()),
-        Err(e) => HttpResponse::InternalServerError()
-            .message_body(BoxBody::new(format!("Get Resource failed: {e}")))
-            .unwrap(),
+        Err(e) => internal!(format!("Get Resource failed: {e}")),
     }
 }
