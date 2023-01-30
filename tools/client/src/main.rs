@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    println!("Resource: {:?}", &resource_byte);
+    println!("{}", String::from_utf8(resource_byte)?);
 
     Ok(())
 }
