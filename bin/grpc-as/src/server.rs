@@ -8,9 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
 use crate::as_api::{AttestationRequest, AttestationResponse, Tee as GrpcTee};
 
-use crate::rvps_api::reference_value_provider_service_server::{
-    ReferenceValueProviderService, ReferenceValueProviderServiceServer,
-};
+use crate::rvps_api::reference_value_provider_service_server::ReferenceValueProviderService;
 
 use crate::rvps_api::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
@@ -94,9 +92,8 @@ impl ReferenceValueProviderService for AttestationServer {
         &self,
         _request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
-        let status = Status::aborted(format!(
-            "Cannot query reference values using RVPS as a submodule in AS."
-        ));
+        let status =
+            Status::aborted("Cannot query reference values using RVPS as a submodule in AS.");
 
         Err(status)
     }
