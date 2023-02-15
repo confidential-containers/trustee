@@ -116,8 +116,8 @@ A verifier driver parse the HW-TEE specific `tee-evidence` data from the receive
 Supported Verifier Drivers:
 
 - `sample`: A dummy TEE verifier driver which is used to test/demo the AS's functionalities.
+- `tdx`: Verifier Driver for Intel Trust Domain Extention (Intel TDX).
 - `amd-sev-snp`: TODO.
-- `intel-tdx`: TODO.
 
 ## Policy Engine
 
