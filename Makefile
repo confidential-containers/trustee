@@ -25,3 +25,6 @@ install:
 	for bin_name in $(BIN_NAMES); do \
 		install -D -m0755 $(TARGET_DIR)/$$bin_name $(DESTDIR); \
 	done
+
+clean:
+	cargo clean
