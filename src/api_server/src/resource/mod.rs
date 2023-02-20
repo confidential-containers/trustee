@@ -14,6 +14,8 @@ use rsa::pkcs8::DecodePublicKey;
 use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::json;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 use strum_macros::EnumString;
 
@@ -52,6 +54,16 @@ impl RepositoryType {
                     Some(d) => serde_json::from_str::<LocalFsRepoDesc>(d)?,
                     None => local_fs::LocalFsRepoDesc::default(),
                 };
+
+                // Create repository dir.
+                if !Path::new(&desc.dir_path).exists() {
+                    fs::create_dir_all(&desc.dir_path)?;
+                }
+                // Create default repo.
+                if !Path::new(&format!("{}/default", &desc.dir_path)).exists() {
+                    fs::create_dir_all(format!("{}/default", &desc.dir_path))?;
+                }
+
                 Ok(Arc::new(LocalFs::new(desc)?) as Arc<dyn Repository + Send + Sync>)
             }
         }
