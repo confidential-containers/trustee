@@ -8,9 +8,12 @@ pub mod sample;
 #[cfg(feature = "tdx-verifier")]
 pub mod tdx;
 
+#[cfg(feature = "sgx-verifier")]
+pub mod sgx;
+
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
-        Tee::Sev | Tee::Sgx | Tee::Snp => todo!(),
+        Tee::Sev | Tee::Snp => todo!(),
         Tee::Tdx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "tdx-verifier")] {
@@ -21,6 +24,15 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
             }
         }
         Tee::Sample => Ok(Box::<sample::Sample>::default() as Box<dyn Verifier + Send + Sync>),
+        Tee::Sgx => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "sgx-verifier")] {
+                    Ok(Box::<sgx::SgxVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    anyhow::bail!("feature `sgx-verifier` is not enabled!");
+                }
+            }
+        }
     }
 }
 
