@@ -37,6 +37,22 @@ A custom, [JSON-formatted configuration file](src/config.rs) can be used:
 ./target/debug/kbs --socket 127.0.0.1:8080 --config /path/to/config.json
 ```
 
+### Build and Deploy with Container
+
+Build Container image:
+
+```shell
+DOCKER_BUILDKIT=1 docker build -t kbs:latest . -f Dockerfile
+```
+
+Deploy KBS:
+
+```shell
+docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:latest kbs -s <IP>:<PORT>
+```
+
+**Note**: If needs to verify TDX/SGX evidence using local PCCS (localhost:8081), please add `-p 8081` or directly use `--net host` when deploy KBS with `docker run`.
+
 ## Resource Repository
 
 Resource Repository is the storage module of KBS, which is used to manage and store confidential resources.
