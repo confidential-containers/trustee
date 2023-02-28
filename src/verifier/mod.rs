@@ -4,12 +4,22 @@ use async_trait::async_trait;
 use kbs_types::{Attestation, Tee};
 
 pub mod sample;
+
+#[cfg(feature = "tdx-verifier")]
 pub mod tdx;
 
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev | Tee::Sgx | Tee::Snp => todo!(),
-        Tee::Tdx => Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>),
+        Tee::Tdx => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "tdx-verifier")] {
+                    Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    todo!()
+                }
+            }
+        }
         Tee::Sample => Ok(Box::<sample::Sample>::default() as Box<dyn Verifier + Send + Sync>),
     }
 }
