@@ -1,0 +1,17 @@
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Code checkout
+      uses: actions/checkout@v3
+    
+    - name: Build Container Image
+      run: |
+        DOCKER_BUILDKIT=1 docker build -t kbs:latest . -f Dockerfile
