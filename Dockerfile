@@ -40,7 +40,7 @@ ENV INTEL_PCCS_URL "https://localhost:8081/sgx/certification/v4/"
 ENV INTEL_PCCS_USE_SECURE_CERT false
 
 # Setup Intel PCCS URL
-RUN sed -i "s/\"pccs_url\":.*$/\"pccs_url\":$INTEL_PCCS_URL,/" /etc/sgx_default_qcnl.conf; \
+RUN sed -i "s|\"pccs_url\":.*$|\"pccs_url\":$INTEL_PCCS_URL,|" /etc/sgx_default_qcnl.conf; \
 sed -i "s/\"use_secure_cert\":.*$/\"use_secure_cert\":$INTEL_PCCS_USE_SECURE_CERT,/" /etc/sgx_default_qcnl.conf
 
 # Build and Instll KBS
