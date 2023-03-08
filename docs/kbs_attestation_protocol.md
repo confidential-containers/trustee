@@ -280,14 +280,14 @@ The authentication service is provided by the KBS through two endpoints:
    JSON payload. This endpoint is for the attester to initiate the attestation
    protocol and authenticate itself against the KBS. The KBS reply HTTP response
    is composed of:
-   a. A `Set-Cookie` header set to `kbs-session-id=<session>`. The KBS tracks
+   1. A `Set-Cookie` header set to `kbs-session-id=<session>`. The KBS tracks
    the attester and its attestation results with that cookie.
-   b. An attestation challenge for the attester to take. This is the content of
+   2. An attestation challenge for the attester to take. This is the content of
    the response, set to a [KBS Challenge](#challenge) JSON payload.
 2. `/kbs/v0/attest` only accepts `POST` requests whose body is a [KBS Attestation](#attestation)
    JSON payload and the header contains a `Cookie` set to the value received in
-   step 1.a. This is how the attester replies to attestation challenge received
-   in step 1.b. The KBS replies to that request with an empty HTTP response
+   step 1.i. This is how the attester replies to attestation challenge received
+   in step 1.ii. The KBS replies to that request with an empty HTTP response
    (no content), which HTTP status indicates if the attestation was successful or
    not.
 
