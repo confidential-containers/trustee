@@ -62,12 +62,12 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ReferenceValue {
     #[serde(default = "default_version")]
-    version: String,
-    name: String,
+    pub version: String,
+    pub name: String,
     #[serde(deserialize_with = "primitive_date_time_from_str")]
-    expired: DateTime<Utc>,
+    pub expired: DateTime<Utc>,
     #[serde(rename = "hash-value")]
-    hash_value: Vec<HashValuePair>,
+    pub hash_value: Vec<HashValuePair>,
 }
 
 /// Set the default version for ReferenceValue
