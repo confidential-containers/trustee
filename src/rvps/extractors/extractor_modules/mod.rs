@@ -13,6 +13,8 @@ use crate::rvps::ReferenceValue;
 #[cfg(feature = "in-toto")]
 pub mod in_toto;
 
+pub mod sample;
+
 /// Extractor is a standard interface that all provenance extractors
 /// need to implement. Here reference_value can be modified in the
 /// handler, added any field if needed.
