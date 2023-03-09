@@ -101,26 +101,19 @@ impl ApiServer {
     }
 
     fn tls_config(&self) -> Result<ServerConfig> {
-        let cert_file = &mut BufReader::new(
-            File::open(
-                self.certificate
-                    .clone()
-                    .ok_or(anyhow!("Missing certificate"))?,
-            )
-            .map_err(|e| anyhow!("Could not open certificate {:?}: {e}", self.certificate))?,
-        );
+        let cert_file = &mut BufReader::new(File::open(
+            self.certificate
+                .clone()
+                .ok_or(anyhow!("Missing certificate"))?,
+        )?);
 
-        let key_file = &mut BufReader::new(
-            File::open(
-                self.private_key
-                    .clone()
-                    .ok_or(anyhow!("Missing private key"))?,
-            )
-            .map_err(|e| anyhow!("Could not open private key {:?}: {e}", self.private_key))?,
-        );
+        let key_file = &mut BufReader::new(File::open(
+            self.private_key
+                .clone()
+                .ok_or(anyhow!("Missing private key"))?,
+        )?);
 
-        let cert_chain = certs(cert_file)
-            .map_err(|e| anyhow!("Invalid certificate file {e}"))?
+        let cert_chain = certs(cert_file)?
             .iter()
             .map(|c| Certificate(c.clone()))
             .collect();
@@ -136,7 +129,7 @@ impl ApiServer {
             .with_safe_defaults()
             .with_no_client_auth()
             .with_single_cert(cert_chain, key)
-            .map_err(|e| anyhow!("Could not build Rustls server config {e}"))
+            .map_err(anyhow::Error::from)
     }
 
     /// Start the HTTP server and serve API requests.
