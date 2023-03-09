@@ -10,7 +10,7 @@ use anyhow::Result;
 use api_server::{config::Config, ApiServer};
 use attestation_service::AttestationService;
 use std::net::SocketAddr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clap::Parser;
@@ -28,6 +28,14 @@ struct Cli {
     /// HTTPS session timeout (in minutes)
     #[arg(default_value_t = SESSION_TIMEOUT, short, long)]
     timeout: i64,
+
+    /// HTTPS private key
+    #[arg(required = true, short, long)]
+    private_key: PathBuf,
+
+    /// HTTPS Certificate
+    #[arg(required = true, long)]
+    certificate: PathBuf,
 
     /// KBS config file path.
     #[arg(default_value_t = String::default(), short, long)]
@@ -47,6 +55,8 @@ async fn main() -> Result<()> {
     let api_server = ApiServer::new(
         kbs_config,
         cli.socket,
+        cli.private_key,
+        cli.certificate,
         Arc::new(AttestationService::new()?),
         cli.timeout,
     );
