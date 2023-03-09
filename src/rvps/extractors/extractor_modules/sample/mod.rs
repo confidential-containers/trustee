@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use anyhow::*;
-use chrono::{Months, Utc};
+use chrono::{Months, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::rvps::{
@@ -24,6 +24,7 @@ pub struct Provenance {
     rvs: HashMap<String, Vec<String>>,
 }
 
+#[derive(Default)]
 pub struct SampleExtractor;
 
 /// Default reference value hash algorithm
@@ -33,9 +34,10 @@ const DEFAULT_ALG: &str = "sha384";
 const DEFAULT_EXPIRED_TIME: u32 = 12;
 
 impl Extractor for SampleExtractor {
-    fn verify_and_extract(&self, provenance: &str) -> Result<Vec<ReferenceValue>> {
+    fn verify_and_extract(&self, provenance_base64: &str) -> Result<Vec<ReferenceValue>> {
+        let provenance = base64::decode(provenance_base64).context("base64 decode")?;
         let payload: Provenance =
-            serde_json::from_str(provenance).context("deseralize sample provenance")?;
+            serde_json::from_slice(&provenance).context("deseralize sample provenance")?;
 
         let res = payload
             .rvs
@@ -46,7 +48,10 @@ impl Extractor for SampleExtractor {
                     .map(|rv| HashValuePair::new(DEFAULT_ALG.into(), rv.to_string()))
                     .collect();
 
-                match Utc::now().checked_add_months(Months::new(DEFAULT_EXPIRED_TIME)) {
+                let time = Utc::now()
+                    .with_nanosecond(0)
+                    .and_then(|t| t.checked_add_months(Months::new(DEFAULT_EXPIRED_TIME)));
+                match time {
                     Some(expired) => Some(ReferenceValue {
                         version: REFERENCE_VALUE_VERSION.into(),
                         name: name.to_string(),
