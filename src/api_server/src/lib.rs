@@ -17,7 +17,7 @@ extern crate rand;
 extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use attestation_service::AttestationService;
 use config::Config;
 use rustls::{server::ServerConfig, Certificate, PrivateKey};
@@ -67,8 +67,9 @@ macro_rules! kbs_path {
 pub struct ApiServer {
     config: Config,
     sockets: Vec<SocketAddr>,
-    private_key: PathBuf,
-    certificate: PathBuf,
+    private_key: Option<PathBuf>,
+    certificate: Option<PathBuf>,
+    insecure: bool,
     attestation_service: Arc<AttestationService>,
     http_timeout: i64,
 }
@@ -78,30 +79,44 @@ impl ApiServer {
     pub fn new(
         config: Config,
         sockets: Vec<SocketAddr>,
-        private_key: PathBuf,
-        certificate: PathBuf,
+        private_key: Option<PathBuf>,
+        certificate: Option<PathBuf>,
+        insecure: bool,
         attestation_service: Arc<AttestationService>,
         http_timeout: i64,
-    ) -> Self {
-        ApiServer {
+    ) -> Result<Self> {
+        if !insecure && (private_key.is_none() || certificate.is_none()) {
+            bail!("Missing HTTPS credentials");
+        }
+
+        Ok(ApiServer {
             config,
             sockets,
             private_key,
             certificate,
+            insecure,
             attestation_service,
             http_timeout,
-        }
+        })
     }
 
     fn tls_config(&self) -> Result<ServerConfig> {
         let cert_file = &mut BufReader::new(
-            File::open(&self.certificate)
-                .map_err(|e| anyhow!("Could not open certificate {:?}: {e}", self.certificate))?,
+            File::open(
+                self.certificate
+                    .clone()
+                    .ok_or(anyhow!("Missing certificate"))?,
+            )
+            .map_err(|e| anyhow!("Could not open certificate {:?}: {e}", self.certificate))?,
         );
 
         let key_file = &mut BufReader::new(
-            File::open(&self.private_key)
-                .map_err(|e| anyhow!("Could not open private key {:?}: {e}", self.private_key))?,
+            File::open(
+                self.private_key
+                    .clone()
+                    .ok_or(anyhow!("Missing private key"))?,
+            )
+            .map_err(|e| anyhow!("Could not open private key {:?}: {e}", self.private_key))?,
         );
 
         let cert_chain = certs(cert_file)
@@ -126,9 +141,12 @@ impl ApiServer {
 
     /// Start the HTTP server and serve API requests.
     pub async fn serve(&self) -> Result<()> {
-        log::info!("Starting HTTPS server at {:?}", self.sockets);
+        log::info!(
+            "Starting HTTP{} server at {:?}",
+            if !self.insecure { "S" } else { "" },
+            self.sockets
+        );
 
-        let tls_config = self.tls_config()?;
         let attestation_service = web::Data::new(self.attestation_service.clone());
         let sessions = web::Data::new(SessionMap::new());
         let http_timeout = self.http_timeout;
@@ -138,7 +156,7 @@ impl ApiServer {
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
-        HttpServer::new(move || {
+        let http_server = HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Logger::default())
                 .app_data(web::Data::clone(&sessions))
@@ -154,10 +172,21 @@ impl ApiServer {
                     ])
                     .route(web::get().to(http::resource)),
                 )
-        })
-        .bind_rustls(&self.sockets[..], tls_config)?
-        .run()
-        .await
-        .map_err(anyhow::Error::from)
+        });
+
+        if !self.insecure {
+            let tls_config = self.tls_config()?;
+            http_server
+                .bind_rustls(&self.sockets[..], tls_config)?
+                .run()
+                .await
+                .map_err(anyhow::Error::from)
+        } else {
+            http_server
+                .bind(&self.sockets[..])?
+                .run()
+                .await
+                .map_err(anyhow::Error::from)
+        }
     }
 }
