@@ -6,6 +6,10 @@ description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 
+[features]
+default = ["attestation-service/default"]
+no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-server"]
+
 [dependencies]
 anyhow.workspace = true
 api-server.workspace = true
