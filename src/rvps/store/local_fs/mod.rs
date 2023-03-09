@@ -44,7 +44,11 @@ impl LocalFs {
 impl Store for LocalFs {
     fn set(&mut self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
         let rv_serde = serde_json::to_vec(&rv)?;
-        let res = match self.engine.insert(name, rv_serde)? {
+        let res = match self
+            .engine
+            .insert(name, rv_serde)
+            .context("insert into sled")?
+        {
             Some(v) => {
                 let v = serde_json::from_slice(&v)?;
                 Ok(Some(v))
@@ -57,7 +61,7 @@ impl Store for LocalFs {
     }
 
     fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
-        match self.engine.get(name)? {
+        match self.engine.get(name).context("read from sled")? {
             Some(v) => {
                 let v = serde_json::from_slice(&v)?;
                 Ok(Some(v))
