@@ -17,11 +17,16 @@ extern crate rand;
 extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use attestation_service::AttestationService;
 use config::Config;
+use rustls::{server::ServerConfig, Certificate, PrivateKey};
+use rustls_pemfile::{certs, read_one, Item};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
+use std::fs::File;
+use std::io::BufReader;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::session::SessionMap;
@@ -62,6 +67,8 @@ macro_rules! kbs_path {
 pub struct ApiServer {
     config: Config,
     sockets: Vec<SocketAddr>,
+    private_key: PathBuf,
+    certificate: PathBuf,
     attestation_service: Arc<AttestationService>,
     http_timeout: i64,
 }
@@ -71,21 +78,57 @@ impl ApiServer {
     pub fn new(
         config: Config,
         sockets: Vec<SocketAddr>,
+        private_key: PathBuf,
+        certificate: PathBuf,
         attestation_service: Arc<AttestationService>,
         http_timeout: i64,
     ) -> Self {
         ApiServer {
             config,
             sockets,
+            private_key,
+            certificate,
             attestation_service,
             http_timeout,
         }
     }
 
+    fn tls_config(&self) -> Result<ServerConfig> {
+        let cert_file = &mut BufReader::new(
+            File::open(&self.certificate)
+                .map_err(|e| anyhow!("Could not open certificate {:?}: {e}", self.certificate))?,
+        );
+
+        let key_file = &mut BufReader::new(
+            File::open(&self.private_key)
+                .map_err(|e| anyhow!("Could not open private key {:?}: {e}", self.private_key))?,
+        );
+
+        let cert_chain = certs(cert_file)
+            .map_err(|e| anyhow!("Invalid certificate file {e}"))?
+            .iter()
+            .map(|c| Certificate(c.clone()))
+            .collect();
+
+        let key = match read_one(key_file)? {
+            Some(Item::RSAKey(key)) | Some(Item::PKCS8Key(key)) | Some(Item::ECKey(key)) => {
+                Ok(PrivateKey(key))
+            }
+            None | Some(_) => Err(anyhow!("Invalid private key file")),
+        }?;
+
+        ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(cert_chain, key)
+            .map_err(|e| anyhow!("Could not build Rustls server config {e}"))
+    }
+
     /// Start the HTTP server and serve API requests.
     pub async fn serve(&self) -> Result<()> {
-        log::info!("Starting HTTP server at {:?}", self.sockets);
+        log::info!("Starting HTTPS server at {:?}", self.sockets);
 
+        let tls_config = self.tls_config()?;
         let attestation_service = web::Data::new(self.attestation_service.clone());
         let sessions = web::Data::new(SessionMap::new());
         let http_timeout = self.http_timeout;
@@ -112,7 +155,7 @@ impl ApiServer {
                     .route(web::get().to(http::resource)),
                 )
         })
-        .bind(&self.sockets[..])?
+        .bind_rustls(&self.sockets[..], tls_config)?
         .run()
         .await
         .map_err(anyhow::Error::from)
