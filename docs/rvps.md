@@ -80,9 +80,13 @@ Run as server mode
 cargo run --bin grpc-as --features="rvps-server rvps-proxy tokio/rt-multi-thread"
 ```
 
-Run as proxy mode
+Run AS as proxy mode, we need to run RVPS first
 ```bash
-cargo run --bin grpc-as --features="rvps-server rvps-proxy tokio/rt-multi-thread" -- --rvps-address $RVPS_ADDR
+cargo run --bin rvps --features="rvps-server rvps-proxy tokio/rt-multi-thread" -- --socket $RVPS_ADDR
+```
+Then start AS
+```bash
+cargo run --bin grpc-as --features="rvps-server rvps-proxy tokio/rt-multi-thread" -- --rvps-address $RVPS_HTTP_ADDR
 ```
 
 #### RVPS in KBS binary
@@ -102,3 +106,62 @@ As this API should not be part of functionalities of KBS, we do not recommend th
 The architecture will look like
 
 ![](./kbs-server.svg)
+
+## Client Tool
+
+A client tool helps to perform as a client to rvps. It can
+- Register reference values into the RVPS
+- Query reference values from the RVPS
+
+### Quick guide to interact with RVPS
+
+Run RVPS
+```bash
+cargo run --bin rvps --features="rvps-server rvps-proxy tokio/rt-multi-thread" -- --socket $RVPS_ADDR
+```
+
+Edit an test message in [sample format](../src/rvps/extractors/extractor_modules/sample/README.md)
+```bash
+cat << EOF > sample
+{
+    "test-binary-1": [
+        "reference-value-1",
+        "reference-value-2"
+    ],
+    "test-binary-2": [
+        "reference-value-3",
+        "reference-value-4"
+    ]
+}
+EOF
+provenance=$(cat sample | base64 --wrap=0)
+cat << EOF > message
+{
+    "version" : "0.1.0",
+    "type": "sample",
+    "payload": "$provenance"
+}
+EOF
+```
+
+Register the provenance into RVPS
+```bash
+cd tools/rvps-client
+cargo run -- register --path ./message --addr $RVPS_HTTP_ADDR
+```
+
+Then it will say something like
+```
+[2023-03-09T04:44:11Z INFO  rvps_client] Register provenance succeeded.
+```
+
+Let's then query the reference value
+```bash
+cargo run -- query --name test-binary-1 --addr $RVPS_HTTP_ADDR
+```
+
+Then the reference values will be output
+```
+[2023-03-09T05:13:50Z INFO  rvps_client] Get reference values succeeded:
+     {"name":"test-binary-1","hash_values":["reference-value-1","reference-value-2"]}
+```
