@@ -6,7 +6,7 @@
 
 extern crate anyhow;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use api_server::{config::Config, ApiServer};
 use attestation_service::AttestationService;
 use std::net::SocketAddr;
@@ -30,12 +30,17 @@ struct Cli {
     timeout: i64,
 
     /// HTTPS private key
-    #[arg(required = true, short, long)]
-    private_key: PathBuf,
+    #[arg(short, long)]
+    private_key: Option<PathBuf>,
 
     /// HTTPS Certificate
-    #[arg(required = true, long)]
-    certificate: PathBuf,
+    #[arg(long)]
+    certificate: Option<PathBuf>,
+
+    /// Insecure HTTP.
+    /// WARNING Using this option makes the HTTP connection insecure.
+    #[arg(default_value_t = false, long)]
+    insecure_http: bool,
 
     /// KBS config file path.
     #[arg(default_value_t = String::default(), short, long)]
@@ -52,13 +57,19 @@ async fn main() -> Result<()> {
         _ => Config::try_from(Path::new(&cli.config))?,
     };
 
+    if !cli.insecure_http && (cli.private_key.is_none() || cli.certificate.is_none()) {
+        bail!("Missing HTTPS credentials");
+    }
+
     let api_server = ApiServer::new(
         kbs_config,
         cli.socket,
         cli.private_key,
         cli.certificate,
+        cli.insecure_http,
         Arc::new(AttestationService::new()?),
         cli.timeout,
-    );
+    )?;
+
     api_server.serve().await.map_err(anyhow::Error::from)
 }
