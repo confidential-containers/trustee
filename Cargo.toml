@@ -9,10 +9,10 @@ documentation = "https://github.com/confidential-containers/kbs"
 edition = "2021"
 
 [workspace.dependencies]
-api-server = { path = "src/api_server" }
+api-server = { path = "src/api_server", default-features = false }
 anyhow = "1.0"
 async-trait = "0.1.31"
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "34d0275" }
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "34d0275" }
 base64 = "0.13.1"
 env_logger = "0.10.0"
 log = "0.4.17"

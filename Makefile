@@ -2,6 +2,11 @@
 kbs:
 	cargo build
 
+
+.PHONY: kbs-no-verifier
+kbs-no-verifier:
+	cargo build --no-default-features --features no-verifier
+
 .PHONY: check
 check:
 	cargo test --lib
