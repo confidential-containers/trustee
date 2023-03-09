@@ -358,7 +358,7 @@ dependencies = [
 [[package]]
 name = "attestation_agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent#55db1216334ca41775cb9099e39bb1a863704e55"
+source = "git+https://github.com/confidential-containers/attestation-agent#beab1ba98cc40a97b37fe2365b3cdd69b4b72052"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -374,7 +374,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "strum",
- "tdx-attest-rs",
  "url",
  "zeroize",
 ]
@@ -671,8 +670,6 @@ dependencies = [
  "clap 4.1.6",
  "env_logger 0.10.0",
  "log",
- "serde",
- "serde_json",
  "tokio",
 ]
 
@@ -2765,22 +2762,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tdx-attest-rs"
-version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=85cf8bdd#85cf8bdd393ab273a308be3f41d2f7cc25c0ec0c"
-dependencies = [
- "tdx-attest-sys",
-]
-
-[[package]]
-name = "tdx-attest-sys"
-version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=85cf8bdd#85cf8bdd393ab273a308be3f41d2f7cc25c0ec0c"
-dependencies = [
- "bindgen",
 ]
 
 [[package]]
