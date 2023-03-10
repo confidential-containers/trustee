@@ -1,0 +1,28 @@
+# Copyright (c) 2023 by Alibaba.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM rust:1.67 as builder
+
+WORKDIR /usr/src/rvps
+
+RUN wget https://go.dev/dl/go1.20.2.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+COPY . .
+
+RUN apt-get update && apt-get install protobuf-compiler -y
+
+RUN cargo install --bin rvps --no-default-features --features="rvps-server rvps-proxy tokio/rt-multi-thread" --path .
+
+FROM debian:bullseye-slim
+
+COPY --from=builder /usr/local/cargo/bin/rvps /usr/local/bin/rvps
+
+CMD ["rvps", "--socket", "0.0.0.0:50003"]
+
+VOLUME /opt/confidential-containers/attestation-service/reference_values/
+
+EXPOSE 50003
