@@ -56,6 +56,17 @@ cargo run --bin rvps --features="rvps-server rvps-proxy tokio/rt-multi-thread"
 
 To by default listen to `localhost:50003` to wait for requests
 
+Also we can build docker image
+
+```
+docker build -t rvps -f Dockerfile.rvps .
+```
+
+Run
+```
+docker run -d -p 50003:50003 rvps
+```
+
 ### Integrate RVPS into AS
 
 We can also run Attestation Service as a submodule, s.t. integrate RVPS into AS.
