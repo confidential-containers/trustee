@@ -8,7 +8,9 @@ use tonic::{Request, Response, Status};
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
 use crate::as_api::{AttestationRequest, AttestationResponse, Tee as GrpcTee};
 
-use crate::rvps_api::reference_value_provider_service_server::ReferenceValueProviderService;
+use crate::rvps_api::reference_value_provider_service_server::{
+    ReferenceValueProviderService, ReferenceValueProviderServiceServer,
+};
 
 use crate::rvps_api::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
@@ -27,7 +29,7 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
 }
 
 pub struct AttestationServer {
-    attestation_service: Arc<RwLock<Service>>,
+    attestation_service: Service,
 }
 
 impl AttestationServer {
@@ -44,13 +46,13 @@ impl AttestationServer {
         };
 
         Ok(Self {
-            attestation_service: Arc::new(RwLock::new(service)),
+            attestation_service: service,
         })
     }
 }
 
 #[tonic::async_trait]
-impl AttestationService for AttestationServer {
+impl AttestationService for Arc<RwLock<AttestationServer>> {
     async fn attestation_evaluate(
         &self,
         request: Request<AttestationRequest>,
@@ -60,9 +62,9 @@ impl AttestationService for AttestationServer {
         debug!("Evidence: {}", &request.evidence);
 
         let attestation_results = self
-            .attestation_service
             .read()
             .await
+            .attestation_service
             .evaluate(
                 to_kbs_tee(
                     GrpcTee::from_i32(request.tee)
@@ -87,7 +89,7 @@ impl AttestationService for AttestationServer {
 }
 
 #[tonic::async_trait]
-impl ReferenceValueProviderService for AttestationServer {
+impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     async fn query_reference_value(
         &self,
         _request: Request<ReferenceValueQueryRequest>,
@@ -108,9 +110,9 @@ impl ReferenceValueProviderService for AttestationServer {
 
         let message = serde_json::from_str(&request.message)
             .map_err(|e| Status::aborted(format!("Parse message: {e}")))?;
-        self.attestation_service
-            .write()
+        self.write()
             .await
+            .attestation_service
             .registry_reference_value(message)
             .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
@@ -124,10 +126,11 @@ pub async fn start(socket: Option<&str>, rvps_addr: Option<&str>) -> Result<()> 
     let socket = socket.unwrap_or(DEFAULT_SOCK).parse()?;
     info!("Listen socket: {}", &socket);
 
-    let attestation_server = AttestationServer::new(rvps_addr).await?;
+    let attestation_server = Arc::new(RwLock::new(AttestationServer::new(rvps_addr).await?));
 
     Server::builder()
-        .add_service(AttestationServiceServer::new(attestation_server))
+        .add_service(AttestationServiceServer::new(attestation_server.clone()))
+        .add_service(ReferenceValueProviderServiceServer::new(attestation_server))
         .serve(socket)
         .await?;
     Ok(())
