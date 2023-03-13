@@ -44,22 +44,21 @@ pub struct AttestationService {
 impl AttestationService {
     /// Create a new Attestation Service instance.
     #[cfg(feature = "rvps-server")]
-    pub fn new() -> Result<Self> {
-        let _config = Config::default();
-        if !_config.work_dir.as_path().exists() {
-            fs::create_dir_all(&_config.work_dir)
+    pub fn new(config: Config) -> Result<Self> {
+        if !config.work_dir.as_path().exists() {
+            fs::create_dir_all(&config.work_dir)
                 .map_err(|e| anyhow!("Create AS work dir failed: {:?}", e))?;
         }
 
-        let policy_engine = PolicyEngineType::from_str(&_config.policy_engine)
-            .map_err(|_| anyhow!("Policy Engine {} is not supported", &_config.policy_engine))?
-            .to_policy_engine(_config.work_dir.as_path())?;
+        let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
+            .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
+            .to_policy_engine(config.work_dir.as_path())?;
 
-        let rvps_store = _config.rvps_store_type.to_store()?;
+        let rvps_store = config.rvps_store_type.to_store()?;
         let rvps = Box::new(rvps::Core::new(rvps_store));
 
         Ok(Self {
-            _config,
+            _config: config,
             policy_engine,
             rvps,
         })
@@ -67,21 +66,20 @@ impl AttestationService {
 
     /// Create a new Attestation Service, and connect to a remote rvps.
     #[cfg(feature = "rvps-proxy")]
-    pub async fn new_with_rvps_proxy(rvps_addr: &str) -> Result<Self> {
-        let _config = Config::default();
-        if !_config.work_dir.as_path().exists() {
-            fs::create_dir_all(&_config.work_dir)
+    pub async fn new_with_rvps_proxy(rvps_addr: &str, config: Config) -> Result<Self> {
+        if !config.work_dir.as_path().exists() {
+            fs::create_dir_all(&config.work_dir)
                 .map_err(|e| anyhow!("Create AS work dir failed: {:?}", e))?;
         }
 
-        let policy_engine = PolicyEngineType::from_str(&_config.policy_engine)
-            .map_err(|_| anyhow!("Policy Engine {} is not supported", &_config.policy_engine))?
-            .to_policy_engine(_config.work_dir.as_path())?;
+        let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
+            .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
+            .to_policy_engine(config.work_dir.as_path())?;
 
         let rvps = Box::new(rvps::Agent::new(rvps_addr).await?);
 
         Ok(Self {
-            _config,
+            _config: config,
             policy_engine,
             rvps,
         })

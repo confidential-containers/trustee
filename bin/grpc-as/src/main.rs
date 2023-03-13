@@ -46,10 +46,19 @@ async fn main() -> Result<()> {
                 .required(false)
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("config")
+                .long("config")
+                .value_name("config")
+                .help("File path of AS config (JSON), left blank to use default config")
+                .required(false)
+                .takes_value(true),
+        )
         .get_matches();
 
     let rvps_addr = matches.value_of("rvps-addr");
-    let server = server::start(matches.value_of("socket"), rvps_addr);
+    let config_path = matches.value_of("config");
+    let server = server::start(matches.value_of("socket"), rvps_addr, config_path);
     tokio::try_join!(server)?;
 
     Ok(())
