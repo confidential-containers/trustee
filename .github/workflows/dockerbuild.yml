@@ -1,0 +1,22 @@
+name: Container image build test
+on: [push, pull_request, create]
+
+jobs:
+  basic_ci:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    name: Check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    - name: Code checkout
+      uses: actions/checkout@v3
+    
+    - name: Build gRPC AS Container Image
+      run: |
+        DOCKER_BUILDKIT=1 docker build -t attestation-service:latest . -f Dockerfile.as
+
+    - name: Build RVPS Container Image
+      run: |
+        Docker_BUILDKIT=1 docker build -t rvps:latest . -f Dockerfile.rvps
