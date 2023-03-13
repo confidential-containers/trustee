@@ -1,5 +1,6 @@
-use anyhow::Result;
-use attestation_service::{AttestationService as Service, Tee};
+use anyhow::{anyhow, Result};
+use attestation_service::{config::Config, AttestationService as Service, Tee};
+use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
@@ -33,15 +34,21 @@ pub struct AttestationServer {
 }
 
 impl AttestationServer {
-    pub async fn new(rvps_addr: Option<&str>) -> Result<Self> {
+    pub async fn new(rvps_addr: Option<&str>, config_path: Option<&str>) -> Result<Self> {
+        let config = match config_path {
+            Some(path) => Config::try_from(Path::new(path))
+                .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?,
+            None => Config::default(),
+        };
+
         let service = match rvps_addr {
             Some(addr) => {
                 info!("Connect to remote RVPS [{addr}] (Proxy Mode)");
-                Service::new_with_rvps_proxy(addr).await?
+                Service::new_with_rvps_proxy(addr, config).await?
             }
             None => {
                 info!("Start a local RVPS (Server mode)");
-                Service::new()?
+                Service::new(config)?
             }
         };
 
@@ -122,11 +129,17 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: Option<&str>, rvps_addr: Option<&str>) -> Result<()> {
+pub async fn start(
+    socket: Option<&str>,
+    rvps_addr: Option<&str>,
+    config_path: Option<&str>,
+) -> Result<()> {
     let socket = socket.unwrap_or(DEFAULT_SOCK).parse()?;
     info!("Listen socket: {}", &socket);
 
-    let attestation_server = Arc::new(RwLock::new(AttestationServer::new(rvps_addr).await?));
+    let attestation_server = Arc::new(RwLock::new(
+        AttestationServer::new(rvps_addr, config_path).await?,
+    ));
 
     Server::builder()
         .add_service(AttestationServiceServer::new(attestation_server.clone()))
