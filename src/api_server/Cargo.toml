@@ -15,7 +15,7 @@ base64.workspace = true
 env_logger.workspace = true
 lazy_static = "1.4.0"
 log.workspace = true
-kbs-types = { git = "https://github.com/virtee/kbs-types.git" }
+kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
 rand = "0.8.5"
 rsa = "0.7.2"
 serde = { version = "1.0", features = ["derive"] }
