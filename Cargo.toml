@@ -12,7 +12,7 @@ edition = "2021"
 api-server = { path = "src/api_server" }
 anyhow = "1.0"
 async-trait = "0.1.31"
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git" }
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "34d0275" }
 base64 = "0.13.1"
 env_logger = "0.10.0"
 log = "0.4.17"

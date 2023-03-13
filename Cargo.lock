@@ -293,7 +293,7 @@ dependencies = [
  "attestation-service",
  "base64 0.13.1",
  "env_logger 0.10.0",
- "kbs-types",
+ "kbs-types 0.1.0 (git+https://github.com/virtee/kbs-types.git?rev=13b9378f)",
  "lazy_static",
  "log",
  "rand",
@@ -321,20 +321,21 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git#11277c494e631e0758a0ddaa458ff9d7dd5b57b0"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=34d0275#34d02756acc9fb76e2dd9f8ee217bae1693dc2a3"
 dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.13.1",
  "byteorder",
  "cc-measurement",
+ "cfg-if",
  "chrono",
  "clap 3.2.23",
  "env_logger 0.9.3",
  "futures 0.3.26",
  "hex",
  "in-toto",
- "kbs-types",
+ "kbs-types 0.1.0 (git+https://github.com/virtee/kbs-types.git?rev=13b9378f)",
  "lazy_static",
  "log",
  "path-clean",
@@ -365,7 +366,7 @@ dependencies = [
  "async-trait",
  "base64 0.13.1",
  "ctr",
- "kbs-types",
+ "kbs-types 0.1.0 (git+https://github.com/virtee/kbs-types.git)",
  "log",
  "rand",
  "reqwest",
@@ -1559,6 +1560,15 @@ dependencies = [
  "env_logger 0.10.0",
  "log",
  "tokio",
+]
+
+[[package]]
+name = "kbs-types"
+version = "0.1.0"
+source = "git+https://github.com/virtee/kbs-types.git?rev=13b9378f#13b9378ff675f6de3cd44a1efb41d5b728f8277c"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
