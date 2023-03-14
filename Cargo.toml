@@ -25,6 +25,7 @@ in-toto = [ "dep:in-toto" ]
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1.31"
+as-types = { path = "./as-types" }
 base64 = "0.13.0"
 byteorder = "1"
 cc-measurement = { git = "https://github.com/confidential-containers/td-shim", optional = true }

@@ -1,5 +1,5 @@
-use crate::types::TeeEvidenceParsedClaim;
 use anyhow::Result;
+use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
 use kbs_types::{Attestation, Tee};
 

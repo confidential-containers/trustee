@@ -17,7 +17,6 @@ extern crate strum_macros;
 pub mod config;
 pub mod policy_engine;
 pub mod rvps;
-pub mod types;
 pub mod verifier;
 
 use anyhow::{anyhow, Context, Result};
@@ -27,7 +26,7 @@ use policy_engine::PolicyEngine;
 use rvps::{Message, RVPSAPI};
 use std::collections::HashMap;
 
-use types::AttestationResults;
+use as_types::AttestationResults;
 
 #[cfg(any(feature = "rvps-proxy", feature = "rvps-server"))]
 use std::{fs, str::FromStr};
