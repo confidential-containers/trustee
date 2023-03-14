@@ -14,11 +14,23 @@ pub struct Config {
     /// Resource repository type
     pub repository_type: RepositoryType,
 
+    /// OPIONAL
     /// Resource repository description
     /// This is a JSON string,
     /// Various to repository type.
-    #[serde(default)]
     pub repository_description: Option<String>,
+
+    /// OPTIONAL
+    /// Remote Attestation Service address.
+    /// Only used in remote AS mode.
+    /// If Null, default remote AS addr will be used.
+    pub as_addr: Option<String>,
+
+    /// OPTIONAL
+    /// Native Attestation Service config file path
+    /// Only used in native AS mode.
+    /// If Null, default AS config will be used.
+    pub as_config_file_path: Option<String>,
 }
 
 impl Default for Config {
@@ -27,17 +39,23 @@ impl Default for Config {
         Config {
             repository_type: RepositoryType::LocalFs,
             repository_description: None,
+            as_addr: None,
+            as_config_file_path: None,
         }
     }
 }
 
 impl TryFrom<&Path> for Config {
-    /// Load `Config` from a configuration file like:
+    /// Load `Config` from a JSON configuration file like:
     ///    {
     ///        "repository_type": "LocalFs",
     ///        "repository_description": {
-    ///            "dir_path": file:///opt/confidential-containers/kbs/repository"
-    ///        }
+    ///            "dir_path": "/opt/confidential-containers/kbs/repository"
+    ///        },
+    ///        # Only used in Remote Attestation-Service mode
+    ///        "as_addr": "http://127.0.0.1:50004",
+    ///        # Only used in Native Attestation-Service mode
+    ///        "as_config_file_path": "/etc/as-config.json"
     ///    }
     type Error = anyhow::Error;
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {

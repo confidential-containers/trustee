@@ -2,10 +2,17 @@
 kbs:
 	cargo build
 
+.PHONY: kbs-native-as
+kbs:
+	cargo build --no-default-features --features native-as
 
-.PHONY: kbs-no-verifier
-kbs-no-verifier:
-	cargo build --no-default-features --features no-verifier
+.PHONY: kbs-grpc-as
+kbs-grpc-as:
+	cargo build --no-default-features --features grpc-as
+
+.PHONY: kbs-native-as-no-verifier
+kbs-native-as-no-verifier:
+	cargo build --no-default-features --features native-as-no-verifier
 
 .PHONY: check
 check:

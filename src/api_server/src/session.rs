@@ -7,7 +7,7 @@ use actix_web::cookie::{
     Cookie, Expiration,
 };
 use anyhow::{anyhow, Result};
-use attestation_service::types::AttestationResults;
+use as_types::AttestationResults;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use semver::Version;
