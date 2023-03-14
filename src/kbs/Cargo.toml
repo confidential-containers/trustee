@@ -7,13 +7,14 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["attestation-service/default"]
-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-server"]
+default = ["native-as"]
+native-as = ["api-server/native-as"]
+native-as-no-verifier = ["api-server/native-as-no-verifier"]
+grpc-as = ["api-server/grpc-as"]
 
 [dependencies]
 anyhow.workspace = true
 api-server.workspace = true
-attestation-service.workspace = true
 clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 log.workspace = true

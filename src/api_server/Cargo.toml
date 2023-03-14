@@ -7,8 +7,10 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["attestation-service/default"]
-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-server"]
+default = ["native-as"]
+native-as = ["attestation-service/default"]
+native-as-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-server"]
+grpc-as = ["tonic", "tonic-build", "prost"]
 
 [dependencies]
 actix-web = { version = "4", features = ["rustls"] }
@@ -16,24 +18,32 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-attestation-service.workspace = true
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "9484f06"}
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "9484f06", optional = true}
 base64.workspace = true
+cfg-if = "1.0.0"
 env_logger.workspace = true
 jwt-simple = "0.11.4"
+kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
 lazy_static = "1.4.0"
 log.workspace = true
-kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
+prost = { version = "0.11", optional = true }
 rand = "0.8.5"
 rsa = "0.7.2"
 rustls = "0.20.8"
 rustls-pemfile = "1.0.2"
+semver = "1.0.16"
 serde = { version = "1.0", features = ["derive"] }
 serde_json.workspace = true
-semver = "1.0.16"
 strum = "0.24.1"
 strum_macros = "0.24.1"
 tokio.workspace = true
+tonic = { version = "0.8", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 
 [dev-dependencies]
 tempfile.dev-workspace = true
+
+[build-dependencies]
+anyhow = "1"
+tonic-build ={ version = "0.8", optional = true }
