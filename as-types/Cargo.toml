@@ -1,0 +1,9 @@
+[package]
+name = "as-types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "*"
