@@ -26,6 +26,7 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
         GrpcTee::Sgx => Tee::Sgx,
         GrpcTee::Snp => Tee::Snp,
         GrpcTee::Tdx => Tee::Tdx,
+        GrpcTee::Sample => Tee::Sample,
     }
 }
 

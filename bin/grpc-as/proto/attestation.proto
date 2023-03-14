@@ -7,6 +7,7 @@ enum Tee {
     SGX = 1;
     SNP = 2;
     TDX = 3;
+    Sample = 4;
 }
 
 message AttestationRequest {
