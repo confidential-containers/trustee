@@ -8,7 +8,6 @@
 
 extern crate actix_web;
 extern crate anyhow;
-extern crate attestation_service;
 extern crate base64;
 extern crate env_logger;
 extern crate kbs_types;
@@ -20,7 +19,7 @@ extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
-use attestation_service::AttestationService;
+use attest::AttestVerifier;
 use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
 use rustls::{server::ServerConfig, Certificate, PrivateKey};
@@ -30,10 +29,11 @@ use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::session::SessionMap;
 
+/// Attestation Service
+pub mod attest;
 /// KBS config
 pub mod config;
 
@@ -79,7 +79,7 @@ pub struct ApiServer {
     user_public_key: PathBuf,
     certificate: Option<PathBuf>,
     insecure: bool,
-    attestation_service: Arc<AttestationService>,
+    attestation_service: AttestVerifier,
     http_timeout: i64,
 }
 
@@ -92,7 +92,7 @@ impl ApiServer {
         user_public_key: PathBuf,
         certificate: Option<PathBuf>,
         insecure: bool,
-        attestation_service: Arc<AttestationService>,
+        attestation_service: AttestVerifier,
         http_timeout: i64,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
@@ -115,13 +115,13 @@ impl ApiServer {
         let cert_file = &mut BufReader::new(File::open(
             self.certificate
                 .clone()
-                .ok_or(anyhow!("Missing certificate"))?,
+                .ok_or_else(|| anyhow!("Missing certificate"))?,
         )?);
 
         let key_file = &mut BufReader::new(File::open(
             self.private_key
                 .clone()
-                .ok_or(anyhow!("Missing private key"))?,
+                .ok_or_else(|| anyhow!("Missing private key"))?,
         )?);
 
         let cert_chain = certs(cert_file)?

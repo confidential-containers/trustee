@@ -7,11 +7,9 @@
 extern crate anyhow;
 
 use anyhow::{bail, Result};
-use api_server::{config::Config, ApiServer};
-use attestation_service::AttestationService;
+use api_server::{attest::AttestVerifier, config::Config, ApiServer};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use clap::Parser;
 
@@ -66,6 +64,8 @@ async fn main() -> Result<()> {
         bail!("Missing HTTPS credentials");
     }
 
+    let attestation_service = AttestVerifier::new(&kbs_config).await?;
+
     let api_server = ApiServer::new(
         kbs_config,
         cli.socket,
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
         cli.auth_public_key,
         cli.certificate,
         cli.insecure_http,
-        Arc::new(AttestationService::new()?),
+        attestation_service,
         cli.timeout,
     )?;
 

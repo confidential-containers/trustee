@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
-use attestation_service::AttestationService;
 use jwt_simple::prelude::Ed25519PublicKey;
 use kbs_types::{Attestation, Challenge, ErrorInformation, Request};
 use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::{Mutex, RwLock};
 
+use crate::attest::AttestVerifier;
 use crate::auth::validate_auth;
 use crate::resource::{get_secret_resource, set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
@@ -92,7 +92,7 @@ pub(crate) async fn attest(
     attestation: web::Json<Attestation>,
     request: HttpRequest,
     map: web::Data<SessionMap<'_>>,
-    attestation_service: web::Data<Arc<AttestationService>>,
+    attestation_service: web::Data<AttestVerifier>,
 ) -> HttpResponse {
     let cookie = match request.cookie(KBS_SESSION_ID) {
         Some(c) => c,
@@ -121,7 +121,10 @@ pub(crate) async fn attest(
     }
 
     match attestation_service
-        .evaluate(
+        .attest_verifier
+        .lock()
+        .await
+        .attest_verify(
             session.tee(),
             session.nonce(),
             &serde_json::to_string(&attestation).unwrap(),
