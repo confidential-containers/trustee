@@ -26,9 +26,10 @@ const RSA_ALGORITHM: &str = "RSA1_5";
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
 /// Interface of a `Repository`.
+#[async_trait::async_trait]
 pub trait Repository {
     /// Read secret resource from repository.
-    fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>>;
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>>;
 }
 
 #[derive(Debug, Clone)]
