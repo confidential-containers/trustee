@@ -4,6 +4,8 @@
 
 //! KBS API server
 
+#![allow(clippy::too_many_arguments)]
+
 extern crate actix_web;
 extern crate anyhow;
 extern crate attestation_service;
