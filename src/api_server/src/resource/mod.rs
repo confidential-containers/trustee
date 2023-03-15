@@ -30,6 +30,13 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 pub trait Repository {
     /// Read secret resource from repository.
     async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>>;
+
+    /// Write secret resource into repository
+    async fn write_secret_resource(
+        &mut self,
+        resource_desc: ResourceDesc,
+        data: &[u8],
+    ) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
