@@ -78,7 +78,7 @@ impl RepositoryType {
     }
 }
 
-pub(crate) async fn secret_resource(
+pub(crate) async fn get_secret_resource(
     tee_pub_key: TeePubKey,
     repository: &Arc<dyn Repository + Send + Sync>,
     resource_desc: ResourceDesc,

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::Mutex;
 
-use crate::resource::{secret_resource, Repository, ResourceDesc};
+use crate::resource::{get_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
 
 const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
@@ -198,7 +198,7 @@ pub(crate) async fn resource(
         internal!(format!("TEE Pubkey not found"));
     }
 
-    match secret_resource(
+    match get_secret_resource(
         session.tee_public_key().unwrap(),
         repository.get_ref(),
         resource_description,
