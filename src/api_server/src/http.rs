@@ -247,6 +247,6 @@ pub(crate) async fn set_resource(
 
     match set_secret_resource(&repository, resource_description, data.as_ref()).await {
         Ok(_) => HttpResponse::Ok().content_type("application/json").body(""),
-        Err(e) => internal!(format!("Registry Resource failed: {e}")),
+        Err(e) => internal!(format!("Resource registration failed: {e}")),
     }
 }
