@@ -202,7 +202,9 @@ pub(crate) async fn resource(
         session.tee_public_key().unwrap(),
         repository.get_ref(),
         resource_description,
-    ) {
+    )
+    .await
+    {
         Ok(response) => HttpResponse::Ok()
             .content_type("application/json")
             .body(serde_json::to_string(&response).unwrap()),

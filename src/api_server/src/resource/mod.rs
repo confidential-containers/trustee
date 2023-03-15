@@ -71,7 +71,7 @@ impl RepositoryType {
     }
 }
 
-pub(crate) fn secret_resource(
+pub(crate) async fn secret_resource(
     tee_pub_key: TeePubKey,
     repository: &Arc<dyn Repository + Send + Sync>,
     resource_desc: ResourceDesc,
@@ -82,6 +82,7 @@ pub(crate) fn secret_resource(
 
     let resource_byte = repository
         .read_secret_resource(resource_desc)
+        .await
         .map_err(|e| anyhow!("Read secret resource from repository failed: {:?}", e))?;
 
     let mut rng = rand::thread_rng();
