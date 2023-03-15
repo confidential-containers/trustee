@@ -165,6 +165,13 @@ impl ApiServer {
                     ])
                     .route(web::get().to(http::get_resource)),
                 )
+                .service(
+                    web::resource([
+                        kbs_path!("resource/{repository}/{type}/{tag}"),
+                        kbs_path!("resource/{type}/{tag}"),
+                    ])
+                    .route(web::post().to(http::set_resource)),
+                )
         });
 
         if !self.insecure {
