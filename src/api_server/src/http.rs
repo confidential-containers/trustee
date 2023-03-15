@@ -218,10 +218,13 @@ pub(crate) async fn get_resource(
 /// POST /resource/{repository}/{type}/{tag}
 /// POST /resource/{type}/{tag}
 ///
-/// TODO: This API surely needs identification check, only the owner of this repo
-/// or the owner of this KBS can call. The identification mechinism remains
-/// undesigned and unimplemented. Now it can be called by anyone, which is very
-/// dangerous and only for test.
+/// TODO: Although this endpoint is authenticated through a JSON Web Token (JWT),
+/// only identified users should be able to get a JWT and access it.
+/// At the moment user identification is not supported, and the KBS CLI
+/// `--user-public-key` defines the authorized user for that endpoint. In other words,
+/// any JWT signed with the user's private key will be authenticated.
+/// JWT generation and user identification is unimplemented for now, and thus this
+/// endpoint is insecure and is only meant for testing purposes.
 pub(crate) async fn set_resource(
     request: HttpRequest,
     data: web::Bytes,
