@@ -14,4 +14,5 @@ jobs:
     
     - name: Build Container Image
       run: |
-        DOCKER_BUILDKIT=1 docker build -t kbs:latest . -f Dockerfile
+        DOCKER_BUILDKIT=1 docker build -t kbs:native-as . -f docker/Dockerfile; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:grpc-as . -f docker/Dockerfile.grpc-as

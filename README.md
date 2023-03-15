@@ -42,16 +42,41 @@ A custom, [JSON-formatted configuration file](src/config.rs) can be used:
 Build Container image:
 
 ```shell
-DOCKER_BUILDKIT=1 docker build -t kbs:latest . -f Dockerfile
+DOCKER_BUILDKIT=1 docker build -t kbs:native-as . -f docker/Dockerfile
 ```
 
-Deploy KBS:
+Quick Deploy KBS with Native AS:
 
 ```shell
-docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:latest kbs -s <IP>:<PORT>
+docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:native-as kbs -s <IP>:<PORT>
 ```
 
 **Note**: If needs to verify TDX/SGX evidence using local PCCS (localhost:8081), please add `-p 8081` or directly use `--net host` when deploy KBS with `docker run`.
+
+## Attestation
+
+KBS communicate with [Attestation-Service](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
+KBS supports communication with AS in two ways, which is determined by the compilation option.
+
+#### Native AS mode
+
+KBS integrates AS library crate, this is the default attestation mode. Build with:
+
+```shell
+make kbs-native-as
+# Or directly:
+make kbs
+```
+Native AS config file path can be specified in KBS config file.
+
+#### Remote AS mode
+
+KBS connects remote gRPC AS server to verify TEE evidence. In this mode, a standalone AS server should be running.
+Build with:
+```
+make kbs-grpc-as
+```
+Remote AS address can be specified in KBS config file, default address is `127.0.0.1:50004`.
 
 ## Resource Repository
 
