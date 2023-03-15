@@ -17,9 +17,10 @@ extern crate rand;
 extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use attestation_service::AttestationService;
 use config::Config;
+use jwt_simple::prelude::Ed25519PublicKey;
 use rustls::{server::ServerConfig, Certificate, PrivateKey};
 use rustls_pemfile::{certs, read_one, Item};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -34,6 +35,7 @@ use crate::session::SessionMap;
 /// KBS config
 pub mod config;
 
+mod auth;
 mod http;
 mod resource;
 mod session;
@@ -68,6 +70,11 @@ pub struct ApiServer {
     config: Config,
     sockets: Vec<SocketAddr>,
     private_key: Option<PathBuf>,
+
+    /// This user public key is used to verify the jwt.
+    /// The jwt is carried with the POST request for
+    /// resource registration
+    user_public_key: PathBuf,
     certificate: Option<PathBuf>,
     insecure: bool,
     attestation_service: Arc<AttestationService>,
@@ -80,6 +87,7 @@ impl ApiServer {
         config: Config,
         sockets: Vec<SocketAddr>,
         private_key: Option<PathBuf>,
+        user_public_key: PathBuf,
         certificate: Option<PathBuf>,
         insecure: bool,
         attestation_service: Arc<AttestationService>,
@@ -93,6 +101,7 @@ impl ApiServer {
             config,
             sockets,
             private_key,
+            user_public_key,
             certificate,
             insecure,
             attestation_service,
@@ -149,6 +158,12 @@ impl ApiServer {
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
+        let user_public_key_pem = tokio::fs::read_to_string(&self.user_public_key)
+            .await
+            .context("read user public key")?;
+        let user_public_key =
+            Ed25519PublicKey::from_pem(&user_public_key_pem).context("parse user public key")?;
+
         let http_server = HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Logger::default())
@@ -156,6 +171,7 @@ impl ApiServer {
                 .app_data(web::Data::clone(&attestation_service))
                 .app_data(web::Data::new(repository.clone()))
                 .app_data(web::Data::new(http_timeout))
+                .app_data(web::Data::new(user_public_key.clone()))
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
                 .service(

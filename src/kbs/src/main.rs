@@ -45,6 +45,10 @@ struct Cli {
     /// KBS config file path.
     #[arg(default_value_t = String::default(), short, long)]
     config: String,
+
+    /// User's public key to verify JWT
+    #[arg(long)]
+    user_public_key: PathBuf,
 }
 
 #[tokio::main]
@@ -65,6 +69,7 @@ async fn main() -> Result<()> {
         kbs_config,
         cli.socket,
         cli.private_key,
+        cli.user_public_key,
         cli.certificate,
         cli.insecure_http,
         Arc::new(AttestationService::new()?),
