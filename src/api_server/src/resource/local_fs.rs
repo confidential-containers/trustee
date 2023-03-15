@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Repository, ResourceDesc};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -26,8 +26,9 @@ pub struct LocalFs {
     pub repo_dir_path: String,
 }
 
+#[async_trait::async_trait]
 impl Repository for LocalFs {
-    fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
         let mut resource_path = PathBuf::from(&self.repo_dir_path);
 
         let ref_resource_path = format!(
@@ -36,7 +37,9 @@ impl Repository for LocalFs {
         );
         resource_path.push(ref_resource_path);
 
-        let resource_byte = ::std::fs::read(&resource_path)?;
+        let resource_byte = tokio::fs::read(&resource_path)
+            .await
+            .context("read resource from local fs")?;
         Ok(resource_byte)
     }
 }
