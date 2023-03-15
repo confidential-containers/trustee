@@ -6,19 +6,20 @@ edition = "2021"
 [[bin]]
 name = "grpc-as"
 path = "bin/grpc-as/src/main.rs"
-required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
+required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
 
 [[bin]]
 name = "rvps"
 path = "bin/rvps/src/main.rs"
-required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
+required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
 
 [features]
-default = [ "rvps-server", "in-toto", "all-verifier" ]
+default = [ "rvps-native", "in-toto", "all-verifier" ]
 all-verifier = [ "tdx-verifier" ]
 tdx-verifier = [ "cc-measurement", "scroll", "sgx-dcap-quoteverify-rs" ]
-rvps-server = []
-rvps-proxy = [ "tonic" ]
+
+rvps-native = []
+rvps-grpc = [ "tonic" ]
 
 in-toto = [ "dep:in-toto" ]
 

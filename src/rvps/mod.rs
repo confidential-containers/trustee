@@ -11,15 +11,15 @@ pub mod pre_processor;
 pub mod reference_value;
 pub mod store;
 
-#[cfg(feature = "rvps-proxy")]
-pub mod proxy;
-#[cfg(feature = "rvps-proxy")]
-pub use proxy::Agent;
+#[cfg(feature = "rvps-grpc")]
+pub mod grpc;
+#[cfg(feature = "rvps-grpc")]
+pub use grpc::Agent;
 
-#[cfg(feature = "rvps-server")]
-pub mod server;
-#[cfg(feature = "rvps-server")]
-pub use server::Core;
+#[cfg(feature = "rvps-native")]
+pub mod native;
+#[cfg(feature = "rvps-native")]
+pub use native::Core;
 
 use anyhow::*;
 use serde::{Deserialize, Serialize};

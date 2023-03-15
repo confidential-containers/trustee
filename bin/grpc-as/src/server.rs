@@ -44,8 +44,8 @@ impl AttestationServer {
 
         let service = match rvps_addr {
             Some(addr) => {
-                info!("Connect to remote RVPS [{addr}] (Proxy Mode)");
-                Service::new_with_rvps_proxy(addr, config).await?
+                info!("Connect to remote RVPS [{addr}] (gRPC Mode)");
+                Service::new_with_rvps_grpc(addr, config).await?
             }
             None => {
                 info!("Start a local RVPS (Server mode)");
