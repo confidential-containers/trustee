@@ -15,7 +15,7 @@ COPY . .
 
 RUN apt-get update && apt-get install protobuf-compiler -y
 
-RUN cargo install --bin rvps --no-default-features --features="rvps-server rvps-proxy tokio/rt-multi-thread" --path .
+RUN cargo install --bin rvps --no-default-features --features="rvps-native rvps-grpc tokio/rt-multi-thread" --path .
 
 FROM debian:bullseye-slim
 
