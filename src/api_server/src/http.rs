@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::resource::{get_secret_resource, Repository, ResourceDesc};
+use crate::resource::{get_secret_resource, set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
 
 const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
@@ -209,5 +209,33 @@ pub(crate) async fn get_resource(
             .content_type("application/json")
             .body(serde_json::to_string(&response).unwrap()),
         Err(e) => internal!(format!("Get Resource failed: {e}")),
+    }
+}
+
+/// POST /resource/{repository}/{type}/{tag}
+/// POST /resource/{type}/{tag}
+///
+/// TODO: This API surely needs identification check, only the owner of this repo
+/// or the owner of this KBS can call. The identification mechinism remains
+/// undesigned and unimplemented. Now it can be called by anyone, which is very
+/// dangerous and only for test.
+pub(crate) async fn set_resource(
+    request: HttpRequest,
+    data: web::Bytes,
+    repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
+) -> HttpResponse {
+    let resource_description = ResourceDesc {
+        repository_name: request
+            .match_info()
+            .get("repository")
+            .unwrap_or("default")
+            .to_string(),
+        resource_type: request.match_info().get("type").unwrap().to_string(),
+        resource_tag: request.match_info().get("tag").unwrap().to_string(),
+    };
+
+    match set_secret_resource(&repository, resource_description, data.as_ref()).await {
+        Ok(_) => HttpResponse::Ok().content_type("application/json").body(""),
+        Err(e) => internal!(format!("Registry Resource failed: {e}")),
     }
 }
