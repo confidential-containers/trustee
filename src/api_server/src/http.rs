@@ -141,7 +141,7 @@ pub(crate) async fn attest(
 
 /// GET /resource/{repository}/{type}/{tag}
 /// GET /resource/{type}/{tag}
-pub(crate) async fn resource(
+pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<dyn Repository + Send + Sync>>,
     map: web::Data<SessionMap<'_>>,

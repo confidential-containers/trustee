@@ -163,7 +163,7 @@ impl ApiServer {
                         kbs_path!("resource/{repository}/{type}/{tag}"),
                         kbs_path!("resource/{type}/{tag}"),
                     ])
-                    .route(web::get().to(http::resource)),
+                    .route(web::get().to(http::get_resource)),
                 )
         });
 
