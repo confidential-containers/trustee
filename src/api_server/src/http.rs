@@ -7,7 +7,7 @@ use attestation_service::AttestationService;
 use kbs_types::{Attestation, Challenge, ErrorInformation, Request};
 use std::sync::Arc;
 use strum_macros::EnumString;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::resource::{get_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
@@ -143,7 +143,7 @@ pub(crate) async fn attest(
 /// GET /resource/{type}/{tag}
 pub(crate) async fn get_resource(
     request: HttpRequest,
-    repository: web::Data<Arc<dyn Repository + Send + Sync>>,
+    repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
     map: web::Data<SessionMap<'_>>,
 ) -> HttpResponse {
     let cookie = match request.cookie(KBS_SESSION_ID) {
