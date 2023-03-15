@@ -73,3 +73,39 @@ impl LocalFs {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::resource::{
+        local_fs::{LocalFs, LocalFsRepoDesc},
+        Repository, ResourceDesc,
+    };
+
+    const TEST_DATA: &[u8] = b"testdata";
+
+    #[tokio::test]
+    async fn write_and_read_resource() {
+        let tmp_dir = tempfile::tempdir().expect("create temp dir failed");
+        let repo_desc = LocalFsRepoDesc {
+            dir_path: tmp_dir.path().to_string_lossy().to_string(),
+        };
+
+        let mut local_fs = LocalFs::new(repo_desc).expect("create local fs failed");
+        let resource_desc = ResourceDesc {
+            repository_name: "default".into(),
+            resource_type: "test".into(),
+            resource_tag: "test".into(),
+        };
+
+        local_fs
+            .write_secret_resource(resource_desc.clone(), TEST_DATA)
+            .await
+            .expect("write secret resource failed");
+        let data = local_fs
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("read secret resource failed");
+
+        assert_eq!(&data[..], TEST_DATA);
+    }
+}
