@@ -405,6 +405,11 @@ specific resource instance belongs to the KBS and its underlying attestation ser
 The decision is typically based on both the attestation evidence, results and
 provisioned policies for a given attester.
 
+#### Resource Registration (Experimental)
+
+A POST request with the content of resource to `/kbs/v0/resource/<repository>/<type>/<tag>` can register the resource into the KBS.
+
+
 ### Token Resource
 
 Authenticated attesters can also request a token from the KBS.
