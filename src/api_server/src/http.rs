@@ -4,11 +4,13 @@
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
 use attestation_service::AttestationService;
+use jwt_simple::prelude::Ed25519PublicKey;
 use kbs_types::{Attestation, Challenge, ErrorInformation, Request};
 use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::{Mutex, RwLock};
 
+use crate::auth::validate_auth;
 use crate::resource::{get_secret_resource, set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
 
@@ -22,6 +24,7 @@ pub enum ErrorInformationType {
     MissingCookie,
     UnAuthenticatedCookie,
     VerificationFailed,
+    JWTVerificationFailed,
 }
 
 fn kbs_error_info(error_type: ErrorInformationType, detail: &str) -> ErrorInformation {
@@ -222,8 +225,16 @@ pub(crate) async fn get_resource(
 pub(crate) async fn set_resource(
     request: HttpRequest,
     data: web::Bytes,
+    user_pub_key: web::Data<Ed25519PublicKey>,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
 ) -> HttpResponse {
+    if let Err(e) = validate_auth(&request, user_pub_key.get_ref()) {
+        unauthorized!(
+            JWTVerificationFailed,
+            &format!("Authentication failed: {e}")
+        );
+    }
+
     let resource_description = ResourceDesc {
         repository_name: request
             .match_info()
