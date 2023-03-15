@@ -18,6 +18,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use strum_macros::EnumString;
+use tokio::sync::RwLock;
 
 mod local_fs;
 
@@ -55,7 +56,7 @@ impl RepositoryType {
     pub fn to_repository(
         &self,
         repo_desc: &Option<String>,
-    ) -> Result<Arc<dyn Repository + Send + Sync>> {
+    ) -> Result<Arc<RwLock<dyn Repository + Send + Sync>>> {
         match self {
             RepositoryType::LocalFs => {
                 let desc = match repo_desc {
@@ -72,7 +73,8 @@ impl RepositoryType {
                     fs::create_dir_all(format!("{}/default", &desc.dir_path))?;
                 }
 
-                Ok(Arc::new(LocalFs::new(desc)?) as Arc<dyn Repository + Send + Sync>)
+                Ok(Arc::new(RwLock::new(LocalFs::new(desc)?))
+                    as Arc<RwLock<dyn Repository + Send + Sync>>)
             }
         }
     }
@@ -80,7 +82,7 @@ impl RepositoryType {
 
 pub(crate) async fn get_secret_resource(
     tee_pub_key: TeePubKey,
-    repository: &Arc<dyn Repository + Send + Sync>,
+    repository: &Arc<RwLock<dyn Repository + Send + Sync>>,
     resource_desc: ResourceDesc,
 ) -> Result<Response> {
     if !(tee_pub_key.kty == *RSA_KEY_TYPE || tee_pub_key.alg == *RSA_ALGORITHM) {
@@ -88,6 +90,8 @@ pub(crate) async fn get_secret_resource(
     }
 
     let resource_byte = repository
+        .read()
+        .await
         .read_secret_resource(resource_desc)
         .await
         .map_err(|e| anyhow!("Read secret resource from repository failed: {:?}", e))?;
@@ -123,4 +127,16 @@ pub(crate) async fn get_secret_resource(
         ciphertext: base64::encode_config(encrypted_resource_payload, base64::URL_SAFE_NO_PAD),
         tag: "".to_string(),
     })
+}
+
+pub(crate) async fn set_secret_resource(
+    repository: &Arc<RwLock<dyn Repository + Send + Sync>>,
+    resource_desc: ResourceDesc,
+    data: &[u8],
+) -> Result<()> {
+    repository
+        .write()
+        .await
+        .write_secret_resource(resource_desc, data)
+        .await
 }
