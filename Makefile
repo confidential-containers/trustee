@@ -19,7 +19,7 @@ endif
 build: grpc-as
 
 grpc-as:
-	cargo build --bin grpc-as --features rvps-server,rvps-proxy,tokio/rt-multi-thread $(release)
+	cargo build --bin grpc-as --features rvps-native,rvps-grpc,tokio/rt-multi-thread $(release)
 
 install:
 	for bin_name in $(BIN_NAMES); do \
