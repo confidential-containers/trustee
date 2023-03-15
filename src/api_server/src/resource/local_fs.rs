@@ -5,7 +5,7 @@
 use super::{Repository, ResourceDesc};
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/repository";
 
@@ -41,6 +41,28 @@ impl Repository for LocalFs {
             .await
             .context("read resource from local fs")?;
         Ok(resource_byte)
+    }
+
+    async fn write_secret_resource(
+        &mut self,
+        resource_desc: ResourceDesc,
+        data: &[u8],
+    ) -> Result<()> {
+        let mut resource_path = PathBuf::from(&self.repo_dir_path);
+        resource_path.push(resource_desc.repository_name);
+        resource_path.push(resource_desc.resource_type);
+
+        if !Path::new(&resource_path).exists() {
+            tokio::fs::create_dir_all(&resource_path)
+                .await
+                .context("create new resource path")?;
+        }
+
+        resource_path.push(resource_desc.resource_tag);
+
+        tokio::fs::write(resource_path, data)
+            .await
+            .context("write local fs")
     }
 }
 
