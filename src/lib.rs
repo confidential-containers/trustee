@@ -1,8 +1,8 @@
 //! Attestation Service
 //!
 //! # Features
-//! - `rvps-proxy`: The AS will connect a remote RVPS.
-//! - `rvps-server`: The AS will integrate RVPS functionalities itself.
+//! - `rvps-grpc`: The AS will connect a remote RVPS.
+//! - `rvps-native`: The AS will integrate RVPS functionalities itself.
 
 extern crate serde;
 
@@ -28,10 +28,10 @@ use std::collections::HashMap;
 
 use as_types::AttestationResults;
 
-#[cfg(any(feature = "rvps-proxy", feature = "rvps-server"))]
+#[cfg(any(feature = "rvps-grpc", feature = "rvps-native"))]
 use std::{fs, str::FromStr};
 
-#[cfg(any(feature = "rvps-proxy", feature = "rvps-server"))]
+#[cfg(any(feature = "rvps-grpc", feature = "rvps-native"))]
 use policy_engine::PolicyEngineType;
 
 pub struct AttestationService {
@@ -42,7 +42,7 @@ pub struct AttestationService {
 
 impl AttestationService {
     /// Create a new Attestation Service instance.
-    #[cfg(feature = "rvps-server")]
+    #[cfg(feature = "rvps-native")]
     pub fn new(config: Config) -> Result<Self> {
         if !config.work_dir.as_path().exists() {
             fs::create_dir_all(&config.work_dir)
@@ -64,8 +64,8 @@ impl AttestationService {
     }
 
     /// Create a new Attestation Service, and connect to a remote rvps.
-    #[cfg(feature = "rvps-proxy")]
-    pub async fn new_with_rvps_proxy(rvps_addr: &str, config: Config) -> Result<Self> {
+    #[cfg(feature = "rvps-grpc")]
+    pub async fn new_with_rvps_grpc(rvps_addr: &str, config: Config) -> Result<Self> {
         if !config.work_dir.as_path().exists() {
             fs::create_dir_all(&config.work_dir)
                 .map_err(|e| anyhow!("Create AS work dir failed: {:?}", e))?;
