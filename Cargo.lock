@@ -310,6 +310,7 @@ dependencies = [
  "actix-web",
  "aes-gcm",
  "anyhow",
+ "async-trait",
  "attestation-service",
  "base64 0.13.1",
  "env_logger 0.10.0",
