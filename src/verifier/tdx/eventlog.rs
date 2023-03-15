@@ -3,7 +3,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use cc_measurement::{log::CcEvents, TPML_ALG_SHA384};
 use core::fmt;
 use core::mem::size_of;
-use ring::digest;
+use sha2::{Digest, Sha384};
 use std::convert::{TryFrom, TryInto};
 use std::string::ToString;
 
@@ -89,19 +89,25 @@ impl<'a> CcEventLog<'a> {
             };
             if rtmr_index == 0 {
                 rtmr0[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let hash_value = digest::digest(&digest::SHA384, &rtmr0);
+                let mut hasher = Sha384::new();
+                hasher.update(rtmr0);
+                let hash_value = hasher.finalize();
                 rtmr0[0..48].copy_from_slice(hash_value.as_ref());
             } else if rtmr_index == 1 {
                 rtmr1[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let hash_value = digest::digest(&digest::SHA384, &rtmr1);
+                let mut hasher = Sha384::new();
+                hasher.update(rtmr1);
+                let hash_value = hasher.finalize();
                 rtmr1[0..48].copy_from_slice(hash_value.as_ref());
             } else if rtmr_index == 2 {
-                rtmr2[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let hash_value = digest::digest(&digest::SHA384, &rtmr2);
+                let mut hasher = Sha384::new();
+                hasher.update(rtmr2);
+                let hash_value = hasher.finalize();
                 rtmr2[0..48].copy_from_slice(hash_value.as_ref());
             } else if rtmr_index == 3 {
-                rtmr3[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let hash_value = digest::digest(&digest::SHA384, &rtmr3);
+                let mut hasher = Sha384::new();
+                hasher.update(rtmr3);
+                let hash_value = hasher.finalize();
                 rtmr3[0..48].copy_from_slice(hash_value.as_ref());
             }
         }
