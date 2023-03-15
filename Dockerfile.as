@@ -21,7 +21,7 @@ RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key 
     apt-get update && apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
 # Build and Instll gRPC attestation-service
-RUN cargo install --bin grpc-as --no-default-features --features="rvps-server rvps-proxy tokio/rt-multi-thread" --path .
+RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rvps-grpc tokio/rt-multi-thread" --path .
 
 
 FROM ubuntu:20.04
