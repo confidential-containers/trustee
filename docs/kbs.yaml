@@ -118,6 +118,32 @@ paths:
           description: The KBC is not allowed to get that resource
         404:
           description: The requested resource does not exist
+    post:
+      operationId: registerSecretResource
+      summary: Register a secret resource into the Key Broker Service.
+      requestBody:
+        required: true
+        content: *
+      parameters:
+        - name: repository
+          in: path
+          description: A parent path of resource, can be empty to use the default repository.
+          schema:
+            type: string
+          required: false
+        - name: type
+          in: path
+          description: Resource type name
+          schema:
+            type: string
+          required: true
+        - name: tag
+          in: path
+          description: Resource instance tag
+          schema:
+            type: string
+          required: true
+        - name: 
   /resource/token/{tag}:
     get:
       operationId: getToken
