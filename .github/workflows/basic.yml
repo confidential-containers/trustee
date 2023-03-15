@@ -30,6 +30,11 @@ jobs:
       - name: Install protoc
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: Install TPM build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libtss2-dev
       
       - name: Install TDX build dependencies
         run: |

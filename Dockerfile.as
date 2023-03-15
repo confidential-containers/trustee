@@ -20,6 +20,10 @@ RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key 
     echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
+# Install TPM Build Dependencies
+
+RUN apt-get update && apt-get install -y libtss2-dev
+
 # Build and Instll gRPC attestation-service
 RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rvps-grpc tokio/rt-multi-thread all-verifier" --path .
 
