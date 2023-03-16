@@ -48,6 +48,12 @@ struct Cli {
     /// Only JWTs signed with the corresponding private keys will be authenticated.
     #[arg(long)]
     auth_public_key: PathBuf,
+
+    /// Insecure HTTP Apis.
+    /// WARNING Using this option enables insecure APIs of KBS, such as
+    /// - Resource Registration without verifying the JWK.
+    #[arg(default_value_t = false, short, long)]
+    insecure_api: bool,
 }
 
 #[tokio::main]
@@ -62,6 +68,10 @@ async fn main() -> Result<()> {
 
     if !cli.insecure_http && (cli.private_key.is_none() || cli.certificate.is_none()) {
         bail!("Missing HTTPS credentials");
+    }
+
+    if cli.insecure_api {
+        warn!("insecure apis are enabled.");
     }
 
     let attestation_service = AttestVerifier::new(&kbs_config).await?;
