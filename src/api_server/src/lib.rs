@@ -81,6 +81,7 @@ pub struct ApiServer {
     insecure: bool,
     attestation_service: AttestVerifier,
     http_timeout: i64,
+    insecure_api: bool,
 }
 
 impl ApiServer {
@@ -94,6 +95,7 @@ impl ApiServer {
         insecure: bool,
         attestation_service: AttestVerifier,
         http_timeout: i64,
+        insecure_api: bool,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
             bail!("Missing HTTPS credentials");
@@ -108,6 +110,7 @@ impl ApiServer {
             insecure,
             attestation_service,
             http_timeout,
+            insecure_api,
         })
     }
 
@@ -166,6 +169,8 @@ impl ApiServer {
         let user_public_key =
             Ed25519PublicKey::from_pem(&user_public_key_pem).context("parse user public key")?;
 
+        let insecure_api = self.insecure_api;
+
         let http_server = HttpServer::new(move || {
             App::new()
                 .wrap(middleware::Logger::default())
@@ -174,6 +179,7 @@ impl ApiServer {
                 .app_data(web::Data::new(repository.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
+                .app_data(web::Data::new(insecure_api))
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
                 .service(
