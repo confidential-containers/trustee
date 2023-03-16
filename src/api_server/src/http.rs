@@ -232,13 +232,16 @@ pub(crate) async fn set_resource(
     request: HttpRequest,
     data: web::Bytes,
     user_pub_key: web::Data<Ed25519PublicKey>,
+    insecure: web::Data<bool>,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
 ) -> HttpResponse {
-    if let Err(e) = validate_auth(&request, user_pub_key.get_ref()) {
-        unauthorized!(
-            JWTVerificationFailed,
-            &format!("Authentication failed: {e}")
-        );
+    if !insecure.get_ref() {
+        if let Err(e) = validate_auth(&request, user_pub_key.get_ref()) {
+            unauthorized!(
+                JWTVerificationFailed,
+                &format!("Authentication failed: {e}")
+            );
+        }
     }
 
     let resource_description = ResourceDesc {

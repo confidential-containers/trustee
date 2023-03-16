@@ -8,6 +8,7 @@ extern crate anyhow;
 
 use anyhow::{bail, Result};
 use api_server::{attest::AttestVerifier, config::Config, ApiServer};
+use log::warn;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
@@ -85,6 +86,7 @@ async fn main() -> Result<()> {
         cli.insecure_http,
         attestation_service,
         cli.timeout,
+        cli.insecure_api,
     )?;
 
     api_server.serve().await.map_err(anyhow::Error::from)
