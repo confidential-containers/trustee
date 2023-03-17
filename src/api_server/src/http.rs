@@ -231,12 +231,17 @@ pub(crate) async fn get_resource(
 pub(crate) async fn set_resource(
     request: HttpRequest,
     data: web::Bytes,
-    user_pub_key: web::Data<Ed25519PublicKey>,
+    user_pub_key: web::Data<Option<Ed25519PublicKey>>,
     insecure: web::Data<bool>,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
 ) -> HttpResponse {
     if !insecure.get_ref() {
-        if let Err(e) = validate_auth(&request, user_pub_key.get_ref()) {
+        let user_pub_key = match user_pub_key.as_ref() {
+            Some(key) => key,
+            None => internal!("No user public key provided"),
+        };
+
+        if let Err(e) = validate_auth(&request, user_pub_key) {
             unauthorized!(
                 JWTVerificationFailed,
                 &format!("Authentication failed: {e}")
