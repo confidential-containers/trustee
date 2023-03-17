@@ -8,6 +8,7 @@ extern crate anyhow;
 
 use anyhow::{bail, Result};
 use api_server::{attest::AttestVerifier, config::Config, ApiServer};
+use log::warn;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
@@ -47,7 +48,13 @@ struct Cli {
     /// Public key used to authenticate the resource registration endpoint token (JWT).
     /// Only JWTs signed with the corresponding private keys will be authenticated.
     #[arg(long)]
-    auth_public_key: PathBuf,
+    auth_public_key: Option<PathBuf>,
+
+    /// Insecure HTTP Apis.
+    /// WARNING Using this option enables insecure APIs of KBS, such as
+    /// - Resource Registration without verifying the JWK.
+    #[arg(default_value_t = false, short, long)]
+    insecure_api: bool,
 }
 
 #[tokio::main]
@@ -64,6 +71,10 @@ async fn main() -> Result<()> {
         bail!("Missing HTTPS credentials");
     }
 
+    if cli.insecure_api {
+        warn!("insecure apis are enabled.");
+    }
+
     let attestation_service = AttestVerifier::new(&kbs_config).await?;
 
     let api_server = ApiServer::new(
@@ -75,6 +86,7 @@ async fn main() -> Result<()> {
         cli.insecure_http,
         attestation_service,
         cli.timeout,
+        cli.insecure_api,
     )?;
 
     api_server.serve().await.map_err(anyhow::Error::from)

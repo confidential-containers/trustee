@@ -76,11 +76,12 @@ pub struct ApiServer {
     /// This user public key is used to verify the jwt.
     /// The jwt is carried with the POST request for
     /// resource registration
-    user_public_key: PathBuf,
+    user_public_key: Option<PathBuf>,
     certificate: Option<PathBuf>,
     insecure: bool,
     attestation_service: AttestVerifier,
     http_timeout: i64,
+    insecure_api: bool,
 }
 
 impl ApiServer {
@@ -89,11 +90,12 @@ impl ApiServer {
         config: Config,
         sockets: Vec<SocketAddr>,
         private_key: Option<PathBuf>,
-        user_public_key: PathBuf,
+        user_public_key: Option<PathBuf>,
         certificate: Option<PathBuf>,
         insecure: bool,
         attestation_service: AttestVerifier,
         http_timeout: i64,
+        insecure_api: bool,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
             bail!("Missing HTTPS credentials");
@@ -108,6 +110,7 @@ impl ApiServer {
             insecure,
             attestation_service,
             http_timeout,
+            insecure_api,
         })
     }
 
@@ -160,11 +163,22 @@ impl ApiServer {
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
-        let user_public_key_pem = tokio::fs::read_to_string(&self.user_public_key)
-            .await
-            .context("read user public key")?;
-        let user_public_key =
-            Ed25519PublicKey::from_pem(&user_public_key_pem).context("parse user public key")?;
+        let user_public_key = match self.insecure_api {
+            true => None,
+            false => match &self.user_public_key {
+                Some(key_path) => {
+                    let user_public_key_pem = tokio::fs::read_to_string(key_path)
+                        .await
+                        .context("read user public key")?;
+                    let key = Ed25519PublicKey::from_pem(&user_public_key_pem)
+                        .context("parse user public key")?;
+                    Some(key)
+                }
+                None => bail!("no user public key given"),
+            },
+        };
+
+        let insecure_api = self.insecure_api;
 
         let http_server = HttpServer::new(move || {
             App::new()
@@ -174,6 +188,7 @@ impl ApiServer {
                 .app_data(web::Data::new(repository.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
+                .app_data(web::Data::new(insecure_api))
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
                 .service(
