@@ -48,7 +48,7 @@ struct Cli {
     /// Public key used to authenticate the resource registration endpoint token (JWT).
     /// Only JWTs signed with the corresponding private keys will be authenticated.
     #[arg(long)]
-    auth_public_key: PathBuf,
+    auth_public_key: Option<PathBuf>,
 
     /// Insecure HTTP Apis.
     /// WARNING Using this option enables insecure APIs of KBS, such as
