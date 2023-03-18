@@ -5,6 +5,7 @@
 use crate::resource::RepositoryType;
 use anyhow::anyhow;
 use serde::Deserialize;
+use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 
@@ -18,7 +19,7 @@ pub struct Config {
     /// Resource repository description
     /// This is a JSON string,
     /// Various to repository type.
-    pub repository_description: Option<String>,
+    pub repository_description: Option<Value>,
 
     /// OPTIONAL
     /// Remote Attestation Service address.
@@ -63,6 +64,6 @@ impl TryFrom<&Path> for Config {
             .map_err(|e| anyhow!("failed to open KBS config file {}", e.to_string()))?;
 
         serde_json::from_reader::<File, Config>(file)
-            .map_err(|e| anyhow!("failed to parse AS config file {}", e.to_string()))
+            .map_err(|e| anyhow!("failed to parse KBS config file {}", e.to_string()))
     }
 }
