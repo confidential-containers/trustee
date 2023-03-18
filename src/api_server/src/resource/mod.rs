@@ -13,7 +13,7 @@ use local_fs::{LocalFs, LocalFsRepoDesc};
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -55,12 +55,12 @@ pub enum RepositoryType {
 impl RepositoryType {
     pub fn to_repository(
         &self,
-        repo_desc: &Option<String>,
+        repo_desc: &Option<Value>,
     ) -> Result<Arc<RwLock<dyn Repository + Send + Sync>>> {
         match self {
             RepositoryType::LocalFs => {
                 let desc = match repo_desc {
-                    Some(d) => serde_json::from_str::<LocalFsRepoDesc>(d)?,
+                    Some(d) => serde_json::from_value::<LocalFsRepoDesc>(d.clone())?,
                     None => local_fs::LocalFsRepoDesc::default(),
                 };
 
