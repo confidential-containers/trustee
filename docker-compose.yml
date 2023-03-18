@@ -1,0 +1,69 @@
+version: '3.2'
+services:
+  kbs:
+    # build:
+    #   context: .
+    #   dockerfile: ./docker/Dockerfile.grpc-as
+    image: quay.io/confidential-containers/key-broker-service:v0.5.0-rc3
+    command: [
+        "/usr/local/bin/kbs",
+        "--socket",
+        "0.0.0.0:8080",
+        "--config",
+        "/etc/kbs-config.json",
+        "--auth-public-key",
+        "/opt/confidential-containers/kbs/user-keys/public.pub",
+        "--insecure-http"
+      ]
+    restart: always # keep the server running
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
+      - ./config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
+      - ./config/kbs-config.json:/etc/kbs-config.json
+
+  as:
+    image: quay.io/confidential-containers/attestation-service:v0.5.0-tdx-rc0
+    ports:
+    - "50004:50004"
+    restart: always
+    environment:
+      - RUST_LOG=debug
+    volumes:
+    - ./data/attestation-service:/opt/confidential-containers/attestation-service:rw
+    - ./config/as-config.json:/etc/as-config.json:rw
+    command: [
+      "grpc-as",
+      "--socket",
+      "0.0.0.0:50004",
+      "--rvps-address",
+      "http://rvps:50003",
+      "--config",
+      "/etc/as-config.json"
+    ]
+
+  rvps:
+    image: quay.io/confidential-containers/reference-value-provider-service:v0.5.0-rc0
+    restart: always # keep the server running
+    ports:
+      - "50003:50003"
+    volumes:
+      - ./data/reference-values:/opt/confidential-containers/attestation-service/reference_values:rw
+
+  keyprovider:
+    image: quay.io/confidential-containers/coco-keyprovider:v0.5.0-rc3
+    restart: always
+    ports:
+      - "50000:50000"
+    volumes:
+      - ./config/private.key:/etc/private.key
+    command: [
+      "coco_keyprovider",
+      "--socket",
+      "0.0.0.0:50000",
+      "--kbs",
+      "http://kbs:8080",
+      "--auth-private-key",
+      "/etc/private.key"
+    ]

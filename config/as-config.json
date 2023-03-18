@@ -1,0 +1,5 @@
+{
+    "work_dir": "/opt/confidential-containers/attestation-service",
+    "policy_engine": "opa",
+    "rvps_store_type": "LocalFs"
+}
