@@ -242,6 +242,7 @@ pub(crate) async fn set_resource(
         };
 
         if let Err(e) = validate_auth(&request, user_pub_key) {
+            log::error!("auth validate verified failed: {e}");
             unauthorized!(
                 JWTVerificationFailed,
                 &format!("Authentication failed: {e}")
@@ -261,6 +262,9 @@ pub(crate) async fn set_resource(
 
     match set_secret_resource(&repository, resource_description, data.as_ref()).await {
         Ok(_) => HttpResponse::Ok().content_type("application/json").body(""),
-        Err(e) => internal!(format!("Resource registration failed: {e}")),
+        Err(e) => {
+            log::error!("Resource registration failed: {e}");
+            internal!(format!("Resource registration failed: {e}"));
+        }
     }
 }
