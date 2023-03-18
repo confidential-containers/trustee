@@ -53,6 +53,10 @@ docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:native-as kbs -s <IP>:<
 
 **Note**: If needs to verify TDX/SGX evidence using local PCCS (localhost:8081), please add `-p 8081` or directly use `--net host` when deploy KBS with `docker run`.
 
+### Run the KBS cluster
+
+We provide a docker compose script for quickly deploying KBS, AS, RVPS and Keyprovider as a local cluster. Please refer to the [guide](./docs/cluster.md) for a quick start.
+
 ## Attestation
 
 KBS communicate with [Attestation-Service](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
