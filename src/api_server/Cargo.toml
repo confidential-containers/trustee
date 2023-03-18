@@ -9,7 +9,7 @@ edition.workspace = true
 [features]
 default = ["native-as"]
 native-as = ["attestation-service/default"]
-native-as-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-server"]
+native-as-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-native"]
 grpc-as = ["tonic", "tonic-build", "prost"]
 
 [dependencies]
@@ -18,8 +18,8 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "9484f06"}
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "9484f06", optional = true}
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "0f7a70e"}
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "0f7a70e", optional = true}
 base64.workspace = true
 cfg-if = "1.0.0"
 env_logger.workspace = true
