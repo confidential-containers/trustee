@@ -316,15 +316,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ansi_term"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,7 +359,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=9484f06#9484f06f092c603599e04fb3118fb75c22479168"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=0f7a70e#0f7a70e98fc14890f2842dc66222b55ff28e1d99"
 dependencies = [
  "kbs-types 0.1.0",
  "serde",
@@ -411,7 +402,7 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=9484f06#9484f06f092c603599e04fb3118fb75c22479168"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=0f7a70e#0f7a70e98fc14890f2842dc66222b55ff28e1d99"
 dependencies = [
  "anyhow",
  "as-types",
@@ -426,16 +417,15 @@ dependencies = [
  "futures 0.3.27",
  "hex",
  "in-toto",
+ "intel-tee-quote-verification-rs",
  "kbs-types 0.1.0",
  "lazy_static",
  "log",
  "path-clean",
  "prost",
- "ring 0.17.0-not-released-yet",
  "scroll",
  "serde",
  "serde_json",
- "sgx-dcap-quoteverify-rs",
  "sha2",
  "shadow-rs",
  "sled",
@@ -558,14 +548,14 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bindgen"
-version = "0.59.2"
+version = "0.60.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bd2a9a458e8f4304c52c43ebb0cfbd520289f8379a52e329a38afda99bf8eb8"
+checksum = "062dddbc1ba4aca46de6338e2bf87771414c335f7b2f2036e8f3e9befebf88e6"
 dependencies = [
  "bitflags 1.3.2",
  "cexpr",
  "clang-sys",
- "clap 2.34.0",
+ "clap 3.2.23",
  "env_logger 0.9.3",
  "lazy_static",
  "lazycell",
@@ -726,21 +716,6 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
-dependencies = [
- "ansi_term",
- "atty",
- "bitflags 1.3.2",
- "strsim 0.8.0",
- "textwrap 0.11.0",
- "unicode-width",
- "vec_map",
-]
-
-[[package]]
-name = "clap"
 version = "3.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71655c45cb9845d3270c9d6df84ebe72b4dad3c2ba3f7023ad47c144e4e473a5"
@@ -751,9 +726,9 @@ dependencies = [
  "clap_lex 0.2.4",
  "indexmap",
  "once_cell",
- "strsim 0.10.0",
+ "strsim",
  "termcolor",
- "textwrap 0.16.0",
+ "textwrap",
 ]
 
 [[package]]
@@ -767,7 +742,7 @@ dependencies = [
  "clap_lex 0.3.3",
  "is-terminal",
  "once_cell",
- "strsim 0.10.0",
+ "strsim",
  "termcolor",
 ]
 
@@ -1105,7 +1080,7 @@ version = "0.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9b84cfd9b6fa437e498215e5625e9e3ae3bf9bb54d623028a181c40820db169"
 dependencies = [
- "untrusted 0.7.1",
+ "untrusted",
 ]
 
 [[package]]
@@ -1713,7 +1688,7 @@ dependencies = [
  "pem",
  "percent-encoding",
  "rand",
- "ring 0.16.20",
+ "ring",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1721,7 +1696,7 @@ dependencies = [
  "strum_macros",
  "tempfile",
  "thiserror",
- "untrusted 0.7.1",
+ "untrusted",
  "url",
  "walkdir",
 ]
@@ -1752,6 +1727,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "intel-tee-quote-verification-rs"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43439d26af423dceb9a716bc0f2075e9f6fa237cd8b329e941eabb7e0dff6242"
+dependencies = [
+ "intel-tee-quote-verification-sys",
+]
+
+[[package]]
+name = "intel-tee-quote-verification-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89c04fd039b6bbb5ed4e34251d642e0128a082c8ca0a8197106f93130310e07c"
+dependencies = [
+ "bindgen",
 ]
 
 [[package]]
@@ -1910,7 +1903,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 dependencies = [
- "spin 0.5.2",
+ "spin",
 ]
 
 [[package]]
@@ -2668,22 +2661,9 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin 0.5.2",
- "untrusted 0.7.1",
+ "spin",
+ "untrusted",
  "web-sys",
- "winapi",
-]
-
-[[package]]
-name = "ring"
-version = "0.17.0-not-released-yet"
-source = "git+https://github.com/briansmith/ring.git#95948b3977013aed16db92ae32e6b8384496a740"
-dependencies = [
- "cc",
- "getrandom",
- "libc",
- "spin 0.9.6",
- "untrusted 0.9.0",
  "winapi",
 ]
 
@@ -2764,7 +2744,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fff78fc74d175294f4e83b28343315ffcfb114b156f0185e9741cb5570f50e2f"
 dependencies = [
  "log",
- "ring 0.16.20",
+ "ring",
  "sct",
  "webpki",
 ]
@@ -2837,8 +2817,8 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d53dcdb7c9f8158937a7981b48accfd39a43af418591a5d008c7b22b5e1b7ca4"
 dependencies = [
- "ring 0.16.20",
- "untrusted 0.7.1",
+ "ring",
+ "untrusted",
 ]
 
 [[package]]
@@ -2902,22 +2882,6 @@ dependencies = [
  "itoa 1.0.6",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "sgx-dcap-quoteverify-rs"
-version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=85cf8bdd#85cf8bdd393ab273a308be3f41d2f7cc25c0ec0c"
-dependencies = [
- "sgx-dcap-quoteverify-sys",
-]
-
-[[package]]
-name = "sgx-dcap-quoteverify-sys"
-version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=85cf8bdd#85cf8bdd393ab273a308be3f41d2f7cc25c0ec0c"
-dependencies = [
- "bindgen",
 ]
 
 [[package]]
@@ -3038,12 +3002,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
-name = "spin"
-version = "0.9.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5d6e0250b93c8427a177b849d144a96d5acc57006149479403d7861ab721e34"
-
-[[package]]
 name = "spki"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3062,12 +3020,6 @@ dependencies = [
  "base64ct",
  "der 0.6.1",
 ]
-
-[[package]]
-name = "strsim"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "strsim"
@@ -3151,15 +3103,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -3521,12 +3464,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
-name = "untrusted"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
-
-[[package]]
 name = "url"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3552,12 +3489,6 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
@@ -3679,8 +3610,8 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
 dependencies = [
- "ring 0.16.20",
- "untrusted 0.7.1",
+ "ring",
+ "untrusted",
 ]
 
 [[package]]
