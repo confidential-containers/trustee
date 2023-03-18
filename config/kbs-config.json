@@ -1,0 +1,7 @@
+{
+    "repository_type": "LocalFs",
+    "repository_description": {
+        "dir_path": "/opt/confidential-containers/kbs/repository"
+    },
+    "as_addr": "http://as:50004"
+}
