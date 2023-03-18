@@ -8,6 +8,7 @@ use anyhow::*;
 use as_types::AttestationResults;
 use async_trait::async_trait;
 use kbs_types::Tee;
+use log::info;
 use tonic::transport::Channel;
 
 use self::attestation::{
@@ -38,10 +39,15 @@ pub struct Grpc {
 
 impl Grpc {
     pub async fn new(kbs_config: &Config) -> Result<Self> {
-        let as_addr = kbs_config.as_addr.clone().unwrap_or({
-            log::info!("Default remote AS address (127.0.0.1:50004) is used");
-            DEFAULT_AS_ADDR.to_string()
-        });
+        let as_addr = match &kbs_config.as_addr {
+            Some(addr) => addr.clone(),
+            None => {
+                log::info!("Default remote AS address (127.0.0.1:50004) is used");
+                DEFAULT_AS_ADDR.to_string()
+            }
+        };
+
+        info!("connect to remote AS [{as_addr}]");
         let inner = AttestationServiceClient::connect(as_addr).await?;
         Ok(Self { inner })
     }
