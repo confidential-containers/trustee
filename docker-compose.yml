@@ -33,6 +33,7 @@ services:
     volumes:
     - ./data/attestation-service:/opt/confidential-containers/attestation-service:rw
     - ./config/as-config.json:/etc/as-config.json:rw
+    - ./config/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf:rw
     command: [
       "grpc-as",
       "--socket",
