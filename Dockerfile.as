@@ -13,7 +13,7 @@ RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz && \
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-RUN apt-get update && apt install -y protobuf-compiler
+RUN apt-get update && apt install -y protobuf-compiler clang
 
 # Install TDX Build Dependencies
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
@@ -21,7 +21,7 @@ RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key 
     apt-get update && apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
 # Build and Instll gRPC attestation-service
-RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rvps-grpc tokio/rt-multi-thread" --path .
+RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rvps-grpc tokio/rt-multi-thread all-verifier" --path .
 
 
 FROM ubuntu:20.04
