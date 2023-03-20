@@ -45,7 +45,7 @@ impl AttestVerifier {
                 } else if #[cfg(feature = "grpc-as")] {
                     Arc::new(Mutex::new(grpc::Grpc::new(kbs_config).await?))
                 } else {
-                    compile_error!("At last one feature of `native-as`, `native-as-no-verifier`, and `grpc-as` must be enabled.");
+                    compile_error!("Please enable at least one of the following features: `native-as`, `native-as-no-verifier`, or `grpc-as` to continue.");
                 }
             }
         };
