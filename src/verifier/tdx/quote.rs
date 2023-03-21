@@ -1,10 +1,15 @@
 use anyhow::{anyhow, bail, Result};
 use core::fmt;
+use qvl::{
+    sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
+    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
+};
 use scroll::Pread;
 use std::convert::TryInto;
-use std::time::SystemTime;
+use std::mem;
+use std::time::{Duration, SystemTime};
 
-use sgx_dcap_quoteverify_rs as qvl;
+use intel_tee_quote_verification_rs as qvl;
 
 pub const QUOTE_PAYLOAD_SIZE: usize = 632;
 
@@ -147,84 +152,97 @@ pub fn parse_tdx_quote(quote_bin: &[u8]) -> Result<Quote> {
 }
 
 pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
-    let mut supplemental_data_size = 0u32;
-    let mut supplemental_data: qvl::sgx_ql_qv_supplemental_t = unsafe { std::mem::zeroed() }; // mem::zeroed() is safe as long as the struct doesn't have zero-invalid types, like pointers
-    let mut quote_verification_result = qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_UNSPECIFIED;
-    let mut collateral_expiration_status = 1u32;
-
-    // call DCAP quote verify library to get supplemental data size
-    let dcap_ret = qvl::sgx_qv_get_quote_supplemental_data_size(&mut supplemental_data_size);
-    if qvl::quote3_error_t::SGX_QL_SUCCESS == dcap_ret
-        && std::mem::size_of::<qvl::sgx_ql_qv_supplemental_t>() as u32 == supplemental_data_size
-    {
-        debug!("\tInfo: TDX: sgx_qv_get_quote_supplemental_data_size successfully returned.");
-    } else {
-        if dcap_ret != qvl::quote3_error_t::SGX_QL_SUCCESS {
-            bail!(
-                "\tError: TDX: sgx_qv_get_quote_supplemental_data_size failed: {:#04x}",
-                dcap_ret as u32
-            );
-        }
-
-        supplemental_data_size = 0u32;
-    }
-
-    // Set current time.
-    // This is the date that will be used to determine if any of the inputted collateral have expired.
-    let current_time: i64 = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)?
-        .as_secs()
-        .try_into()?;
-
-    let p_supplemental_data = match supplemental_data_size {
-        0 => None,
-        _ => Some(&mut supplemental_data),
+    let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
+    let mut supp_data_desc = tee_supp_data_descriptor_t {
+        major_version: 0,
+        data_size: 0,
+        p_data: &mut supp_data as *mut sgx_ql_qv_supplemental_t as *mut u8,
     };
 
-    // Call DCAP quote verify library for quote verification
-    let dcap_ret = qvl::tdx_qv_verify_quote(
-        quote,
-        None,
-        current_time,
-        &mut collateral_expiration_status,
-        &mut quote_verification_result,
-        None,
-        supplemental_data_size,
-        p_supplemental_data,
-    );
-    if qvl::quote3_error_t::SGX_QL_SUCCESS == dcap_ret {
-        debug!("\tInfo: TDX: sgx_qv_verify_quote successfully returned.");
-    } else {
-        return Err(anyhow!(
-            "\tError: TDX: sgx_qv_verify_quote failed: {:#04x}",
-            dcap_ret as u32
-        ));
+    match tee_get_supplemental_data_version_and_size(quote) {
+        Ok((supp_ver, supp_size)) => {
+            if supp_size == mem::size_of::<sgx_ql_qv_supplemental_t>() as u32 {
+                debug!("tee_get_quote_supplemental_data_version_and_size successfully returned.");
+                debug!(
+                    "Info: latest supplemental data major version: {}, minor version: {}, size: {}",
+                    u16::from_be_bytes(supp_ver.to_be_bytes()[..2].try_into()?),
+                    u16::from_be_bytes(supp_ver.to_be_bytes()[2..].try_into()?),
+                    supp_size,
+                );
+                supp_data_desc.data_size = supp_size;
+            } else {
+                warn!("Quote supplemental data size is different between DCAP QVL and QvE, please make sure you installed DCAP QVL and QvE from same release.")
+            }
+        }
+        Err(e) => bail!(
+            "tee_get_quote_supplemental_data_size failed: {:#04x}",
+            e as u32
+        ),
     }
 
+    // get collateral
+    let _collateral = match tee_qv_get_collateral(quote) {
+        Ok(c) => {
+            debug!("tee_qv_get_collateral successfully returned.");
+            Some(c)
+        }
+        Err(e) => {
+            warn!("tee_qv_get_collateral failed: {:#04x}", e as u32);
+            None
+        }
+    };
+
+    let p_collateral: Option<&[u8]> = None;
+
+    // set current time. This is only for sample purposes, in production mode a trusted time should be used.
+    //
+    let current_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_secs() as i64;
+
+    let p_supplemental_data = match supp_data_desc.data_size {
+        0 => None,
+        _ => Some(&mut supp_data_desc),
+    };
+
+    // call DCAP quote verify library for quote verification
+    let (collateral_expiration_status, quote_verification_result) =
+        tee_verify_quote(quote, p_collateral, current_time, None, p_supplemental_data)
+            .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
+
+    debug!("tee_verify_quote successfully returned.");
+
+    // check verification result
     match quote_verification_result {
-        qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => Ok(()),
-        qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED => {
+        sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => {
+            // check verification collateral expiration status
+            // this value should be considered in your own attestation/verification policy
+            if collateral_expiration_status == 0 {
+                debug!("Verification completed successfully.");
+            } else {
+                warn!("Verification completed, but collateral is out of date based on 'expiration_check_date' you provided.");
+            }
+        }
+        sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED
+        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE
+        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED
+        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED
+        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED => {
             warn!(
-                "\tWarning: TDX: Quote Verification completed with Non-terminal result: {:x}",
+                "Verification completed with Non-terminal result: {:x}",
                 quote_verification_result as u32
             );
-            Ok(())
         }
-        qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_INVALID_SIGNATURE
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_REVOKED
-        | qvl::sgx_ql_qv_result_t::SGX_QL_QV_RESULT_UNSPECIFIED => Err(anyhow!(
-            "\tTDX: Quote Verification completed with Terminal result: {:x}",
-            quote_verification_result as u32
-        )),
-        _ => Err(anyhow!(
-            "\tTDX: Quote Verification Unknown Error: {:x}",
-            quote_verification_result as u32
-        )),
+        _ => {
+            bail!(
+                "Verification completed with Terminal result: {:x}",
+                quote_verification_result as u32
+            );
+        }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -246,8 +264,8 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_verify_tdx_quote() {
-        let quote_bin = fs::read("test_data/tdx_quote_4.dat").unwrap();
-
-        assert!(ecdsa_quote_verification(quote_bin.as_slice()).await.is_ok());
+        let quote_bin = fs::read("test_data/quote.dat").unwrap();
+        let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
+        assert!(res.is_ok(), "error");
     }
 }
