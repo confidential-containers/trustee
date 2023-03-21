@@ -27,12 +27,14 @@ RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rv
 FROM ubuntu:20.04
 
 # Install TDX Runtime Dependencies
-RUN apt-get update && apt-get install curl gnupg -y
+RUN apt-get update && apt-get install curl gnupg -y && \
+    rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
     echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
-    apt-get install -y libtdx-attest libsgx-dcap-default-qpl libsgx-dcap-quote-verify
+    apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
+    rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 COPY --from=builder /usr/local/cargo/bin/grpc-as /usr/local/bin/grpc-as
 
