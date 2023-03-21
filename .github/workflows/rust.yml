@@ -37,6 +37,11 @@ jobs:
       run: |
         sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
 
+    - name: Install TPM dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtss2-dev
+
     - name: Install TDX dependencies
       run: |
         sudo curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -

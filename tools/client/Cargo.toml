@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-attestation_agent = { git = "https://github.com/confidential-containers/attestation-agent", rev = "d7ace56" }
+# TODO: update to attestation-agent rev=v0.6.0 once released
+attestation_agent = { git = "https://github.com/confidential-containers/attestation-agent", rev = "447172a" }
 anyhow.workspace = true
 api-server.workspace = true
 clap = { version = "4.0.29", features = ["derive"] }
