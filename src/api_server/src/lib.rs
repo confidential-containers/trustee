@@ -22,13 +22,15 @@ use anyhow::{anyhow, bail, Context, Result};
 use attest::AttestVerifier;
 use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
-use rustls::{server::ServerConfig, Certificate, PrivateKey};
-use rustls_pemfile::{certs, read_one, Item};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use std::fs::File;
-use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+
+#[cfg(feature = "rustls")]
+use rustls::ServerConfig;
+
+#[cfg(feature = "openssl")]
+use openssl::ssl::SslAcceptorBuilder;
 
 use crate::session::SessionMap;
 
@@ -114,7 +116,13 @@ impl ApiServer {
         })
     }
 
+    #[cfg(feature = "rustls")]
     fn tls_config(&self) -> Result<ServerConfig> {
+        use rustls::{Certificate, PrivateKey};
+        use rustls_pemfile::{certs, read_one, Item};
+        use std::fs::File;
+        use std::io::BufReader;
+
         let cert_file = &mut BufReader::new(File::open(
             self.certificate
                 .clone()
@@ -144,6 +152,27 @@ impl ApiServer {
             .with_no_client_auth()
             .with_single_cert(cert_chain, key)
             .map_err(anyhow::Error::from)
+    }
+
+    #[cfg(feature = "openssl")]
+    fn tls_config(&self) -> Result<SslAcceptorBuilder> {
+        use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+
+        let cert_file = self
+            .certificate
+            .clone()
+            .ok_or_else(|| anyhow!("Missing certificate"))?;
+
+        let key_file = self
+            .private_key
+            .clone()
+            .ok_or_else(|| anyhow!("Missing private key"))?;
+
+        let mut builder = SslAcceptor::mozilla_modern(SslMethod::tls())?;
+        builder.set_private_key_file(key_file, SslFiletype::PEM)?;
+        builder.set_certificate_chain_file(cert_file)?;
+
+        Ok(builder)
     }
 
     /// Start the HTTP server and serve API requests.
@@ -202,12 +231,17 @@ impl ApiServer {
         });
 
         if !self.insecure {
-            let tls_config = self.tls_config()?;
-            http_server
-                .bind_rustls(&self.sockets[..], tls_config)?
-                .run()
-                .await
-                .map_err(anyhow::Error::from)
+            let tls_server = {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "openssl")] {
+                        http_server.bind_openssl(&self.sockets[..], self.tls_config()?)?
+                    } else {
+                        http_server.bind_rustls(&self.sockets[..], self.tls_config()?)?
+                    }
+                }
+            };
+
+            tls_server.run().await.map_err(anyhow::Error::from)
         } else {
             http_server
                 .bind(&self.sockets[..])?

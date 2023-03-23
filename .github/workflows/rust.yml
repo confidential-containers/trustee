@@ -46,7 +46,10 @@ jobs:
 
     - name: Build
       run: make kbs
-    
+
+    - name: build KBS with openssl
+      run: make kbs-native-as-openssl
+
     - name: build KBS with remote AS mode
       run: make kbs-grpc-as
 
