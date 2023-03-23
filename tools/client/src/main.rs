@@ -14,10 +14,14 @@ const CC_KBC_NAME: &str = "cc_kbc";
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// KBS Resource URi. e.g: kbs://127.0.0.1:8080/my_repo/resource_type/123abc
+    /// KBS URI e.g https://127.0.0.1:8080
+    #[arg(required = true, long)]
+    kbs_uri: String,
+
+    /// KBS Resource path, e.g /my_repo/resource_type/123abc
     /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
     #[arg(required = true, long)]
-    resource_uri: String,
+    resource_path: String,
 }
 
 #[tokio::main]
@@ -29,7 +33,7 @@ async fn main() -> Result<()> {
     let mut attestation_agent = AttestationAgent::new();
 
     let resource_byte = attestation_agent
-        .download_confidential_resource(CC_KBC_NAME, &cli.resource_uri)
+        .download_confidential_resource(CC_KBC_NAME, &cli.resource_path, &cli.kbs_uri)
         .await?;
 
     println!("Resource: {:?}", &resource_byte);
