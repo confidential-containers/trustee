@@ -3,7 +3,7 @@ kbs:
 	cargo build
 
 .PHONY: kbs-native-as
-kbs:
+kbs-native-as:
 	cargo build --no-default-features --features native-as
 
 .PHONY: kbs-grpc-as
