@@ -14,10 +14,8 @@ For help:
 Request resource from KBS:
 
 ```shell
-./client --resource-uri kbs://127.0.0.1:8080/<repository>/<type>/<tag>
+./client --kbs-uri https://127.0.0.1:8080 --resource-path /<repository>/<type>/<tag>
 ```
-
-Where the format of [KBS Resource URI](https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md) is defined by Attestation Agent.
 
 Make sure this client run inside a real TEE which [Attestation Agent](https://github.com/confidential-containers/attestation-agent) supported (otherwise attestation will failed).
 
