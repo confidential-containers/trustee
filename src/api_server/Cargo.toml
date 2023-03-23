@@ -42,7 +42,7 @@ tonic = { version = "0.8", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 
 [dev-dependencies]
-tempfile.dev-workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
 anyhow = "1"
