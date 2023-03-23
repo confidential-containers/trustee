@@ -28,7 +28,8 @@ RUN apt-get update
 RUN apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
 # Build and Instll KBS
-RUN cargo install --path src/kbs
+ARG KBS_FEATURES=native-as,rustls
+RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES}
 
 
 FROM debian:stable-slim

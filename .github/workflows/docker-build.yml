@@ -15,4 +15,5 @@ jobs:
     - name: Build Container Image
       run: |
         DOCKER_BUILDKIT=1 docker build -t kbs:native-as . -f docker/Dockerfile; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:native-as-openssl --build-arg KBS_FEATURES=native-as,openssl . -f docker/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:grpc-as . -f docker/Dockerfile.grpc-as

@@ -7,10 +7,12 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["native-as"]
+default = ["native-as", "rustls"]
 native-as = ["api-server/native-as"]
 native-as-no-verifier = ["api-server/native-as-no-verifier"]
 grpc-as = ["api-server/grpc-as"]
+rustls = ["api-server/rustls"]
+openssl = ["api-server/openssl"]
 
 [dependencies]
 anyhow.workspace = true
