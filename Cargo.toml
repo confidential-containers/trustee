@@ -17,6 +17,4 @@ env_logger = "0.10.0"
 log = "0.4.17"
 serde_json = "1.0.89"
 tokio = { version = "1.23.0", features = ["full"] }
-
-[workspace.dev-dependencies]
 tempfile = "3.4.0"
