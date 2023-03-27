@@ -10,7 +10,6 @@ use aes_gcm::{
 use anyhow::{anyhow, Result};
 use kbs_types::{Response, TeePubKey};
 use local_fs::{LocalFs, LocalFsRepoDesc};
-use num_traits::Num;
 use rsa::{BigUint, PaddingScheme, PublicKey, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -105,10 +104,10 @@ pub(crate) async fn get_secret_resource(
         .encrypt(nonce, resource_byte.as_slice())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {:?}", e))?;
 
-    let n = BigUint::from_str_radix(&tee_pub_key.k_mod, 10)
-        .map_err(|e| anyhow!("Parse TEE pubkey modulus failed: {:?}", e))?;
-    let e = BigUint::from_str_radix(&tee_pub_key.k_exp, 10)
-        .map_err(|e| anyhow!("Parse TEE pubkey exponent failed: {:?}", e))?;
+    let k_mod = base64::decode(&tee_pub_key.k_mod)?;
+    let n = BigUint::from_bytes_be(&k_mod);
+    let k_exp = base64::decode(&tee_pub_key.k_exp)?;
+    let e = BigUint::from_bytes_be(&k_exp);
 
     let rsa_pub_key = RsaPublicKey::new(n, e)
         .map_err(|e| anyhow!("Building RSA key from modulus and exponent failed: {:?}", e))?;

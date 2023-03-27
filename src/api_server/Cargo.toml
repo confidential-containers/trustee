@@ -18,8 +18,8 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "0f7a70e"}
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "0f7a70e", optional = true}
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "a70c502"}
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "a70c502", optional = true}
 base64.workspace = true
 cfg-if = "1.0.0"
 env_logger.workspace = true
@@ -40,7 +40,6 @@ strum_macros = "0.24.1"
 tokio.workspace = true
 tonic = { version = "0.8", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
-num-traits = "0.2.15"
 
 [dev-dependencies]
 tempfile.workspace = true
