@@ -38,7 +38,8 @@ impl Verifier for Tdx {
 
         let mut hasher = Sha384::new();
         hasher.update(&nonce);
-        hasher.update(&attestation.tee_pubkey.k);
+        hasher.update(&attestation.tee_pubkey.k_mod);
+        hasher.update(&attestation.tee_pubkey.k_exp);
         let mut hash_of_nonce_pubkey = hasher.finalize().to_vec();
         hash_of_nonce_pubkey.extend([0; 16]);
 
