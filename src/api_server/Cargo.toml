@@ -24,7 +24,7 @@ base64.workspace = true
 cfg-if = "1.0.0"
 env_logger.workspace = true
 jwt-simple = "0.11.4"
-kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
+kbs-types = "0.2"
 lazy_static = "1.4.0"
 log.workspace = true
 prost = { version = "0.11", optional = true }
@@ -40,6 +40,7 @@ strum_macros = "0.24.1"
 tokio.workspace = true
 tonic = { version = "0.8", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
+num-traits = "0.2.15"
 
 [dev-dependencies]
 tempfile.workspace = true
