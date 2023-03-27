@@ -10,8 +10,8 @@ use aes_gcm::{
 use anyhow::{anyhow, Result};
 use kbs_types::{Response, TeePubKey};
 use local_fs::{LocalFs, LocalFsRepoDesc};
-use rsa::pkcs8::DecodePublicKey;
-use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
+use num_traits::Num;
+use rsa::{BigUint, PaddingScheme, PublicKey, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::fs;
@@ -22,7 +22,6 @@ use tokio::sync::RwLock;
 
 mod local_fs;
 
-const RSA_KEY_TYPE: &str = "RSA";
 const RSA_ALGORITHM: &str = "RSA1_5";
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
@@ -85,7 +84,7 @@ pub(crate) async fn get_secret_resource(
     repository: &Arc<RwLock<dyn Repository + Send + Sync>>,
     resource_desc: ResourceDesc,
 ) -> Result<Response> {
-    if !(tee_pub_key.kty == *RSA_KEY_TYPE || tee_pub_key.alg == *RSA_ALGORITHM) {
+    if tee_pub_key.alg != *RSA_ALGORITHM {
         return Err(anyhow!("Unsupported TEE Pub Key type or algorithm"));
     }
 
@@ -106,8 +105,13 @@ pub(crate) async fn get_secret_resource(
         .encrypt(nonce, resource_byte.as_slice())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {:?}", e))?;
 
-    let rsa_pub_key = RsaPublicKey::from_public_key_pem(&tee_pub_key.k)
-        .map_err(|e| anyhow!("Parse TEE pubkey PEM failed: {:?}", e))?;
+    let n = BigUint::from_str_radix(&tee_pub_key.k_mod, 10)
+        .map_err(|e| anyhow!("Parse TEE pubkey modulus failed: {:?}", e))?;
+    let e = BigUint::from_str_radix(&tee_pub_key.k_exp, 10)
+        .map_err(|e| anyhow!("Parse TEE pubkey exponent failed: {:?}", e))?;
+
+    let rsa_pub_key = RsaPublicKey::new(n, e)
+        .map_err(|e| anyhow!("Building RSA key from modulus and exponent failed: {:?}", e))?;
     let padding = PaddingScheme::new_pkcs1v15_encrypt();
     let sym_key: &[u8] = aes_sym_key.as_slice();
     let wrapped_sym_key = rsa_pub_key
