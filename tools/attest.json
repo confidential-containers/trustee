@@ -1,8 +1,8 @@
 {
-    "tee-pubkey": {
-	"kty": "key_type",
-	"alg": "algorithm",
-	"k": "my_key"
-    },
-    "tee-evidence": "my_evidence"
+  "tee-pubkey": {
+    "alg": "algorithm",
+    "k-mod": "my_modulus",
+    "k-exp": "my_exponent"
+  },
+  "tee-evidence": "my_evidence"
 }
