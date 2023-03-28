@@ -326,21 +326,21 @@ components:
 
     PublicKey:
       required:
-        - kty
         - alg
-        - k
+        - k-mod
+        - k-exp
       properties:
-        kty:
-          type: string
-          description: Key type
         alg:
           type: string
           description: Key Algorithm
-        k:
+        k-mod:
           type: string
-          description: Key data
+          description: Key modulus
+        k-exp:
+          type: string
+          description: Key exponent
       description: >-
-        A JSON Web Key (https://www.rfc-editor.org/rfc/rfc7517) formatted object.
+        A JSON Web Key (https://www.rfc-editor.org/rfc/rfc7517) formatted RSA Public Key.
 
     ErrorInformation:
       required:
