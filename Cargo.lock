@@ -440,7 +440,7 @@ dependencies = [
 [[package]]
 name = "attestation_agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent#42a8756be6c21cce57c9bc6ff2e56d17ced650aa"
+source = "git+https://github.com/confidential-containers/attestation-agent?rev=1e638c7#1e638c7854a82dceb6a41ae153ac381e63d7933d"
 dependencies = [
  "aes-gcm",
  "anyhow",
