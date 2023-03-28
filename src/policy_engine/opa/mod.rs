@@ -56,19 +56,19 @@ impl PolicyEngine for OPA {
             .map_err(|e| anyhow!("Read OPA policy file failed: {:?}", e))?;
 
         let policy_go = GoString {
-            p: policy.as_ptr() as *const i8,
+            p: policy.as_ptr() as *const c_char,
             n: policy.len() as isize,
         };
 
         let reference = serde_json::json!({ "reference": reference_data_map }).to_string();
 
         let reference_go = GoString {
-            p: reference.as_ptr() as *const i8,
+            p: reference.as_ptr() as *const c_char,
             n: reference.len() as isize,
         };
 
         let input_go = GoString {
-            p: input.as_ptr() as *const i8,
+            p: input.as_ptr() as *const c_char,
             n: input.len() as isize,
         };
 
