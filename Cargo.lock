@@ -399,11 +399,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/confidential-containers/attestation-service.git?rev=a70c502#a70c5025c6bc896484e5877a41adfe0fe520f9ba"
-=======
-source = "git+https://github.com/mkulke/attestation-service.git?rev=2325a1e#2325a1e778faae3709450d93258c82784603a9fe"
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 dependencies = [
  "kbs-types",
  "serde",
@@ -440,21 +436,13 @@ checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/confidential-containers/attestation-service.git?rev=a70c502#a70c5025c6bc896484e5877a41adfe0fe520f9ba"
-=======
-source = "git+https://github.com/mkulke/attestation-service.git?rev=2325a1e#2325a1e778faae3709450d93258c82784603a9fe"
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 dependencies = [
  "anyhow",
  "as-types",
@@ -492,11 +480,7 @@ dependencies = [
 [[package]]
 name = "attestation_agent"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/confidential-containers/attestation-agent?rev=d7ace56#d7ace56f2f2c861669ab07b50598a3d3c22709af"
-=======
-source = "git+https://github.com/mkulke/attestation-agent?rev=17517d8#17517d857d2d3f511f64b9aa4dc586d0c892e721"
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -783,23 +767,12 @@ dependencies = [
 
 [[package]]
 name = "clap"
-<<<<<<< HEAD
 version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6efb5f0a41b5ef5b50c5da28c07609c20091df0c1fc33d418fa2a7e693c2b624"
 dependencies = [
  "clap_builder",
  "clap_derive 4.2.0",
-=======
-version = "4.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c911b090850d79fc64fe9ea01e28e465f65e821e08813ced95bced72f7a8a9b"
-dependencies = [
- "bitflags",
- "clap_derive 4.1.12",
- "clap_lex 0.3.3",
- "is-terminal",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
  "once_cell",
 ]
 
@@ -838,11 +811,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
@@ -867,11 +836,7 @@ dependencies = [
  "anyhow",
  "api-server",
  "attestation_agent",
-<<<<<<< HEAD
  "clap 4.2.0",
-=======
- "clap 4.1.13",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
  "env_logger 0.10.0",
  "log",
  "tokio",
@@ -1103,11 +1068,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "scratch",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
@@ -1124,11 +1085,7 @@ checksum = "2345488264226bf682893e25de0769f3360aac9957980ec49361b083ddaa5bc5"
 dependencies = [
  "proc-macro2",
  "quote",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
@@ -1965,11 +1922,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api-server",
-<<<<<<< HEAD
  "clap 4.2.0",
-=======
- "clap 4.1.13",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
  "env_logger 0.10.0",
  "log",
  "tokio",
@@ -2675,7 +2628,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
 dependencies = [
  "bitflags",
-<<<<<<< HEAD
 ]
 
 [[package]]
@@ -2685,8 +2637,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
 dependencies = [
  "bitflags",
-=======
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
@@ -2964,11 +2914,7 @@ checksum = "4c614d17805b093df4b147b51339e7e44bf05ef59fba1e45d83500bcfb4d8585"
 dependencies = [
  "proc-macro2",
  "quote",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]
@@ -3178,15 +3124,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-<<<<<<< HEAD
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21e3787bb71465627110e7d87ed4faaa36c1f61042ee67badb9e2ef173accc40"
-=======
-version = "2.0.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aad1363ed6d37b84299588d62d3a7d95b5a5c2d9aad5c85609fda12afaa1f40"
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3244,11 +3184,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
-<<<<<<< HEAD
  "syn 2.0.11",
-=======
- "syn 2.0.10",
->>>>>>> Bump AA/AS deps temporarily to version w/ updated kbs-types
 ]
 
 [[package]]

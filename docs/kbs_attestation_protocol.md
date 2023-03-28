@@ -247,11 +247,14 @@ The [`Attestation`](#attestation) and the [Token Resource](#token-resource)
 `tee-pubkey` field contains a public key from a HW-TEE generated asymmetric
 key pair.
 
+This field follows the [JSON Web Key](https://www.rfc-editor.org/rfc/rfc7517)
+format.
+
 ``` json
 {
     "alg": "$key_algorithm",
-    "k_mod": "$pubkey modulus",
-    "k_exp": "$pubkey exponent"
+    "k-mod": "$pubkey modulus",
+    "k-exp": "$pubkey exponent"
 }
 ```
 
