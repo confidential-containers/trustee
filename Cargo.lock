@@ -399,7 +399,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=a70c502#a70c5025c6bc896484e5877a41adfe0fe520f9ba"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=57c55db#57c55db82ed2bd11b60703a687a1eeeeb015f147"
 dependencies = [
  "kbs-types",
  "serde",
@@ -442,7 +442,7 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=a70c502#a70c5025c6bc896484e5877a41adfe0fe520f9ba"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=57c55db#57c55db82ed2bd11b60703a687a1eeeeb015f147"
 dependencies = [
  "anyhow",
  "as-types",
