@@ -128,7 +128,7 @@ fn verify_snp_report(report: &HclReportWithRuntimeData) -> Result<()> {
     snp_report.validate(&vcek)?;
 
     if snp_report.vmpl != HCL_VMPL_VALUE {
-        return Err(anyhow!("VMPL of SNP report is not 0"));
+        return Err(anyhow!("VMPL of SNP report is not {HCL_VMPL_VALUE}"));
     }
 
     Ok(())
