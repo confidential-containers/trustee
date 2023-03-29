@@ -4,7 +4,7 @@ services:
     # build:
     #   context: .
     #   dockerfile: ./docker/Dockerfile.grpc-as
-    image: quay.io/confidential-containers/key-broker-service:v0.5.0-rc3
+    image: quay.io/confidential-containers/key-broker-service:v0.5.0-rc4
     command: [
         "/usr/local/bin/kbs",
         "--socket",
@@ -24,12 +24,10 @@ services:
       - ./config/kbs-config.json:/etc/kbs-config.json
 
   as:
-    image: quay.io/confidential-containers/attestation-service:v0.5.0-tdx-rc0
+    image: quay.io/confidential-containers/attestation-service:v0.5.0-tdx-rc1
     ports:
     - "50004:50004"
     restart: always
-    environment:
-      - RUST_LOG=debug
     volumes:
     - ./data/attestation-service:/opt/confidential-containers/attestation-service:rw
     - ./config/as-config.json:/etc/as-config.json:rw
