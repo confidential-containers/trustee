@@ -20,83 +20,122 @@ The KBS implements and supports a simple, vendor and hardware-agnostic
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
 This API is formally described in its [OpenAPI formatted specification](docs/kbs.yaml).
 
+## Attestation
+
+KBS relies on the [Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service)
+to verify the TEE Evidence.
+
+KBS can either integrate the AS as a dependent crate, or as a separated `gRPC`
+service. This integration interface is defined by the KBS `native-as` feature.
+
+### Integrated Attestation Service
+
+By default, KBS will integrate the Attestation Service as a crate.
+This can be build with:
+
+``` shell
+cargo build
+```
+
+or with the default Makefile target:
+
+``` shell
+make
+```
+
+The integrated Attestation Service configuration file can be provided at
+runtime through the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs),
+by using the `--config` command line option.
+
+### `gRPC` Attestation Service
+
+In some cases, it is preferable to deploy the Attestation Service as a separate
+(local or remote) service. KBS supports that model by using the AS `gRPC`
+interface, with the `grpc-as` Cargo feature.
+
+This can be built with:
+
+``` shell
+cargo build --no-default-features --features grpc-as
+```
+
+or with the corresponding Makefile target:
+
+``` shell
+make kbs-grpc-as
+```
+
+The AS `gRPC` address can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs),
+and by default KBS will try to reach a locally running AS at `127.0.0.1:50004`.
+
+## Resource Repository
+
+KBS stores confidential resources through a `Repository` abstraction specified
+by a Rust trait. The `Repository` interface can be implemented for different
+storage backends like e.g. databases or local file systems.
+
+The [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs)
+defined which resource repository backend KBS will use. The default is the local
+file system.
+
+### Local File System Repository
+
+With the local file system `Repository` default implementation, each resource
+file maps to a KBS resource URL. The file path to URL conversion scheme is
+defined below:
+
+| Resource File Path  | Resource URL |
+| ------------------- | -------------- |
+| `file://<$(KBS_REPOSITORY_DIR)>/<repository_name>/<type>/<tag>`  |  `https://<kbs_address>/kbs/v0/resource/<repository_name>/<type>/<tag>`  |
+
+The KBS root file system resource path is specified in the KBS config file
+as well, and the default value is `/opt/confidential-containers/kbs/repository`.
+
 ## Usage
 
 ### Build and Run
 
-Start KBS and specify the address it listens to (take `127.0.0.1:8080` as an example):
+Start KBS and specify the `HTTPS` address it should listen to with `--socket`.
+When using `HTTPS`, a private key and a certificate must be provided as well:
 
 ```shell
 make kbs
-./target/debug/kbs --socket 127.0.0.1:8080
+./target/debug/kbs --private-key key.pem --certificate cert.pem --socket https://127.0.0.1:8080
 ```
 
-A custom, [JSON-formatted configuration file](src/config.rs) can be used:
+KBS can also run in insecure mode, through `HTTP`. This is targeted for
+development purposes and should not be used in production.
+
+A custom, [JSON-formatted configuration file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs)
+can also be provided:
 
 ```shell
-./target/debug/kbs --socket 127.0.0.1:8080 --config /path/to/config.json
+./target/debug/kbs --private-key key.pem --certificate cert.pem --socket https://127.0.0.1:8080 --config /path/to/config.json
 ```
 
 ### Build and Deploy with Container
 
-Build Container image:
+Build the KBS container image:
 
 ```shell
 DOCKER_BUILDKIT=1 docker build -t kbs:native-as . -f docker/Dockerfile
 ```
 
-Quick Deploy KBS with Native AS:
+Deploy KBS with the integrated Attestation Service:
 
 ```shell
 docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:native-as kbs -s <IP>:<PORT>
 ```
 
-**Note**: If needs to verify TDX/SGX evidence using local PCCS (localhost:8081), please add `-p 8081` or directly use `--net host` when deploy KBS with `docker run`.
+**Note**: When relying on a local Provisioning Certificate Caching Service (PCCS)
+for verifying a TDX or SGX Evidence, the PCCS local port must be passed to
+the above described `docker run` command through the `-p` option. Using
+`--net host` will work as well for that use case.
 
-### Run the KBS cluster
+### KBS cluster
 
-We provide a docker compose script for quickly deploying KBS, AS, RVPS and Keyprovider as a local cluster. Please refer to the [guide](./docs/cluster.md) for a quick start.
-
-## Attestation
-
-KBS communicate with [Attestation-Service](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
-KBS supports communication with AS in two ways, which is determined by the compilation option.
-
-#### Native AS mode
-
-KBS integrates AS library crate, this is the default attestation mode. Build with:
-
-```shell
-make kbs-native-as
-# Or directly:
-make kbs
-```
-Native AS config file path can be specified in KBS config file.
-
-#### Remote AS mode
-
-KBS connects remote gRPC AS server to verify TEE evidence. In this mode, a standalone AS server should be running.
-Build with:
-```
-make kbs-grpc-as
-```
-Remote AS address can be specified in KBS config file, default address is `127.0.0.1:50004`.
-
-## Resource Repository
-
-Resource Repository is the storage module of KBS, which is used to manage and store confidential resources.
-KBS supports a variety of repository implementations, such as database or local file system.
-
-Which resource repository implementation to use is specified by config at startup (the default is the local file system)
-
-### Local File System Repository
-
-Resource files path map to a KBS resource URLs, as follows:
-| Resource File Path  | Resource URL |
-| ------------------- | -------------- |
-| `file://<$(KBS_REPOSITORY_DIR)>/<repository_name>/<type>/<tag>`  |  `http://<kbs_address>/kbs/v0/resource/<repository_name>/<type>/<tag>`  |
-
-The KBS repository directory is specified in config file (if repository type is local file system).
-The default KBS repository directory is `/opt/confidential-containers/kbs/repository`.
-
+We provide a `docker compose` script for quickly deploying the KBS, the
+Attestation Service, the Reference Value Provider and the Key Provider
+as local cluster services. Please refer to the [Cluster Guide](./docs/cluster.md)
+for a quick start.
 
