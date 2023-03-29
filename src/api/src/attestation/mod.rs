@@ -13,6 +13,9 @@ use tokio::sync::Mutex;
 #[cfg(feature = "coco-as")]
 mod coco;
 
+#[cfg(feature = "amber-as")]
+pub mod amber;
+
 /// Interface for Attestation Services.
 ///
 /// Attestation Service implementations should implement this interface.
@@ -45,8 +48,10 @@ impl AttestationService {
                     Arc::new(Mutex::new(coco::builtin::Native::new(&kbs_config.as_config_file_path)?))
                 } else if #[cfg(feature = "coco-as-grpc")] {
                     Arc::new(Mutex::new(coco::grpc::Grpc::new(kbs_config).await?))
+                } else if #[cfg(feature = "amber-as")] {
+                    Arc::new(Mutex::new(amber::Amber::new(&kbs_config.amber)?))
                 } else {
-                    compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, or `coco-as-grpc` to continue.");
+                    compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, `coco-as-grpc` or `amber-as` to continue.");
                 }
             }
         };
