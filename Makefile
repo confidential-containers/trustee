@@ -26,6 +26,14 @@ kbs-coco-as-grpc-openssl:
 kbs-coco-as-no-verifier-openssl:
 	cargo build --no-default-features --features coco-as-builtin-no-verifier,openssl
 
+.PHONY: kbs-amber-as
+kbs-amber-as:
+	cargo build --no-default-features --features amber-as,rustls
+
+.PHONY: kbs-amber-as-openssl
+kbs-amber-as-openssl:
+	cargo build --no-default-features --features amber-as,openssl
+
 .PHONY: check
 check:
 	cargo test --lib

@@ -58,6 +58,9 @@ jobs:
     - name: KBS Build [gRPC CoCo AS, RustTLS]
       run: make kbs-coco-as-grpc
 
+    - name: build KBS with amber AS mode
+      run: make kbs-amber-as
+
     - name: Lint
       run: make lint
 

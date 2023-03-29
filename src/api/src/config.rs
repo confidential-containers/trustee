@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(feature = "amber-as")]
+use crate::attestation::amber::AmberConfig;
 use crate::resource::RepositoryType;
 use crate::token::AttestationTokenBrokerType;
 use anyhow::anyhow;
@@ -44,6 +46,12 @@ pub struct Config {
     /// Attestation Service as a built-in crate.
     /// If empty, the default AS configuration file path is used.
     pub as_config_file_path: Option<String>,
+
+    /// OPTIONAL
+    /// Amber Attestation Service configuration.
+    /// Only used in Amber AS mode.
+    #[cfg(feature = "amber-as")]
+    pub amber: Option<AmberConfig>,
 }
 
 impl Default for Config {
@@ -55,6 +63,8 @@ impl Default for Config {
             attestation_token_type: AttestationTokenBrokerType::Simple,
             as_addr: None,
             as_config_file_path: None,
+            #[cfg(feature = "amber-as")]
+            amber: None,
         }
     }
 }
@@ -70,7 +80,15 @@ impl TryFrom<&Path> for Config {
     ///        # Only used in Remote Attestation-Service mode
     ///        "as_addr": "http://127.0.0.1:50004",
     ///        # Only used in Native Attestation-Service mode
-    ///        "as_config_file_path": "/etc/as-config.json"
+    ///        "as_config_file_path": "/etc/as-config.json",
+    ///        # Only used in Amber Attestation-Service mode
+    ///        "amber" : {
+    ///            "base_url": "https://amber.com",
+    ///            "api_key": "tBfd5kKX2x9ahbodKV1...",
+    ///            "certs_file": "/etc/amber/amber-certs.txt",
+    ///            # Optional, default is false.
+    ///            "allow_unmatched_policy": true
+    ///        }
     ///    }
     type Error = anyhow::Error;
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {

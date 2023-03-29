@@ -11,6 +11,7 @@ default = ["coco-as-builtin", "rustls"]
 coco-as-builtin = ["api-server/coco-as-builtin"]
 coco-as-builtin-no-verifier = ["api-server/coco-as-builtin-no-verifier"]
 coco-as-grpc = ["api-server/coco-as-grpc"]
+amber-as = ["api-server/amber-as"]
 rustls = ["api-server/rustls"]
 openssl = ["api-server/openssl"]
 
