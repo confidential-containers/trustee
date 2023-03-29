@@ -10,10 +10,9 @@ use az_snp_vtpm::certs::{get_chain_from_amd, get_vcek_from_amd};
 use az_snp_vtpm::hcl::{buf_to_hcl_data, HclReportWithRuntimeData};
 use az_snp_vtpm::report::Validateable;
 use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
-use openssl::sha::sha256;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sha2::{Digest, Sha384};
+use sha2::{Digest, Sha256, Sha384};
 use std::collections::BTreeMap;
 
 const HCL_VMPL_VALUE: u32 = 0;
@@ -51,7 +50,10 @@ impl Verifier for AzSnpVtpm {
 
 fn verify_report_data(report: &HclReportWithRuntimeData, bytes: &[u8]) -> Result<()> {
     let (_, var_data) = buf_to_hcl_data(bytes)?;
-    let var_data_hash = sha256(var_data);
+
+    let mut hasher = Sha256::new();
+    hasher.update(var_data);
+    let var_data_hash = hasher.finalize().to_vec();
 
     // Only the first 32 bytes of SNP report data are used for the sha256
     let report_data = &report.snp_report().report_data[..32];
