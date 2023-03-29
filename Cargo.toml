@@ -18,7 +18,7 @@ default = [ "rvps-native", "in-toto", "all-verifier" ]
 all-verifier = [ "az-snp-vtpm-verifier", "tdx-verifier", "sgx-verifier" ]
 tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
 sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
-az-snp-vtpm-verifier = [ "openssl", "az-snp-vtpm" ]
+az-snp-vtpm-verifier = [ "az-snp-vtpm" ]
 
 rvps-native = []
 rvps-grpc = [ "tonic" ]
@@ -44,7 +44,6 @@ intel-tee-quote-verification-rs = { version = "0.2.1", optional = true }
 kbs-types = { git = "https://github.com/mkulke/kbs-types.git", branch = "mkulke/add-az-snp-vtpm-tee-on-v0.2" }
 lazy_static = "1.4.0"
 log = "0.4.17"
-openssl = { version = "0.10", features = ["vendored"], optional = true}
 path-clean = "0.1.0"
 prost = "0.11.0"
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
