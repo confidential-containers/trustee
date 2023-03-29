@@ -5,7 +5,7 @@ use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
 use base64;
-use cc_measurement::log::CcEventLogReader;
+use cc_measurement::log::{CcEventLogReader, CcEvents};
 use eventlog::{CcEventLog, MeasuredEntity, ParsedUefiPlatformFirmwareBlob2, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote, Quote};
 use serde_json::{Map, Value};
@@ -81,9 +81,21 @@ async fn verify_evidence(
             ccel_data = base64::decode(el)?;
             let reader = CcEventLogReader::new(ccel_data.as_slice())
                 .ok_or_else(|| anyhow!("Parse CC Eventlog failed"))?;
-            let ccel = CcEventLog {
-                cc_events: reader.cc_events,
+
+            // Due to the difference in CCEL generation between TDVF and td-shim,
+            // they use different format headers.
+            // TDVF still uses older versions of TDEL headers now, so it cannot be read using `CcEventLogReader`.
+            // Related issue: https://github.com/confidential-containers/attestation-service/issues/81
+            let cc_events = match reader.cc_events.bytes.len() {
+                // The TDEL header is forcibly ignored here to support the current version of TDVF.
+                // After TDVF updates the CCEL format to the latest version, we need to delete the code here
+                0 => CcEvents {
+                    bytes: &ccel_data[65..],
+                },
+                _ => reader.cc_events,
             };
+
+            let ccel = CcEventLog { cc_events };
             ccel_option = Some(ccel.clone());
 
             log::debug!("Get CC Eventlog. \n{}\n", &ccel);
