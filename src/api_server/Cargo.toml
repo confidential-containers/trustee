@@ -9,7 +9,7 @@ edition.workspace = true
 [features]
 default = ["native-as"]
 native-as = ["attestation-service/default"]
-native-as-no-verifier = ["attestation-service/in-toto", "attestation-service/rvps-native"]
+native-as-no-verifier = ["attestation-service/rvps-native"]
 grpc-as = ["tonic", "tonic-build", "prost"]
 
 [dependencies]
