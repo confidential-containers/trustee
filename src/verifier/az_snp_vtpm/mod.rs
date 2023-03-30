@@ -85,6 +85,10 @@ fn verify_quote(
 }
 
 fn parse_tee_evidence(hcl_report: &HclReportWithRuntimeData) -> TeeEvidenceParsedClaim {
+    // TODO: copied w/ minor adjustments from a corresponding SEV-SNP pull request:
+    // https://github.com/confidential-containers/attestation-service/pull/38
+    // This logic is shared and should be consolidated into a common place.
+
     let report = hcl_report.snp_report();
     let numbers = [
         ("policy_abi_major", report.policy.abi_major()),
