@@ -1,28 +1,20 @@
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use cc_measurement::{log::CcEvents, TPML_ALG_SHA384};
-use core::fmt;
 use core::mem::size_of;
-use sha2::{Digest, Sha384};
+use eventlog_rs::Eventlog;
 use std::convert::{TryFrom, TryInto};
 use std::string::ToString;
 
-/// Consist with https://github.com/confidential-containers/td-shim/blob/main/td-shim/src/event_log.rs
 #[derive(Debug, Clone, EnumString, Display)]
 pub enum MeasuredEntity {
     #[strum(serialize = "td_hob\0")]
-    TdHob,
+    TdShim,
     #[strum(serialize = "td_payload\0")]
-    TdPayload,
+    TdShimKernel,
     #[strum(serialize = "td_payload_info\0")]
-    TdPayloadInfo,
-    // From here down is not supported
-    #[strum(serialize = "td_payload_svn\0")]
-    TdPayloadSVN,
-    #[strum(serialize = "secure_policy_db")]
-    SecurePolicyDB,
-    #[strum(serialize = "secure_authority")]
-    SecureAuthority,
+    TdShimKernelParams,
+    #[strum(serialize = "k\0e\0r\0n\0e\0l\0")]
+    TdvfKernel,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,27 +26,20 @@ pub struct Rtmr {
 }
 
 #[derive(Clone)]
-pub struct CcEventLog<'a> {
-    pub cc_events: CcEvents<'a>,
+pub struct CcEventLog {
+    pub cc_events: Eventlog,
 }
 
-impl<'a> fmt::Display for CcEventLog<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut parsed_ccel = String::default();
-        for (header, data) in self.cc_events {
-            parsed_ccel = format!(
-                "{}\n{}\nEvent Data:\n\t{}\n",
-                parsed_ccel,
-                header,
-                hex::encode(data)
-            );
-        }
-
-        write!(f, "{parsed_ccel}")
+impl TryFrom<Vec<u8>> for CcEventLog {
+    type Error = anyhow::Error;
+    fn try_from(data: Vec<u8>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            cc_events: Eventlog::try_from(data)?,
+        })
     }
 }
 
-impl<'a> CcEventLog<'a> {
+impl CcEventLog {
     pub fn integrity_check(&self, rtmr_from_quote: Rtmr) -> Result<()> {
         let rtmr_eventlog = self.rebuild_rtmr()?;
 
@@ -73,50 +58,13 @@ impl<'a> CcEventLog<'a> {
     }
 
     fn rebuild_rtmr(&self) -> Result<Rtmr> {
-        let mut rtmr0: [u8; 96] = [0; 96];
-        let mut rtmr1: [u8; 96] = [0; 96];
-        let mut rtmr2: [u8; 96] = [0; 96];
-        let mut rtmr3: [u8; 96] = [0; 96];
-
-        for (event_header, _) in self.cc_events {
-            let rtmr_index = match event_header.mr_index {
-                0 => 0xFF,
-                1 | 2 | 3 | 4 => event_header.mr_index - 1,
-                e => {
-                    ::log::info!("invalid pcr_index 0x{:x}\n", e);
-                    0xFF
-                }
-            };
-            if rtmr_index == 0 {
-                rtmr0[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let mut hasher = Sha384::new();
-                hasher.update(rtmr0);
-                let hash_value = hasher.finalize();
-                rtmr0[0..48].copy_from_slice(hash_value.as_ref());
-            } else if rtmr_index == 1 {
-                rtmr1[48..].copy_from_slice(&event_header.digest.digests[0].digest.sha384);
-                let mut hasher = Sha384::new();
-                hasher.update(rtmr1);
-                let hash_value = hasher.finalize();
-                rtmr1[0..48].copy_from_slice(hash_value.as_ref());
-            } else if rtmr_index == 2 {
-                let mut hasher = Sha384::new();
-                hasher.update(rtmr2);
-                let hash_value = hasher.finalize();
-                rtmr2[0..48].copy_from_slice(hash_value.as_ref());
-            } else if rtmr_index == 3 {
-                let mut hasher = Sha384::new();
-                hasher.update(rtmr3);
-                let hash_value = hasher.finalize();
-                rtmr3[0..48].copy_from_slice(hash_value.as_ref());
-            }
-        }
+        let mr_map = self.cc_events.replay_measurement_regiestry();
 
         let mr = Rtmr {
-            rtmr0: rtmr0[0..48].try_into()?,
-            rtmr1: rtmr1[0..48].try_into()?,
-            rtmr2: rtmr2[0..48].try_into()?,
-            rtmr3: rtmr3[0..48].try_into()?,
+            rtmr0: mr_map.get(&1).unwrap_or(&Vec::from([0u8; 48]))[0..48].try_into()?,
+            rtmr1: mr_map.get(&2).unwrap_or(&Vec::from([0u8; 48]))[0..48].try_into()?,
+            rtmr2: mr_map.get(&3).unwrap_or(&Vec::from([0u8; 48]))[0..48].try_into()?,
+            rtmr3: mr_map.get(&4).unwrap_or(&Vec::from([0u8; 48]))[0..48].try_into()?,
         };
 
         Ok(mr)
@@ -125,16 +73,13 @@ impl<'a> CcEventLog<'a> {
     pub fn query_digest(&self, entity: MeasuredEntity) -> Option<String> {
         let event_desc_prefix = Self::generate_query_key_prefix(entity)?;
 
-        for (header, data) in self.cc_events {
-            if data.len() < event_desc_prefix.len() {
+        for event_entry in self.cc_events.log.clone() {
+            if event_entry.event_desc.len() < event_desc_prefix.len() {
                 continue;
             }
-            if &data[..event_desc_prefix.len()] == event_desc_prefix.as_slice() {
-                let digest = &header.digest.digests[0];
-                if digest.hash_alg == TPML_ALG_SHA384 {
-                    let sha384 = digest.digest.sha384;
-                    return Some(hex::encode(sha384));
-                }
+            if &event_entry.event_desc[..event_desc_prefix.len()] == event_desc_prefix.as_slice() {
+                let digest = &event_entry.digests[0].digest;
+                return Some(hex::encode(digest));
             }
         }
         None
@@ -144,12 +89,12 @@ impl<'a> CcEventLog<'a> {
     pub fn query_event_data(&self, entity: MeasuredEntity) -> Option<Vec<u8>> {
         let event_desc_prefix = Self::generate_query_key_prefix(entity)?;
 
-        for (_, data) in self.cc_events {
-            if data.len() < event_desc_prefix.len() {
+        for event_entry in self.cc_events.log.clone() {
+            if event_entry.event_desc.len() < event_desc_prefix.len() {
                 continue;
             }
-            if &data[..event_desc_prefix.len()] == event_desc_prefix.as_slice() {
-                return Some(data.to_vec());
+            if &event_entry.event_desc[..event_desc_prefix.len()] == event_desc_prefix.as_slice() {
+                return Some(event_entry.event_desc);
             }
         }
         None
@@ -159,7 +104,7 @@ impl<'a> CcEventLog<'a> {
     fn generate_query_key_prefix(entity: MeasuredEntity) -> Option<Vec<u8>> {
         let mut event_desc_prefix = Vec::new();
         match entity {
-            MeasuredEntity::TdPayload => {
+            MeasuredEntity::TdShimKernel => {
                 // Event data is in UEFI_PLATFORM_FIRMWARE_BLOB2 format
                 // Defined in TCG PC Client Platform Firmware Profile Specification section
                 // 'UEFI_PLATFORM_FIRMWARE_BLOB Structure Definition'
@@ -167,15 +112,14 @@ impl<'a> CcEventLog<'a> {
                 event_desc_prefix = vec![entity_name.as_bytes().len() as u8];
                 event_desc_prefix.extend_from_slice(entity_name.as_bytes());
             }
-            MeasuredEntity::TdHob | MeasuredEntity::TdPayloadInfo => {
+            MeasuredEntity::TdvfKernel => {
+                event_desc_prefix = entity.to_string().as_bytes().to_vec();
+            }
+            MeasuredEntity::TdShim | MeasuredEntity::TdShimKernelParams => {
                 // Event data is in TD_SHIM_PLATFORM_CONFIG_INFO format
                 // Defined in td-shim spec 'Table 3.5-4 TD_SHIM_PLATFORM_CONFIG_INFO'
                 // link: https://github.com/confidential-containers/td-shim/blob/main/doc/tdshim_spec.md
                 event_desc_prefix = entity.to_string().as_bytes().to_vec();
-            }
-            _ => {
-                ::log::warn!("The Measured Entity is not supported by td-shim yet");
-                return None;
             }
         }
         Some(event_desc_prefix)
@@ -215,27 +159,23 @@ impl TryFrom<Vec<u8>> for ParsedUefiPlatformFirmwareBlob2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_measurement::log::CcEventLogReader;
     use std::fs;
 
     #[test]
     fn test_parse_eventlog() {
         let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
-        let reader = CcEventLogReader::new(ccel_bin.as_slice()).unwrap();
-        let ccel = CcEventLog {
-            cc_events: reader.cc_events,
-        };
+        let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
-        let _ = fs::write("test_data/parse_eventlog_output.txt", format!("{}", &ccel));
+        let _ = fs::write(
+            "test_data/parse_eventlog_output.txt",
+            format!("{}", &ccel.cc_events),
+        );
     }
 
     #[test]
     fn test_rebuild_rtmr() {
         let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
-        let reader = CcEventLogReader::new(ccel_bin.as_slice()).unwrap();
-        let ccel = CcEventLog {
-            cc_events: reader.cc_events,
-        };
+        let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
         let rtmr_result = ccel.rebuild_rtmr();
         assert!(rtmr_result.is_ok());
@@ -255,13 +195,10 @@ mod tests {
     #[test]
     fn test_query_digest() {
         let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
-        let reader = CcEventLogReader::new(ccel_bin.as_slice()).unwrap();
-        let ccel = CcEventLog {
-            cc_events: reader.cc_events,
-        };
+        let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
-        let kernel_hash = ccel.query_digest(MeasuredEntity::TdPayload);
-        let kernel_params_hash = ccel.query_digest(MeasuredEntity::TdPayloadInfo);
+        let kernel_hash = ccel.query_digest(MeasuredEntity::TdShimKernel);
+        let kernel_params_hash = ccel.query_digest(MeasuredEntity::TdShimKernelParams);
 
         assert!(kernel_hash.is_some());
         assert!(kernel_params_hash.is_some());

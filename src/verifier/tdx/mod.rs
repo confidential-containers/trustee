@@ -5,7 +5,6 @@ use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
 use base64;
-use cc_measurement::log::CcEventLogReader;
 use eventlog::{CcEventLog, MeasuredEntity, ParsedUefiPlatformFirmwareBlob2, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote, Quote};
 use serde_json::{Map, Value};
@@ -80,14 +79,11 @@ async fn verify_evidence(
     match &evidence.cc_eventlog {
         Some(el) => {
             ccel_data = base64::decode(el)?;
-            let reader = CcEventLogReader::new(ccel_data.as_slice())
-                .ok_or_else(|| anyhow!("Parse CC Eventlog failed"))?;
-            let ccel = CcEventLog {
-                cc_events: reader.cc_events,
-            };
+            let ccel = CcEventLog::try_from(ccel_data)
+                .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
             ccel_option = Some(ccel.clone());
 
-            log::debug!("Get CC Eventlog. \n{}\n", &ccel);
+            log::debug!("Get CC Eventlog. \n{}\n", &ccel.cc_events);
 
             let rtmr_from_quote = Rtmr {
                 rtmr0: quote.report_body.rtmr_0,
@@ -138,21 +134,32 @@ fn generate_parsed_claim(
     match cc_eventlog {
         Some(ccel) => {
             match (
-                ccel.query_digest(MeasuredEntity::TdPayload),
-                ccel.query_event_data(MeasuredEntity::TdPayload),
+                ccel.query_digest(MeasuredEntity::TdShimKernel),
+                ccel.query_event_data(MeasuredEntity::TdShimKernel),
             ) {
-                (Some(td_paylod_digest), Some(event_data)) => {
+                (Some(kernel_digest), Some(event_data)) => {
                     let uefi_platform_firmware_blob2 =
                         ParsedUefiPlatformFirmwareBlob2::try_from(event_data)
                             .map_err(|e| anyhow!("Parse td_payload event data failed: {:?}", e))?;
                     let digest_name = format!(
-                        "tdx-kernel-size{:?}",
+                        "tdx-mrkernel-size{:?}",
                         uefi_platform_firmware_blob2.blob_length
                     );
-                    claim_map.insert(digest_name, serde_json::Value::String(td_paylod_digest));
+                    claim_map.insert(digest_name, serde_json::Value::String(kernel_digest));
                 }
                 _ => {
-                    warn!("parse CC EventLog: There is no tdx kernel measurement entry")
+                    warn!("No td-shim kernel hash in CCEL");
+                }
+            }
+            match ccel.query_digest(MeasuredEntity::TdvfKernel) {
+                Some(kernel_digest) => {
+                    claim_map.insert(
+                        "tdx-mrkernel".to_string(),
+                        serde_json::Value::String(kernel_digest),
+                    );
+                }
+                _ => {
+                    warn!("No tdvf kernel hash in CCEL");
                 }
             }
         }
@@ -169,16 +176,12 @@ fn generate_parsed_claim(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_measurement::log::CcEventLogReader;
     use std::fs;
 
     #[test]
     fn test_generate_parsed_claim() {
         let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
-        let reader = CcEventLogReader::new(ccel_bin.as_slice()).unwrap();
-        let ccel = CcEventLog {
-            cc_events: reader.cc_events,
-        };
+        let ccel = CcEventLog::try_from(ccel_bin).unwrap();
         let quote_bin = fs::read("test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_tdx_quote(&quote_bin).unwrap();
 
