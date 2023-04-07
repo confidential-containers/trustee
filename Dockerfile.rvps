@@ -19,6 +19,8 @@ RUN cargo install --bin rvps --no-default-features --features="rvps-native rvps-
 
 FROM debian:bullseye-slim
 
+LABEL org.opencontainers.image.source="https://github.com/confidential-containers/attestation-service"
+
 COPY --from=builder /usr/local/cargo/bin/rvps /usr/local/bin/rvps
 
 CMD ["rvps", "--socket", "0.0.0.0:50003"]
