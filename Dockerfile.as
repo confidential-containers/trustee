@@ -26,6 +26,8 @@ RUN cargo install --bin grpc-as --no-default-features --features="rvps-native rv
 
 FROM ubuntu:20.04
 
+LABEL org.opencontainers.image.source="https://github.com/confidential-containers/attestation-service"
+
 # Install TDX Runtime Dependencies
 RUN apt-get update && apt-get install curl gnupg -y && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
