@@ -9,8 +9,4 @@ reference_values
 
 test_data/*_output.txt
 
-.github
-
-Dockerfile*
-
 tools/
