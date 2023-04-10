@@ -26,13 +26,13 @@ pub const DEFAULT_AS_ADDR: &str = "http://127.0.0.1:50004";
 fn to_grpc_tee(tee: Tee) -> GrpcTee {
     match tee {
         Tee::AzSnpVtpm => GrpcTee::AzSnpVtpm,
-        Tee::Cca => todo!(),
+        Tee::Cca => GrpcTee::Cca,
+        Tee::Csv => GrpcTee::Csv,
         Tee::Sample => GrpcTee::Sample,
         Tee::Sev => GrpcTee::Sev,
         Tee::Sgx => GrpcTee::Sgx,
         Tee::Snp => GrpcTee::Snp,
         Tee::Tdx => GrpcTee::Tdx,
-        Tee::Csv => GrpcTee::Csv,
     }
 }
 
