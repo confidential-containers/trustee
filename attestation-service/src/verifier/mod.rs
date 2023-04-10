@@ -20,9 +20,12 @@ pub mod sgx;
 #[cfg(feature = "csv-verifier")]
 pub mod csv;
 
+#[cfg(feature = "cca-verifier")]
+pub mod cca;
+
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
-        Tee::Sev | Tee::Cca => todo!(),
+        Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
@@ -60,12 +63,23 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 }
             }
         }
+
         Tee::Csv => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "csv-verifier")] {
                     Ok(Box::<csv::CsvVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     anyhow::bail!("feature `csv-verifier` is not enabled!");
+                }
+            }
+        }
+
+        Tee::Cca => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "cca-verifier")] {
+                    Ok(Box::<cca::CCA>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    anyhow::bail!("feature `cca-verifier` is not enabled!");
                 }
             }
         }
