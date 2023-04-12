@@ -27,7 +27,7 @@ RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu foc
 RUN apt-get update
 RUN apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
-# Build and Instll KBS
+# Build and Install KBS
 ARG KBS_FEATURES=native-as,rustls
 RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES}
 
