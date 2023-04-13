@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub type TeeEvidenceParsedClaim = serde_json::Value;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AttestationResults {
     tee: Tee,
     allow: bool,
@@ -43,7 +43,7 @@ impl AttestationResults {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResultOutput {
     pub verifier_output: Option<String>,
     pub policy_engine_output: Option<String>,
