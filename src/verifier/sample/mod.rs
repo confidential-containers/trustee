@@ -32,24 +32,24 @@ impl Verifier for Sample {
         hasher.update(&attestation.tee_pubkey.k_exp);
         let reference_report_data = base64::encode(hasher.finalize());
 
-        verify_tee_evidence(reference_report_data, &attestation.tee_evidence)
+        verify_tee_evidence(reference_report_data, &tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
 
-        debug!("TEE-Evidence<sample>: {:?}", &tee_evidence);
+        debug!("TEE-Evidence<sample>: {:?}", tee_evidence);
 
         parse_tee_evidence(&tee_evidence)
     }
 }
 
-async fn verify_tee_evidence(reference_report_data: String, tee_evidence: &str) -> Result<()> {
-    let quote = serde_json::from_str::<SampleTeeEvidence>(tee_evidence)
-        .context("Deserialize quote failed.")?;
-
+async fn verify_tee_evidence(
+    reference_report_data: String,
+    tee_evidence: &SampleTeeEvidence,
+) -> Result<()> {
     // Verify the TEE Hardware signature. (Null for sample TEE)
 
     // Emulate the report data.
-    if quote.report_data != reference_report_data {
+    if tee_evidence.report_data != reference_report_data {
         return Err(anyhow!("Report data verification failed!"));
     }
 
