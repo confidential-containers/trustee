@@ -68,6 +68,24 @@ make kbs-coco-as-grpc
 The AS `gRPC` address can be specified in the [KBS config file](./docs/config.md),
 and by default KBS will try to reach a locally running AS at `127.0.0.1:50004`.
 
+### `Amber` Attestation Service
+
+KBS supports Amber as the Attestation Service with the `amber-as` Cargo feature.
+
+This can be built with:
+
+``` shell
+cargo build --no-default-features --features amber-as,rustls
+```
+
+or with the corresponding Makefile target:
+
+``` shell
+make kbs-amber-as
+```
+
+The Amber configuration can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs).
+
 ## Resource Repository
 
 KBS stores confidential resources through a `Repository` abstraction specified
