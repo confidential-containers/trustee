@@ -55,7 +55,7 @@ impl Grpc {
 
 #[async_trait]
 impl Attest for Grpc {
-    async fn attest_verify(
+    async fn verify(
         &mut self,
         tee: Tee,
         nonce: &str,

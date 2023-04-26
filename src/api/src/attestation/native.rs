@@ -16,7 +16,7 @@ pub struct Native {
 
 #[async_trait]
 impl Attest for Native {
-    async fn attest_verify(
+    async fn verify(
         &mut self,
         tee: Tee,
         nonce: &str,
