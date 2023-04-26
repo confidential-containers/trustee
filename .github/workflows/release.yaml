@@ -19,11 +19,11 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
       -
-        name: Build and push kbs (gRPC-AS)
+        name: Build and push kbs (With the CoCo gRPC AS)
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile.grpc-as
+          file: ./docker/Dockerfile.coco-as-grpc
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/key-broker-service:${{ github.ref_name }}, ghcr.io/confidential-containers/key-broker-service:latest

@@ -28,7 +28,7 @@ RUN apt-get update
 RUN apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
 # Build and Install KBS
-ARG KBS_FEATURES=native-as,rustls
+ARG KBS_FEATURES=coco-as-builtin,rustls
 RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES}
 
 
