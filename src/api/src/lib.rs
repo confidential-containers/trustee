@@ -19,7 +19,7 @@ extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
-use attestation::AttestVerifier;
+use attestation::AttestationService;
 use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -81,7 +81,7 @@ pub struct ApiServer {
     user_public_key: Option<PathBuf>,
     certificate: Option<PathBuf>,
     insecure: bool,
-    attestation_service: AttestVerifier,
+    attestation_service: AttestationService,
     http_timeout: i64,
     insecure_api: bool,
 }
@@ -95,7 +95,7 @@ impl ApiServer {
         user_public_key: Option<PathBuf>,
         certificate: Option<PathBuf>,
         insecure: bool,
-        attestation_service: AttestVerifier,
+        attestation_service: AttestationService,
         http_timeout: i64,
         insecure_api: bool,
     ) -> Result<Self> {
