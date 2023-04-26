@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::attestation::AttestVerifier;
+use crate::attestation::AttestationService;
 use crate::auth::validate_auth;
 use crate::resource::{get_secret_resource, set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
@@ -92,7 +92,7 @@ pub(crate) async fn attest(
     attestation: web::Json<Attestation>,
     request: HttpRequest,
     map: web::Data<SessionMap<'_>>,
-    attestation_service: web::Data<AttestVerifier>,
+    attestation_service: web::Data<AttestationService>,
 ) -> HttpResponse {
     let cookie = match request.cookie(KBS_SESSION_ID) {
         Some(c) => c,
@@ -121,10 +121,10 @@ pub(crate) async fn attest(
     }
 
     match attestation_service
-        .attest_verifier
+        .0
         .lock()
         .await
-        .attest_verify(
+        .verify(
             session.tee(),
             session.nonce(),
             &serde_json::to_string(&attestation).unwrap(),

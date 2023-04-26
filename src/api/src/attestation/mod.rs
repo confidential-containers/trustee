@@ -16,11 +16,13 @@ mod grpc;
 #[cfg(any(feature = "native-as", feature = "native-as-no-verifier"))]
 mod native;
 
-/// Interface of Attestation Service
+/// Interface for Attestation Services.
+///
+/// Attestation Service implementations should implement this interface.
 #[async_trait]
 pub trait Attest: Send + Sync {
     /// Verify Attestation Evidence
-    async fn attest_verify(
+    async fn verify(
         &mut self,
         tee: Tee,
         nonce: &str,
@@ -28,17 +30,14 @@ pub trait Attest: Send + Sync {
     ) -> Result<AttestationResults>;
 }
 
-/// Attestation Service handler
+/// Attestation Service
 #[derive(Clone)]
-pub struct AttestVerifier {
-    /// Attestation Service instance
-    pub attest_verifier: Arc<Mutex<dyn Attest>>,
-}
+pub struct AttestationService(pub Arc<Mutex<dyn Attest>>);
 
-impl AttestVerifier {
-    /// Create and initilize AttestVerifier
+impl AttestationService {
+    /// Create and initialize AttestionService
     pub async fn new(kbs_config: &Config) -> Result<Self> {
-        let attest_verifier: Arc<Mutex<dyn Attest>> = {
+        let attestation_service: Arc<Mutex<dyn Attest>> = {
             cfg_if::cfg_if! {
                 if #[cfg(any(feature = "native-as", feature = "native-as-no-verifier"))] {
                     Arc::new(Mutex::new(native::Native::new(&kbs_config.as_config_file_path)?))
@@ -50,6 +49,6 @@ impl AttestVerifier {
             }
         };
 
-        Ok(Self { attest_verifier })
+        Ok(Self(attestation_service))
     }
 }
