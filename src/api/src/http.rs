@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::attest::AttestVerifier;
+use crate::attestation::AttestVerifier;
 use crate::auth::validate_auth;
 use crate::resource::{get_secret_resource, set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};

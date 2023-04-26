@@ -19,7 +19,7 @@ extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
-use attest::AttestVerifier;
+use attestation::AttestVerifier;
 use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -35,7 +35,7 @@ use openssl::ssl::SslAcceptorBuilder;
 use crate::session::SessionMap;
 
 /// Attestation Service
-pub mod attest;
+pub mod attestation;
 /// KBS config
 pub mod config;
 
