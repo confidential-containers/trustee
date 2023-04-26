@@ -7,7 +7,7 @@
 extern crate anyhow;
 
 use anyhow::{bail, Result};
-use api_server::{attest::AttestVerifier, config::Config, ApiServer};
+use api_server::{attestation::AttestVerifier, config::Config, ApiServer};
 use log::warn;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
