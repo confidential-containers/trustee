@@ -29,7 +29,7 @@ in-toto = [ "dep:in-toto" ]
 anyhow = "1.0"
 async-trait = "0.1.31"
 as-types = { path = "./as-types" }
-az-snp-vtpm = { version = "0.2", optional = true }
+az-snp-vtpm = { version = "0.2", default-features = false, features = ["verifier"], optional = true }
 base64 = "0.13.0"
 byteorder = "1"
 cfg-if = "1.0.0"
