@@ -10,11 +10,12 @@ use kbs_types::Tee;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[cfg(feature = "grpc-as")]
-mod grpc;
-
-#[cfg(any(feature = "native-as", feature = "native-as-no-verifier"))]
-mod native;
+#[cfg(any(
+    feature = "grpc-as",
+    feature = "native-as",
+    feature = "native-as-no-verifier"
+))]
+mod coco;
 
 /// Interface for Attestation Services.
 ///
@@ -40,9 +41,9 @@ impl AttestationService {
         let attestation_service: Arc<Mutex<dyn Attest>> = {
             cfg_if::cfg_if! {
                 if #[cfg(any(feature = "native-as", feature = "native-as-no-verifier"))] {
-                    Arc::new(Mutex::new(native::Native::new(&kbs_config.as_config_file_path)?))
+                    Arc::new(Mutex::new(coco::native::Native::new(&kbs_config.as_config_file_path)?))
                 } else if #[cfg(feature = "grpc-as")] {
-                    Arc::new(Mutex::new(grpc::Grpc::new(kbs_config).await?))
+                    Arc::new(Mutex::new(coco::grpc::Grpc::new(kbs_config).await?))
                 } else {
                     compile_error!("Please enable at least one of the following features: `native-as`, `native-as-no-verifier`, or `grpc-as` to continue.");
                 }
