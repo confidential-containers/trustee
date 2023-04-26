@@ -12,7 +12,6 @@ use az_snp_vtpm::report::Validateable;
 use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sev::certs::builtin::milan::{ARK, ASK};
 use sev::firmware::guest::types::{AttestationReport, SnpTcbVersion};
 use sha2::{Digest, Sha384};
 use std::collections::BTreeMap;
@@ -66,11 +65,17 @@ fn verify_quote(quote: &Quote, hcl_data: &HclData, hashed_nonce: &[u8]) -> Resul
     Ok(())
 }
 
+fn build_amd_chain() -> Result<AmdChain> {
+    let bytes = include_bytes!("./milan_ask_ark.pem");
+    let certs = X509::stack_from_pem(bytes)?;
+    let ask = certs[0].clone();
+    let ark = certs[1].clone();
+    let chain = AmdChain { ask, ark };
+    Ok(chain)
+}
+
 fn verify_snp_report(snp_report: &AttestationReport, vcek: &Vcek) -> Result<()> {
-    let amd_chain = AmdChain {
-        ask: X509::from_der(ASK)?,
-        ark: X509::from_der(ARK)?,
-    };
+    let amd_chain = build_amd_chain()?;
 
     amd_chain
         .validate()
