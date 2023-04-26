@@ -42,7 +42,7 @@ impl Verifier for AzSnpVtpm {
         let snp_report = hcl_data.report().snp_report();
         let vcek = Vcek::from_pem(&evidence.vcek)?;
 
-        let hashed_quote = hash_quote(attestation, &nonce);
+        let hashed_quote = nonced_pub_key_hash(attestation, &nonce);
 
         verify_quote(&evidence.quote, &hcl_data, &hashed_quote)?;
         verify_snp_report(snp_report, &vcek)?;
@@ -129,10 +129,83 @@ fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     json!(string_map) as TeeEvidenceParsedClaim
 }
 
-fn hash_quote(attestation: &Attestation, nonce: &str) -> Vec<u8> {
+fn nonced_pub_key_hash(attestation: &Attestation, nonce: &str) -> Vec<u8> {
     let mut hasher = Sha384::new();
     hasher.update(nonce);
     hasher.update(&attestation.tee_pubkey.k_mod);
     hasher.update(&attestation.tee_pubkey.k_exp);
     hasher.finalize().to_vec()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_snp_report() {
+        let report = include_bytes!("../../../test_data/az-hcl-data.bin");
+        let hcl_data: HclData = report.as_slice().try_into().unwrap();
+        let vcek = Vcek::from_pem(include_str!("../../../test_data/az-vcek.pem")).unwrap();
+        verify_snp_report(hcl_data.report().snp_report(), &vcek).unwrap();
+
+        let mut wrong_report = *report;
+        // messing with snp report
+        wrong_report[0x00b0] = 0;
+        let wrong_hcl_data: HclData = wrong_report.as_slice().try_into().unwrap();
+        verify_snp_report(wrong_hcl_data.report().snp_report(), &vcek).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_quote() {
+        let signature = include_bytes!("../../../test_data/az-vtpm-quote-sig.bin").to_vec();
+        let message = include_bytes!("../../../test_data/az-vtpm-quote-msg.bin").to_vec();
+        let quote = Quote { signature, message };
+        let report = include_bytes!("../../../test_data/az-hcl-data.bin");
+        let hcl_data: HclData = report.as_slice().try_into().unwrap();
+        let nonce = "challenge".as_bytes();
+        verify_quote(&quote, &hcl_data, nonce).unwrap();
+
+        let signature = quote.signature.clone();
+        let mut wrong_message = quote.message.clone();
+        wrong_message.reverse();
+        let wrong_quote = Quote {
+            signature,
+            message: wrong_message,
+        };
+        verify_quote(&wrong_quote, &hcl_data, nonce).unwrap_err();
+
+        let wrong_nonce = "wrong".as_bytes();
+        verify_quote(&quote, &hcl_data, wrong_nonce).unwrap_err();
+
+        let mut wrong_report = *report;
+        // messing with AKpub in var data
+        wrong_report[0x0540] = 0;
+        let wrong_hcl_data: HclData = wrong_report.as_slice().try_into().unwrap();
+        verify_quote(&quote, &wrong_hcl_data, nonce).unwrap_err();
+    }
+
+    #[test]
+    fn test_parse_evidence() {
+        let report = include_bytes!("../../../test_data/az-hcl-data.bin");
+        let hcl_data: HclData = report.as_slice().try_into().unwrap();
+        let snp_report = hcl_data.report().snp_report();
+        let claim = parse_tee_evidence(snp_report);
+
+        let reference = json!({
+          "measurement": "ofOTBBMke7OM/BcVeeo8EtX+SQHwx5L2P9ddmPHvgnwjUAZE4OaS5r6Rf5BQ09OM",
+          "platform_smt_enabled": "0",
+          "platform_tsme_enabled": "1",
+          "policy_abi_major": "0",
+          "policy_abi_minor": "31",
+          "policy_debug_allowed": "0",
+          "policy_migrate_ma": "0",
+          "policy_single_socket": "0",
+          "policy_smt_allowed": "1",
+          "reported_tcb_bootloader": "3",
+          "reported_tcb_microcode": "115",
+          "reported_tcb_snp": "8",
+          "reported_tcb_tee": "0"
+        });
+        assert!(claim == reference);
+    }
 }
