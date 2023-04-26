@@ -44,7 +44,7 @@ make
 ```
 
 The integrated Attestation Service configuration file can be provided at
-runtime through the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs),
+runtime through the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
 by using the `--config` command line option.
 
 ### `gRPC` Attestation Service
@@ -65,7 +65,7 @@ or with the corresponding Makefile target:
 make kbs-grpc-as
 ```
 
-The AS `gRPC` address can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs),
+The AS `gRPC` address can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
 and by default KBS will try to reach a locally running AS at `127.0.0.1:50004`.
 
 ## Resource Repository
@@ -74,7 +74,7 @@ KBS stores confidential resources through a `Repository` abstraction specified
 by a Rust trait. The `Repository` interface can be implemented for different
 storage backends like e.g. databases or local file systems.
 
-The [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs)
+The [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs)
 defined which resource repository backend KBS will use. The default is the local
 file system.
 
@@ -106,7 +106,7 @@ make kbs
 KBS can also run in insecure mode, through `HTTP`. This is targeted for
 development purposes and should not be used in production.
 
-A custom, [JSON-formatted configuration file](https://github.com/confidential-containers/kbs/blob/main/src/api_server/src/config.rs)
+A custom, [JSON-formatted configuration file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs)
 can also be provided:
 
 ```shell
