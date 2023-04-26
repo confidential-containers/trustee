@@ -3,7 +3,7 @@ services:
   kbs:
     # build:
     #   context: .
-    #   dockerfile: ./docker/Dockerfile.grpc-as
+    #   dockerfile: ./docker/Dockerfile.coco-as-grpc
     image: ghcr.io/confidential-containers/key-broker-service:latest
     command: [
         "/usr/local/bin/kbs",

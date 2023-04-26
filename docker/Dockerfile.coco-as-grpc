@@ -6,7 +6,7 @@ COPY . .
 RUN apt-get update && apt install -y protobuf-compiler
 
 # Build and Install KBS
-RUN cargo install --path src/kbs --no-default-features --features grpc-as,rustls
+RUN cargo install --path src/kbs --no-default-features --features coco-as-grpc,rustls
 
 
 FROM ubuntu:22.04

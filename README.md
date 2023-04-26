@@ -22,15 +22,15 @@ This API is formally described in its [OpenAPI formatted specification](docs/kbs
 
 ## Attestation
 
-KBS relies on the [Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service)
+By default, KBS relies on the [Confidential Containers Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service)
 to verify the TEE Evidence.
 
-KBS can either integrate the AS as a dependent crate, or as a separated `gRPC`
-service. This integration interface is defined by the KBS `native-as` feature.
+KBS can either integrate the CoCo AS as a dependent crate, or as a separated `gRPC`
+service. This integration interface is defined by the KBS `coco-as-builtin` feature.
 
-### Integrated Attestation Service
+### Integrated CoCo Attestation Service
 
-By default, KBS will integrate the Attestation Service as a crate.
+By default, KBS will integrate the CoCo Attestation Service as a crate.
 This can be build with:
 
 ``` shell
@@ -47,22 +47,22 @@ The integrated Attestation Service configuration file can be provided at
 runtime through the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
 by using the `--config` command line option.
 
-### `gRPC` Attestation Service
+### `gRPC` CoCo Attestation Service
 
 In some cases, it is preferable to deploy the Attestation Service as a separate
 (local or remote) service. KBS supports that model by using the AS `gRPC`
-interface, with the `grpc-as` Cargo feature.
+interface, with the `coco-as-grpc` Cargo feature.
 
 This can be built with:
 
 ``` shell
-cargo build --no-default-features --features grpc-as
+cargo build --no-default-features --features coco-as-grpc
 ```
 
 or with the corresponding Makefile target:
 
 ``` shell
-make kbs-grpc-as
+make kbs-coco-as-grpc
 ```
 
 The AS `gRPC` address can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
@@ -118,13 +118,13 @@ can also be provided:
 Build the KBS container image:
 
 ```shell
-DOCKER_BUILDKIT=1 docker build -t kbs:native-as . -f docker/Dockerfile
+DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f docker/Dockerfile
 ```
 
 Deploy KBS with the integrated Attestation Service:
 
 ```shell
-docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:native-as kbs -s <IP>:<PORT>
+docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:coco-as kbs -s <IP>:<PORT>
 ```
 
 **Note**: When relying on a local Provisioning Certificate Caching Service (PCCS)

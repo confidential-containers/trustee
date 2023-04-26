@@ -2,29 +2,29 @@
 kbs:
 	cargo build
 
-.PHONY: kbs-native-as
-kbs-native-as:
-	cargo build --no-default-features --features native-as,rustls
+.PHONY: kbs-coco-as
+kbs-coco-as:
+	cargo build --no-default-features --features coco-as-builtin,rustls
 
-.PHONY: kbs-grpc-as
-kbs-grpc-as:
-	cargo build --no-default-features --features grpc-as,rustls
+.PHONY: kbs-coco-as-grpc
+kbs-coco-as-grpc:
+	cargo build --no-default-features --features coco-as-grpc,rustls
 
-.PHONY: kbs-native-as-no-verifier
-kbs-native-as-no-verifier:
-	cargo build --no-default-features --features native-as-no-verifier,rustls
+.PHONY: kbs-coco-as-no-verifier
+kbs-coco-as-no-verifier:
+	cargo build --no-default-features --features coco-as-builtin-no-verifier,rustls
 
-.PHONY: kbs-native-as-openssl
-kbs-native-as-openssl:
-	cargo build --no-default-features --features native-as,openssl
+.PHONY: kbs-coco-as-openssl
+kbs-coco-as-openssl:
+	cargo build --no-default-features --features coco-as-builtin,openssl
 
-.PHONY: kbs-grpc-as-openssl
-kbs-grpc-as-openssl:
-	cargo build --no-default-features --features grpc-as,openssl
+.PHONY: kbs-coco-as-grpc-openssl
+kbs-coco-as-grpc-openssl:
+	cargo build --no-default-features --features coco-as-grpc,openssl
 
-.PHONY: kbs-native-as-no-verifier-openssl
-kbs-native-as-no-verifier-openssl:
-	cargo build --no-default-features --features native-as-no-verifier,openssl
+.PHONY: kbs-coco-as-no-verifier-openssl
+kbs-coco-as-no-verifier-openssl:
+	cargo build --no-default-features --features coco-as-builtin-no-verifier,openssl
 
 .PHONY: check
 check:

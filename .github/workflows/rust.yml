@@ -44,14 +44,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
-    - name: Build
+    - name: KBS Build [Default]
       run: make kbs
 
-    - name: build KBS with openssl
-      run: make kbs-native-as-openssl
+    - name: KBS Build [Built-in CoCo AS, OpenSSL]
+      run: make kbs-coco-as-openssl
 
-    - name: build KBS with remote AS mode
-      run: make kbs-grpc-as
+    - name: KBS Build [gRPC CoCo AS, RustTLS]
+      run: make kbs-coco-as-grpc
 
     - name: Lint
       run: make lint
