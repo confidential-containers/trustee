@@ -10,11 +10,7 @@ use kbs_types::Tee;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[cfg(any(
-    feature = "grpc-as",
-    feature = "native-as",
-    feature = "native-as-no-verifier"
-))]
+#[cfg(feature = "coco-as")]
 mod coco;
 
 /// Interface for Attestation Services.
@@ -40,12 +36,12 @@ impl AttestationService {
     pub async fn new(kbs_config: &Config) -> Result<Self> {
         let attestation_service: Arc<Mutex<dyn Attest>> = {
             cfg_if::cfg_if! {
-                if #[cfg(any(feature = "native-as", feature = "native-as-no-verifier"))] {
-                    Arc::new(Mutex::new(coco::native::Native::new(&kbs_config.as_config_file_path)?))
-                } else if #[cfg(feature = "grpc-as")] {
+                if #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))] {
+                    Arc::new(Mutex::new(coco::builtin::Native::new(&kbs_config.as_config_file_path)?))
+                } else if #[cfg(feature = "coco-as-grpc")] {
                     Arc::new(Mutex::new(coco::grpc::Grpc::new(kbs_config).await?))
                 } else {
-                    compile_error!("Please enable at least one of the following features: `native-as`, `native-as-no-verifier`, or `grpc-as` to continue.");
+                    compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, or `coco-as-grpc` to continue.");
                 }
             }
         };

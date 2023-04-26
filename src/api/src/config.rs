@@ -29,7 +29,7 @@ pub struct Config {
 
     /// OPTIONAL
     /// Native Attestation Service config file path
-    /// Only used in native AS mode.
+    /// Only used with the built-in CoCo AS.
     /// If Null, default AS config will be used.
     pub as_config_file_path: Option<String>,
 }

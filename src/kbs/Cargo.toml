@@ -7,10 +7,10 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["native-as", "rustls"]
-native-as = ["api-server/native-as"]
-native-as-no-verifier = ["api-server/native-as-no-verifier"]
-grpc-as = ["api-server/grpc-as"]
+default = ["coco-as-builtin", "rustls"]
+coco-as-builtin = ["api-server/coco-as-builtin"]
+coco-as-builtin-no-verifier = ["api-server/coco-as-builtin-no-verifier"]
+coco-as-grpc = ["api-server/coco-as-grpc"]
 rustls = ["api-server/rustls"]
 openssl = ["api-server/openssl"]
 

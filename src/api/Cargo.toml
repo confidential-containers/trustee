@@ -7,10 +7,11 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["native-as", "rustls"]
-native-as = ["attestation-service/default"]
-native-as-no-verifier = ["attestation-service/rvps-native"]
-grpc-as = ["tonic", "tonic-build", "prost"]
+default = ["coco-as-builtin", "rustls"]
+coco-as = []
+coco-as-builtin = ["coco-as", "attestation-service/default"]
+coco-as-builtin-no-verifier = ["coco-as", "attestation-service/rvps-native"]
+coco-as-grpc = ["coco-as", "tonic", "tonic-build", "prost"]
 rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
 openssl = ["actix-web/openssl", "dep:openssl"]
 
