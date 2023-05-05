@@ -40,9 +40,11 @@ pub mod attestation;
 pub mod config;
 
 mod auth;
+#[allow(unused_imports)]
 mod http;
 mod resource;
 mod session;
+mod token;
 
 static KBS_PREFIX: &str = "/kbs";
 static KBS_MAJOR_VERSION: u64 = 0;
@@ -192,6 +194,8 @@ impl ApiServer {
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
+        let token_broker = self.config.attestation_token_type.to_token_broker()?;
+
         let user_public_key = match self.insecure_api {
             true => None,
             false => match &self.user_public_key {
@@ -215,11 +219,16 @@ impl ApiServer {
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
                 .app_data(web::Data::new(repository.clone()))
+                .app_data(web::Data::new(token_broker.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
                 .app_data(web::Data::new(insecure_api))
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
+                .service(
+                    web::resource(kbs_path!("token-certificate-chain"))
+                        .route(web::get().to(http::get_token_certificate)),
+                )
                 .service(
                     web::resource([
                         kbs_path!("resource/{repository}/{type}/{tag}"),
