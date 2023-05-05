@@ -411,35 +411,12 @@ provisioned policies for a given attester.
 A POST request with the content of resource to `/kbs/v0/resource/<repository>/<type>/<tag>` can register the resource into the KBS.
 
 
-### Token Resource
+### Attestation Results Token
 
-Authenticated attesters can also request a token from the KBS.
-Attesters can use tokens to request additional resources from external (i.e. not the KBS) services.
+Authenticated attesters can also receive an attestation token from the KBS in the response body of `/kbs/v0/attest`.
+Attesters can use the attestation result token to request additional resources from external services, a.k.a. relying parties. 
 
-KBS uses the following path format to locate token resource:
-
-```
-/kbs/v0/resource/token/{tag}
-```
-
-Where the URL path parameter `tag` specify some special token requirements,
-it can be left blank and use default token.
-
-#### Token Format
-
-The token follows the [JSON web token](https://jwt.io/) standard and format.
-It is the concatenation of three Base64url-encoded, dot-separated strings:
-a header, a payload and a signature, e.g (with line breaks for display purposes
-only):
-
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
-eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.
-SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-```
-
-The next sections describe how the three strings that compose the token are
-formatted and built.
+The provided attestation results token follows the [JSON web token](https://jwt.io/) standard and format.
 
 ##### Header
 
@@ -469,6 +446,7 @@ following example:
     "iss": "https://xxxxxx",
 
     "tee-pubkey": $pubkey
+    <Custom Claims>
 }
 ```
 
@@ -485,13 +463,16 @@ address) of the token:
 | `iat` | Issuing time    | Seconds since the epoch | `180322235959`       |
 | `iss` | Issuer          | KBS URL                 | `https://my-kbs.io/` |
 
-The private claims set must include the `tee-pubkey` name. This name refers to
+The custom claims set must include the attestation result from the
+`Attestation Service`, which include the TCB status and measurements.
+
+The custom claims set can also include a `tee-pubkey` claim. This claim refers to
 the HW-TEE's public key sent by the KBC along with the attestation evidence,
 which is valid within the validity period of the token.
 
-When the KBC uses the token to request resources or services from a KBS service
-API, then the KBS uses this public key to encrypt the symmetric key used to
-encrypt the `output`.
+When the KBC uses this token to request resources or services from a relying
+party service API, then the symmetric key used to encrypt the output payload can
+be wrapped with the provided `tee-pubkey`.
 
 ##### Signature
 
@@ -502,21 +483,20 @@ signature.
 
 #### HTTP Response
 
-The token is included in the `/kbs/v0/resource/token/` `GET` HTTP response
-body, as JSON content:
-
-``` json-with-comments
+The token is included in the `/kbs/v0/attest` `POST` HTTP response
+body:
+```json
 {
-    "token": "$serialized_token"
+    "token": <token>
 }
 ```
 
-where `$serialized_token` is built as follows:
+A serialized token is built as follows:
 
 ``` rust
 let jwt_header = base64_url::encode(r#"{{"alg": "RS256","typ": "JWT"}}"#);
 
-let jwt_claims_string = format!(r#"{{"exp": {}, "iat": {}, "iss": {}, "tee-pubkey": {}}}"#, exp, iat, iss, pubkey);
+let jwt_claims_string = format!(r#"{{"exp": {}, "iat": {}, "iss": {}, {}}}}"#, exp, iat, iss, claims);
 let jwt_claims = base64_url::encode(&jwt_claims_string);
 
 let jws_signature_input = format!("{}.{}", jwt_header, jwt_claims);
@@ -524,6 +504,20 @@ let jws_signature = base64_url::encode(rs256_key_pair.sign(&jws_signature_input)
 
 let serialized_token = format!("{}.{}.{}", jwt_header, jwt_claims, jwt_signature);
 ```
+
+### Attestation Results Token Certificate Chain
+
+The KBS is configured with a specific Attestation Results Token Broker. The
+Broker generates and signs Attestation Results token that can be returned by the
+`/kbs/v0/attest` endpoint. In order for Relying Parties to
+authenticate the KBS Broker and validate the Attestation Results, the Broker
+certificate chain is made available by the KBS at the following endpoint:
+
+```
+/kbs/v0/token-certificate-chain
+```
+
+The Broker certificate chain is represented as a JWKS (https://www.rfc-editor.org/rfc/rfc7517#appendix-B).
 
 ## Error information
 
@@ -533,10 +527,9 @@ attestation error.
 The [Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc7807)
 format is used for that purpose:
 
-
 ```json
 {
-    "type": "https://github.com/confidential-containers/kbs/errors/<problem-type>"
+    "type": "https://github.com/confidential-containers/kbs/errors/<problem-type>",
     "detail": "$detail"
 }
 ```
