@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::resource::RepositoryType;
+use crate::token::AttestationTokenBrokerType;
 use anyhow::anyhow;
 use serde::Deserialize;
 use serde_json::Value;
@@ -20,6 +21,9 @@ pub struct Config {
     /// This is a JSON string,
     /// Various to repository type.
     pub repository_description: Option<Value>,
+
+    /// Attestation Token type
+    pub attestation_token_type: AttestationTokenBrokerType,
 
     /// OPTIONAL
     /// Remote Attestation Service address.
@@ -40,6 +44,7 @@ impl Default for Config {
         Config {
             repository_type: RepositoryType::LocalFs,
             repository_description: None,
+            attestation_token_type: AttestationTokenBrokerType::Simple,
             as_addr: None,
             as_config_file_path: None,
         }
@@ -53,6 +58,7 @@ impl TryFrom<&Path> for Config {
     ///        "repository_description": {
     ///            "dir_path": "/opt/confidential-containers/kbs/repository"
     ///        },
+    ///            "attestation_token_type": "Simple",
     ///        # Only used in Remote Attestation-Service mode
     ///        "as_addr": "http://127.0.0.1:50004",
     ///        # Only used in Native Attestation-Service mode
