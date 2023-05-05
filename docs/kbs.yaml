@@ -47,7 +47,7 @@ paths:
   /attest:
     post:
       operationId: attestationEvidence
-      summary: Send an attestation evidence
+      summary: Send an attestation evidence and receive an attestation results token
       requestBody:
         required: true
         content:
@@ -64,6 +64,10 @@ paths:
       responses:
         200:
           description: The attestation evidence is authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttestationToken'
         401:
           description: Missing or invalid session ID
           content:
@@ -143,42 +147,24 @@ paths:
           schema:
             type: string
           required: true
-        - name: 
-  /resource/token/{tag}:
+
+  /token-certificate-chain:
     get:
-      operationId: getToken
-      summary: Get an external resource token from the Key Broker Service.
-      parameters:
-        - in: cookie
-          name: kbs-session-id
-          schema:
-            type: string
-        - name: tag
-          in: path
-          description: Can be left blank to use default.
-          schema:
-            type: string
-          required: false
+      operationId: getAttestationTokenCertificateChain
+      summary: Get the Attestation Results Token Broker certificate chain
       responses:
         200:
           description: >-
-            The KBS reponse including the token.
-            The KBS session ID is returned in a cookie named `kbs-session-id`.
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-                example: kbs-session-id=1234
+            The KBS reponse including the attestation token broker certificate
+            chain.
           content:
-            application/jwt:
+            application/json:
               schema:
-                $ref: '#/components/schemas/Token'
-        401:
-          description: Missing or invalid session ID.
-        403:
-          description: The KBC is not allowed to get a token.
+                $ref: '#/components/schemas/CertificateChain'
         404:
-          description: The KBS does not provide token resource.
+          description: >-
+            The KBS does not provide attestation token broker certificate chains.
+
 
 components:
   schemas:
@@ -273,25 +259,24 @@ components:
           description: >-
             Encryption algorithm used to encrypt the response payload.
 
-    Token:
+    AttestationToken:
       required:
         - token
       type: object
       properties:
         token:
+          type: string
           description: >-
-            A JSON Web Token (https://jwt.io).
+            A serialized JSON Web Token (https://jwt.io).
             The token value is a string, which is made of 3 strings, separated
             by dots.
             The first string is a Base64-url encoding of
-            '#/components/schemas/TokenHeader'.
+            '#/components/schemas/AttestationTokenHeader'.
             The second string is a Base64-url encoding of
-            '#/components/schemas/TokenPayload'.
+            '#/components/schemas/AttestationTokenPayload'.
             The third string is a Base64-url encoding of the token signature.
-          type: string
-      description: A JSON Web Token (https://jwt.io) formatted object.
 
-    TokenHeader:
+    AttestationTokenHeader:
       required:
         - typ
         - alg
@@ -304,12 +289,13 @@ components:
           type: string
           description: The signature algorithm
 
-    TokenPayload:
+    AttestationTokenPayload:
       required:
         - ext
         - iat
         - iss
         - tee-pubkey
+        - attestation-results
       properties:
         ext:
           type: integer
@@ -321,8 +307,13 @@ components:
           type: string
           description: The token issuer URL.
         tee-pubkey:
-          type: object
           $ref: '#/components/schemas/PublicKey'
+        attestation-results:
+          type: string
+
+    CertificateChain:
+      type: string
+      description: Certificate chain as a JWKS (https://www.rfc-editor.org/rfc/rfc7517#appendix-B)
 
     PublicKey:
       required:
