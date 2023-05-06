@@ -57,7 +57,7 @@ sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 tempfile = "3.3.0"
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "fs"] }
 tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 
