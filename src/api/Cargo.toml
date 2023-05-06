@@ -21,14 +21,14 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "v0.5.0"}
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "v0.5.0", optional = true}
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "090c367"}
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "090c367", optional = true}
 base64.workspace = true
 cfg-if = "1.0.0"
 elliptic-curve = { version = "0.13.4", features = ["arithmetic", "pem"] }
 env_logger.workspace = true
 jwt-simple = "0.11.4"
-kbs-types = "0.2"
+kbs-types = { git = "https://github.com/mkulke/kbs-types.git", branch = "mkulke/add-az-snp-vtpm-tee-on-v0.2" }
 lazy_static = "1.4.0"
 log.workspace = true
 prost = { version = "0.11", optional = true }

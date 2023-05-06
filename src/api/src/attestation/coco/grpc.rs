@@ -12,7 +12,8 @@ use log::info;
 use tonic::transport::Channel;
 
 use self::attestation::{
-    attestation_service_client::AttestationServiceClient, AttestationRequest, Tee as GrpcTee,
+    attestation_service_client::AttestationServiceClient, AttestationRequest, SetPolicyRequest,
+    Tee as GrpcTee,
 };
 
 mod attestation {
@@ -30,6 +31,7 @@ fn to_grpc_tee(tee: Tee) -> GrpcTee {
         Tee::Snp => GrpcTee::Snp,
         Tee::Tdx => GrpcTee::Tdx,
         Tee::Sample => GrpcTee::Sample,
+        Tee::AzSnpVtpm => todo!(),
     }
 }
 
@@ -55,6 +57,20 @@ impl Grpc {
 
 #[async_trait]
 impl Attest for Grpc {
+    async fn set_policy(&mut self, input: as_types::SetPolicyInput) -> Result<()> {
+        let req = tonic::Request::new(SetPolicyRequest {
+            input: serde_json::to_string(&input)?,
+        });
+
+        let _ = self
+            .inner
+            .set_attestation_policy(req)
+            .await
+            .map_err(|e| anyhow!("Set Policy Failed: {:?}", e))?;
+
+        Ok(())
+    }
+
     async fn verify(
         &mut self,
         tee: Tee,

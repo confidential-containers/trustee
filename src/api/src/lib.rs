@@ -226,6 +226,10 @@ impl ApiServer {
                 .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                 .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
                 .service(
+                    web::resource(kbs_path!("attestation-policy"))
+                        .route(web::post().to(http::attestation_policy)),
+                )
+                .service(
                     web::resource(kbs_path!("token-certificate-chain"))
                         .route(web::get().to(http::get_token_certificate)),
                 )
