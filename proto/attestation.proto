@@ -19,6 +19,12 @@ message AttestationResponse {
     string attestation_results = 1;
 }
 
+message SetPolicyRequest {
+    string input = 1;
+}
+message SetPolicyResponse {}
+
 service AttestationService {
     rpc AttestationEvaluate(AttestationRequest) returns (AttestationResponse) {};
+    rpc SetAttestationPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
 }

@@ -13,6 +13,7 @@ gnupg \
 libclang-dev \
 libprotobuf-dev \
 libssl-dev \
+libtss2-dev \
 make \
 pkg-config \
 protobuf-compiler \
