@@ -16,6 +16,9 @@ pub struct Native {
 
 #[async_trait]
 impl Attest for Native {
+    async fn set_policy(&mut self, input: as_types::SetPolicyInput) -> Result<()> {
+        self.inner.set_policy(input).await
+    }
     async fn verify(
         &mut self,
         tee: Tee,

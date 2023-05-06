@@ -19,6 +19,41 @@ macro_rules! internal {
     };
 }
 
+/// POST /attestation-policy
+pub(crate) async fn attestation_policy(
+    request: HttpRequest,
+    input: web::Json<as_types::SetPolicyInput>,
+    user_pub_key: web::Data<Option<Ed25519PublicKey>>,
+    insecure: web::Data<bool>,
+    attestation_service: web::Data<AttestationService>,
+) -> HttpResponse {
+    if !insecure.get_ref() {
+        let user_pub_key = match user_pub_key.as_ref() {
+            Some(key) => key,
+            None => internal!("No user public key provided"),
+        };
+
+        if let Err(e) = validate_auth(&request, user_pub_key) {
+            log::error!("auth validate verified failed: {e}");
+            unauthorized!(
+                JWTVerificationFailed,
+                &format!("Authentication failed: {e}")
+            );
+        }
+    }
+
+    match attestation_service
+        .0
+        .lock()
+        .await
+        .set_policy(input.into_inner())
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(err) => internal!(format!("{err}")),
+    }
+}
+
 /// POST /resource/{repository}/{type}/{tag}
 /// POST /resource/{type}/{tag}
 ///
