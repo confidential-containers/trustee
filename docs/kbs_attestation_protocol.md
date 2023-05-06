@@ -473,6 +473,28 @@ When the KBC uses this token to request resources or services from a relying
 party service API, then the symmetric key used to encrypt the output payload can
 be wrapped with the provided `tee-pubkey`.
 
+### Set Attestation Policy
+User of KBS can set an attestation verification policy through the following endpoint:
+
+```
+/kbs/v0/attestation-policy
+```
+
+The payload of the POST request should like:
+
+```json
+{
+    "type": "rego",
+    "policy_id": "default",
+    "policy": <base64encoded policy>
+}
+```
+
+Where `type` is the policy format (e.g. `rego` or `opa`), `policy_id` provides the policy ID
+and `policy` is the base64 encoded policy content.
+Only authenticated users can send a POST request to this endpoint.
+KBS verifies the user identity with the user's private key signed JSON Web Token (JWT) that must be included in the request. 
+
 ##### Signature
 
 Using the algorithm described in the token header, the KBS signs the
