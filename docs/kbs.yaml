@@ -75,6 +75,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorInformation'
 
+  /attestation-policy:
+    post:
+      operationId: setAttestationPolicy
+      summary: Set attestation verification policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttestationPolicy'
+
   /resource/{repository}/{type}/{tag}:
     get:
       operationId: getResource
@@ -258,6 +269,25 @@ components:
           type: string
           description: >-
             Encryption algorithm used to encrypt the response payload.
+
+    AttestationPolicy:
+      required:
+        - type
+        - policy_id
+        - policy
+      properties:
+        type:
+          type: string
+          description: >-
+            Policy Engine type, for example: "opa"
+        policy_id:
+          type: string
+          description: >-
+            ID used to identify the policy, use "default" to set default policy
+        policy:
+          type: string
+          description: >-
+            Base64 encoded attestation verification policy.
 
     AttestationToken:
       required:
