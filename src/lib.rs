@@ -20,6 +20,7 @@ pub mod rvps;
 pub mod verifier;
 
 use anyhow::{anyhow, Context, Result};
+use as_types::SetPolicyInput;
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use policy_engine::PolicyEngine;
@@ -84,6 +85,14 @@ impl AttestationService {
         })
     }
 
+    /// Set Attestation Verification Policy.
+    pub async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
+        self.policy_engine
+            .set_policy(input)
+            .await
+            .map_err(|e| anyhow!("Cannot Set Policy: {:?}", e))
+    }
+
     /// Evaluate Attestation Evidence.
     pub async fn evaluate(
         &self,
@@ -115,9 +124,11 @@ impl AttestationService {
             .await
             .map_err(|e| anyhow!("Generate reference data failed{:?}", e))?;
 
+        // Now only support using default policy to evaluate
         let (result, policy_engine_output) = self
             .policy_engine
-            .evaluate(reference_data_map, tcb.clone())?;
+            .evaluate(reference_data_map, tcb.clone(), None)
+            .await?;
 
         let attestation_results =
             AttestationResults::new(tee, result, None, Some(policy_engine_output), Some(tcb));

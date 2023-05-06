@@ -7,7 +7,9 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
-use crate::as_api::{AttestationRequest, AttestationResponse, Tee as GrpcTee};
+use crate::as_api::{
+    AttestationRequest, AttestationResponse, SetPolicyRequest, SetPolicyResponse, Tee as GrpcTee,
+};
 
 use crate::rvps_api::reference_value_provider_service_server::{
     ReferenceValueProviderService, ReferenceValueProviderServiceServer,
@@ -61,6 +63,27 @@ impl AttestationServer {
 
 #[tonic::async_trait]
 impl AttestationService for Arc<RwLock<AttestationServer>> {
+    async fn set_attestation_policy(
+        &self,
+        request: Request<SetPolicyRequest>,
+    ) -> Result<Response<SetPolicyResponse>, Status> {
+        let request: SetPolicyRequest = request.into_inner();
+
+        debug!("SetPolicyInput: {}", &request.input);
+
+        let set_policy_input: as_types::SetPolicyInput = serde_json::from_str(&request.input)
+            .map_err(|_| Status::aborted("Bad SetPolicyInput"))?;
+
+        self.write()
+            .await
+            .attestation_service
+            .set_policy(set_policy_input)
+            .await
+            .map_err(|e| Status::aborted(format!("Set Attestation Policy Failed: {e}")))?;
+
+        Ok(Response::new(SetPolicyResponse {}))
+    }
+
     async fn attestation_evaluate(
         &self,
         request: Request<AttestationRequest>,

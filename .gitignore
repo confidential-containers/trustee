@@ -8,5 +8,6 @@ target
 reference_values
 
 test_data/*_output.txt
+test_data/opa/
 
 tools/
