@@ -48,3 +48,10 @@ pub struct ResultOutput {
     pub verifier_output: Option<String>,
     pub policy_engine_output: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetPolicyInput {
+    pub r#type: String,
+    pub policy_id: String,
+    pub policy: String,
+}
