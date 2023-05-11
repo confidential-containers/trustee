@@ -16,7 +16,7 @@ pub mod sgx;
 
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
-        Tee::Sev | Tee::Snp => todo!(),
+        Tee::Sev | Tee::Snp | Tee::Cca => todo!(),
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
