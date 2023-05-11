@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# TODO: update to 0.3, once released
-kbs-types = { git = "https://github.com/mkulke/kbs-types.git", branch = "mkulke/add-az-snp-vtpm-tee-on-v0.2" }
+kbs-types = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
