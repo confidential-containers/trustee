@@ -288,9 +288,8 @@ The authentication service is provided by the KBS through two endpoints:
 2. `/kbs/v0/attest` only accepts `POST` requests whose body is a [KBS Attestation](#attestation)
    JSON payload and the header contains a `Cookie` set to the value received in
    step 1.i. This is how the attester replies to attestation challenge received
-   in step 1.ii. The KBS replies to that request with an empty HTTP response
-   (no content), which HTTP status indicates if the attestation was successful or
-   not.
+   in step 1.ii. If the attestation was successful, the KBS replies to that request with an 
+   [Attestation Results Token](#attestation-results-token).
 
 ```
 ┌──────────┐                                          ┌─────┐
@@ -323,7 +322,7 @@ The authentication service is provided by the KBS through two endpoints:
      ┃◀────────────────────│Response│────────────────────┃
      ┃      ┌──────────────┴────────┴───────────────┐    ┃
      ┃      │Header: "Set-Cookie kbs-session-id=123"│    ┃
-     ┃      │Body: N/A                              │    ┃
+     ┃      │Body: Attestation Results Token        │    ┃
      ┃      └───────────────────────────────────────┘    ┃
      ┃                                                   ┃
      ┃                                                   ┃
