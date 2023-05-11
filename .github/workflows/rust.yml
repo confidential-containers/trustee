@@ -33,9 +33,9 @@ jobs:
         components: rustfmt, clippy
         target: x86_64-unknown-linux-gnu
 
-    - name: Protocol buffer compiler installation
+    - name: Building dependencies installation
       run: |
-        sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
+        sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
 
     - name: Install TDX dependencies
       run: |
