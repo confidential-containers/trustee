@@ -13,28 +13,36 @@ use std::path::Path;
 /// KBS Config
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
-    /// Resource repository type
+    /// The resource repository type.
+    ///
+    /// Possible values:
+    /// * `LocalFs` for locally stored resources.
     pub repository_type: RepositoryType,
 
-    /// OPIONAL
-    /// Resource repository description
-    /// This is a JSON string,
-    /// Various to repository type.
+    /// Resource repository description (Optional).
+    ///
+    /// This is a JSON string describing the repository configuration.
+    /// The JSON string schema is repository type specific.
     pub repository_description: Option<Value>,
 
-    /// Attestation Token type
+    /// The Attestation Token Result Broker type.
+    ///
+    /// Possible values:
+    /// * `Simple`
     pub attestation_token_type: AttestationTokenBrokerType,
 
-    /// OPTIONAL
-    /// Remote Attestation Service address.
-    /// Only used in remote AS mode.
-    /// If Null, default remote AS addr will be used.
+    /// The Remote Attestation Service API address (Optional).
+    ///
+    /// This is only relevant when running the Confidential Containers
+    /// Attestation Service through a gRPC socket.
+    /// If empty, the default remote AS address is used.
     pub as_addr: Option<String>,
 
-    /// OPTIONAL
-    /// Native Attestation Service config file path
-    /// Only used with the built-in CoCo AS.
-    /// If Null, default AS config will be used.
+    /// The built-in Attestation Service configuration file path (Optional).
+    ///
+    /// This is only relevant when running the Confidential Containers
+    /// Attestation Service as a built-in crate.
+    /// If empty, the default AS configuration file path is used.
     pub as_config_file_path: Option<String>,
 }
 
