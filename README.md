@@ -18,7 +18,7 @@ The KBS implements and supports a simple, vendor and hardware-agnostic
 ## API
 
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
-This API is formally described in its [OpenAPI formatted specification](docs/kbs.yaml).
+This API is formally described in its [OpenAPI formatted specification](./docs/kbs.yaml).
 
 ## Attestation
 
@@ -44,8 +44,8 @@ make
 ```
 
 The integrated Attestation Service configuration file can be provided at
-runtime through the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
-by using the `--config` command line option.
+runtime through the [KBS config file](./docs/config.md), by using the `--config`
+command line option.
 
 ### `gRPC` CoCo Attestation Service
 
@@ -65,7 +65,7 @@ or with the corresponding Makefile target:
 make kbs-coco-as-grpc
 ```
 
-The AS `gRPC` address can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs),
+The AS `gRPC` address can be specified in the [KBS config file](./docs/config.md),
 and by default KBS will try to reach a locally running AS at `127.0.0.1:50004`.
 
 ## Resource Repository
@@ -74,9 +74,9 @@ KBS stores confidential resources through a `Repository` abstraction specified
 by a Rust trait. The `Repository` interface can be implemented for different
 storage backends like e.g. databases or local file systems.
 
-The [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs)
-defined which resource repository backend KBS will use. The default is the local
-file system.
+The [KBS config file](./docs/config.md)
+defines which resource repository backend KBS will use. The default is the local
+file system (`LocalFs`).
 
 ### Local File System Repository
 
@@ -106,7 +106,7 @@ make kbs
 KBS can also run in insecure mode, through `HTTP`. This is targeted for
 development purposes and should not be used in production.
 
-A custom, [JSON-formatted configuration file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs)
+A custom, [JSON-formatted configuration file](./docs/config.md)
 can also be provided:
 
 ```shell
