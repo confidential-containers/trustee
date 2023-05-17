@@ -1,5 +1,14 @@
 [workspace]
-members = ["src/kbs", "src/api", "tools/client"]
+members = [
+    "bin/kbs",
+    "api",
+    "attestation",
+    "internal",
+    "resource",
+    "session",
+    "token",
+    "tools/client"
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,12 +18,29 @@ documentation = "https://github.com/confidential-containers/kbs"
 edition = "2021"
 
 [workspace.dependencies]
+actix-web = "4"
 anyhow = "1.0"
 api-server = { path = "src/api", default-features = false }
+# TODO: update to as-types rev=v0.6.0 once released
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "f119a5d"}
 async-trait = "0.1.31"
+attestation = { path = "./attestation", default-features = false }
 base64 = "0.13.1"
+cfg-if = "1.0.0"
+clap = { version = "4.0.29", features = ["derive"] }
 env_logger = "0.10.0"
+internal = { path = "./internal" }
+jwt-simple = "0.11.4"
+kbs-types = "0.3"
 log = "0.4.17"
+resource = { path = "./resource" }
+semver = "1.0.16"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.89"
-tokio = { version = "1.23.0", features = ["full"] }
+session = { path = "./session" }
+strum = "0.24.1"
+strum_macros = "0.24.1"
 tempfile = "3.4.0"
+token = { path = "./token" }
+tokio = { version = "1.23.0", features = ["full"] }
+

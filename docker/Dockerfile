@@ -33,7 +33,7 @@ RUN apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
 # Build and Install KBS
 ARG KBS_FEATURES=coco-as-builtin,rustls
-RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES}
+RUN cargo install --path bin/kbs --no-default-features --features ${KBS_FEATURES}
 
 FROM debian:stable-slim
 

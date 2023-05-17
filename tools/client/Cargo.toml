@@ -6,13 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "f119a5d"}
+as-types.workspace = true
 anyhow.workspace = true
-api-server.workspace = true
 base64.workspace = true
-clap = { version = "4.0.29", features = ["derive"] }
+clap.workspace = true
 env_logger.workspace = true
-jwt-simple = "0.11.4"
+jwt-simple.workspace = true
 kbs_protocol = { git = "https://github.com/jialez0/attestation-agent", branch = "token" }
 log.workspace = true
 reqwest = { version = "0.11.13", default-features = false, features = ["cookies", "json"] }

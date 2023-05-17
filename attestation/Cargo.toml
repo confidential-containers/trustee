@@ -1,0 +1,33 @@
+[package]
+name = "attestation"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[features]
+default = ["coco-as-builtin"]
+coco-as = []
+coco-as-builtin = ["coco-as", "attestation-service/default"]
+coco-as-builtin-no-verifier = ["coco-as", "attestation-service/rvps-native"]
+coco-as-grpc = ["coco-as", "tonic", "tonic-build", "prost"]
+
+[dependencies]
+anyhow.workspace = true
+as-types.workspace = true
+async-trait.workspace = true
+# TODO: update to attestation-service rev=v0.6.0 once released
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", default-features = false, rev = "f119a5d", optional = true}
+cfg-if.workspace = true
+internal.workspace = true
+kbs-types.workspace = true
+log.workspace = true
+prost = { version = "0.11", optional = true }
+serde_json.workspace = true
+tokio.workspace = true
+tonic = { version = "0.8", optional = true }
+
+[build-dependencies]
+anyhow = "1"
+tonic-build ={ version = "0.8", optional = true }

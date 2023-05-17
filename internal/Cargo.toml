@@ -1,0 +1,19 @@
+[package]
+name = "internal"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+actix-web-httpauth = "0.8.0"
+actix-web.workspace = true
+anyhow.workspace = true
+jwt-simple.workspace = true
+lazy_static = "1.4.0"
+resource.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+token.workspace = true

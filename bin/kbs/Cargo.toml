@@ -1,0 +1,32 @@
+[package]
+name = "kbs"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[features]
+default = ["coco-as-builtin", "rustls"]
+coco-as-builtin = ["attestation/coco-as-builtin"]
+coco-as-builtin-no-verifier = ["attestation/coco-as-builtin-no-verifier"]
+coco-as-grpc = ["attestation/coco-as-grpc"]
+rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
+openssl = ["actix-web/openssl", "dep:openssl"]
+
+[dependencies]
+actix-web.workspace = true
+anyhow.workspace = true
+api = { path = "../../api" }
+attestation.workspace = true
+cfg-if.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+internal.workspace = true
+jwt-simple.workspace = true
+log.workspace = true
+openssl = { version = "0.10.46", optional = true }
+rustls = { version = "0.20.8", optional = true }
+rustls-pemfile = { version = "1.0.2", optional = true }
+session.workspace = true
+tokio.workspace = true

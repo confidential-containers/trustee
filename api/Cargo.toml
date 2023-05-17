@@ -1,0 +1,24 @@
+[package]
+name = "api"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+actix-web.workspace = true
+anyhow.workspace = true
+as-types.workspace = true
+attestation.workspace = true
+internal.workspace = true
+jwt-simple.workspace = true
+kbs-types.workspace = true
+log.workspace = true
+resource.workspace = true
+serde_json.workspace = true
+session.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+token.workspace = true
+tokio.workspace = true
