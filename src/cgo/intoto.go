@@ -18,9 +18,8 @@ func verifyGo(
 	intermediatePaths []string,
 	linkDir string,
 	lineNormalizationInt int) *C.char {
-	var layoutMb intoto.Metablock
-
-	if err := layoutMb.Load(layoutPath); err != nil {
+	layoutMb, err := intoto.LoadMetadata(layoutPath)
+	if err != nil {
 		e := fmt.Errorf("failed to load layout at %s: %w", layoutPath, err)
 		return C.CString("Error:: " + e.Error())
 	}
