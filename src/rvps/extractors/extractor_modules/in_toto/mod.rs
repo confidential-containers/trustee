@@ -22,13 +22,13 @@ use std::{
     io::Write,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::rvps::{reference_value::REFERENCE_VALUE_VERSION, ReferenceValue};
+use crate::rvps::ReferenceValue;
 
 use super::Extractor;
 
@@ -133,13 +133,25 @@ impl Extractor for InTotoExtractor {
         let layout_file = std::fs::File::open(&layout_path)?;
 
         // A layout's expired time will be in signed.expires
-        let expires = {
-            let layout = &serde_json::from_reader::<_, Value>(layout_file)?["signed"]["expires"];
-            if *layout == json!(null) {
-                bail!("illegal layout format");
+        let _expires = {
+            // fit up with the newest in-toto provenance format
+            let envelope = serde_json::from_reader::<_, Value>(layout_file)?;
+            let layout_base64 = &envelope["payload"];
+            let payload_type = &envelope["payloadType"];
+            if *payload_type != Value::String(String::from("application/vnd.in-toto+json")) {
+                bail!(
+                    "Unsupported payload type {}, only support `application/vnd.in-toto+json` now",
+                    payload_type
+                );
             }
 
-            let expire_str = layout
+            let layout = match layout_base64 {
+                Value::String(inner) => base64::decode(inner),
+                _ => bail!("Unexpected payload, expected a base64 encoded string"),
+            }?;
+
+            let layout = serde_json::from_slice::<Value>(&layout).context("parse layout")?;
+            let expire_str = layout["expires"]
                 .as_str()
                 .ok_or_else(|| anyhow!("failed to get expired time"))?;
             let ndt = NaiveDateTime::parse_from_str(expire_str, "%Y-%m-%dT%H:%M:%SZ")?;
@@ -149,11 +161,24 @@ impl Extractor for InTotoExtractor {
 
         env::set_current_dir(tempdir_path)?;
 
-        let summary_link = match shim::verify(
+        // The newest in-toto api does not return an link file to sum up
+        // the outputs of the supplychain. We will only verify the provenance
+        // here. Because the reference value gathered from an in-toto
+        // pipeline is the hash digest of the binary, while the expected
+        // measurement is a hash digest of a slice of memory area. The
+        // difference is as the followiing equation:
+        // memory area = binary + paddings
+        // So we need a full design to include the final reference value
+        // inside the provenance, which we will work on later. Before that,
+        // in-toto will not be usable.
+        //
+        // Related issue:
+        // https://github.com/confidential-containers/attestation-service/issues/42
+        match shim::verify(
             layout_path,
             pub_key_paths,
             intermediate_paths,
-            tempdir_str,
+            "".into(),
             line_normalization,
         ) {
             Ok(summary_link) => summary_link,
@@ -163,44 +188,10 @@ impl Extractor for InTotoExtractor {
             }
         };
 
-        debug!(
-            "summary_link = {:?}, verify in-toto metadata succeeded",
-            summary_link
-        );
-
         // Change back working dir
         env::set_current_dir(cwd)?;
 
-        let mut res = Vec::new();
-
-        for (filepath, digests) in &summary_link.products {
-            let filename = filepath
-                .value()
-                .split('/')
-                .last()
-                .ok_or_else(|| anyhow!("Unexpected empty product name"))?;
-            let mut rv = ReferenceValue::new()?
-                .set_name(filename)
-                .set_version(REFERENCE_VALUE_VERSION)
-                .set_expired(expires);
-
-            for (alg, value) in digests {
-                let alg = serde_json::to_string(alg)?
-                    .trim_end_matches('"')
-                    .trim_start_matches('"')
-                    .to_string();
-
-                let value = serde_json::to_string(value)?
-                    .trim_end_matches('"')
-                    .trim_start_matches('"')
-                    .to_string();
-
-                rv = rv.add_hash_value(alg.to_string(), value.to_string());
-            }
-
-            res.push(rv);
-        }
-        Ok(res)
+        Ok(vec![])
     }
 }
 
@@ -280,6 +271,7 @@ pub mod test {
 
     #[test]
     #[serial]
+    #[ignore]
     fn in_toto_extractor() {
         let e = InTotoExtractor::new();
         let rv = ReferenceValue::new()
