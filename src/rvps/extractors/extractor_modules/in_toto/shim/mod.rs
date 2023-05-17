@@ -1,9 +1,4 @@
 use anyhow::*;
-use in_toto::models::byproducts::ByProducts;
-use in_toto::models::step::Command;
-use in_toto::models::{LinkMetadata, Metablock, TargetDescription, VirtualTargetPath};
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
@@ -34,47 +29,13 @@ extern "C" {
     ) -> *mut c_char;
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct LinkShim {
-    #[serde(rename = "_type")]
-    typ: String,
-    name: String,
-    materials: BTreeMap<VirtualTargetPath, TargetDescription>,
-    products: BTreeMap<VirtualTargetPath, TargetDescription>,
-    #[serde(rename = "environment")]
-    env: Option<BTreeMap<String, String>>,
-    byproducts: ByProducts,
-    command: Vec<String>,
-}
-
-impl TryInto<LinkMetadata> for LinkShim {
-    fn try_into(self) -> Result<LinkMetadata> {
-        let mut cmd = String::new();
-        for substr in &self.command {
-            cmd.push_str(substr);
-            cmd.push(' ');
-        }
-
-        Ok(LinkMetadata::new(
-            self.name.clone(),
-            self.materials.clone(),
-            self.products.clone(),
-            self.env.clone(),
-            self.byproducts.clone(),
-            Command::from(cmd.trim_end()),
-        )?)
-    }
-
-    type Error = Error;
-}
-
 pub fn verify(
     layout_path: String,
     pub_key_paths: Vec<String>,
     intermediate_paths: Vec<String>,
     link_dir: String,
     line_normalization: bool,
-) -> Result<LinkMetadata> {
+) -> Result<()> {
     // Convert Rust String to GoString
     let layout_path = GoString {
         p: layout_path.as_ptr() as *const c_char,
@@ -138,14 +99,5 @@ pub fn verify(
         bail!(res);
     }
 
-    let res = res.replace("\"signatures\":null", "\"signatures\":[]");
-
-    let summary_link = match serde_json::from_str::<Metablock>(&res)?.metadata {
-        in_toto::models::MetadataWrapper::Layout(_) => {
-            bail!("verification output an unexpected layout file, should be link")
-        }
-        in_toto::models::MetadataWrapper::Link(inner) => inner,
-    };
-
-    Ok(summary_link)
+    Ok(())
 }
