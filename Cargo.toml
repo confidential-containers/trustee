@@ -14,7 +14,7 @@ path = "bin/rvps/src/main.rs"
 required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
 
 [features]
-default = [ "rvps-native", "in-toto", "all-verifier" ]
+default = [ "rvps-native", "all-verifier" ]
 all-verifier = [ "az-snp-vtpm-verifier", "tdx-verifier", "sgx-verifier" ]
 tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
 sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
@@ -22,8 +22,6 @@ az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev" ]
 
 rvps-native = []
 rvps-grpc = [ "tonic" ]
-
-in-toto = [ "dep:in-toto" ]
 
 [dependencies]
 anyhow = "1.0"
@@ -39,8 +37,6 @@ env_logger = "0.9.1"
 eventlog-rs = { version = "0.1.3", optional = true }
 futures = "0.3.17"
 hex = "0.4.3"
-# TODO: Replace this with crate.io published version
-in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799", optional = true }
 intel-tee-quote-verification-rs = { version = "0.2.1", optional = true }
 kbs-types = "0.3"
 lazy_static = "1.4.0"
