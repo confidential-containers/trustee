@@ -180,16 +180,16 @@ mod tests {
 
     #[test]
     fn test_generate_parsed_claim() {
-        let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
+        let ccel_bin = fs::read("../test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
-        let quote_bin = fs::read("test_data/tdx_quote_4.dat").unwrap();
+        let quote_bin = fs::read("../test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_tdx_quote(&quote_bin).unwrap();
 
         let parsed_claim = generate_parsed_claim(quote, Some(ccel));
         assert!(parsed_claim.is_ok());
 
         let _ = fs::write(
-            "test_data/evidence_claim_output.txt",
+            "../test_data/evidence_claim_output.txt",
             format!("{:?}", parsed_claim.unwrap()),
         );
     }

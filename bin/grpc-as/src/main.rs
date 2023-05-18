@@ -10,8 +10,6 @@ pub mod rvps_api {
     tonic::include_proto!("reference");
 }
 
-#[macro_use]
-extern crate log;
 shadow!(build);
 
 mod server;

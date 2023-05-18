@@ -206,20 +206,20 @@ mod tests {
     use std::fs;
 
     #[rstest]
-    #[case("test_data/occlum_quote.dat")]
+    #[case("../test_data/occlum_quote.dat")]
     fn test_parse_sgx_quote(#[case] quote_dir: &str) {
         let quote_bin = fs::read(quote_dir).expect("read quote");
         let quote = parse_sgx_quote(&quote_bin);
 
         assert!(quote.is_ok());
         let parsed_quote = format!("{}", quote.unwrap());
-        let _ = fs::write("test_data/parse_sgx_quote_output.txt", parsed_quote);
+        let _ = fs::write("../test_data/parse_sgx_quote_output.txt", parsed_quote);
     }
 
     #[ignore]
     #[rstest]
     #[tokio::test]
-    #[case("test_data/occlum_quote.dat")]
+    #[case("../test_data/occlum_quote.dat")]
     async fn test_verify_sgx_quote(#[case] quote_dir: &str) {
         let quote_bin = fs::read(quote_dir).unwrap();
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;

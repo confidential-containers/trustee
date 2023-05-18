@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_parse_tdx_quote() {
-        let quote_bin = fs::read("test_data/tdx_quote_4.dat").unwrap();
+        let quote_bin = fs::read("../test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_tdx_quote(&quote_bin);
 
         assert!(quote.is_ok());
@@ -264,7 +264,7 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_verify_tdx_quote() {
-        let quote_bin = fs::read("test_data/quote.dat").unwrap();
+        let quote_bin = fs::read("../test_data/quote.dat").unwrap();
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
         assert!(res.is_ok(), "error");
     }
