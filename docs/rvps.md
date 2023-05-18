@@ -76,7 +76,7 @@ docker run -d -p 50003:50003 rvps
 In this way RVPS will work as a crate inside AS binary.
 
 ```bash
-cargo run --bin grpc-as --features="rvps-native rvps-grpc tokio/rt-multi-thread"
+cargo run --bin grpc-as
 ```
 
 ![](./rvps-native.svg)
@@ -86,7 +86,7 @@ cargo run --bin grpc-as --features="rvps-native rvps-grpc tokio/rt-multi-thread"
 In this way AS will connect to a remote RVPS.
 
 ```bash
-cargo run --bin grpc-as --features="rvps-native rvps-grpc tokio/rt-multi-thread" -- --rvps-address $RVPS_ADDR
+cargo run --bin grpc-as -- --rvps-address $RVPS_ADDR
 ```
 
 ![](./rvps-grpc.svg)
@@ -101,7 +101,7 @@ A client tool helps to perform as a client to rvps. It can
 
 Run RVPS
 ```bash
-cargo run --bin rvps --features="rvps-native rvps-grpc tokio/rt-multi-thread" -- --socket $RVPS_ADDR
+cargo run --bin rvps -- --socket $RVPS_ADDR
 ```
 
 Edit an test message in [sample format](../src/rvps/extractors/extractor_modules/sample/README.md)
@@ -130,8 +130,7 @@ EOF
 
 Register the provenance into RVPS
 ```bash
-cd tools/rvps-client
-cargo run -- register --path ./message --addr $RVPS_HTTP_ADDR
+cargo run --bin rvps-client -- register --path ./message --addr $RVPS_HTTP_ADDR
 ```
 
 Then it will say something like
@@ -141,7 +140,7 @@ Then it will say something like
 
 Let's then query the reference value
 ```bash
-cargo run -- query --name test-binary-1 --addr $RVPS_HTTP_ADDR
+cargo run --bin rvps-client -- query --name test-binary-1 --addr $RVPS_HTTP_ADDR
 ```
 
 Then the reference values will be output
