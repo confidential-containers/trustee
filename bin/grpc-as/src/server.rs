@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use attestation_service::{config::Config, AttestationService as Service, Tee};
+use log::{debug, info};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;

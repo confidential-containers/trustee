@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_parse_eventlog() {
-        let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
+        let ccel_bin = fs::read("../test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
         let _ = fs::write(
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_rebuild_rtmr() {
-        let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
+        let ccel_bin = fs::read("../test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
         let rtmr_result = ccel.rebuild_rtmr();
@@ -189,12 +189,12 @@ mod tests {
             hex::encode(rtmr.rtmr3)
         );
 
-        let _ = fs::write("test_data/rebuild_rtmr_output.txt", output);
+        let _ = fs::write("../test_data/rebuild_rtmr_output.txt", output);
     }
 
     #[test]
     fn test_query_digest() {
-        let ccel_bin = fs::read("test_data/CCEL_data").unwrap();
+        let ccel_bin = fs::read("../test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
         let kernel_hash = ccel.query_digest(MeasuredEntity::TdShimKernel);

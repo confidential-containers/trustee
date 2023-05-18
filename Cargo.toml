@@ -1,69 +1,32 @@
-[package]
-name = "attestation-service"
+[workspace]
+members = [
+    "as-types",
+    "attestation-service",
+    "bin/rvps",
+    "bin/grpc-as",
+    "bin/rvps-client",
+]
+
+[workspace.package]
 version = "0.1.0"
+authors = ["The Confidential Container Authors"]
+description = "Attestation Service"
+documentation = "https://github.com/confidential-containers/attestation-service"
 edition = "2021"
 
-[[bin]]
-name = "grpc-as"
-path = "bin/grpc-as/src/main.rs"
-required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
-
-[[bin]]
-name = "rvps"
-path = "bin/rvps/src/main.rs"
-required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
-
-[features]
-default = [ "rvps-native", "all-verifier" ]
-all-verifier = [ "az-snp-vtpm-verifier", "tdx-verifier", "sgx-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
-sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
-az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev" ]
-
-rvps-native = []
-rvps-grpc = [ "tonic" ]
-
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0"
 async-trait = "0.1.31"
-as-types = { path = "./as-types" }
-az-snp-vtpm = { version = "0.2", default-features = false, features = ["verifier"], optional = true }
-base64 = "0.13.0"
-byteorder = "1"
-cfg-if = "1.0.0"
-chrono = { version = "0.4.19", features = [ "serde" ] }
 clap = { version = "3.2.6", features = ["derive"] }
 env_logger = "0.9.1"
-eventlog-rs = { version = "0.1.3", optional = true }
-futures = "0.3.17"
-hex = "0.4.3"
-intel-tee-quote-verification-rs = { version = "0.2.1", optional = true }
-kbs-types = "0.3"
-lazy_static = "1.4.0"
 log = "0.4.17"
-path-clean = "0.1.0"
 prost = "0.11.0"
-scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
+rstest = "0.17.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
-sev = { version = "1.1.0", optional = true }
+serial_test = "0.9.0"
 sha2 = "0.10"
 shadow-rs = "0.19.0"
-sled = "0.34.7"
-strum = "0.24.0"
-strum_macros = "0.24.0"
-tempfile = "3.3.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "fs"] }
-tonic = { version = "0.8.1", optional = true }
-uuid = { version = "1.1.2", features = ["v4"] }
-
-[build-dependencies]
-shadow-rs = "0.19.0"
+tonic = "0.8.1"
 tonic-build = "0.8.0"
-
-[dev-dependencies]
-rstest = "0.17.0"
-serial_test = "0.9.0"
-sha2 = "0.10.2"
-testing_logger = "0.1.1"
-walkdir = "2.3.2"
