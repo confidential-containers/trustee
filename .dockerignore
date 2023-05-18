@@ -1,5 +1,4 @@
 target
 
-tools/rvps-client/target
-
-Dockerfile
+Dockerfile.as
+Dockerfile.rvps
