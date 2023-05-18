@@ -1,0 +1,20 @@
+[package]
+name = "rvps-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+prost.workspace = true
+shadow-rs.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+
+[build-dependencies]
+shadow-rs.workspace = true
+tonic-build.workspace = true
