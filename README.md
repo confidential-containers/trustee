@@ -23,7 +23,7 @@ The AS can be built and imported as a Rust crate into any project providing atte
 As the AS API is not yet fully stable, the AS crate needs to be imported from GitHub directly:
 
 ```toml
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service" branch = "main" }
+attestation-service = { git = "https://github.com/confidential-containers/attestation-service", branch = "main" }
 ```
 
 ## Server
