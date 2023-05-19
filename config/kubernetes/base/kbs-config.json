@@ -1,0 +1,8 @@
+{
+    "repository_type": "LocalFs",
+    "repository_description": {
+        "dir_path": "/opt/confidential-containers/kbs/repository"
+    },
+    "attestation_token_type": "Simple",
+    "as_config_file_path": "/etc/as/as-config.json"
+}
