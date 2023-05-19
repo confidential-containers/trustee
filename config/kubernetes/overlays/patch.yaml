@@ -1,0 +1,15 @@
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: keys
+    # Store keys that KBS will release to workloads after attestation:
+    # kbs:///reponame/workload_key/key.bin
+    #
+    # Note: The path should prefix kbs-config's repository_description.dir_path: /opt/confidential-containers/kbs/repository
+    mountPath: /opt/confidential-containers/kbs/repository/reponame/workload_key/
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: keys
+    secret:
+      secretName: keys

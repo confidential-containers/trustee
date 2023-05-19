@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kbs
+spec:
+  selector:
+    matchLabels:
+      app: kbs
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kbs
+    spec:
+      containers:
+      - name: kbs
+        image: kbs-container-image
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
+        command:
+        - /usr/local/bin/kbs
+        - --socket
+        - 0.0.0.0:8080
+        - --config
+        - /etc/kbs/kbs-config.json
+        - --auth-public-key
+        - /kbs/kbs.pem
+        # Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
+        # https://cert-manager.io/docs/configuration/acme/
+        - --insecure-http
+        volumeMounts:
+        - name: kbs-auth-public-key
+          mountPath: /kbs/
+        - name: kbs-config
+          mountPath: /etc/kbs/
+        - name: as-config
+          mountPath: /etc/as/
+      volumes:
+      - name: kbs-auth-public-key
+        secret:
+          secretName: kbs-auth-public-key
+      - name: kbs-config
+        configMap:
+          name: kbs-config
+      - name: as-config
+        configMap:
+          name: as-config

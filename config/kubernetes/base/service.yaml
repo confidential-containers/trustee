@@ -1,0 +1,12 @@
+# Service to expose the KBS.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kbs
+spec:
+  selector:
+    app: kbs
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
