@@ -48,7 +48,7 @@ serde_json.workspace = true
 strum = "0.24.1"
 strum_macros = "0.24.1"
 tokio.workspace = true
-tonic = { version = "0.8", optional = true }
+tonic = { version = "0.9", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 openssl = { version = "0.10.46", optional = true }
 p256 = { version = "0.13.2", features = [ "ecdsa" ] }
