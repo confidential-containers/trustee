@@ -519,7 +519,7 @@ dependencies = [
  "scroll",
  "serde",
  "serde_json",
- "sev",
+ "sev 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2",
  "shadow-rs",
  "sled",
@@ -535,7 +535,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-agent?branch=token#59ccc4c93a14f0f0aeaa9b6ec0711fa4ef86be1d"
+source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "anyhow",
  "az-snp-vtpm",
@@ -544,6 +544,7 @@ dependencies = [
  "occlum_dcap",
  "serde",
  "serde_json",
+ "sev 1.1.0 (git+https://github.com/virtee/sev?rev=3dca05d2c93388cb00534ad18f5928fd812e99cc)",
  "strum",
  "tdx-attest-rs",
 ]
@@ -623,7 +624,7 @@ dependencies = [
  "rsa 0.8.2",
  "serde",
  "serde_json",
- "sev",
+ "sev 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2",
  "static_assertions",
  "thiserror",
@@ -1117,7 +1118,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-agent?branch=token#59ccc4c93a14f0f0aeaa9b6ec0711fa4ef86be1d"
+source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2148,7 +2149,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-agent?branch=token#59ccc4c93a14f0f0aeaa9b6ec0711fa4ef86be1d"
+source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3532,6 +3533,25 @@ dependencies = [
  "iocuddle",
  "kvm-ioctls",
  "openssl",
+ "serde",
+ "serde-big-array",
+ "serde_bytes",
+ "static_assertions",
+ "uuid",
+]
+
+[[package]]
+name = "sev"
+version = "1.1.0"
+source = "git+https://github.com/virtee/sev?rev=3dca05d2c93388cb00534ad18f5928fd812e99cc#3dca05d2c93388cb00534ad18f5928fd812e99cc"
+dependencies = [
+ "bincode",
+ "bitfield",
+ "bitflags",
+ "codicon",
+ "dirs",
+ "iocuddle",
+ "kvm-ioctls",
  "serde",
  "serde-big-array",
  "serde_bytes",
