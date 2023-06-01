@@ -177,7 +177,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_policy() {
-        let mut opa = OPA::new(PathBuf::from("./test_data")).unwrap();
+        let mut opa = OPA::new(PathBuf::from("../test_data")).unwrap();
         let policy = "package policy
 default allow = true"
             .to_string();
