@@ -143,9 +143,9 @@ mod tests {
 
     #[test]
     fn test_verify_snp_report() {
-        let report = include_bytes!("../../test_data/az-hcl-data.bin");
+        let report = include_bytes!("../../../../test_data/az-hcl-data.bin");
         let hcl_data: HclData = report.as_slice().try_into().unwrap();
-        let vcek = Vcek::from_pem(include_str!("../../test_data/az-vcek.pem")).unwrap();
+        let vcek = Vcek::from_pem(include_str!("../../../../test_data/az-vcek.pem")).unwrap();
         verify_snp_report(hcl_data.report().snp_report(), &vcek).unwrap();
 
         let mut wrong_report = *report;
@@ -157,10 +157,10 @@ mod tests {
 
     #[test]
     fn test_verify_quote() {
-        let signature = include_bytes!("../../test_data/az-vtpm-quote-sig.bin").to_vec();
-        let message = include_bytes!("../../test_data/az-vtpm-quote-msg.bin").to_vec();
+        let signature = include_bytes!("../../../../test_data/az-vtpm-quote-sig.bin").to_vec();
+        let message = include_bytes!("../../../../test_data/az-vtpm-quote-msg.bin").to_vec();
         let quote = Quote { signature, message };
-        let report = include_bytes!("../../test_data/az-hcl-data.bin");
+        let report = include_bytes!("../../../../test_data/az-hcl-data.bin");
         let hcl_data: HclData = report.as_slice().try_into().unwrap();
         let nonce = "challenge".as_bytes();
         verify_quote(&quote, &hcl_data, nonce).unwrap();
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_parse_evidence() {
-        let report = include_bytes!("../../test_data/az-hcl-data.bin");
+        let report = include_bytes!("../../../../test_data/az-hcl-data.bin");
         let hcl_data: HclData = report.as_slice().try_into().unwrap();
         let snp_report = hcl_data.report().snp_report();
         let claim = parse_tee_evidence(snp_report);
