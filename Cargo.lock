@@ -389,7 +389,7 @@ dependencies = [
  "actix-web-httpauth",
  "aes-gcm",
  "anyhow",
- "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.0)",
+ "as-types",
  "async-trait",
  "attestation-service",
  "base64 0.13.1",
@@ -425,17 +425,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.0#9bd520c13d3997024b3694697039e53f45acad3c"
-dependencies = [
- "kbs-types",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "as-types"
-version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=f119a5d#f119a5d3cbd707364a49b1e4104feffb9e44b22c"
+source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.1#436e13ef18e3e2eba120188dc79ef5d8481c7561"
 dependencies = [
  "kbs-types",
  "serde",
@@ -495,12 +485,13 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.0#9bd520c13d3997024b3694697039e53f45acad3c"
+source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.1#436e13ef18e3e2eba120188dc79ef5d8481c7561"
 dependencies = [
  "anyhow",
- "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.0)",
+ "as-types",
  "asn1-rs",
  "async-trait",
+ "az-snp-vtpm",
  "base64 0.13.1",
  "bincode",
  "byteorder",
@@ -621,6 +612,7 @@ dependencies = [
  "clap 4.2.7",
  "jsonwebkey",
  "memoffset",
+ "openssl",
  "rsa 0.8.2",
  "serde",
  "serde_json",
@@ -952,7 +944,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api-server",
- "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?rev=f119a5d)",
+ "as-types",
  "base64 0.13.1",
  "clap 4.2.7",
  "env_logger 0.10.0",
@@ -2562,6 +2554,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
+name = "openssl-src"
+version = "111.26.0+1.1.1u"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efc62c9f12b22b8f5208c23a7200a442b2e5999f8bdf80233852122b5a4f6f37"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2569,6 +2570,7 @@ checksum = "8e17f59264b2809d77ae94f0e1ebabc434773f370d6ca667bd223ea10e06cc7e"
 dependencies = [
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -4278,9 +4280,12 @@ dependencies = [
  "base64 0.13.1",
  "log",
  "once_cell",
+ "rustls 0.20.8",
  "serde",
  "serde_json",
  "url",
+ "webpki",
+ "webpki-roots",
 ]
 
 [[package]]
