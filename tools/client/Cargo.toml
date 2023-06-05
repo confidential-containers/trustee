@@ -13,7 +13,7 @@ base64.workspace = true
 clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 jwt-simple = "0.11.4"
-kbs_protocol = { git = "https://github.com/confidential-containers/attestation-agent", rev = "aa1d3c5" }
+kbs_protocol = { git = "https://github.com/confidential-containers/attestation-agent", tag = "v0.6.0" }
 log.workspace = true
 reqwest = { version = "0.11.18", default-features = false, features = ["cookies", "json"] }
 serde_json.workspace = true

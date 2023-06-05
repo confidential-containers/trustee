@@ -526,7 +526,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "anyhow",
  "az-snp-vtpm",
@@ -1110,7 +1110,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2141,7 +2141,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?rev=aa1d3c5#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
 dependencies = [
  "anyhow",
  "async-trait",
