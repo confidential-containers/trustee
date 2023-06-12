@@ -27,7 +27,7 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 RUN apt-get install -y --no-install-recommends libtss2-dev
 
 # Install TDX Build Dependencies
-RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
+RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -47,7 +47,7 @@ RUN apt-get install -y \
     gnupg
 
 # Install TDX Runtime Dependencies
-RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
+RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
