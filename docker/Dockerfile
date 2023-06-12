@@ -15,7 +15,6 @@ RUN apt-get install -y \
     libclang-dev \
     libprotobuf-dev \
     libssl-dev \
-    libtss2-dev \
     make \
     pkg-config \
     protobuf-compiler \
@@ -25,13 +24,13 @@ RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install TPM Build Dependencies
-RUN apt-get install -y libtss2-dev
+RUN apt-get install -y --no-install-recommends libtss2-dev
 
 # Install TDX Build Dependencies
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
-RUN apt-get install -y \
+RUN apt-get install -y --no-install-recommends \
     libsgx-dcap-quote-verify-dev \
     libtdx-attest-dev
 
@@ -51,7 +50,7 @@ RUN apt-get install -y \
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
-RUN apt-get install -y \
+RUN apt-get install -y --no-install-recommends \
     libsgx-dcap-default-qpl \
     libsgx-dcap-quote-verify \
     libtdx-attest \
