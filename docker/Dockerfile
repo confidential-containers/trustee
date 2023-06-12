@@ -3,8 +3,10 @@ FROM rust:1.67-slim as builder
 WORKDIR /usr/src/kbs
 COPY . .
 
+ENV DEBIAN_FRONTEND noninteractive
+
 # Install Build Dependencies
-RUN apt-get update && apt-get install apt-utils
+RUN apt-get update && apt-get install -y apt-utils
 RUN apt-get install -y \
     clang \
     cmake \
@@ -23,13 +25,15 @@ RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install TPM Build Dependencies
-RUN apt-get update && apt-get install -y libtss2-dev
+RUN apt-get install -y libtss2-dev
 
 # Install TDX Build Dependencies
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
-RUN apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
+RUN apt-get install -y \
+    libsgx-dcap-quote-verify-dev \
+    libtdx-attest-dev
 
 # Build and Install KBS
 ARG KBS_FEATURES=coco-as-builtin,rustls
@@ -37,14 +41,21 @@ RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES
 
 FROM debian:stable-slim
 
-RUN apt-get update && apt-get install apt-utils
-RUN apt-get install -y clang curl gnupg
+RUN apt-get update && apt-get install -y apt-utils
+RUN apt-get install -y \
+    clang \
+    curl \
+    gnupg
 
 # Install TDX Runtime Dependencies
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
-RUN apt-get install -y libtdx-attest libsgx-dcap-default-qpl libsgx-dcap-quote-verify tpm2-tools
+RUN apt-get install -y \
+    libsgx-dcap-default-qpl \
+    libsgx-dcap-quote-verify \
+    libtdx-attest \
+    tpm2-tools
 
 # Intel PCCS URL Configurations
 # If you want the AS in KBS to connect to your customized PCCS for Intel TDX/SGX evidence verification,
