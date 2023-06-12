@@ -252,9 +252,10 @@ format.
 
 ``` json
 {
+    "kty": "RSA",
     "alg": "$key_algorithm",
-    "k-mod": "$pubkey modulus",
-    "k-exp": "$pubkey exponent"
+    "n": "$pubkey_modulus",
+    "e": "$pubkey_exponent"
 }
 ```
 
@@ -427,8 +428,8 @@ token signature algorithm (`alg`). For example:
 
 ```json
 {
-    "typ": "JWT"
-    "alg": "RS256",
+    "typ": "JWT",
+    "alg": "RS256"
 }
 
 ```
