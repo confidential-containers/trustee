@@ -143,9 +143,9 @@ impl<'a> Session<'a> {
             .encrypt(nonce, payload_data.as_slice())
             .map_err(|e| anyhow!("AES encrypt Resource payload failed: {:?}", e))?;
 
-        let k_mod = base64::decode(&tee_pub_key.k_mod)?;
+        let k_mod = base64::decode_config(&tee_pub_key.k_mod, base64::URL_SAFE_NO_PAD)?;
         let n = BigUint::from_bytes_be(&k_mod);
-        let k_exp = base64::decode(&tee_pub_key.k_exp)?;
+        let k_exp = base64::decode_config(&tee_pub_key.k_exp, base64::URL_SAFE_NO_PAD)?;
         let e = BigUint::from_bytes_be(&k_exp);
 
         let rsa_pub_key = RsaPublicKey::new(n, e)
