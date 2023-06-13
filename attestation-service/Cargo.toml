@@ -55,6 +55,7 @@ shadow-rs.workspace = true
 tonic-build.workspace = true
 
 [dev-dependencies]
+assert-json-diff.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
 sha2.workspace = true
