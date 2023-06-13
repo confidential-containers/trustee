@@ -1,15 +1,17 @@
 use anyhow::{anyhow, Context, Result};
 extern crate serde;
 extern crate strum;
+use crate::verifier::tdx::claims::generate_parsed_claim;
+
 use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
 use base64;
-use eventlog::{CcEventLog, MeasuredEntity, ParsedUefiPlatformFirmwareBlob2, Rtmr};
-use quote::{ecdsa_quote_verification, parse_tdx_quote, Quote};
-use serde_json::{Map, Value};
+use eventlog::{CcEventLog, Rtmr};
+use quote::{ecdsa_quote_verification, parse_tdx_quote};
 use sha2::{Digest, Sha384};
 
+mod claims;
 mod eventlog;
 mod quote;
 
@@ -101,76 +103,6 @@ async fn verify_evidence(
 
     // Return Evidence parsed claim
     generate_parsed_claim(quote, ccel_option)
-}
-
-fn generate_parsed_claim(
-    quote: Quote,
-    cc_eventlog: Option<CcEventLog>,
-) -> Result<TeeEvidenceParsedClaim> {
-    // Current Parsed Claim just a example
-    // TODO: Claim key name shall be consistent with RVPS
-
-    let mut claim_map = Map::new();
-
-    // Claims from TD Quote.
-    claim_map.insert(
-        "tdx-tcb-svn".to_string(),
-        serde_json::Value::String(hex::encode(quote.report_body.tcb_svn)),
-    );
-    claim_map.insert(
-        "tdx-mrseam".to_string(),
-        serde_json::Value::String(hex::encode(quote.report_body.mr_seam)),
-    );
-    claim_map.insert(
-        "tdx-mrtd".to_string(),
-        serde_json::Value::String(hex::encode(quote.report_body.mr_td)),
-    );
-    claim_map.insert(
-        "tdx-mrconfigid".to_string(),
-        serde_json::Value::String(hex::encode(quote.report_body.mr_config_id)),
-    );
-
-    // Claims from CC EventLog.
-    match cc_eventlog {
-        Some(ccel) => {
-            match (
-                ccel.query_digest(MeasuredEntity::TdShimKernel),
-                ccel.query_event_data(MeasuredEntity::TdShimKernel),
-            ) {
-                (Some(kernel_digest), Some(event_data)) => {
-                    let uefi_platform_firmware_blob2 =
-                        ParsedUefiPlatformFirmwareBlob2::try_from(event_data)
-                            .map_err(|e| anyhow!("Parse td_payload event data failed: {:?}", e))?;
-                    let digest_name = format!(
-                        "tdx-mrkernel-size{:?}",
-                        uefi_platform_firmware_blob2.blob_length
-                    );
-                    claim_map.insert(digest_name, serde_json::Value::String(kernel_digest));
-                }
-                _ => {
-                    warn!("No td-shim kernel hash in CCEL");
-                }
-            }
-            match ccel.query_digest(MeasuredEntity::TdvfKernel) {
-                Some(kernel_digest) => {
-                    claim_map.insert(
-                        "tdx-mrkernel".to_string(),
-                        serde_json::Value::String(kernel_digest),
-                    );
-                }
-                _ => {
-                    warn!("No tdvf kernel hash in CCEL");
-                }
-            }
-        }
-        None => {
-            warn!("parse CC EventLog: CCEL is null")
-        }
-    }
-
-    log::info!("\nParsed Evidence claims map: \n{:?}\n", &claim_map);
-
-    Ok(Value::Object(claim_map) as TeeEvidenceParsedClaim)
 }
 
 #[cfg(test)]
