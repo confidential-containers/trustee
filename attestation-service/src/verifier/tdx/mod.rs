@@ -6,7 +6,7 @@ use crate::verifier::tdx::claims::generate_parsed_claim;
 use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
-use base64;
+use base64::Engine;
 use eventlog::{CcEventLog, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote};
 use sha2::{Digest, Sha384};
@@ -61,7 +61,7 @@ async fn verify_evidence(
     evidence: &TdxEvidence,
 ) -> Result<TeeEvidenceParsedClaim> {
     // Verify TD quote ECDSA signature.
-    let quote_bin = base64::decode(evidence.quote.clone())?;
+    let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote.clone())?;
     ecdsa_quote_verification(quote_bin.as_slice()).await?;
 
     // Parse quote and Compare report data
@@ -80,7 +80,7 @@ async fn verify_evidence(
     let mut ccel_option = Option::default();
     match &evidence.cc_eventlog {
         Some(el) => {
-            ccel_data = base64::decode(el)?;
+            ccel_data = base64::engine::general_purpose::STANDARD.decode(el)?;
             let ccel = CcEventLog::try_from(ccel_data)
                 .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
             ccel_option = Some(ccel.clone());

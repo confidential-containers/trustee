@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use anyhow::*;
+use base64::Engine;
 use chrono::{Months, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +36,9 @@ const DEFAULT_EXPIRED_TIME: u32 = 12;
 
 impl Extractor for SampleExtractor {
     fn verify_and_extract(&self, provenance_base64: &str) -> Result<Vec<ReferenceValue>> {
-        let provenance = base64::decode(provenance_base64).context("base64 decode")?;
+        let provenance = base64::engine::general_purpose::STANDARD
+            .decode(provenance_base64)
+            .context("base64 decode")?;
         let payload: Provenance =
             serde_json::from_slice(&provenance).context("deseralize sample provenance")?;
 

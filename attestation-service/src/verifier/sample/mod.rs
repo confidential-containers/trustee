@@ -3,7 +3,7 @@ extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
-use base64;
+use base64::Engine;
 use serde_json::json;
 use sha2::{Digest, Sha384};
 
@@ -30,7 +30,8 @@ impl Verifier for Sample {
         hasher.update(&nonce);
         hasher.update(&attestation.tee_pubkey.k_mod);
         hasher.update(&attestation.tee_pubkey.k_exp);
-        let reference_report_data = base64::encode(hasher.finalize());
+        let reference_report_data =
+            base64::engine::general_purpose::STANDARD.encode(hasher.finalize());
 
         verify_tee_evidence(reference_report_data, &tee_evidence)
             .await
