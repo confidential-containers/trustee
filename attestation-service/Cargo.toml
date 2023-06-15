@@ -6,8 +6,8 @@ edition = "2021"
 [features]
 default = [ "rvps-native", "all-verifier" ]
 all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
-sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
+tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
+sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
 az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev" ]
 snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
 
@@ -28,7 +28,7 @@ chrono = { version = "0.4.19", features = [ "serde" ] }
 eventlog-rs = { version = "0.1.3", optional = true }
 futures = "0.3.17"
 hex = "0.4.3"
-intel-tee-quote-verification-rs = { version = "0.2.1", optional = true }
+sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
 kbs-types = "0.3"
 lazy_static = "1.4.0"
 log.workspace = true
