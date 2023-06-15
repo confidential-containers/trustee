@@ -10,6 +10,7 @@ use az_snp_vtpm::certs::{AmdChain, Vcek, X509};
 use az_snp_vtpm::hcl::{HclData, RuntimeData};
 use az_snp_vtpm::report::Validateable;
 use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sev::firmware::guest::types::{AttestationReport, SnpTcbVersion};
@@ -124,7 +125,10 @@ fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
         .iter()
         .map(|(k, v)| (*k, v.to_string()))
         .collect();
-    string_map.insert("measurement", base64::encode(report.measurement));
+    string_map.insert(
+        "measurement",
+        base64::engine::general_purpose::STANDARD.encode(report.measurement),
+    );
 
     json!(string_map) as TeeEvidenceParsedClaim
 }

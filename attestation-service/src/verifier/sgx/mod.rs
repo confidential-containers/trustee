@@ -11,6 +11,7 @@ use std::{
 use anyhow::*;
 use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
+use base64::Engine;
 use kbs_types::Attestation;
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
@@ -73,7 +74,7 @@ async fn verify_evidence(
     hash_of_nonce_pubkey: Vec<u8>,
     evidence: SgxEvidence,
 ) -> Result<TeeEvidenceParsedClaim> {
-    let quote_bin = base64::decode(evidence.quote.clone())?;
+    let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote.clone())?;
 
     ecdsa_quote_verification(&quote_bin)
         .await
