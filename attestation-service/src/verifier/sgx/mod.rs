@@ -11,14 +11,14 @@ use std::{
 use anyhow::*;
 use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
-use intel_tee_quote_verification_rs::{
-    sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
-    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
-};
 use kbs_types::Attestation;
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use sgx_dcap_quoteverify_rs::{
+    sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
+    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
+};
 use sha2::{Digest, Sha384};
 
 use self::types::sgx_quote3_t;
