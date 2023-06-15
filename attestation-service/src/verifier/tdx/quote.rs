@@ -9,7 +9,7 @@ use std::convert::TryInto;
 use std::mem;
 use std::time::{Duration, SystemTime};
 
-use intel_tee_quote_verification_rs as qvl;
+use sgx_dcap_quoteverify_rs as qvl;
 
 pub const QUOTE_PAYLOAD_SIZE: usize = 632;
 
