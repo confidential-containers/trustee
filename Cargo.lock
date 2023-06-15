@@ -193,7 +193,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "az-snp-vtpm",
- "base64 0.13.1",
+ "base64 0.21.2",
  "bincode",
  "byteorder",
  "cfg-if",
