@@ -16,17 +16,27 @@
 //!    }
 //!  },
 //!  "quote": {
-//!    "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!    "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!    "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!    "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
-//!    "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!    "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
-//!    "seam_attributes": "0000000000000000",
-//!    "td_attributes": "0100001000000000",
-//!    "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
-//!    "tcb_svn": "03000500000000000000000000000000",
-//!    "xfam": "e742060000000000"
+//!    "header":{
+//!        "version": "0400",
+//!        "att_key_type": "0200",
+//!        "tee_type": "81000000",
+//!        "reserved": "00000000",
+//!        "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
+//!        "user_data": "d099bfec0a477aa85a605dceabf2b10800000000"
+//!    },
+//!    "body":{
+//!        "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
+//!        "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
+//!        "seam_attributes": "0000000000000000",
+//!        "td_attributes": "0100001000000000",
+//!        "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
+//!        "tcb_svn": "03000500000000000000000000000000",
+//!        "xfam": "e742060000000000"
+//!    }
 //!  }
 //!}
 //! ```
@@ -58,27 +68,39 @@ pub fn generate_parsed_claim(
     cc_eventlog: Option<CcEventLog>,
 ) -> Result<TeeEvidenceParsedClaim> {
     let mut quote_map = Map::new();
-    // Claims from TD Quote. We ignore RTMRs because when verifying the integrity of
+    let mut quote_body = Map::new();
+    let mut quote_header = Map::new();
+    // Claims from TD Quote Header.
+    parse_claim!(quote_header, "version", quote.header.version);
+    parse_claim!(quote_header, "att_key_type", quote.header.att_key_type);
+    parse_claim!(quote_header, "tee_type", quote.header.tee_type);
+    parse_claim!(quote_header, "reserved", quote.header.reserved);
+    parse_claim!(quote_header, "vendor_id", quote.header.vendor_id);
+    parse_claim!(quote_header, "user_data", quote.header.user_data);
+    // Claims from TD Quote Body. We ignore RTMRs because when verifying the integrity of
     // the eventlog (CCEL), they have already been consumed.
-    parse_claim!(quote_map, "tcb_svn", quote.report_body.tcb_svn);
-    parse_claim!(quote_map, "mr_seam", quote.report_body.mr_seam);
-    parse_claim!(quote_map, "mrsigner_seam", quote.report_body.mrsigner_seam);
+    parse_claim!(quote_body, "tcb_svn", quote.report_body.tcb_svn);
+    parse_claim!(quote_body, "mr_seam", quote.report_body.mr_seam);
+    parse_claim!(quote_body, "mrsigner_seam", quote.report_body.mrsigner_seam);
     parse_claim!(
-        quote_map,
+        quote_body,
         "seam_attributes",
         quote.report_body.seam_attributes
     );
-    parse_claim!(quote_map, "td_attributes", quote.report_body.td_attributes);
-    parse_claim!(quote_map, "xfam", quote.report_body.xfam);
-    parse_claim!(quote_map, "mr_td", quote.report_body.mr_td);
-    parse_claim!(quote_map, "mr_config_id", quote.report_body.mr_config_id);
-    parse_claim!(quote_map, "mr_owner", quote.report_body.mr_owner);
+    parse_claim!(quote_body, "td_attributes", quote.report_body.td_attributes);
+    parse_claim!(quote_body, "xfam", quote.report_body.xfam);
+    parse_claim!(quote_body, "mr_td", quote.report_body.mr_td);
+    parse_claim!(quote_body, "mr_config_id", quote.report_body.mr_config_id);
+    parse_claim!(quote_body, "mr_owner", quote.report_body.mr_owner);
     parse_claim!(
-        quote_map,
+        quote_body,
         "mr_owner_config",
         quote.report_body.mr_owner_config
     );
-    parse_claim!(quote_map, "report_data", quote.report_body.report_data);
+    parse_claim!(quote_body, "report_data", quote.report_body.report_data);
+
+    parse_claim!(quote_map, "header", quote_header);
+    parse_claim!(quote_map, "body", quote_body);
 
     // Claims from CC EventLog.
     let mut ccel_map = Map::new();
@@ -227,17 +249,27 @@ mod tests {
                 }
             },
             "quote": {
-                "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
-                "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
-                "seam_attributes": "0000000000000000",
-                "td_attributes": "0100001000000000",
-                "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
-                "tcb_svn": "03000500000000000000000000000000",
-                "xfam": "e742060000000000"
+                "header":{
+                    "version": "0400",
+                    "att_key_type": "0200",
+                    "tee_type": "81000000",
+                    "reserved": "00000000",
+                    "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
+                    "user_data": "d099bfec0a477aa85a605dceabf2b10800000000"
+                },
+                "body":{
+                    "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                    "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                    "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                    "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
+                    "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                    "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
+                    "seam_attributes": "0000000000000000",
+                    "td_attributes": "0100001000000000",
+                    "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
+                    "tcb_svn": "03000500000000000000000000000000",
+                    "xfam": "e742060000000000"
+                }
             }
         });
 
