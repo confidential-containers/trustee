@@ -18,14 +18,14 @@ pub const QUOTE_PAYLOAD_SIZE: usize = 632;
 #[derive(Debug, Pread)]
 pub struct QuoteHeader {
     ///< 0:  The version this quote structure.
-    pub version: u16,
+    pub version: [u8; 2],
     ///< 2:  sgx_attestation_algorithm_id_t.  Describes the type of signature in the signature_data[] field.
-    pub att_key_type: u16,
+    pub att_key_type: [u8; 2],
     ///< 4:  Type of Trusted Execution Environment for which the Quote has been generated.
     ///      Supported values: 0 (SGX), 0x81(TDX)
-    pub tee_type: u32,
+    pub tee_type: [u8; 4],
     ///< 8:  Reserved field.
-    pub reserved: u32,
+    pub reserved: [u8; 4],
     ///< 12: Unique identifier of QE Vendor.
     pub vendor_id: [u8; 16],
     ///< 28: Custom attestation key owner data.
@@ -43,10 +43,10 @@ impl fmt::Display for QuoteHeader {
             \n\tReserved:\n\t{:X?}
             \n\tVendor ID:\n\t{:X?}
             \n\tUser Data:\n\t{:X?}\n",
-            self.version,
-            self.att_key_type,
-            self.tee_type,
-            self.reserved,
+            hex::encode(self.version),
+            hex::encode(self.att_key_type),
+            hex::encode(self.tee_type),
+            hex::encode(self.reserved),
             hex::encode(self.vendor_id),
             hex::encode(self.user_data)
         )
