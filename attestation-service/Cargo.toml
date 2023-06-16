@@ -38,6 +38,7 @@ prost.workspace = true
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
 serde.workspace = true
 serde_json.workspace = true
+serde_variant = "0.1.2"
 sev = { version = "= 1.1.0", features = ["openssl"], optional = true }
 sha2.workspace = true
 shadow-rs.workspace = true
