@@ -17,6 +17,7 @@ extern crate strum_macros;
 pub mod config;
 pub mod policy_engine;
 pub mod rvps;
+mod utils;
 pub mod verifier;
 
 use anyhow::{anyhow, Context, Result};
@@ -34,6 +35,8 @@ use std::{fs, str::FromStr};
 
 #[cfg(any(feature = "rvps-grpc", feature = "rvps-native"))]
 use policy_engine::PolicyEngineType;
+
+use crate::utils::flatten_claims;
 
 pub struct AttestationService {
     _config: Config,
@@ -118,7 +121,8 @@ impl AttestationService {
                 }
             };
 
-        let tcb = serde_json::to_string(&claims_from_tee_evidence)?;
+        let flattened_claims = flatten_claims(&claims_from_tee_evidence)?;
+        let tcb = serde_json::to_string(&flattened_claims)?;
         let reference_data_map = self
             .get_reference_data(&tcb)
             .await
