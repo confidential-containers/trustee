@@ -112,7 +112,7 @@ impl AttestationService {
                 Ok(claims) => claims,
                 Err(e) => {
                     return Ok(AttestationResults::new(
-                        tee,
+                        tee.clone(),
                         false,
                         Some(format!("Verifier evaluate failed: {e:?}")),
                         None,
@@ -121,7 +121,7 @@ impl AttestationService {
                 }
             };
 
-        let flattened_claims = flatten_claims(&claims_from_tee_evidence)?;
+        let flattened_claims = flatten_claims(tee.clone(), &claims_from_tee_evidence)?;
         let tcb = serde_json::to_string(&flattened_claims)?;
         let reference_data_map = self
             .get_reference_data(&tcb)
