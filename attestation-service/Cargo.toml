@@ -33,7 +33,7 @@ kbs-types = "0.3"
 lazy_static = "1.4.0"
 log.workspace = true
 openssl = { version = "0.10.43", optional = true }
-path-clean = "0.1.0"
+path-clean = "1.0.1"
 prost.workspace = true
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
 serde.workspace = true
