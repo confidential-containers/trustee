@@ -14,14 +14,14 @@ RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz && \
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install TPM Build Dependencies
-RUN apt-get update && apt install -y protobuf-compiler clang libtss2-dev
+RUN apt-get update && apt-get install -y protobuf-compiler clang libtss2-dev
 
 # Install TDX Build Dependencies
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
     echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
-# Build and Instll gRPC attestation-service
+# Build and Install gRPC attestation-service
 RUN cargo install --path bin/grpc-as
 
 
@@ -38,6 +38,9 @@ RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key 
     apt-get update && \
     apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+# Copy TPM Runtime Dependencies
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libtss* /usr/lib/x86_64-linux-gnu
 
 COPY --from=builder /usr/local/cargo/bin/grpc-as /usr/local/bin/grpc-as
 
