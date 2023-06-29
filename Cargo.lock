@@ -294,9 +294,8 @@ dependencies = [
 
 [[package]]
 name = "az-snp-vtpm"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8dbeaadc2dd14dd7bb36a5c608b95959e191277a7f9852522594c17d840608"
+version = "0.2.3"
+source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411#2c2e411dfb6f64fb4ffa4443213c5777de7af30d"
 dependencies = [
  "bincode",
  "clap 4.3.4",
