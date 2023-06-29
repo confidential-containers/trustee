@@ -13,8 +13,8 @@ use openssl::{
     x509,
 };
 use serde_json::json;
-use sev::firmware::guest::types::AttestationReport;
-use sev::firmware::host::types::{CertTableEntry, SnpCertType};
+use sev::firmware::guest::AttestationReport;
+use sev::firmware::host::{CertTableEntry, CertType};
 use sha2::{Digest, Sha384};
 use x509_parser::prelude::*;
 
@@ -117,7 +117,7 @@ fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
     }
 
     if get_oid_int(&parsed_vcek, LOADER_SPL_OID)?
-        != evidence.attestation_report.reported_tcb.boot_loader
+        != evidence.attestation_report.reported_tcb.bootloader
     {
         return Err(anyhow!("Boot loader verion mismatch"));
     }
@@ -147,7 +147,7 @@ fn verify_cert_chain(cert_chain: &[CertTableEntry]) -> Result<x509::X509> {
 
     let raw_vcek = cert_chain
         .iter()
-        .find(|c| c.cert_type == SnpCertType::VCEK)
+        .find(|c| c.cert_type == CertType::VCEK)
         .ok_or_else(|| anyhow!("VCEK not found."))?;
     let vcek = x509::X509::from_der(raw_vcek.data()).context("Failed to load VCEK")?;
 
@@ -192,7 +192,7 @@ fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
         "policy_single_socket": format!("{}", report.policy.single_socket_required()),
 
         // versioning info
-        "reported_tcb_bootloader": format!("{}", report.reported_tcb.boot_loader),
+        "reported_tcb_bootloader": format!("{}", report.reported_tcb.bootloader),
         "reported_tcb_tee": format!("{}", report.reported_tcb.tee),
         "reported_tcb_snp": format!("{}", report.reported_tcb.snp),
         "reported_tcb_microcode": format!("{}", report.reported_tcb.microcode),
@@ -212,7 +212,7 @@ fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
 mod tests {
     use super::*;
     use openssl::nid::Nid;
-    use sev::firmware::host::types::CertTableEntry;
+    use sev::firmware::host::CertTableEntry;
 
     #[test]
     fn check_milan_certificates() {
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn check_vcek_signature_verification() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
-        let cert_table = vec![CertTableEntry::new(SnpCertType::VCEK, vcek)];
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
         verify_cert_chain(&cert_table).unwrap();
     }
 
@@ -270,7 +270,7 @@ mod tests {
         // corrupt some byte
         vcek[7] += 1;
 
-        let cert_table = vec![CertTableEntry::new(SnpCertType::VCEK, vcek)];
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
         assert!(verify_cert_chain(&cert_table).is_err());
     }
 }
