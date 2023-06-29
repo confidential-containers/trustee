@@ -13,7 +13,8 @@ use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sev::firmware::guest::types::{AttestationReport, SnpTcbVersion};
+use sev::firmware::guest::AttestationReport;
+use sev::firmware::host::TcbVersion;
 use sha2::{Digest, Sha384};
 use std::collections::BTreeMap;
 
@@ -95,8 +96,8 @@ fn verify_snp_report(snp_report: &AttestationReport, vcek: &Vcek) -> Result<()> 
 }
 
 fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
-    let SnpTcbVersion {
-        boot_loader,
+    let TcbVersion {
+        bootloader,
         tee,
         snp,
         microcode,
@@ -112,7 +113,7 @@ fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
         ("policy_debug_allowed", policy.debug_allowed()),
         ("policy_single_socket", policy.single_socket_required()),
         // versioning info
-        ("reported_tcb_bootloader", boot_loader as u64),
+        ("reported_tcb_bootloader", bootloader as u64),
         ("reported_tcb_tee", tee as u64),
         ("reported_tcb_snp", snp as u64),
         ("reported_tcb_microcode", microcode as u64),
