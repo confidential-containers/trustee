@@ -21,11 +21,14 @@ use actix_web::{middleware, web, App, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
 #[cfg(feature = "as")]
 use attestation::AttestationService;
-use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
+#[cfg(feature = "resource")]
+use resource::RepositoryConfig;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use std::net::SocketAddr;
 use std::path::PathBuf;
+#[cfg(feature = "resource")]
+use token::AttestationTokenVerifierType;
 
 #[cfg(feature = "rustls")]
 use rustls::ServerConfig;
@@ -37,7 +40,7 @@ use openssl::ssl::SslAcceptorBuilder;
 use crate::session::SessionMap;
 
 #[cfg(feature = "policy")]
-use crate::policy_engine::PolicyEngine;
+use crate::policy_engine::{PolicyEngine, PolicyEngineConfig};
 
 #[cfg(feature = "as")]
 /// Attestation Service
@@ -92,10 +95,8 @@ macro_rules! kbs_path {
 #[allow(dead_code)]
 /// The KBS API server
 pub struct ApiServer {
-    config: Config,
     sockets: Vec<SocketAddr>,
     private_key: Option<PathBuf>,
-
     /// This user public key is used to verify the jwt.
     /// The jwt is carried with the POST request for
     /// resource registration
@@ -108,22 +109,30 @@ pub struct ApiServer {
 
     http_timeout: i64,
     insecure_api: bool,
+    #[cfg(feature = "resource")]
+    repository_config: RepositoryConfig,
+    #[cfg(feature = "resource")]
+    attestation_token_type: AttestationTokenVerifierType,
+    #[cfg(feature = "policy")]
+    policy_engine_config: PolicyEngineConfig,
 }
 
 impl ApiServer {
     /// Create a new KBS HTTP server
     pub fn new(
-        config: Config,
         sockets: Vec<SocketAddr>,
         private_key: Option<PathBuf>,
         user_public_key: Option<PathBuf>,
         certificate: Option<PathBuf>,
         insecure: bool,
 
-        #[cfg(feature = "as")] attestation_service: AttestationService,
+        #[cfg(feature = "as")] attestation_service: &AttestationService,
 
         http_timeout: i64,
         insecure_api: bool,
+        #[cfg(feature = "resource")] repository_config: RepositoryConfig,
+        #[cfg(feature = "resource")] attestation_token_type: AttestationTokenVerifierType,
+        #[cfg(feature = "policy")] policy_engine_config: PolicyEngineConfig,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
             bail!("Missing HTTPS credentials");
@@ -136,7 +145,6 @@ impl ApiServer {
         }
 
         Ok(ApiServer {
-            config,
             sockets,
             private_key,
             user_public_key,
@@ -144,10 +152,16 @@ impl ApiServer {
             insecure,
 
             #[cfg(feature = "as")]
-            attestation_service,
+            attestation_service: attestation_service.clone(),
 
             http_timeout,
             insecure_api,
+            #[cfg(feature = "resource")]
+            repository_config,
+            #[cfg(feature = "resource")]
+            attestation_token_type,
+            #[cfg(feature = "policy")]
+            policy_engine_config,
         })
     }
 
@@ -227,16 +241,13 @@ impl ApiServer {
         let http_timeout = self.http_timeout;
 
         #[cfg(feature = "resource")]
-        let repository = self
-            .config
-            .repository_type
-            .to_repository(&self.config.repository_description)?;
+        let repository = self.repository_config.initialize()?;
 
         #[cfg(feature = "resource")]
-        let token_verifier = self.config.attestation_token_type.to_token_verifier()?;
+        let token_verifier = self.attestation_token_type.to_token_verifier()?;
 
         #[cfg(feature = "policy")]
-        let policy_engine = PolicyEngine::new(&self.config).await?;
+        let policy_engine = PolicyEngine::new(&self.policy_engine_config).await?;
 
         let user_public_key = match self.insecure_api {
             true => None,

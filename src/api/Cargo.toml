@@ -26,12 +26,14 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = { version = "0.10.1", optional = true }
 anyhow.workspace = true
 async-trait.workspace = true
-as-types = { git = "https://github.com/jialez0/attestation-service.git", branch = "token"}
-attestation-service = { git = "https://github.com/jialez0/attestation-service.git", default-features = false, branch = "token", optional = true}
+as-types = { git = "https://github.com/jialez0/attestation-service.git", branch = "token" }
+attestation-service = { git = "https://github.com/jialez0/attestation-service.git", default-features = false, branch = "token", optional = true }
 base64.workspace = true
-cfg-if = "1.0.0"
+cfg-if.workspace = true
+clap = { version = "4.3.21", features = ["derive", "env"] }
+config = "0.13.3"
 env_logger.workspace = true
-jsonwebtoken = {version = "8", default-features = false, optional = true }
+jsonwebtoken = { version = "8", default-features = false, optional = true }
 jwt-simple = "0.11.6"
 # TODO: change it to "0.5", once released.
 kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
@@ -61,4 +63,4 @@ rstest.workspace = true
 
 [build-dependencies]
 anyhow = "1"
-tonic-build ={ version = "0.8", optional = true }
+tonic-build = { version = "0.8", optional = true }

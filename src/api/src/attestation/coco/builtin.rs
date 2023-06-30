@@ -7,7 +7,6 @@ use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{config::Config as AsConfig, AttestationService};
 use kbs_types::Tee;
-use std::path::Path;
 
 pub struct Native {
     inner: AttestationService,
@@ -24,15 +23,9 @@ impl Attest for Native {
 }
 
 impl Native {
-    pub fn new(as_config_path: &Option<String>) -> Result<Self> {
-        let as_config = match as_config_path {
-            Some(path) => AsConfig::try_from(Path::new(&path))
-                .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?,
-            None => AsConfig::default(),
-        };
-
+    pub fn new(config: &AsConfig) -> Result<Self> {
         Ok(Self {
-            inner: AttestationService::new(as_config)?,
+            inner: AttestationService::new(config.clone())?,
         })
     }
 }

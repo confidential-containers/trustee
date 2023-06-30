@@ -117,16 +117,13 @@ impl Attest for Amber {
 }
 
 impl Amber {
-    pub fn new(amber_config: &Option<AmberConfig>) -> Result<Self> {
-        let config = amber_config
-            .clone()
-            .ok_or(anyhow!("config is reqired for Amber-AS."))?;
+    pub fn new(config: &AmberConfig) -> Result<Self> {
         let file = File::open(&config.certs_file)
             .map_err(|e| anyhow!("Open certs file failed: {:?}", e))?;
         let reader = BufReader::new(file);
 
         Ok(Self {
-            config: config,
+            config: config.clone(),
             certs: serde_json::from_reader(reader)
                 .map_err(|e| anyhow!("Deserialize certs failed: {:?}", e))?,
         })

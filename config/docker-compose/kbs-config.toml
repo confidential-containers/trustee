@@ -1,0 +1,6 @@
+sockets = ["0.0.0.0:8080"]
+auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
+insecure_http = true
+
+[grpc_config]
+as_addr = "http://as:50004"

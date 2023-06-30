@@ -20,22 +20,13 @@ spec:
         imagePullPolicy: Always
         command:
         - /usr/local/bin/kbs
-        - --socket
-        - 0.0.0.0:8080
-        - --config
-        - /etc/kbs/kbs-config.json
-        - --auth-public-key
-        - /kbs/kbs.pem
-        # Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
-        # https://cert-manager.io/docs/configuration/acme/
-        - --insecure-http
+        - --config-file
+        - /etc/kbs/kbs-config.toml
         volumeMounts:
         - name: kbs-auth-public-key
           mountPath: /kbs/
         - name: kbs-config
           mountPath: /etc/kbs/
-        - name: as-config
-          mountPath: /etc/as/
       volumes:
       - name: kbs-auth-public-key
         secret:
@@ -43,6 +34,3 @@ spec:
       - name: kbs-config
         configMap:
           name: kbs-config
-      - name: as-config
-        configMap:
-          name: as-config
