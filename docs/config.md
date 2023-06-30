@@ -1,76 +1,182 @@
 # KBS Configuration File
 
-Some Confidential Containers KBS properties can be configured through a
-JSON-formatted configuration file.
+The Confidential Containers KBS properties can be configured through a
+TOML-formatted configuration file.
 
-The location of this file is passed to the KBS binary with the `--config`
-command line option.
+>NOTE: Additional formats such as YAML and JSON are supported. Other formats
+>supported by the `config` crate may be supported as well. This document uses
+>TOML in the configuration examples.
+
+The location of the configuration file is passed to the KBS binary using the
+`-c` or `--config-file` command line option, or using the `KBS_CONFIG_FILE`
+environment variable.
 
 ## Configurable Properties
 
-The following KBS properties can be set through the configuration file:
+The following sections list the KBS properties which can be set through the
+configuration file.
 
-| Property Key             | Description | Optional |
-|--------------------------|-------------|----------|
-| `repository_type`        | The resource repository type, e.g. `LocalFs`. If use the KBS for distributing tokens in passport mode, don't set this field.                                                                                              | No |
-| `repository_description` | <p> The resource repository description. <p> This is a JSON string, and is repository type specific. If use the KBS for distributing tokens in passport mode, don't set this field.                                      | Yes |
-| `attestation_token_type` | Attestation token type, e.g. `CoCo`. If use the KBS for distributing tokens in passport mode, don't set this field.                                                                                              | No |
-| `as_addr`                | <p>Attestation service socket address <p>This is only relevant when running the attestation service remotely, i.e. not as a builtin crate. If use the KBS for distributing resources in passport mode, don't set this field. | Yes |
-| `as_config_file_path`    | <p>Attestation service configuration file path. If use the KBS for distributing resources in passport mode, don't set this field. | Yes |
-| `as_addr`                | <p>Attestation service socket address <p>This is only relevant when running the attestation service remotely, i.e. not as a builtin crate. If use the KBS for distributing resources in passport mode, don't set this field.                                                                                         | Yes |
-| `amber`                  | <p>Amber description. <p>This is only relevant when running with Amber attestation service, and this is a JSON string, the following properties can be set: <p>`base_url` and `api_key` are used to call Amber API. <p>`certs_file` is a JWKS file to verify Amber token. <p>`allow_unmatched_policy` is optional, default is `false`. It determines whether to ignore the `amber_unmatched_policy_ids` field in Amber token. | Yes |
-| `policy_path`            | <p> The resource policy file path. <p> This is only relevant when the resource policy engine is enabled. This policy is to verify the attestation result claims and decide whether the requester has authority to access specified resource. If use the KBS for distributing tokens in passport mode, don't set this field. | Yes |
+### Global Properties
 
-### Examples
+The following properties can be set globally, i.e. not under any configuration
+section:
 
-#### KBS in Background Check mode
+| Property                 | Type         | Description                                                                                                | Required | Default              |
+|--------------------------|--------------|------------------------------------------------------------------------------------------------------------|----------|----------------------|
+| `attestation_token_type` | String       | Attestation token broker type. Available only when the `resource` feature is enabled. Valid values: `CoCo` | No       | `CoCo`               |
+| `sockets`                | String array | One or more sockets to listen on.                                                                          | No       | `["127.0.0.1:8080"]` |
+| `insecure_api`           | Boolean      | Enable KBS insecure APIs such as Resource Registration without JWK verification.                           | No       | `false`              |
+| `insecure_http`          | Boolean      | Don't use TLS for the KBS HTTP endpoint.                                                                   | No       | `false`              |
+| `timeout`                | Integer      | HTTP session timeout in minutes.                                                                           | No       | `5`                  |
+| `private_key`            | String       | Path to a private key file to be used for HTTPS.                                                           | No       | -                    |
+| `certificate`            | String       | Path to a certificate file to be used for HTTPS.                                                           | No       | -                    |
+| `auth_public_key`        | String       | Path to a public key file to be used for authenticating the resource registration endpoint token (JWT).    | No       | -                    |
+
+### Repository Configuration
+
+The following properties can be set under the `repository_config` section.
+
+This section is **optional**. When omitted, a default configuration is used.
+
+Repository configuration is **specific to a repository type**. See the following sections for
+type-specific properties.
+
+>This section is available only when the `resource` feature is enabled.
+
+| Property | Type   | Description                                           | Required | Default   |
+|----------|--------|-------------------------------------------------------|----------|-----------|
+| `type`   | String | The resource repository type. Valid values: `LocalFs` | Yes      | -         |
+
+**`LocalFs` Properties**
+
+| Property   | Type   | Description                     | Required | Default                                             |
+|------------|--------|---------------------------------|----------|-----------------------------------------------------|
+| `dir_path` | String | Path to a repository directory. | No       | `/opt/confidential-containers/kbs/repository`       |
+
+### Native Attestation
+
+The following properties can be set under the `as_config` section.
+
+This section is **optional**. When omitted, a default configuration is used.
+
+>This section is available only when one or more of the following features are enabled:
+>`coco-as-builtin`, `coco-as-builtin-no-verifier`
+
+| Property                   | Type                        | Description                                         | Required | Default |
+|----------------------------|-----------------------------|-----------------------------------------------------|----------|---------|
+| `work_dir`                 | String                      | The location for Attestation Service to store data. | Yes      | -       |
+| `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             | Yes      | -       |
+| `rvps_store_type`          | String                      | RVPS store type. Valid values: `LocalFs`            | Yes      | -       |
+| `attestation_token_broker` | String                      | Type of the attestation result token broker.        | Yes      | -       |
+| `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             | Yes      | -       |
+
+[1]: #attestationtokenconfig
+
+#### AttestationTokenConfig
+
+| Property       | Type    | Description                                          | Required | Default |
+|----------------|---------|------------------------------------------------------|----------|---------|
+| `duration_min` | Integer | Duration of the attestation result token in minutes. | Yes      | -       |
+| `issuer_name`  | String  | Issure name of the attestation result token.         | No       | -       |
+
+### gRPC Attestation
+
+The following properties can be set under the `grpc_config` section.
+
+This section is **optional**. When omitted, a default configuration is used.
+
+>This section is available only when the `coco-as-grpc` feature is enabled.
+
+| Property  | Type   | Description                  | Required | Default                  |
+|-----------|--------|------------------------------|----------|--------------------------|
+| `as_addr` | String | Attestation service address. | No       | `http://127.0.0.1:50004` |
+
+### Amber Attestation
+
+The following properties can be set under the `amber_config` section.
+
+>This section is available only when the `amber-as` feature is enabled.
+
+| Property                 | Type    | Description                                                                            | Required                | Default |
+|--------------------------|---------|----------------------------------------------------------------------------------------|-------------------------|---------|
+| `base_url`               | String  | URL of the Amber API.                                                                  | Yes                     | -       |
+| `api_key`                | String  | Amber API key.                                                                         | Yes                     | -       |
+| `certs_file`             | String  | Path to a JWKS file to be used for Amber token verification.                           | Yes                     | -       |
+| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `amber_unmatched_policy_ids` field in an Amber token. | No                      | false   |
+
+### Policy Engine Configuration
+
+The following properties can be set under the `policy_engine_config` section.
+
+This section is **optional**. When omitted, a default configuration is used.
+
+| Property                 | Type    | Description                                                                                                | Required                | Default                                        |
+|--------------------------|---------|------------------------------------------------------------------------------------------------------------|-------------------------|------------------------------------------------|
+| `policy_path`            | String  | Path to a file containing a policy for evaluating whether the TCB status has access to specific resources. | No                      | `/opa/confidential-containers/kbs/policy.rego` |
+
+## Configuration Examples
+
+Running with a built-in native attestation service:
+
+```toml
+insecure_http = true
+insecure_api = true
+
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[as_config]
+work_dir = "/opt/confidential-containers/attestation-service"
+policy_engine = "opa"
+rvps_store_type = "LocalFs"
+attestation_token_broker = "Simple"
+
+[as_config.attestation_token_config]
+duration_min = 5
+```
 
 Running the attestation service remotely:
-``` json
-{
-    "repository_type": "LocalFs",
-    "repository_description": {
-        "dir_path": "/opt/confidential-containers/kbs/repository"
-    },
-    "attestation_token_type": "Simple",
-    "as_addr": "http://127.0.0.1:50004",
-    "policy_path": "/opt/confidential-containers/kbs/policy.rego"
-}
+
+```toml
+insecure_http = true
+insecure_api = true
+
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[grpc_config]
+as_addr = "http://127.0.0.1:50004"
 ```
 
 Running with Amber attestation service:
-``` json
-{
-    "repository_type": "LocalFs",
-    "repository_description": {
-        "dir_path": "/opt/confidential-containers/kbs/repository"
-    },
-    "attestation_token_type": "Simple",
-    "amber" : {
-        "base_url": "https://api-xxx.com",
-        "api_key":  "tBfd5kKX2x9ahbodKV1...",
-        "certs_file": "/etc/amber/amber-certs.txt",
-        "allow_unmatched_policy": true
-    }
-}
+
+```toml
+insecure_http = true
+insecure_api = true
+
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[amber_config]
+base_url = "https://amber.com"
+api_key = "tBfd5kKX2x9ahbodKV1..."
+certs_file = "/etc/amber/amber-certs.txt"
+allow_unmatched_policy = true
 ```
 
-#### KBS for distributing resources in Passport mode
+Distributing resources in Passport mode:
 
-```json
-{
-    "repository_type": "LocalFs",
-    "repository_description": {
-        "dir_path": "/opt/confidential-containers/kbs/repository"
-    },
-    "policy_path": "/opt/confidential-containers/kbs/policy.rego"
-}
+```toml
+insecure_http = true
+insecure_api = true
+
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[policy_engine_config]
+policy_path = "/opt/confidential-containers/kbs/policy.rego"
 ```
-
-#### KBS for distributing tokens Passport mode
-
-Running the attestation service natively:
-```json
-{
-    "as_config_file_paths": "/etc/as-config.json",
-}

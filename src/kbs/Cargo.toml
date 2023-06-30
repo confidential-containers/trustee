@@ -25,3 +25,4 @@ clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 log.workspace = true
 tokio.workspace = true
+cfg-if.workspace = true

@@ -1,0 +1,7 @@
+insecure_http = true
+insecure_api = true
+
+[amber_config]
+base_url = "https://amber.com"
+api_key = "tBfd5kKX2x9ahbodKV1..."
+certs_file = "/etc/amber/amber-certs.txt"

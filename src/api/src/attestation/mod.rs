@@ -2,15 +2,21 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::config::Config;
+#[cfg(feature = "amber-as")]
+use amber::AmberConfig;
 use anyhow::*;
 use async_trait::async_trait;
+#[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+use attestation_service::config::Config as AsConfig;
+#[cfg(feature = "coco-as-grpc")]
+use coco::grpc::GrpcConfig;
 use kbs_types::Tee;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[cfg(feature = "coco-as")]
-mod coco;
+#[allow(missing_docs)]
+pub mod coco;
 
 #[cfg(feature = "amber-as")]
 pub mod amber;
@@ -35,21 +41,29 @@ pub trait Attest: Send + Sync {
 pub struct AttestationService(pub Arc<Mutex<dyn Attest>>);
 
 impl AttestationService {
-    /// Create and initialize AttestionService
-    pub async fn new(kbs_config: &Config) -> Result<Self> {
-        let attestation_service: Arc<Mutex<dyn Attest>> = {
-            cfg_if::cfg_if! {
-                if #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))] {
-                    Arc::new(Mutex::new(coco::builtin::Native::new(&kbs_config.as_config_file_path)?))
-                } else if #[cfg(feature = "coco-as-grpc")] {
-                    Arc::new(Mutex::new(coco::grpc::Grpc::new(kbs_config).await?))
-                } else if #[cfg(feature = "amber-as")] {
-                    Arc::new(Mutex::new(amber::Amber::new(&kbs_config.amber)?))
-                } else {
-                    compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, `coco-as-grpc` or `amber-as` to continue.");
-                }
-            }
-        };
+    /// Create and initialize AttestationService.
+    #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+    pub fn new(config: &AsConfig) -> Result<Self> {
+        let attestation_service: Arc<Mutex<dyn Attest>> =
+            Arc::new(Mutex::new(coco::builtin::Native::new(config)?));
+
+        Ok(Self(attestation_service))
+    }
+
+    /// Create and initialize AttestationService.
+    #[cfg(feature = "coco-as-grpc")]
+    pub async fn new(config: &GrpcConfig) -> Result<Self> {
+        let attestation_service: Arc<Mutex<dyn Attest>> =
+            Arc::new(Mutex::new(coco::grpc::Grpc::new(config).await?));
+
+        Ok(Self(attestation_service))
+    }
+
+    /// Create and initialize AttestationService.
+    #[cfg(feature = "amber-as")]
+    pub fn new(config: &AmberConfig) -> Result<Self> {
+        let attestation_service: Arc<Mutex<dyn Attest>> =
+            Arc::new(Mutex::new(amber::Amber::new(config)?));
 
         Ok(Self(attestation_service))
     }

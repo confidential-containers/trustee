@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::config::Config;
 use anyhow::Result;
 use async_trait::async_trait;
+use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -33,17 +33,33 @@ pub(crate) trait PolicyEngineInterface: Send + Sync {
     async fn set_policy(&mut self, policy: String) -> Result<()>;
 }
 
+/// Policy engine configuration.
+#[derive(Clone, Debug, Deserialize)]
+pub struct PolicyEngineConfig {
+    /// Path to a file containing a policy for evaluating whether the TCB status has access to
+    /// specific resources.
+    pub policy_path: Option<PathBuf>,
+}
+
+impl Default for PolicyEngineConfig {
+    fn default() -> Self {
+        Self {
+            policy_path: Some(PathBuf::from(DEFAULT_POLICY_PATH)),
+        }
+    }
+}
+
 /// Policy Engine
 #[derive(Clone)]
 pub(crate) struct PolicyEngine(pub Arc<Mutex<dyn PolicyEngineInterface>>);
 
 impl PolicyEngine {
     /// Create and initialize PolicyEngine
-    pub async fn new(kbs_config: &Config) -> Result<Self> {
+    pub async fn new(config: &PolicyEngineConfig) -> Result<Self> {
         let policy_engine: Arc<Mutex<dyn PolicyEngineInterface>> = {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "opa")] {
-                    Arc::new(Mutex::new(opa::Opa::new(kbs_config.policy_path.clone().unwrap_or(PathBuf::from(DEFAULT_POLICY_PATH)))?))
+                    Arc::new(Mutex::new(opa::Opa::new(config.policy_path.clone().unwrap_or(PathBuf::from(DEFAULT_POLICY_PATH)))?))
                 } else {
                     compile_error!("Please enable at least one of the following features: `opa` to continue.");
                 }

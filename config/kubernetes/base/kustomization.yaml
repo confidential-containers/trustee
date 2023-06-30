@@ -16,14 +16,10 @@ configMapGenerator:
 # KBS configuration.
 - name: kbs-config
   files:
-  - kbs-config.json
-- name: as-config
-  files:
-  - as-config.json
+  - kbs-config.toml
 
 secretGenerator:
 # KBS auth public key.
 - name: kbs-auth-public-key
   files:
   - kbs.pem
-

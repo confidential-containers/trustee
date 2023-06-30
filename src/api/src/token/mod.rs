@@ -4,6 +4,7 @@
 
 use anyhow::*;
 use serde::Deserialize;
+use std::fmt;
 use std::sync::Arc;
 use strum_macros::EnumString;
 use tokio::sync::RwLock;
@@ -31,5 +32,11 @@ impl AttestationTokenVerifierType {
             ))
                 as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
         }
+    }
+}
+
+impl fmt::Display for AttestationTokenVerifierType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

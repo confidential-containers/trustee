@@ -7,90 +7,69 @@
 extern crate anyhow;
 
 use anyhow::{bail, Result};
+use std::path::Path;
+
 #[cfg(feature = "as")]
 use api_server::attestation::AttestationService;
-use api_server::{config::Config, ApiServer};
-use log::warn;
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-
+use api_server::{
+    config::{Cli, KbsConfig},
+    ApiServer,
+};
 use clap::Parser;
-
-static SESSION_TIMEOUT: i64 = 5;
-
-#[derive(Debug, Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    /// Socket address (IP:port) to listen to, e.g. 127.0.0.1:8080.
-    /// This can be set multiple times.
-    #[arg(required = true, short, long)]
-    socket: Vec<SocketAddr>,
-
-    /// HTTPS session timeout (in minutes)
-    #[arg(default_value_t = SESSION_TIMEOUT, short, long)]
-    timeout: i64,
-
-    /// HTTPS private key
-    #[arg(short, long)]
-    private_key: Option<PathBuf>,
-
-    /// HTTPS Certificate
-    #[arg(long)]
-    certificate: Option<PathBuf>,
-
-    /// Insecure HTTP.
-    /// WARNING Using this option makes the HTTP connection insecure.
-    #[arg(default_value_t = false, long)]
-    insecure_http: bool,
-
-    /// KBS config file path.
-    #[arg(default_value_t = String::default(), short, long)]
-    config: String,
-
-    /// Public key used to authenticate the resource registration endpoint token (JWT).
-    /// Only JWTs signed with the corresponding private keys will be authenticated.
-    #[arg(long)]
-    auth_public_key: Option<PathBuf>,
-
-    /// Insecure HTTP Apis.
-    /// WARNING Using this option enables insecure APIs of KBS, such as
-    /// - Resource Registration without verifying the JWK.
-    #[arg(default_value_t = false, short, long)]
-    insecure_api: bool,
-}
+use log::{debug, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let cli = Cli::parse();
-    let kbs_config = match cli.config.as_str() {
-        "" => Config::default(),
-        _ => Config::try_from(Path::new(&cli.config))?,
-    };
 
-    if !cli.insecure_http && (cli.private_key.is_none() || cli.certificate.is_none()) {
-        bail!("Missing HTTPS credentials");
+    info!("Using config file {}", cli.config_file);
+    let kbs_config = KbsConfig::try_from(Path::new(&cli.config_file))?;
+
+    debug!("Config: {:#?}", kbs_config);
+
+    if !kbs_config.insecure_http
+        && (kbs_config.private_key.is_none() || kbs_config.certificate.is_none())
+    {
+        bail!("Must specify HTTPS private key and certificate when running in secure mode");
     }
 
-    if cli.insecure_api {
-        warn!("insecure apis are enabled.");
+    if kbs_config.insecure_api {
+        warn!("insecure APIs are enabled");
     }
 
     #[cfg(feature = "as")]
-    let attestation_service = AttestationService::new(&kbs_config).await?;
+    let attestation_service = {
+        cfg_if::cfg_if! {
+            if #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))] {
+                AttestationService::new(&kbs_config.as_config.unwrap_or_default())?
+            } else if #[cfg(feature = "coco-as-grpc")] {
+                AttestationService::new(&kbs_config.grpc_config.unwrap_or_default()).await?
+            } else if #[cfg(feature = "amber-as")] {
+                AttestationService::new(&kbs_config.amber_config)?
+            } else {
+                compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, `coco-as-grpc` or `amber-as` to continue.");
+            }
+        }
+    };
 
     let api_server = ApiServer::new(
-        kbs_config,
-        cli.socket,
-        cli.private_key,
-        cli.auth_public_key,
-        cli.certificate,
-        cli.insecure_http,
+        kbs_config.sockets,
+        kbs_config.private_key,
+        kbs_config.auth_public_key,
+        kbs_config.certificate,
+        kbs_config.insecure_http,
         #[cfg(feature = "as")]
-        attestation_service,
-        cli.timeout,
-        cli.insecure_api,
+        &attestation_service,
+        kbs_config.timeout,
+        kbs_config.insecure_api,
+        #[cfg(feature = "resource")]
+        kbs_config.repository_config.unwrap_or_default(),
+        #[cfg(feature = "resource")]
+        kbs_config.attestation_token_type,
+        #[cfg(feature = "opa")]
+        kbs_config.policy_engine_config.unwrap_or_default(),
     )?;
 
     api_server.serve().await.map_err(anyhow::Error::from)

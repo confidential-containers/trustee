@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::attestation::Attest;
-use crate::config::Config;
 use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use log::info;
+use serde::Deserialize;
 use tonic::transport::Channel;
 
 use self::attestation::{
@@ -36,13 +36,26 @@ fn to_grpc_tee(tee: Tee) -> GrpcTee {
     }
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct GrpcConfig {
+    as_addr: Option<String>,
+}
+
+impl Default for GrpcConfig {
+    fn default() -> Self {
+        Self {
+            as_addr: Some(DEFAULT_AS_ADDR.to_string()),
+        }
+    }
+}
+
 pub struct Grpc {
     inner: AttestationServiceClient<Channel>,
 }
 
 impl Grpc {
-    pub async fn new(kbs_config: &Config) -> Result<Self> {
-        let as_addr = match &kbs_config.as_addr {
+    pub async fn new(config: &GrpcConfig) -> Result<Self> {
+        let as_addr = match &config.as_addr {
             Some(addr) => addr.clone(),
             None => {
                 log::info!("Default remote AS address (127.0.0.1:50004) is used");
