@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::*;
-use local_fs::{LocalFs, LocalFsRepoDesc};
+use local_fs::LocalFs;
+pub use local_fs::LocalFsRepoDesc;
 use serde::Deserialize;
-use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -35,36 +35,40 @@ pub struct ResourceDesc {
     pub resource_tag: String,
 }
 
-#[derive(Deserialize, Debug, Clone, EnumString)]
-pub enum RepositoryType {
-    LocalFs,
+#[derive(Clone, Debug, Deserialize, EnumString)]
+#[serde(tag = "type")]
+pub enum RepositoryConfig {
+    LocalFs(local_fs::LocalFsRepoDesc),
 }
 
-impl RepositoryType {
-    pub fn to_repository(
-        &self,
-        repo_desc: &Option<Value>,
-    ) -> Result<Arc<RwLock<dyn Repository + Send + Sync>>> {
+impl RepositoryConfig {
+    pub fn initialize(&self) -> Result<Arc<RwLock<dyn Repository + Send + Sync>>> {
         match self {
-            RepositoryType::LocalFs => {
-                let desc = match repo_desc {
-                    Some(d) => serde_json::from_value::<LocalFsRepoDesc>(d.clone())?,
-                    None => local_fs::LocalFsRepoDesc::default(),
-                };
-
+            Self::LocalFs(desc) => {
                 // Create repository dir.
-                if !Path::new(&desc.dir_path).exists() {
-                    fs::create_dir_all(&desc.dir_path)?;
+                let dir_path = desc
+                    .dir_path
+                    .clone()
+                    .unwrap_or(local_fs::DEFAULT_REPO_DIR_PATH.to_string());
+
+                if !Path::new(&dir_path).exists() {
+                    fs::create_dir_all(&dir_path)?;
                 }
                 // Create default repo.
-                if !Path::new(&format!("{}/default", &desc.dir_path)).exists() {
-                    fs::create_dir_all(format!("{}/default", &desc.dir_path))?;
+                if !Path::new(&format!("{}/default", &dir_path)).exists() {
+                    fs::create_dir_all(format!("{}/default", &dir_path))?;
                 }
 
                 Ok(Arc::new(RwLock::new(LocalFs::new(desc)?))
                     as Arc<RwLock<dyn Repository + Send + Sync>>)
             }
         }
+    }
+}
+
+impl Default for RepositoryConfig {
+    fn default() -> Self {
+        Self::LocalFs(local_fs::LocalFsRepoDesc::default())
     }
 }
 

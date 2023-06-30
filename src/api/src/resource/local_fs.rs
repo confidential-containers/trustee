@@ -7,17 +7,17 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/repository";
+pub const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/repository";
 
-#[derive(Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct LocalFsRepoDesc {
-    pub dir_path: String,
+    pub dir_path: Option<String>,
 }
 
 impl Default for LocalFsRepoDesc {
     fn default() -> Self {
         Self {
-            dir_path: DEFAULT_REPO_DIR_PATH.to_string(),
+            dir_path: Some(DEFAULT_REPO_DIR_PATH.to_string()),
         }
     }
 }
@@ -67,9 +67,12 @@ impl Repository for LocalFs {
 }
 
 impl LocalFs {
-    pub fn new(repo_desc: LocalFsRepoDesc) -> Result<Self> {
+    pub fn new(repo_desc: &LocalFsRepoDesc) -> Result<Self> {
         Ok(Self {
-            repo_dir_path: repo_desc.dir_path,
+            repo_dir_path: repo_desc
+                .dir_path
+                .clone()
+                .unwrap_or(DEFAULT_REPO_DIR_PATH.to_string()),
         })
     }
 }
@@ -87,10 +90,10 @@ mod tests {
     async fn write_and_read_resource() {
         let tmp_dir = tempfile::tempdir().expect("create temp dir failed");
         let repo_desc = LocalFsRepoDesc {
-            dir_path: tmp_dir.path().to_string_lossy().to_string(),
+            dir_path: Some(tmp_dir.path().to_string_lossy().to_string()),
         };
 
-        let mut local_fs = LocalFs::new(repo_desc).expect("create local fs failed");
+        let mut local_fs = LocalFs::new(&repo_desc).expect("create local fs failed");
         let resource_desc = ResourceDesc {
             repository_name: "default".into(),
             resource_type: "test".into(),

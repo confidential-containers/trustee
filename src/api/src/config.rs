@@ -4,119 +4,113 @@
 
 #[cfg(feature = "amber-as")]
 use crate::attestation::amber::AmberConfig;
+#[cfg(feature = "coco-as-grpc")]
+use crate::attestation::coco::grpc::GrpcConfig;
+#[cfg(feature = "policy")]
+use crate::policy_engine::PolicyEngineConfig;
 #[cfg(feature = "resource")]
-use crate::resource::RepositoryType;
+use crate::resource::RepositoryConfig;
 #[cfg(feature = "resource")]
 use crate::token::AttestationTokenVerifierType;
 use anyhow::anyhow;
+#[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+use attestation_service::config::Config as AsConfig;
+use clap::Parser;
+use config::{Config, File};
 use serde::Deserialize;
 use serde_json::Value;
-use std::fs::File;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-/// KBS Config
+const DEFAULT_ATTESTATION_TOKEN_TYPE: &str = "CoCo";
+const DEFAULT_INSECURE_API: bool = false;
+const DEFAULT_INSECURE_HTTP: bool = false;
+const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
+const DEFAULT_TIMEOUT: i64 = 5;
+
+/// Contains all configurable KBS properties.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Config {
+pub struct KbsConfig {
+    /// Resource repository config.
     #[cfg(feature = "resource")]
-    /// The resource repository type.
-    ///
-    /// Possible values:
-    /// * `LocalFs` for locally stored resources.
-    ///
-    /// This is only relevant when "resource" feature is enabled.
-    pub repository_type: RepositoryType,
+    pub repository_config: Option<RepositoryConfig>,
 
-    #[cfg(feature = "resource")]
-    /// Resource repository description (Optional).
-    ///
-    /// This is a JSON string describing the repository configuration.
-    /// The JSON string schema is repository type specific.
-    pub repository_description: Option<Value>,
-
-    #[cfg(feature = "resource")]
-    /// The Attestation Token type.
+    /// Attestation token result broker type.
     ///
     /// Possible values:
     /// * `CoCo`
+    #[cfg(feature = "resource")]
     pub attestation_token_type: AttestationTokenVerifierType,
 
-    /// The Remote Attestation Service API address (Optional).
-    ///
-    /// This is only relevant when running the Confidential Containers
-    /// Attestation Service through a gRPC socket.
-    /// If empty, the default remote AS address is used.
-    pub as_addr: Option<String>,
+    /// Configuration for the built-in Attestation Service.
+    #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+    pub as_config: Option<AsConfig>,
 
-    /// The built-in Attestation Service configuration file path (Optional).
-    ///
-    /// This is only relevant when running the Confidential Containers
-    /// Attestation Service as a built-in crate.
-    /// If empty, the default AS configuration file path is used.
-    pub as_config_file_path: Option<String>,
+    /// Configuration for remote attestation over gRPC.
+    #[cfg(feature = "coco-as-grpc")]
+    pub grpc_config: Option<GrpcConfig>,
 
-    /// OPTIONAL
-    /// Amber Attestation Service configuration.
-    /// Only used in Amber AS mode.
+    /// Configuration for Amber attestation.
     #[cfg(feature = "amber-as")]
-    pub amber: Option<AmberConfig>,
+    pub amber_config: AmberConfig,
 
-    /// The file path of the policy to evaluate
-    /// whether the TCB status has access to specific resource.
-    ///
-    /// This is only relevant when "policy" feature is enabled.
-    /// If empty, the default policy file path is used.
+    /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
+    pub sockets: Vec<SocketAddr>,
+
+    /// HTTPS session timeout in minutes.
+    pub timeout: i64,
+
+    /// HTTPS private key.
+    pub private_key: Option<PathBuf>,
+
+    /// HTTPS Certificate.
+    pub certificate: Option<PathBuf>,
+
+    /// Insecure HTTP.
+    /// WARNING: Using this option makes the HTTP connection insecure.
+    pub insecure_http: bool,
+
+    /// Public key used to authenticate the resource registration endpoint token (JWT).
+    /// Only JWTs signed with the corresponding private keys are authenticated.
+    pub auth_public_key: Option<PathBuf>,
+
+    /// Insecure HTTP APIs.
+    /// WARNING: Using this option enables KBS insecure APIs such as Resource Registration without
+    /// verifying the JWK.
+    pub insecure_api: bool,
+
+    /// Policy engine configuration used for evaluating whether the TCB status has access to
+    /// specific resources.
     #[cfg(feature = "policy")]
-    pub policy_path: Option<PathBuf>,
+    pub policy_engine_config: Option<PolicyEngineConfig>,
 }
 
-impl Default for Config {
-    // Construct a default instance of `Config`
-    fn default() -> Config {
-        Config {
-            #[cfg(feature = "resource")]
-            repository_type: RepositoryType::LocalFs,
-            #[cfg(feature = "resource")]
-            repository_description: None,
-            #[cfg(feature = "resource")]
-            attestation_token_type: AttestationTokenVerifierType::CoCo,
-            as_addr: None,
-            as_config_file_path: None,
-            #[cfg(feature = "amber-as")]
-            amber: None,
-            #[cfg(feature = "policy")]
-            policy_path: None,
-        }
-    }
-}
-
-impl TryFrom<&Path> for Config {
-    /// Load `Config` from a JSON configuration file like:
-    ///    {
-    ///        "repository_type": "LocalFs",
-    ///        "repository_description": {
-    ///            "dir_path": "/opt/confidential-containers/kbs/repository"
-    ///        },
-    ///            "attestation_token_type": "CoCo",
-    ///        # Only used in Remote Attestation-Service mode
-    ///        "as_addr": "http://127.0.0.1:50004",
-    ///        # Only used in Native Attestation-Service mode
-    ///        "as_config_file_path": "/etc/as-config.json",
-    ///        # Only used in Amber Attestation-Service mode
-    ///        "amber" : {
-    ///            "base_url": "https://amber.com",
-    ///            "api_key": "tBfd5kKX2x9ahbodKV1...",
-    ///            "certs_file": "/etc/amber/amber-certs.txt",
-    ///            # Optional, default is false.
-    ///            "allow_unmatched_policy": true
-    ///        },
-    ///        "policy_path": "/opt/confidential-containers/kbs/policy.rego"
-    ///    }
+impl TryFrom<&Path> for KbsConfig {
     type Error = anyhow::Error;
-    fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
-        let file = File::open(config_path)
-            .map_err(|e| anyhow!("failed to open KBS config file {}", e.to_string()))?;
 
-        serde_json::from_reader::<File, Config>(file)
-            .map_err(|e| anyhow!("failed to parse KBS config file {}", e.to_string()))
+    /// Load `Config` from a configuration file. Supported formats are all formats supported by the
+    /// `config` crate. See `KbsConfig` for schema information.
+    fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
+        let c = Config::builder()
+            .set_default("attestation_token_type", DEFAULT_ATTESTATION_TOKEN_TYPE)?
+            .set_default("insecure_api", DEFAULT_INSECURE_API)?
+            .set_default("insecure_http", DEFAULT_INSECURE_HTTP)?
+            .set_default("sockets", vec![DEFAULT_SOCKET])?
+            .set_default("timeout", DEFAULT_TIMEOUT)?
+            .add_source(File::with_name(config_path.to_str().unwrap()))
+            .build()?;
+
+        c.try_deserialize()
+            .map_err(|e| anyhow!("invalid config: {}", e.to_string()))
     }
+}
+
+/// KBS command-line arguments.
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    /// Path to a KBS config file. Supported formats: TOML, YAML, JSON and possibly other formats
+    /// supported by the `config` crate.
+    #[arg(short, long, env = "KBS_CONFIG_FILE")]
+    pub config_file: String,
 }

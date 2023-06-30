@@ -1,8 +1,0 @@
-{
-    "repository_type": "LocalFs",
-    "repository_description": {
-        "dir_path": "/opt/confidential-containers/kbs/repository"
-    },
-    "attestation_token_type": "CoCo",
-    "as_addr": "http://as:50004"
-}

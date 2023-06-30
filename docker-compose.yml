@@ -7,13 +7,8 @@ services:
     image: ghcr.io/confidential-containers/key-broker-service:latest
     command: [
         "/usr/local/bin/kbs",
-        "--socket",
-        "0.0.0.0:8080",
-        "--config",
-        "/etc/kbs-config.json",
-        "--auth-public-key",
-        "/opt/confidential-containers/kbs/user-keys/public.pub",
-        "--insecure-http"
+        "--config-file",
+        "/etc/kbs-config.toml",
       ]
     restart: always # keep the server running
     ports:
@@ -21,7 +16,7 @@ services:
     volumes:
       - ./data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
       - ./config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
-      - ./config/kbs-config.json:/etc/kbs-config.json
+      - ./config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
     depends_on:
     - as
 

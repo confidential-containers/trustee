@@ -35,7 +35,7 @@ mod resource;
 pub use attest::*;
 
 /// RESTful APIs that configure KBS and AS, require user authentication
-pub use config::*;
+pub use self::config::*;
 
 #[cfg(feature = "resource")]
 /// RESTful APIs that to get secret resources, need attestation verification
