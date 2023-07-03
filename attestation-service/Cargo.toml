@@ -39,7 +39,7 @@ scroll = { version = "0.11.0", default-features = false, features = ["derive"], 
 serde.workspace = true
 serde_json.workspace = true
 serde_variant = "0.1.2"
-sev = { version = "= 1.2.0", features = ["openssl", "snp"], optional = true }
+sev = { version = "1.2.0", features = ["openssl", "snp"], optional = true }
 sha2.workspace = true
 shadow-rs.workspace = true
 sled = "0.34.7"
