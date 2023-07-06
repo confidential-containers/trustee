@@ -29,7 +29,7 @@ eventlog-rs = { version = "0.1.3", optional = true }
 futures = "0.3.17"
 hex = "0.4.3"
 sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
-kbs-types = "0.3"
+kbs-types = "0.4"
 lazy_static = "1.4.0"
 log.workspace = true
 openssl = { version = "0.10.43", optional = true }
