@@ -22,6 +22,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
+const RSA_KEY_TYPE: &str = "RSA";
 const RSA_ALGORITHM: &str = "RSA1_5";
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
@@ -129,8 +130,11 @@ impl<'a> Session<'a> {
         let tee_pub_key = self
             .tee_public_key()
             .ok_or_else(|| anyhow!("No TEE public Key"))?;
+        if tee_pub_key.kty != *RSA_KEY_TYPE {
+            bail!("TEE pub key has unsupported JWK key type (kty)");
+        }
         if tee_pub_key.alg != *RSA_ALGORITHM {
-            bail!("Unsupported TEE Pub Key type or algorithm");
+            bail!("TEE pub key has unsupported JWK algorithm (alg)");
         }
 
         let mut rng = rand::thread_rng();
