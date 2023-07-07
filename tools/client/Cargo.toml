@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", tag = "v0.6.1"}
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "96b6c6a"}
 anyhow.workspace = true
 api-server.workspace = true
 base64.workspace = true
