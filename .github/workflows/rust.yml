@@ -1,3 +1,5 @@
+name: rust tests
+
 on:
   push:
     branches: [ "main" ]
@@ -10,6 +12,7 @@ env:
 jobs:
   ci:
     strategy:
+      fail-fast: false
       matrix:
         rust:
           - stable
