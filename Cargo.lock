@@ -389,7 +389,7 @@ dependencies = [
  "actix-web-httpauth",
  "aes-gcm",
  "anyhow",
- "as-types",
+ "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?rev=0ada0f4)",
  "async-trait",
  "attestation-service",
  "base64 0.13.1",
@@ -398,7 +398,7 @@ dependencies = [
  "env_logger 0.10.0",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.4.0",
  "lazy_static",
  "log",
  "openssl",
@@ -427,7 +427,17 @@ name = "as-types"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.1#436e13ef18e3e2eba120188dc79ef5d8481c7561"
 dependencies = [
- "kbs-types",
+ "kbs-types 0.3.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "as-types"
+version = "0.1.0"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=0ada0f4#0ada0f443a350114a979544b2a77b6b42eb7886c"
+dependencies = [
+ "kbs-types 0.4.0",
  "serde",
  "serde_json",
 ]
@@ -485,14 +495,14 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.1#436e13ef18e3e2eba120188dc79ef5d8481c7561"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=0ada0f4#0ada0f443a350114a979544b2a77b6b42eb7886c"
 dependencies = [
  "anyhow",
- "as-types",
+ "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?rev=0ada0f4)",
  "asn1-rs",
  "async-trait",
  "az-snp-vtpm",
- "base64 0.13.1",
+ "base64 0.21.0",
  "bincode",
  "byteorder",
  "cfg-if",
@@ -500,8 +510,7 @@ dependencies = [
  "eventlog-rs",
  "futures",
  "hex",
- "intel-tee-quote-verification-rs",
- "kbs-types",
+ "kbs-types 0.4.0",
  "lazy_static",
  "log",
  "openssl",
@@ -510,7 +519,9 @@ dependencies = [
  "scroll",
  "serde",
  "serde_json",
- "sev 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_variant",
+ "sev 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sgx-dcap-quoteverify-rs",
  "sha2",
  "shadow-rs",
  "sled",
@@ -526,7 +537,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
 dependencies = [
  "anyhow",
  "az-snp-vtpm",
@@ -535,7 +546,7 @@ dependencies = [
  "occlum_dcap",
  "serde",
  "serde_json",
- "sev 1.1.0 (git+https://github.com/virtee/sev?rev=3dca05d2c93388cb00534ad18f5928fd812e99cc)",
+ "sev 1.2.0 (git+https://github.com/virtee/sev)",
  "strum",
  "tdx-attest-rs",
 ]
@@ -604,9 +615,8 @@ dependencies = [
 
 [[package]]
 name = "az-snp-vtpm"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8dbeaadc2dd14dd7bb36a5c608b95959e191277a7f9852522594c17d840608"
+version = "0.2.3"
+source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411#2c2e411dfb6f64fb4ffa4443213c5777de7af30d"
 dependencies = [
  "bincode",
  "clap 4.2.7",
@@ -616,7 +626,7 @@ dependencies = [
  "rsa 0.8.2",
  "serde",
  "serde_json",
- "sev 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sev 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2",
  "static_assertions",
  "thiserror",
@@ -944,7 +954,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api-server",
- "as-types",
+ "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git?tag=v0.6.1)",
  "base64 0.13.1",
  "clap 4.2.7",
  "env_logger 0.10.0",
@@ -1110,13 +1120,13 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
 dependencies = [
  "aes-gcm",
  "anyhow",
  "base64 0.13.1",
  "ctr",
- "kbs-types",
+ "kbs-types 0.4.0",
  "rand",
  "rsa 0.6.1",
  "sha2",
@@ -1252,22 +1262,23 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "4.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
  "dirs-sys",
 ]
 
 [[package]]
 name = "dirs-sys"
-version = "0.3.7"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
+checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
+ "option-ext",
  "redox_users",
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1966,24 +1977,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "intel-tee-quote-verification-rs"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43439d26af423dceb9a716bc0f2075e9f6fa237cd8b329e941eabb7e0dff6242"
-dependencies = [
- "intel-tee-quote-verification-sys",
-]
-
-[[package]]
-name = "intel-tee-quote-verification-sys"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89c04fd039b6bbb5ed4e34251d642e0128a082c8ca0a8197106f93130310e07c"
-dependencies = [
- "bindgen 0.60.1",
-]
-
-[[package]]
 name = "io-lifetimes"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2149,16 +2142,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-types"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9844a35cb1eaa52d9527f7eb062ce0be35a46080655997c3357db7231ded9b7c"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-agent?tag=v0.6.0#aa1d3c510350cd2f2668aca374abba19e2b73b3f"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
  "base64 0.13.1",
  "crypto",
- "kbs-types",
+ "kbs-types 0.4.0",
  "log",
  "reqwest",
  "serde",
@@ -2586,6 +2589,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
 name = "os_str_bytes"
 version = "6.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2671,9 +2680,9 @@ checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 
 [[package]]
 name = "path-clean"
-version = "0.1.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecba01bf2678719532c5e3059e0b5f0811273d94b397088b82e3bd0a78c78fdd"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 
 [[package]]
 name = "pbkdf2"
@@ -3481,9 +3490,9 @@ dependencies = [
 
 [[package]]
 name = "serde-big-array"
-version = "0.4.1"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3323f09a748af288c3dc2474ea6803ee81f118321775bffa3ac8f7e65c5e90e7"
+checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
 dependencies = [
  "serde",
 ]
@@ -3532,16 +3541,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "sev"
-version = "1.1.0"
+name = "serde_variant"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8c8ec2a5131be61bba9ffad92aead45bd27805c9701d265b7196d4914299b98"
+checksum = "47a8ec0b2fd0506290348d9699c0e3eb2e3e8c0498b5a9a6158b3bd4d6970076"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "sev"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c77eff933413b557ad3af20f6ddb198471d639d611b4738bcb78d32d7941892"
 dependencies = [
  "bincode",
  "bitfield",
  "bitflags",
  "codicon",
  "dirs",
+ "hex",
  "iocuddle",
  "kvm-ioctls",
  "openssl",
@@ -3554,14 +3573,15 @@ dependencies = [
 
 [[package]]
 name = "sev"
-version = "1.1.0"
-source = "git+https://github.com/virtee/sev?rev=3dca05d2c93388cb00534ad18f5928fd812e99cc#3dca05d2c93388cb00534ad18f5928fd812e99cc"
+version = "1.2.0"
+source = "git+https://github.com/virtee/sev#5958ac577e3dd4d7cb05065fcd562460bdbd0f72"
 dependencies = [
  "bincode",
  "bitfield",
  "bitflags",
  "codicon",
  "dirs",
+ "hex",
  "iocuddle",
  "kvm-ioctls",
  "serde",
@@ -3569,6 +3589,22 @@ dependencies = [
  "serde_bytes",
  "static_assertions",
  "uuid",
+]
+
+[[package]]
+name = "sgx-dcap-quoteverify-rs"
+version = "0.2.1"
+source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.16#71557c7d1d869b6bd6f95566c051cbd098549509"
+dependencies = [
+ "sgx-dcap-quoteverify-sys",
+]
+
+[[package]]
+name = "sgx-dcap-quoteverify-sys"
+version = "0.2.0"
+source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.16#71557c7d1d869b6bd6f95566c051cbd098549509"
+dependencies = [
+ "bindgen 0.60.1",
 ]
 
 [[package]]
@@ -3823,8 +3859,8 @@ checksum = "fd1ba337640d60c3e96bc6f0638a939b9c9a7f2c316a1598c279828b3d1dc8c5"
 
 [[package]]
 name = "tdx-attest-rs"
-version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=cc582e8be0c9010295c66fb58c59f74744017600#cc582e8be0c9010295c66fb58c59f74744017600"
+version = "0.1.2"
+source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.16#71557c7d1d869b6bd6f95566c051cbd098549509"
 dependencies = [
  "tdx-attest-sys",
 ]
@@ -3832,7 +3868,7 @@ dependencies = [
 [[package]]
 name = "tdx-attest-sys"
 version = "0.1.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?rev=cc582e8be0c9010295c66fb58c59f74744017600#cc582e8be0c9010295c66fb58c59f74744017600"
+source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.16#71557c7d1d869b6bd6f95566c051cbd098549509"
 dependencies = [
  "bindgen 0.59.2",
 ]
