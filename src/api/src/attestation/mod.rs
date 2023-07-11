@@ -23,7 +23,7 @@ pub mod amber;
 pub trait Attest: Send + Sync {
     /// Set Attestation Policy
     async fn set_policy(&mut self, _input: as_types::SetPolicyInput) -> Result<()> {
-        bail!("Set Policy API is unimplemented")
+        Err(anyhow!("Set Policy API is unimplemented"))
     }
 
     /// Verify Attestation Evidence
