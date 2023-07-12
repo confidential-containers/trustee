@@ -4,14 +4,9 @@
 
 //! A simple KBS client for test.
 
-use anyhow::{bail, Result};
-use as_types::SetPolicyInput;
+use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
-use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair, EdDSAKeyPairLike};
-use kbs_protocol::{KbsProtocolWrapper, KbsRequest};
 use std::path::PathBuf;
-
-const KBS_URL_PREFIX: &str = "kbs/v0";
 
 #[derive(Parser)]
 #[clap(name = "KBS client")]
@@ -20,9 +15,13 @@ struct Cli {
     #[clap(subcommand)]
     command: Commands,
 
-    /// The KBS server host URL.
+    /// The KBS server root URL.
     #[clap(long, value_parser, default_value_t = String::from("http://127.0.0.1:8080"))]
     url: String,
+
+    /// The KBS HTTPS server custom root certificate file path (PEM format)
+    #[clap(long, value_parser)]
+    cert_file: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -41,7 +40,12 @@ enum Commands {
     },
 
     /// Attestation and get attestation results token
-    Attest,
+    Attest {
+        /// Custom TEE public Key (RSA) file path (PEM format)
+        /// This key will be included in the token obtained by attestation
+        #[clap(long, value_parser)]
+        tee_pubkey_file: Option<PathBuf>,
+    },
 }
 
 #[derive(Args)]
@@ -62,11 +66,11 @@ enum ConfigCommands {
     SetAttestationPolicy {
         /// Policy format type, e.g "rego"
         #[clap(long, value_parser)]
-        r#type: String,
+        r#type: Option<String>,
 
         /// Policy ID, e.g "default"
         #[clap(long, value_parser)]
-        id: String,
+        id: Option<String>,
 
         /// Policy file path
         #[clap(long, value_parser)]
@@ -92,81 +96,65 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let mut kbs_protocol_wrapper = KbsProtocolWrapper::new()?;
+    let kbs_cert = match cli.cert_file {
+        Some(p) => vec![std::fs::read_to_string(p)?],
+        None => vec![],
+    };
 
     match cli.command {
-        Commands::Attest => {
-            let token = kbs_protocol_wrapper.attest(String::from(&cli.url)).await?;
+        Commands::Attest { tee_pubkey_file } => {
+            let tee_pubkey = match tee_pubkey_file {
+                Some(f) => Some(std::fs::read_to_string(f)?),
+                None => None,
+            };
+            let token = kbs_client::attestation(&cli.url, tee_pubkey, kbs_cert.clone()).await?;
             println!("{token}");
         }
         Commands::GetResource { path } => {
-            let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", &cli.url, &path);
-            let resource_bytes = kbs_protocol_wrapper.http_get(resource_url).await?;
+            let resource_bytes =
+                kbs_client::get_resource(&cli.url, &path, kbs_cert.clone()).await?;
             println!("{}", base64::encode(resource_bytes));
         }
         Commands::Config(config) => {
-            let auth_private_key =
-                Ed25519KeyPair::from_pem(&std::fs::read_to_string(config.auth_private_key)?)?;
-            let claims = Claims::create(Duration::from_hours(2));
-            let token = auth_private_key.sign(claims)?;
-            let http_client = reqwest::Client::new();
+            let auth_key = std::fs::read_to_string(config.auth_private_key)?;
             match config.command {
                 ConfigCommands::SetAttestationPolicy {
                     r#type,
                     id,
                     policy_file,
                 } => {
-                    let set_policy_url =
-                        format!("{}/{KBS_URL_PREFIX}/attestation-policy", &cli.url);
                     let policy_bytes = std::fs::read(policy_file)?;
-                    let post_input = SetPolicyInput {
+                    kbs_client::set_attestation_policy(
+                        &cli.url,
+                        auth_key.clone(),
+                        policy_bytes.clone(),
                         r#type,
-                        policy_id: id,
-                        policy: base64::encode(policy_bytes.clone()),
-                    };
-                    let res = http_client
-                        .post(set_policy_url)
-                        .header("Content-Type", "application/json")
-                        .bearer_auth(token.clone())
-                        .json::<SetPolicyInput>(&post_input)
-                        .send()
-                        .await?;
-                    match res.status() {
-                        reqwest::StatusCode::OK => {
-                            println!(
-                                "Set attestation policy success \n policy: {}",
-                                base64::encode(policy_bytes)
-                            );
-                        }
-                        _ => {
-                            bail!("Request Failed, Response: {:?}", res.text().await?)
-                        }
-                    }
+                        id,
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!(
+                        "Set attestation policy success \n policy: {}",
+                        base64::encode(policy_bytes)
+                    );
                 }
                 ConfigCommands::SetResource {
                     path,
                     resource_file,
                 } => {
-                    let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", &cli.url, &path);
                     let resource_bytes = std::fs::read(resource_file)?;
-                    let res = http_client
-                        .post(resource_url)
-                        .header("Content-Type", "application/octet-stream")
-                        .bearer_auth(token)
-                        .body(resource_bytes.clone())
-                        .send()
-                        .await?;
-                    match res.status() {
-                        reqwest::StatusCode::OK => {
-                            println!(
-                                "Set resource success \n resource: {}",
-                                base64::encode(resource_bytes)
-                            );
-                        }
-                        _ => {
-                            bail!("Request Failed, Response: {:?}", res.text().await?)
-                        }
-                    }
+                    kbs_client::set_resource(
+                        &cli.url,
+                        auth_key.clone(),
+                        resource_bytes.clone(),
+                        &path,
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!(
+                        "Set resource success \n resource: {}",
+                        base64::encode(resource_bytes)
+                    );
                 }
             }
         }
