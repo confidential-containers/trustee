@@ -36,9 +36,9 @@ kbs:
 
 client:
 	cd $(PROJECT_DIR) && \
-	cargo build -p client --release \
+	cargo build -p kbs-client --release \
 		--features api-server/coco-as-builtin,api-server/rustls && \
-	install -D --compare $(PROJECT_DIR)/target/release/client $(CURDIR)/client
+	install -D --compare $(PROJECT_DIR)/target/release/kbs-client $(CURDIR)/client
 
 .PHONY: bins
 bins: kbs client
