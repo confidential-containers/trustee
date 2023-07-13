@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use log::{error, info};
+
 use super::*;
 
 macro_rules! unauthorized {
@@ -28,7 +30,7 @@ pub(crate) async fn get_resource(
 ) -> HttpResponse {
     let cookie = match request.cookie(KBS_SESSION_ID) {
         None => {
-            log::error!("Missing KBS cookie");
+            error!("Missing KBS cookie");
             unauthorized!(MissingCookie, "");
         }
         Some(c) => c,
@@ -37,7 +39,7 @@ pub(crate) async fn get_resource(
     let session_map = map.sessions.read().await;
     let locked_session = match session_map.get(cookie.value()) {
         None => {
-            log::error!("Invalid KBS cookie {}", cookie.value());
+            error!("Invalid KBS cookie {}", cookie.value());
             unauthorized!(InvalidCookie, cookie.value());
         }
         Some(ls) => ls,
@@ -45,15 +47,15 @@ pub(crate) async fn get_resource(
 
     let session = locked_session.lock().await;
 
-    log::info!("Cookie {} request to get resource", session.id());
+    info!("Cookie {} request to get resource", session.id());
 
     if !session.is_authenticated() {
-        log::error!("UnAuthenticated KBS cookie {}", cookie.value());
+        error!("UnAuthenticated KBS cookie {}", cookie.value());
         unauthorized!(UnAuthenticatedCookie, cookie.value());
     }
 
     if session.is_expired() {
-        log::error!("Expired KBS cookie {}", cookie.value());
+        error!("Expired KBS cookie {}", cookie.value());
         unauthorized!(ExpiredCookie, cookie.value());
     }
 
@@ -67,7 +69,7 @@ pub(crate) async fn get_resource(
         resource_tag: request.match_info().get("tag").unwrap().to_string(),
     };
 
-    log::info!("Resource description: {:?}", &resource_description);
+    info!("Resource description: {:?}", &resource_description);
 
     if session.tee_public_key().is_none() {
         internal!(format!("TEE Pubkey not found"));
