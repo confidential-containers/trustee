@@ -10,3 +10,7 @@
 /target
 
 data
+
+# test
+test/*
+!test/Makfile

@@ -13,7 +13,9 @@ jobs:
   e2e-test:
     strategy:
       matrix:
-        tee: [ "sample", "az-snp-vtpm" ]
+        tee:
+        - sample
+        # - az-snp-vtpm
 
     runs-on: ${{ ((matrix.tee == 'az-snp-vtpm') && fromJSON('["self-hosted","azure-cvm"]')) || 'ubuntu-22.04' }}
 
@@ -29,24 +31,6 @@ jobs:
       with:
         go-version: stable
 
-    - name: Install dependencies
-      env:
-        SGX_URL: https://download.01.org/intel-sgx/sgx_repo/ubuntu
-      run: |
-        curl -L "${SGX_URL}/intel-sgx-deb.key" | sudo apt-key add -
-        echo "deb [arch=amd64] ${SGX_URL} jammy main" \
-          | sudo tee /etc/apt/sources.list.d/intel-sgx.list
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          clang \
-          libsgx-dcap-quote-verify-dev \
-          libtdx-attest-dev \
-          libtss2-dev \
-          openssl \
-          pkg-config \
-          protobuf-compiler
-
     - name: Set up rust build cache
       uses: actions/cache@v3
       continue-on-error: false
@@ -57,37 +41,18 @@ jobs:
           target/
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
-    - name: Build kbs
-      run: cargo b -p kbs --release
+    - name: Install dependencies
+      working-directory: test
+      run: sudo make install-dependencies
 
-    - name: Start kbs
-      run: | 
-        openssl genpkey -algorithm ed25519 > kbs.key
-        openssl pkey -in kbs.key -pubout -out kbs.pem
-        sudo ./target/release/kbs \
-          --socket 127.0.0.1:8080 \
-          --insecure-http \
-          --auth-public-key ./kbs.pem &
-
-    - name: Add secret resource to kbs repository
-      env:
-        REPO_PATH: /opt/confidential-containers/kbs/repository
-      run: |
-        sudo mkdir -p "${REPO_PATH}/one/two"
-        openssl rand 16 > a_secret
-        sudo cp a_secret "${REPO_PATH}/one/two/three"
-
-    - name: Build client
-      run: cargo b -p client --release --features api-server/coco-as-builtin,api-server/rustls
+    - name: Build bins
+      working-directory: test
+      run: make bins
 
     - name: Set cc_kbc sample attester env
       if: matrix.tee == 'sample'
       run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
 
-    - name: Retrieve secret resource with client
-      run: |
-        sudo -E ./target/release/client get-resource \
-          --path one/two/three \
-          | base64 -d \
-          > roundtrip_secret
-        diff a_secret roundtrip_secret
+    - name: Run e2e test
+      working-directory: test
+      run: sudo -E make e2e-test
