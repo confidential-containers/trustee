@@ -2,55 +2,24 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::raise_error;
+
 use super::*;
+
+use anyhow::anyhow;
 use log::{error, info};
 use serde_json::json;
-
-macro_rules! unauthorized {
-    ($error_type: ident, $reason: expr) => {
-        return HttpResponse::Unauthorized()
-            .json(kbs_error_info(ErrorInformationType::$error_type, $reason))
-    };
-}
-
-macro_rules! internal {
-    ($reason: expr) => {
-        return HttpResponse::InternalServerError()
-            .message_body(BoxBody::new($reason))
-            .unwrap()
-    };
-}
-
-macro_rules! bail_error_internal {
-    ($error: expr) => {
-        match $error {
-            Ok(inner) => inner,
-            Err(e) => {
-                return HttpResponse::InternalServerError()
-                    .message_body(BoxBody::new(e.to_string()))
-                    .unwrap()
-            }
-        }
-    };
-}
 
 /// POST /auth
 pub(crate) async fn auth(
     request: web::Json<Request>,
     map: web::Data<SessionMap<'_>>,
     timeout: web::Data<i64>,
-) -> HttpResponse {
+) -> Result<HttpResponse> {
     info!("request: {:?}", &request);
 
-    let session = match Session::from_request(&request, *timeout.into_inner()) {
-        Ok(s) => s,
-        Err(err) => {
-            return HttpResponse::InternalServerError().json(kbs_error_info(
-                ErrorInformationType::FailedAuthentication,
-                &format!("{err}"),
-            ));
-        }
-    };
+    let session = Session::from_request(&request, *timeout.into_inner())
+        .map_err(|e| Error::FailedAuthentication(format!("Session: {e}")))?;
     let response = HttpResponse::Ok().cookie(session.cookie()).json(Challenge {
         nonce: session.nonce().to_string(),
         extra_params: "".to_string(),
@@ -61,7 +30,7 @@ pub(crate) async fn auth(
         .await
         .insert(session.id().to_string(), Arc::new(Mutex::new(session)));
 
-    response
+    Ok(response)
 }
 
 /// POST /attest
@@ -72,34 +41,21 @@ pub(crate) async fn attest(
     map: web::Data<SessionMap<'_>>,
     timeout: web::Data<i64>,
     attestation_service: web::Data<AttestationService>,
-) -> HttpResponse {
-    let cookie = match request.cookie(KBS_SESSION_ID) {
-        Some(c) => c,
-        None => {
-            log::error!("Missing KBS cookie");
-            unauthorized!(MissingCookie, "");
-        }
-    };
+) -> Result<HttpResponse> {
+    let cookie = request.cookie(KBS_SESSION_ID).ok_or(Error::MissingCookie)?;
 
     let sessions = map.sessions.read().await;
-    let locked_session = match sessions.get(cookie.value()) {
-        Some(ls) => ls,
-        None => {
-            log::error!("Invalid KBS cookie {}", cookie.value());
-            unauthorized!(InvalidCookie, cookie.value());
-        }
-    };
+    let locked_session = sessions.get(cookie.value()).ok_or(Error::InvalidCookie)?;
 
     let mut session = locked_session.lock().await;
 
-    log::info!("Cookie {} attestation {:?}", session.id(), attestation);
+    info!("Cookie {} attestation {:?}", session.id(), attestation);
 
     if session.is_expired() {
-        log::error!("Expired KBS cookie {}", cookie.value());
-        unauthorized!(ExpiredCookie, cookie.value());
+        raise_error!(Error::ExpiredCookie);
     }
 
-    match attestation_service
+    let results = attestation_service
         .0
         .lock()
         .await
@@ -109,33 +65,35 @@ pub(crate) async fn attest(
             &serde_json::to_string(&attestation).unwrap(),
         )
         .await
-    {
-        Ok(results) => {
-            if !results.allow() {
+        .map_err(|e| Error::AttestationFailed(e.to_string()))?;
+
+    if !results.allow() {
         error!("Evidence verification failed {:?}", results.output());
-
-            session.set_tee_public_key(attestation.tee_pubkey.clone());
-            session.set_attestation_results(results.clone());
-
-            let token_claims = json!({
-                "tee-pubkey": attestation.tee_pubkey.clone(),
-                "attestation-results": results.clone(),
-            });
-            let token = match token_broker
-                .read()
-                .await
-                .issue(token_claims, *timeout.into_inner() as usize)
-            {
-                Ok(token) => token,
-                Err(e) => internal!(format!("Issue Attestation Token failed: {e}")),
-            };
-            HttpResponse::Ok()
-                .cookie(session.cookie())
-                .content_type("application/json")
-                .body(bail_error_internal!(serde_json::to_string(&json!({
-                    "token": token,
-                }))))
-        }
-        Err(err) => internal!(format!("{err}")),
+        raise_error!(Error::AttestationFailed(String::from(
+            "evidence verification failed"
+        )));
     }
+
+    session.set_tee_public_key(attestation.tee_pubkey.clone());
+    session.set_attestation_results(results.clone());
+
+    let token_claims = json!({
+        "tee-pubkey": attestation.tee_pubkey.clone(),
+        "attestation-results": results.clone(),
+    });
+    let token = token_broker
+        .read()
+        .await
+        .issue(token_claims, *timeout.into_inner() as usize)
+        .map_err(|e| Error::TokenIssueFailed(e.to_string()))?;
+
+    let body = serde_json::to_string(&json!({
+        "token": token,
+    }))
+    .map_err(|e| Error::TokenIssueFailed(format!("Serialize token failed {e}")))?;
+
+    Ok(HttpResponse::Ok()
+        .cookie(session.cookie())
+        .content_type("application/json")
+        .body(body))
 }
