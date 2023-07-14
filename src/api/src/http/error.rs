@@ -47,6 +47,9 @@ pub enum Error {
     #[error("Policy error: {0}")]
     PolicyEndpoint(String),
 
+    #[error("Public key get failed: {0}")]
+    PublicKeyGetFailed(String),
+
     #[error("Read secret failed: {0}")]
     ReadSecretFailed(String),
 
@@ -55,6 +58,9 @@ pub enum Error {
 
     #[error("Attestation token issue failed: {0}")]
     TokenIssueFailed(String),
+
+    #[error("Received an illegal token: {0}")]
+    TokenParseFailed(String),
 
     #[error("The cookie is unauthenticated")]
     UnAuthenticatedCookie,
@@ -120,9 +126,11 @@ mod tests {
     #[case(Error::InvalidRequest("test".into()))]
     #[case(Error::JWEFailed("test".into()))]
     #[case(Error::PolicyEndpoint("test".into()))]
+    #[case(Error::PublicKeyGetFailed("test".into()))]
     #[case(Error::ReadSecretFailed("test".into()))]
     #[case(Error::SetSecretFailed("test".into()))]
     #[case(Error::TokenIssueFailed("test".into()))]
+    #[case(Error::TokenParseFailed("test".into()))]
     #[case(Error::UnAuthenticatedCookie)]
     #[case(Error::UserPublicKeyNotProvided)]
     fn into_error_response(#[case] err: Error) {
