@@ -95,6 +95,7 @@ paths:
           name: kbs-session-id
           schema:
             type: string
+          required: false
         - name: repository
           in: path
           description: A parent path of resource, can be empty to use the default repository.
@@ -113,6 +114,16 @@ paths:
           schema:
             type: string
           required: true
+      requestBody:
+        required: false
+        description: >-
+          A KBS provisioned token that includes the Tee public key.
+          KBS will then use the Tee public key to perform JSON Web Encryption
+          for the resource in a response if the token is valid.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttestationToken'
       responses:
         200:
           description: >-
