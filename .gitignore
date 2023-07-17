@@ -13,4 +13,4 @@ data
 
 # test
 test/*
-!test/Makfile
+!test/Makefile
