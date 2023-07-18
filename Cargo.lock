@@ -425,7 +425,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=96b6c6a#96b6c6a4b2e1e328c57ecbc886bfa30469373153"
+source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
 dependencies = [
  "kbs-types",
  "serde",
@@ -485,7 +485,7 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?rev=96b6c6a#96b6c6a4b2e1e328c57ecbc886bfa30469373153"
+source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
 dependencies = [
  "anyhow",
  "as-types",
@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.7.0#88dcc147ba8ddf34e8425c98d5931df8a995f04a"
 dependencies = [
  "anyhow",
  "az-snp-vtpm",
@@ -1110,7 +1110,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.7.0#88dcc147ba8ddf34e8425c98d5931df8a995f04a"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2134,7 +2134,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=43f6832#43f68320ed78cef438c838c10a6f462c06bad83f"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.7.0#88dcc147ba8ddf34e8425c98d5931df8a995f04a"
 dependencies = [
  "anyhow",
  "async-trait",
