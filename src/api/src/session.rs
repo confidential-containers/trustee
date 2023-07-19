@@ -6,15 +6,25 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie, Expiration,
 };
-use anyhow::{anyhow, Result};
+use aes_gcm::{
+    aead::{Aead, KeyInit, OsRng},
+    Aes256Gcm, Nonce,
+};
+use anyhow::{anyhow, bail, Result};
 use as_types::AttestationResults;
-use kbs_types::{Request, Tee, TeePubKey};
+use kbs_types::{Request, Response, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
+use rsa::{BigUint, PaddingScheme, PublicKey, RsaPublicKey};
 use semver::Version;
+use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
+
+const RSA_KEY_TYPE: &str = "RSA";
+const RSA_ALGORITHM: &str = "RSA1_5";
+const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
 
@@ -114,6 +124,55 @@ impl<'a> Session<'a> {
 
     pub fn set_tee_public_key(&mut self, key: TeePubKey) {
         self.tee_pub_key = Some(key)
+    }
+
+    pub fn to_jwe(&self, payload_data: Vec<u8>) -> Result<Response> {
+        let tee_pub_key = self
+            .tee_public_key()
+            .ok_or_else(|| anyhow!("No TEE public Key"))?;
+        if tee_pub_key.kty != *RSA_KEY_TYPE {
+            bail!("TEE pub key has unsupported JWK key type (kty)");
+        }
+        if tee_pub_key.alg != *RSA_ALGORITHM {
+            bail!("TEE pub key has unsupported JWK algorithm (alg)");
+        }
+
+        let mut rng = rand::thread_rng();
+
+        let aes_sym_key = Aes256Gcm::generate_key(&mut OsRng);
+        let cipher = Aes256Gcm::new(&aes_sym_key);
+        let iv = rng.gen::<[u8; 12]>();
+        let nonce = Nonce::from_slice(&iv);
+        let encrypted_payload_data = cipher
+            .encrypt(nonce, payload_data.as_slice())
+            .map_err(|e| anyhow!("AES encrypt Resource payload failed: {:?}", e))?;
+
+        let k_mod = base64::decode_config(&tee_pub_key.k_mod, base64::URL_SAFE_NO_PAD)?;
+        let n = BigUint::from_bytes_be(&k_mod);
+        let k_exp = base64::decode_config(&tee_pub_key.k_exp, base64::URL_SAFE_NO_PAD)?;
+        let e = BigUint::from_bytes_be(&k_exp);
+
+        let rsa_pub_key = RsaPublicKey::new(n, e)
+            .map_err(|e| anyhow!("Building RSA key from modulus and exponent failed: {:?}", e))?;
+        let padding = PaddingScheme::new_pkcs1v15_encrypt();
+        let sym_key: &[u8] = aes_sym_key.as_slice();
+        let wrapped_sym_key = rsa_pub_key
+            .encrypt(&mut rng, padding, sym_key)
+            .map_err(|e| anyhow!("RSA encrypt sym key failed: {:?}", e))?;
+
+        let protected_header = json!(
+        {
+           "alg": RSA_ALGORITHM.to_string(),
+           "enc": AES_GCM_256_ALGORITHM.to_string(),
+        });
+
+        Ok(Response {
+            protected: serde_json::to_string(&protected_header)?,
+            encrypted_key: base64::encode_config(wrapped_sym_key, base64::URL_SAFE_NO_PAD),
+            iv: base64::encode_config(iv, base64::URL_SAFE_NO_PAD),
+            ciphertext: base64::encode_config(encrypted_payload_data, base64::URL_SAFE_NO_PAD),
+            tag: "".to_string(),
+        })
     }
 }
 
