@@ -4,6 +4,21 @@
 
 use super::*;
 
+macro_rules! unauthorized {
+    ($error_type: ident, $reason: expr) => {
+        return HttpResponse::Unauthorized()
+            .json(kbs_error_info(ErrorInformationType::$error_type, $reason))
+    };
+}
+
+macro_rules! internal {
+    ($reason: expr) => {
+        return HttpResponse::InternalServerError()
+            .message_body(BoxBody::new($reason))
+            .unwrap()
+    };
+}
+
 /// POST /attestation-policy
 pub(crate) async fn attestation_policy(
     request: HttpRequest,
@@ -11,27 +26,32 @@ pub(crate) async fn attestation_policy(
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
     insecure: web::Data<bool>,
     attestation_service: web::Data<AttestationService>,
-) -> Result<HttpResponse> {
+) -> HttpResponse {
     if !insecure.get_ref() {
-        let user_pub_key = user_pub_key
-            .as_ref()
-            .as_ref()
-            .ok_or(Error::UserPublicKeyNotProvided)?;
+        let user_pub_key = match user_pub_key.as_ref() {
+            Some(key) => key,
+            None => internal!("No user public key provided"),
+        };
 
-        validate_auth(&request, user_pub_key).map_err(|e| {
-            Error::FailedAuthentication(format!("Requester is not an authorized user: {e}"))
-        })?;
+        if let Err(e) = validate_auth(&request, user_pub_key) {
+            log::error!("auth validate verified failed: {e}");
+            unauthorized!(
+                JWTVerificationFailed,
+                &format!("Authentication failed: {e}")
+            );
+        }
     }
 
-    attestation_service
+    match attestation_service
         .0
         .lock()
         .await
         .set_policy(input.into_inner())
         .await
-        .map_err(|e| Error::PolicyEndpoint(format!("Set policy error {e}")))?;
-
-    Ok(HttpResponse::Ok().finish())
+    {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(err) => internal!(format!("{err}")),
+    }
 }
 
 /// POST /resource/{repository}/{type}/{tag}
@@ -50,16 +70,20 @@ pub(crate) async fn set_resource(
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
     insecure: web::Data<bool>,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
-) -> Result<HttpResponse> {
+) -> HttpResponse {
     if !insecure.get_ref() {
-        let user_pub_key = user_pub_key
-            .as_ref()
-            .as_ref()
-            .ok_or(Error::UserPublicKeyNotProvided)?;
+        let user_pub_key = match user_pub_key.as_ref() {
+            Some(key) => key,
+            None => internal!("No user public key provided"),
+        };
 
-        validate_auth(&request, user_pub_key).map_err(|e| {
-            Error::FailedAuthentication(format!("Requester is not an authorized user: {e}"))
-        })?;
+        if let Err(e) = validate_auth(&request, user_pub_key) {
+            log::error!("auth validate verified failed: {e}");
+            unauthorized!(
+                JWTVerificationFailed,
+                &format!("Authentication failed: {e}")
+            );
+        }
     }
 
     let resource_description = ResourceDesc {
@@ -68,20 +92,15 @@ pub(crate) async fn set_resource(
             .get("repository")
             .unwrap_or("default")
             .to_string(),
-        resource_type: request
-            .match_info()
-            .get("type")
-            .ok_or_else(|| Error::InvalidRequest(String::from("no `type` in url")))?
-            .to_string(),
-        resource_tag: request
-            .match_info()
-            .get("tag")
-            .ok_or_else(|| Error::InvalidRequest(String::from("no `tag` in url")))?
-            .to_string(),
+        resource_type: request.match_info().get("type").unwrap().to_string(),
+        resource_tag: request.match_info().get("tag").unwrap().to_string(),
     };
 
-    set_secret_resource(&repository, resource_description, data.as_ref())
-        .await
-        .map_err(|e| Error::SetSecretFailed(format!("{e}")))?;
-    Ok(HttpResponse::Ok().content_type("application/json").body(""))
+    match set_secret_resource(&repository, resource_description, data.as_ref()).await {
+        Ok(_) => HttpResponse::Ok().content_type("application/json").body(""),
+        Err(e) => {
+            log::error!("Resource registration failed: {e}");
+            internal!(format!("Resource registration failed: {e}"));
+        }
+    }
 }

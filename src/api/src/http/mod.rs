@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use actix_web::Responder;
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
 use jwt_simple::prelude::Ed25519PublicKey;
 use kbs_types::{Attestation, Challenge, ErrorInformation, Request};
@@ -18,7 +17,6 @@ use crate::token::AttestationTokenBroker;
 
 mod attest;
 mod config;
-mod error;
 mod public;
 mod resource;
 
@@ -34,4 +32,22 @@ pub use public::*;
 /// RESTful APIs that to get secret resources, need attestation verification
 pub use resource::*;
 
-pub use error::*;
+const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors/";
+
+#[derive(Debug, EnumString)]
+pub enum ErrorInformationType {
+    ExpiredCookie,
+    FailedAuthentication,
+    InvalidCookie,
+    MissingCookie,
+    UnAuthenticatedCookie,
+    VerificationFailed,
+    JWTVerificationFailed,
+}
+
+pub(crate) fn kbs_error_info(error_type: ErrorInformationType, detail: &str) -> ErrorInformation {
+    ErrorInformation {
+        error_type: format!("{ERROR_TYPE_PREFIX}{error_type:?}"),
+        detail: detail.to_string(),
+    }
+}
