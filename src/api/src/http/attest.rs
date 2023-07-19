@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::*;
-use log::{error, info};
 use serde_json::json;
 
 macro_rules! unauthorized {
@@ -40,7 +39,7 @@ pub(crate) async fn auth(
     map: web::Data<SessionMap<'_>>,
     timeout: web::Data<i64>,
 ) -> HttpResponse {
-    info!("request: {:?}", &request);
+    log::info!("request: {:?}", &request);
 
     let session = match Session::from_request(&request, *timeout.into_inner()) {
         Ok(s) => s,
@@ -112,7 +111,9 @@ pub(crate) async fn attest(
     {
         Ok(results) => {
             if !results.allow() {
-        error!("Evidence verification failed {:?}", results.output());
+                log::error!("Evidence verification failed {:?}", results.output());
+                unauthorized!(VerificationFailed, "Attestation failure");
+            }
 
             session.set_tee_public_key(attestation.tee_pubkey.clone());
             session.set_attestation_results(results.clone());
