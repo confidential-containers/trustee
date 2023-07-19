@@ -340,14 +340,6 @@ protocol, where attesters authenticate themselves against a KBS implementation.
 This leads to the second phase, during which authenticated attesters can request
 protected resources from the KBS.
 
-Attesters can access protected resources by providing the KBS with either the HTTP
-cookie or the Attestation Results token returned as part of the Attestation HTTP
-response. The former is usually short-lived and is typically used for one-time,
-synchronous resources request. For longer KBS sessions, it is more convenient to
-use the latter.    
-
-### HTTP Cookie Authentication
-
 The KBS implementation keeps track of attestation results and binds them to a
 cookie identifier. During the second phase, the KBS can then decide if a
 specific resource could be released to a given attester, by mapping the cookie
@@ -378,7 +370,7 @@ content is set to a [KBS Response](#response) JSON payload:
     ┃                                                   ┃
     ┃                                                   ┃
     ┃                                                   ┃
-    ▽   Figure 2: KBS Resource Request Phase - Session  ▽
+    ▽        Figure 2: KBS Resource Request Phase       ▽
 ```
 
 A request for protected resource can fail for three reasons:
@@ -386,51 +378,6 @@ A request for protected resource can fail for three reasons:
 1. The requester is not authenticated and thus can not provide the right cookie
    identifier. The KBS implementation sends an HTTP response with a 401
    (`Unauthorized`) status code.
-2. The attester is authenticated but requests a resource that it's not allowed
-   to receive. The KBS implementation sends an HTTP response with a 403
-   (`Forbidden`) status code.
-3. The requested resource does not exist. The KBS implementation sends an HTTP
-   response with a 404 (`Not Found`) status code.
-
-### Attestation Results Token Authentication
-
-As part of the Authentication process, the requester generates a TEE asymmetric key 
-pair. Upon successful Attestation, the KBS provisions a token that contains the
-Attestation Results and endorsements for the TEE public key.
-
-To request a protected resource from the KBS, the attester sends a `GET` request
-to a resource specific endpoint with the token as the bearer authorization. If the
-token passes verification, the KBS will respond to the `GET` request with an HTTP
-response whose content is set to a [KBS Response](#response) JSON payload. The
-symetric key inside the [KBS Response](#response) JSON payload will be wrapped by
-the public key inside the token.
-
-```
-┌──────────┐                                         ┌─────┐
-│ Attester │                                         │ KBS │
-└───┳──────┘                                         └──┳──┘
-    ┃            ┌─────────────────────────┐            ┃
-    ┃────────────│GET /kbs/v0/<resource_id>│───────────▶┃
-    ┃      ┌─────┴─────────────────────────┴────┐       ┃
-    ┃      │Header: Authorization Bearer        │       ┃
-    ┃      │Body: N/A                           │       ┃
-    ┃      └────────────────────────────────────┘       ┃
-    ┃                    ┌────────┐                     ┃
-    ┃◀───────────────────│Response│─────────────────────┃
-    ┃     ┌──────────────└────────┘───────────────┐     ┃
-    ┃     │Header: No Cookie                      │     ┃
-    ┃     │Body: Response                         │     ┃
-    ┃     └───────────────────────────────────────┘     ┃
-    ┃                                                   ┃
-    ┃                                                   ┃
-    ┃                                                   ┃
-    ▽    Figure 3: KBS Resource Request Phase - Token   ▽
-```
-
-A request for protected resource can fail for three reasons:
-
-1. The requester is not authenticated and thus can not provide the valid token.
-   The KBS implementation sends an HTTP response with a 401 (`Unauthorized`) status code.
 2. The attester is authenticated but requests a resource that it's not allowed
    to receive. The KBS implementation sends an HTTP response with a 403
    (`Forbidden`) status code.
