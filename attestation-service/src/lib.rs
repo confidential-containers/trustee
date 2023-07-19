@@ -17,8 +17,11 @@ extern crate strum_macros;
 pub mod config;
 pub mod policy_engine;
 pub mod rvps;
+mod token;
 mod utils;
 pub mod verifier;
+
+use crate::token::AttestationTokenBroker;
 
 use anyhow::{anyhow, Context, Result};
 use as_types::SetPolicyInput;
@@ -42,6 +45,7 @@ pub struct AttestationService {
     _config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
     rvps: Box<dyn RVPSAPI + Send + Sync>,
+    token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
 }
 
 impl AttestationService {
@@ -60,10 +64,15 @@ impl AttestationService {
         let rvps_store = config.rvps_store_type.to_store()?;
         let rvps = Box::new(rvps::Core::new(rvps_store));
 
+        let token_broker = config
+            .attestation_token_broker
+            .to_token_broker(config.attestation_token_config.clone())?;
+
         Ok(Self {
             _config: config,
             policy_engine,
             rvps,
+            token_broker,
         })
     }
 
@@ -81,10 +90,15 @@ impl AttestationService {
 
         let rvps = Box::new(rvps::Agent::new(rvps_addr).await?);
 
+        let token_broker = config
+            .attestation_token_broker
+            .to_token_broker(config.attestation_token_config.clone())?;
+
         Ok(Self {
             _config: config,
             policy_engine,
             rvps,
+            token_broker,
         })
     }
 

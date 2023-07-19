@@ -35,11 +35,14 @@ hex = "0.4.3"
 sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
 # TODO: change it to "0.5", once released.
 kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
+jwt = { version = "0.16.0", features = ["openssl"]}
 lazy_static = "1.4.0"
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
 path-clean = "1.0.1"
 prost.workspace = true
+rand = "0.8.5"
+rsa = { version = "0.9.2", features = ["sha2"] }
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
 serde.workspace = true
 serde_json.workspace = true
@@ -51,6 +54,7 @@ sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 tempfile = "3.3.0"
+time = { version = "0.3.23", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
