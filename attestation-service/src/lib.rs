@@ -23,15 +23,14 @@ pub mod verifier;
 
 use crate::token::AttestationTokenBroker;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use as_types::SetPolicyInput;
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use policy_engine::PolicyEngine;
 use rvps::{Message, RVPSAPI};
+use serde_json::json;
 use std::collections::HashMap;
-
-use as_types::AttestationResults;
 
 #[cfg(any(feature = "rvps-grpc", feature = "rvps-native"))]
 use std::{fs, str::FromStr};
@@ -111,29 +110,16 @@ impl AttestationService {
     }
 
     /// Evaluate Attestation Evidence.
-    pub async fn evaluate(
-        &self,
-        tee: Tee,
-        nonce: &str,
-        attestation: &str,
-    ) -> Result<AttestationResults> {
+    /// Issue an attestation results token which contain TCB status and TEE public key.
+    pub async fn evaluate(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation")?;
         let verifier = crate::verifier::to_verifier(&tee)?;
 
-        let claims_from_tee_evidence =
-            match verifier.evaluate(nonce.to_string(), &attestation).await {
-                Ok(claims) => claims,
-                Err(e) => {
-                    return Ok(AttestationResults::new(
-                        tee.clone(),
-                        false,
-                        Some(format!("Verifier evaluate failed: {e:?}")),
-                        None,
-                        None,
-                    ));
-                }
-            };
+        let claims_from_tee_evidence = verifier
+            .evaluate(nonce.to_string(), &attestation)
+            .await
+            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
         let flattened_claims = flatten_claims(tee.clone(), &claims_from_tee_evidence)?;
         let tcb = serde_json::to_string(&flattened_claims)?;
@@ -148,11 +134,17 @@ impl AttestationService {
             .evaluate(reference_data_map, tcb.clone(), None)
             .await?;
 
-        let attestation_results =
-            AttestationResults::new(tee, result, None, Some(policy_engine_output), Some(tcb));
-        debug!("Attestation Results: {:?}", &attestation_results);
+        if !result {
+            bail!("Policy Engine verification failed: {policy_engine_output}");
+        }
 
-        Ok(attestation_results)
+        let token_claims = json!({
+            "tee-pubkey": attestation.tee_pubkey.clone(),
+            "tcb-status": flattened_claims
+        });
+        let attestation_results_token = self.token_broker.issue(token_claims)?;
+
+        Ok(attestation_results_token)
     }
 
     async fn get_reference_data(&self, tcb_claims: &str) -> Result<HashMap<String, Vec<String>>> {

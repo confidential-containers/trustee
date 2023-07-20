@@ -94,7 +94,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
         debug!("Evidence: {}", &request.evidence);
 
-        let attestation_results = self
+        let attestation_token = self
             .read()
             .await
             .attestation_service
@@ -109,14 +109,9 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Attestation: {e}")))?;
 
-        let results = serde_json::to_string(&attestation_results)
-            .map_err(|e| Status::aborted(format!("Parse attestation results: {e}")))?;
+        debug!("Attestation Token: {}", &attestation_token);
 
-        debug!("Attestation Results: {}", &results);
-
-        let res = AttestationResponse {
-            attestation_results: results,
-        };
+        let res = AttestationResponse { attestation_token };
         Ok(Response::new(res))
     }
 }
