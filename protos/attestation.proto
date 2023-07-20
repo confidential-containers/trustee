@@ -17,7 +17,7 @@ message AttestationRequest {
     string evidence = 3;
 }
 message AttestationResponse {
-    string attestation_results = 1;
+    string attestation_token = 1;
 }
 
 message SetPolicyRequest {
