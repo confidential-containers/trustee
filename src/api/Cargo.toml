@@ -22,10 +22,8 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-# TODO: change it to "0.8.0", once released.
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "9ef001e" }
-# TODO: change it to "0.8.0", once released.
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", rev = "9ef001e", default-features = false, optional = true}
+as-types = { git = "https://github.com/jialez0/attestation-service.git", branch = "token"}
+attestation-service = { git = "https://github.com/jialez0/attestation-service.git", default-features = false, branch = "token", optional = true}
 base64.workspace = true
 cfg-if = "1.0.0"
 elliptic-curve = { version = "0.13.4", features = ["arithmetic", "pem"] }

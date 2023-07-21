@@ -7,6 +7,8 @@ use crate::raise_error;
 use super::*;
 
 use anyhow::anyhow;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use log::{error, info};
 use serde_json::json;
 
@@ -37,9 +39,7 @@ pub(crate) async fn auth(
 pub(crate) async fn attest(
     attestation: web::Json<Attestation>,
     request: HttpRequest,
-    token_broker: web::Data<Arc<RwLock<dyn AttestationTokenBroker + Send + Sync>>>,
     map: web::Data<SessionMap<'_>>,
-    timeout: web::Data<i64>,
     attestation_service: web::Data<AttestationService>,
 ) -> Result<HttpResponse> {
     let cookie = request.cookie(KBS_SESSION_ID).ok_or(Error::MissingCookie)?;
@@ -55,7 +55,7 @@ pub(crate) async fn attest(
         raise_error!(Error::ExpiredCookie);
     }
 
-    let results = attestation_service
+    let token = attestation_service
         .0
         .lock()
         .await
@@ -67,25 +67,20 @@ pub(crate) async fn attest(
         .await
         .map_err(|e| Error::AttestationFailed(e.to_string()))?;
 
-    if !results.allow() {
-        error!("Evidence verification failed {:?}", results.output());
-        raise_error!(Error::AttestationFailed(String::from(
-            "evidence verification failed"
-        )));
-    }
+    let claims_b64 = token
+        .split('.')
+        .nth(1)
+        .ok_or_else(|| Error::TokenIssueFailed("Illegal token format".to_string()))?;
+    let claims = String::from_utf8(
+        URL_SAFE_NO_PAD
+            .decode(claims_b64)
+            .map_err(|e| Error::TokenIssueFailed(format!("Illegal token base64 claims: {e}")))?,
+    )
+    .map_err(|e| Error::TokenIssueFailed(format!("Illegal token base64 claims: {e}")))?;
 
     session.set_tee_public_key(attestation.tee_pubkey.clone());
-    session.set_attestation_results(results.clone());
-
-    let token_claims = json!({
-        "tee-pubkey": attestation.tee_pubkey.clone(),
-        "attestation-results": results.clone(),
-    });
-    let token = token_broker
-        .read()
-        .await
-        .issue(token_claims, *timeout.into_inner() as usize)
-        .map_err(|e| Error::TokenIssueFailed(e.to_string()))?;
+    session.set_authenticated();
+    session.set_attestation_claims(claims);
 
     let body = serde_json::to_string(&json!({
         "token": token,
