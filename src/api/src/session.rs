@@ -7,7 +7,6 @@ use actix_web::cookie::{
     Cookie, Expiration,
 };
 use anyhow::{anyhow, Result};
-use as_types::AttestationResults;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use semver::Version;
@@ -35,7 +34,8 @@ pub(crate) struct Session<'a> {
     tee: Tee,
     tee_extra_params: Option<String>,
     tee_pub_key: Option<TeePubKey>,
-    attestation_results: Option<AttestationResults>,
+    authenticated: bool,
+    attestation_claims: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -62,7 +62,8 @@ impl<'a> Session<'a> {
             tee: req.tee.clone(),
             tee_extra_params,
             tee_pub_key: None,
-            attestation_results: None,
+            authenticated: false,
+            attestation_claims: None,
         })
     }
 
@@ -86,10 +87,16 @@ impl<'a> Session<'a> {
         self.tee_pub_key.clone()
     }
 
+    pub fn attestation_claims(&self) -> Option<String> {
+        self.attestation_claims.clone()
+    }
+
     pub fn is_authenticated(&self) -> bool {
-        self.attestation_results
-            .as_ref()
-            .map_or(false, |a| a.allow())
+        self.authenticated
+    }
+
+    pub fn set_authenticated(&mut self) {
+        self.authenticated = true
     }
 
     pub fn is_expired(&self) -> bool {
@@ -104,16 +111,12 @@ impl<'a> Session<'a> {
         self.is_authenticated() && !self.is_expired()
     }
 
-    pub fn attestation_results(&self) -> Option<AttestationResults> {
-        self.attestation_results.clone()
-    }
-
-    pub fn set_attestation_results(&mut self, attestation_results: AttestationResults) {
-        self.attestation_results = Some(attestation_results)
-    }
-
     pub fn set_tee_public_key(&mut self, key: TeePubKey) {
         self.tee_pub_key = Some(key)
+    }
+
+    pub fn set_attestation_claims(&mut self, claims: String) {
+        self.attestation_claims = Some(claims)
     }
 }
 

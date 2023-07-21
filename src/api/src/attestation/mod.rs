@@ -4,7 +4,6 @@
 
 use crate::config::Config;
 use anyhow::*;
-use as_types::AttestationResults;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use std::sync::Arc;
@@ -27,12 +26,8 @@ pub trait Attest: Send + Sync {
     }
 
     /// Verify Attestation Evidence
-    async fn verify(
-        &mut self,
-        tee: Tee,
-        nonce: &str,
-        attestation: &str,
-    ) -> Result<AttestationResults>;
+    /// Return Attestation Results Token
+    async fn verify(&mut self, tee: Tee, nonce: &str, attestation: &str) -> Result<String>;
 }
 
 /// Attestation Service
