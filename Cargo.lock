@@ -404,7 +404,7 @@ dependencies = [
  "actix-web-httpauth",
  "aes-gcm",
  "anyhow",
- "as-types",
+ "as-types 0.1.0 (git+https://github.com/jialez0/attestation-service.git?branch=token)",
  "async-trait",
  "attestation-service",
  "base64 0.13.1",
@@ -442,7 +442,17 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
+source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c54d50cf976fb28c94fee951528cc2e6bfb12646"
+dependencies = [
+ "kbs-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "as-types"
+version = "0.1.0"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=96b6c6a#96b6c6a4b2e1e328c57ecbc886bfa30469373153"
 dependencies = [
  "kbs-types",
  "serde",
@@ -502,10 +512,10 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
+source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c54d50cf976fb28c94fee951528cc2e6bfb12646"
 dependencies = [
  "anyhow",
- "as-types",
+ "as-types 0.1.0 (git+https://github.com/jialez0/attestation-service.git?branch=token)",
  "asn1-rs",
  "async-trait",
  "az-snp-vtpm",
@@ -514,15 +524,19 @@ dependencies = [
  "byteorder",
  "cfg-if",
  "chrono",
+ "elliptic-curve",
  "eventlog-rs",
  "futures",
  "hex",
+ "jwt-simple",
  "kbs-types",
  "lazy_static",
  "log",
  "openssl",
+ "p256",
  "path-clean",
  "prost",
+ "rcgen",
  "scroll",
  "serde",
  "serde_json",

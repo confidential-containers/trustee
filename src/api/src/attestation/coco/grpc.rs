@@ -5,7 +5,6 @@
 use crate::attestation::Attest;
 use crate::config::Config;
 use anyhow::*;
-use as_types::AttestationResults;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use log::info;
@@ -73,27 +72,20 @@ impl Attest for Grpc {
         Ok(())
     }
 
-    async fn verify(
-        &mut self,
-        tee: Tee,
-        nonce: &str,
-        attestation: &str,
-    ) -> Result<AttestationResults> {
+    async fn verify(&mut self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
         let req = tonic::Request::new(AttestationRequest {
             tee: to_grpc_tee(tee) as i32,
             nonce: String::from(nonce),
             evidence: String::from(attestation),
         });
 
-        let results_string = self
+        let token = self
             .inner
             .attestation_evaluate(req)
             .await?
             .into_inner()
-            .attestation_results;
-        let result: AttestationResults = serde_json::from_str(&results_string)
-            .map_err(|_| anyhow!("Deserialize Attest Result failed"))?;
+            .attestation_token;
 
-        Ok(result)
+        Ok(token)
     }
 }

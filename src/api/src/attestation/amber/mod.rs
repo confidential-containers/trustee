@@ -4,7 +4,6 @@
 
 use super::Attest;
 use anyhow::*;
-use as_types::AttestationResults;
 use async_trait::async_trait;
 use jsonwebtoken::{decode, decode_header, jwk, DecodingKey, Validation};
 use kbs_types::{Attestation, Tee};
@@ -49,12 +48,7 @@ pub struct Amber {
 
 #[async_trait]
 impl Attest for Amber {
-    async fn verify(
-        &mut self,
-        tee: Tee,
-        _nonce: &str,
-        attestation: &str,
-    ) -> Result<AttestationResults> {
+    async fn verify(&mut self, tee: Tee, _nonce: &str, attestation: &str) -> Result<String> {
         if tee != Tee::Tdx {
             bail!("Only implement for tdx now");
         }
@@ -118,8 +112,7 @@ impl Attest for Amber {
             bail!("Evidence doesn't match policy");
         }
 
-        let result = AttestationResults::new(tee, true, None, None, None);
-        Ok(result)
+        Ok(resp_data.token.clone())
     }
 }
 
