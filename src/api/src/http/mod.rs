@@ -14,12 +14,11 @@ use crate::attestation::AttestationService;
 use crate::auth::validate_auth;
 use crate::resource::{set_secret_resource, Repository, ResourceDesc};
 use crate::session::{Session, SessionMap, KBS_SESSION_ID};
-use crate::token::AttestationTokenBroker;
+use crate::token::AttestationTokenVerifier;
 
 mod attest;
 mod config;
 mod error;
-mod public;
 mod resource;
 
 /// RESTful APIs that related to attestation
@@ -27,9 +26,6 @@ pub use attest::*;
 
 /// RESTful APIs that configure KBS and AS, require user authentication
 pub use config::*;
-
-/// RESTful APIs that is public
-pub use public::*;
 
 /// RESTful APIs that to get secret resources, need attestation verification
 pub use resource::*;

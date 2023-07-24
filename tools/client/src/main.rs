@@ -5,6 +5,8 @@
 //! A simple KBS client for test.
 
 use anyhow::Result;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -113,7 +115,7 @@ async fn main() -> Result<()> {
         Commands::GetResource { path } => {
             let resource_bytes =
                 kbs_client::get_resource(&cli.url, &path, kbs_cert.clone()).await?;
-            println!("{}", base64::encode(resource_bytes));
+            println!("{}", STANDARD.encode(resource_bytes));
         }
         Commands::Config(config) => {
             let auth_key = std::fs::read_to_string(config.auth_private_key)?;
@@ -135,7 +137,7 @@ async fn main() -> Result<()> {
                     .await?;
                     println!(
                         "Set attestation policy success \n policy: {}",
-                        base64::encode(policy_bytes)
+                        STANDARD.encode(policy_bytes)
                     );
                 }
                 ConfigCommands::SetResource {
@@ -153,7 +155,7 @@ async fn main() -> Result<()> {
                     .await?;
                     println!(
                         "Set resource success \n resource: {}",
-                        base64::encode(resource_bytes)
+                        STANDARD.encode(resource_bytes)
                     );
                 }
             }
