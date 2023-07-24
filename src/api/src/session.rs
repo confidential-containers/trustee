@@ -7,6 +7,8 @@ use actix_web::cookie::{
     Cookie, Expiration,
 };
 use anyhow::{anyhow, Result};
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use semver::Version;
@@ -24,7 +26,7 @@ fn nonce() -> Result<String> {
         .try_fill(&mut nonce[..])
         .map_err(anyhow::Error::from)?;
 
-    Ok(base64::encode_config(&nonce, base64::STANDARD))
+    Ok(STANDARD.encode(&nonce))
 }
 
 #[allow(dead_code)]

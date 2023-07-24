@@ -194,7 +194,7 @@ impl ApiServer {
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
-        let token_broker = self.config.attestation_token_type.to_token_broker()?;
+        let token_verifier = self.config.attestation_token_type.to_token_verifier()?;
 
         let user_public_key = match self.insecure_api {
             true => None,
@@ -219,7 +219,7 @@ impl ApiServer {
                 .app_data(web::Data::clone(&sessions))
                 .app_data(web::Data::clone(&attestation_service))
                 .app_data(web::Data::new(repository.clone()))
-                .app_data(web::Data::new(token_broker.clone()))
+                .app_data(web::Data::new(token_verifier.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
                 .app_data(web::Data::new(insecure_api))
@@ -228,10 +228,6 @@ impl ApiServer {
                 .service(
                     web::resource(kbs_path!("attestation-policy"))
                         .route(web::post().to(http::attestation_policy)),
-                )
-                .service(
-                    web::resource(kbs_path!("token-certificate-chain"))
-                        .route(web::get().to(http::get_token_certificate)),
                 )
                 .service(
                     web::resource([

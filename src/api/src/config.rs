@@ -5,7 +5,7 @@
 #[cfg(feature = "amber-as")]
 use crate::attestation::amber::AmberConfig;
 use crate::resource::RepositoryType;
-use crate::token::AttestationTokenBrokerType;
+use crate::token::AttestationTokenVerifierType;
 use anyhow::anyhow;
 use serde::Deserialize;
 use serde_json::Value;
@@ -27,11 +27,11 @@ pub struct Config {
     /// The JSON string schema is repository type specific.
     pub repository_description: Option<Value>,
 
-    /// The Attestation Token Result Broker type.
+    /// The Attestation Token type.
     ///
     /// Possible values:
-    /// * `Simple`
-    pub attestation_token_type: AttestationTokenBrokerType,
+    /// * `CoCo`
+    pub attestation_token_type: AttestationTokenVerifierType,
 
     /// The Remote Attestation Service API address (Optional).
     ///
@@ -60,7 +60,7 @@ impl Default for Config {
         Config {
             repository_type: RepositoryType::LocalFs,
             repository_description: None,
-            attestation_token_type: AttestationTokenBrokerType::Simple,
+            attestation_token_type: AttestationTokenVerifierType::CoCo,
             as_addr: None,
             as_config_file_path: None,
             #[cfg(feature = "amber-as")]
@@ -76,7 +76,7 @@ impl TryFrom<&Path> for Config {
     ///        "repository_description": {
     ///            "dir_path": "/opt/confidential-containers/kbs/repository"
     ///        },
-    ///            "attestation_token_type": "Simple",
+    ///            "attestation_token_type": "CoCo",
     ///        # Only used in Remote Attestation-Service mode
     ///        "as_addr": "http://127.0.0.1:50004",
     ///        # Only used in Native Attestation-Service mode
