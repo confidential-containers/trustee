@@ -6,10 +6,12 @@ use actix_web::{http::header::Header, web::Bytes};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
 use anyhow::{anyhow, bail};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use kbs_types::{Response, TeePubKey};
 use log::{error, info};
 use rand::{rngs::OsRng, Rng};
-use rsa::{BigUint, PaddingScheme, PublicKey, RsaPublicKey};
+use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::{json, Deserializer, Value};
 
@@ -23,14 +25,14 @@ pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
     map: web::Data<SessionMap<'_>>,
-    token_broker: web::Data<Arc<RwLock<dyn AttestationTokenBroker + Send + Sync>>>,
+    token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
 ) -> Result<HttpResponse> {
     let pubkey = if let Ok(pkey) = get_pubkey_from_cookie(&request, map).await {
         info!("Get pkey from session.");
         pkey
     } else {
         info!("Try get pkey from the auth header");
-        get_pubkey_from_header(&request, token_broker).await?
+        get_pubkey_from_header(&request, token_verifier).await?
     };
 
     let resource_description = ResourceDesc {
@@ -106,7 +108,7 @@ async fn get_pubkey_from_cookie(
 
 async fn get_pubkey_from_header(
     request: &HttpRequest,
-    token_broker: web::Data<Arc<RwLock<dyn AttestationTokenBroker + Send + Sync>>>,
+    token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
 ) -> Result<TeePubKey> {
     let bearer = Authorization::<Bearer>::parse(request)
         .map_err(|e| Error::InvalidRequest(format!("parse Authorization header failed: {e}")))?
@@ -114,7 +116,7 @@ async fn get_pubkey_from_header(
 
     let token = bearer.token().to_string();
 
-    let claims = token_broker
+    let claims = token_verifier
         .read()
         .await
         .verify(token)
@@ -152,10 +154,12 @@ pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Respo
         .encrypt(nonce, payload_data.as_slice())
         .map_err(|e| Error::JWEFailed(format!("AES encrypt Resource payload failed: {e:?}")))?;
 
-    let k_mod = base64::decode_config(&tee_pub_key.k_mod, base64::URL_SAFE_NO_PAD)
+    let k_mod = URL_SAFE_NO_PAD
+        .decode(&tee_pub_key.k_mod)
         .map_err(|e| Error::JWEFailed(format!("base64 decode k_mod failed: {e:?}")))?;
     let n = BigUint::from_bytes_be(&k_mod);
-    let k_exp = base64::decode_config(&tee_pub_key.k_exp, base64::URL_SAFE_NO_PAD)
+    let k_exp = URL_SAFE_NO_PAD
+        .decode(&tee_pub_key.k_exp)
         .map_err(|e| Error::JWEFailed(format!("base64 decode k_exp failed: {e:?}")))?;
     let e = BigUint::from_bytes_be(&k_exp);
 
@@ -164,10 +168,9 @@ pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Respo
             "Building RSA key from modulus and exponent failed: {e:?}"
         ))
     })?;
-    let padding = PaddingScheme::new_pkcs1v15_encrypt();
     let sym_key: &[u8] = aes_sym_key.as_slice();
     let wrapped_sym_key = rsa_pub_key
-        .encrypt(&mut rng, padding, sym_key)
+        .encrypt(&mut rng, Pkcs1v15Encrypt, sym_key)
         .map_err(|e| Error::JWEFailed(format!("RSA encrypt sym key failed: {e:?}")))?;
 
     let protected_header = json!(
@@ -179,9 +182,9 @@ pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Respo
     Ok(Response {
         protected: serde_json::to_string(&protected_header)
             .map_err(|e| Error::JWEFailed(format!("serde protected_header failed: {e}")))?,
-        encrypted_key: base64::encode_config(wrapped_sym_key, base64::URL_SAFE_NO_PAD),
-        iv: base64::encode_config(iv, base64::URL_SAFE_NO_PAD),
-        ciphertext: base64::encode_config(encrypted_payload_data, base64::URL_SAFE_NO_PAD),
+        encrypted_key: URL_SAFE_NO_PAD.encode(wrapped_sym_key),
+        iv: URL_SAFE_NO_PAD.encode(iv),
+        ciphertext: URL_SAFE_NO_PAD.encode(encrypted_payload_data),
         tag: "".to_string(),
     })
 }
