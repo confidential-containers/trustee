@@ -4,7 +4,9 @@
 
 #[cfg(feature = "amber-as")]
 use crate::attestation::amber::AmberConfig;
+#[cfg(feature = "resource")]
 use crate::resource::RepositoryType;
+#[cfg(feature = "resource")]
 use crate::token::AttestationTokenVerifierType;
 use anyhow::anyhow;
 use serde::Deserialize;
@@ -15,18 +17,23 @@ use std::path::Path;
 /// KBS Config
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
+    #[cfg(feature = "resource")]
     /// The resource repository type.
     ///
     /// Possible values:
     /// * `LocalFs` for locally stored resources.
+    ///
+    /// This is only relevant when "resource" feature is enabled.
     pub repository_type: RepositoryType,
 
+    #[cfg(feature = "resource")]
     /// Resource repository description (Optional).
     ///
     /// This is a JSON string describing the repository configuration.
     /// The JSON string schema is repository type specific.
     pub repository_description: Option<Value>,
 
+    #[cfg(feature = "resource")]
     /// The Attestation Token type.
     ///
     /// Possible values:
@@ -58,8 +65,11 @@ impl Default for Config {
     // Construct a default instance of `Config`
     fn default() -> Config {
         Config {
+            #[cfg(feature = "resource")]
             repository_type: RepositoryType::LocalFs,
+            #[cfg(feature = "resource")]
             repository_description: None,
+            #[cfg(feature = "resource")]
             attestation_token_type: AttestationTokenVerifierType::CoCo,
             as_addr: None,
             as_config_file_path: None,

@@ -7,7 +7,9 @@
 extern crate anyhow;
 
 use anyhow::{bail, Result};
-use api_server::{attestation::AttestationService, config::Config, ApiServer};
+#[cfg(feature = "as")]
+use api_server::attestation::AttestationService;
+use api_server::{config::Config, ApiServer};
 use log::warn;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -75,6 +77,7 @@ async fn main() -> Result<()> {
         warn!("insecure apis are enabled.");
     }
 
+    #[cfg(feature = "as")]
     let attestation_service = AttestationService::new(&kbs_config).await?;
 
     let api_server = ApiServer::new(
@@ -84,6 +87,7 @@ async fn main() -> Result<()> {
         cli.auth_public_key,
         cli.certificate,
         cli.insecure_http,
+        #[cfg(feature = "as")]
         attestation_service,
         cli.timeout,
         cli.insecure_api,

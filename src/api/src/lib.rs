@@ -19,6 +19,7 @@ extern crate uuid;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
+#[cfg(feature = "as")]
 use attestation::AttestationService;
 use config::Config;
 use jwt_simple::prelude::Ed25519PublicKey;
@@ -32,18 +33,28 @@ use rustls::ServerConfig;
 #[cfg(feature = "openssl")]
 use openssl::ssl::SslAcceptorBuilder;
 
+#[cfg(feature = "as")]
 use crate::session::SessionMap;
 
+#[cfg(feature = "as")]
 /// Attestation Service
 pub mod attestation;
+
+#[allow(unused_imports)]
 /// KBS config
 pub mod config;
 
 mod auth;
 #[allow(unused_imports)]
 mod http;
+
+#[cfg(feature = "resource")]
 mod resource;
+
+#[cfg(feature = "as")]
 mod session;
+
+#[cfg(feature = "resource")]
 mod token;
 
 static KBS_PREFIX: &str = "/kbs";
@@ -71,6 +82,7 @@ macro_rules! kbs_path {
     };
 }
 
+#[allow(dead_code)]
 /// The KBS API server
 pub struct ApiServer {
     config: Config,
@@ -83,7 +95,10 @@ pub struct ApiServer {
     user_public_key: Option<PathBuf>,
     certificate: Option<PathBuf>,
     insecure: bool,
+
+    #[cfg(feature = "as")]
     attestation_service: AttestationService,
+
     http_timeout: i64,
     insecure_api: bool,
 }
@@ -97,12 +112,20 @@ impl ApiServer {
         user_public_key: Option<PathBuf>,
         certificate: Option<PathBuf>,
         insecure: bool,
-        attestation_service: AttestationService,
+
+        #[cfg(feature = "as")] attestation_service: AttestationService,
+
         http_timeout: i64,
         insecure_api: bool,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
             bail!("Missing HTTPS credentials");
+        }
+
+        cfg_if::cfg_if! {
+            if #[cfg(not(any(feature = "as", feature = "resource")))] {
+                compile_error!("Must enable at least one of the following features: `as`, `resource`");
+            }
         }
 
         Ok(ApiServer {
@@ -112,7 +135,10 @@ impl ApiServer {
             user_public_key,
             certificate,
             insecure,
+
+            #[cfg(feature = "as")]
             attestation_service,
+
             http_timeout,
             insecure_api,
         })
@@ -185,15 +211,21 @@ impl ApiServer {
             self.sockets
         );
 
+        #[cfg(feature = "as")]
         let attestation_service = web::Data::new(self.attestation_service.clone());
+
+        #[cfg(feature = "as")]
         let sessions = web::Data::new(SessionMap::new());
+
         let http_timeout = self.http_timeout;
 
+        #[cfg(feature = "resource")]
         let repository = self
             .config
             .repository_type
             .to_repository(&self.config.repository_description)?;
 
+        #[cfg(feature = "resource")]
         let token_verifier = self.config.attestation_token_type.to_token_verifier()?;
 
         let user_public_key = match self.insecure_api {
@@ -214,29 +246,38 @@ impl ApiServer {
         let insecure_api = self.insecure_api;
 
         let http_server = HttpServer::new(move || {
-            App::new()
+            #[allow(unused_mut)]
+            let mut server_app = App::new()
                 .wrap(middleware::Logger::default())
-                .app_data(web::Data::clone(&sessions))
-                .app_data(web::Data::clone(&attestation_service))
-                .app_data(web::Data::new(repository.clone()))
-                .app_data(web::Data::new(token_verifier.clone()))
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
-                .app_data(web::Data::new(insecure_api))
-                .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
-                .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
-                .service(
-                    web::resource(kbs_path!("attestation-policy"))
-                        .route(web::post().to(http::attestation_policy)),
-                )
-                .service(
-                    web::resource([
-                        kbs_path!("resource/{repository}/{type}/{tag}"),
-                        kbs_path!("resource/{type}/{tag}"),
-                    ])
-                    .route(web::get().to(http::get_resource))
-                    .route(web::post().to(http::set_resource)),
-                )
+                .app_data(web::Data::new(insecure_api));
+
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "as")] {
+                    server_app = server_app.app_data(web::Data::clone(&sessions))
+                    .app_data(web::Data::clone(&attestation_service)).service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
+                    .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
+                    .service(
+                        web::resource(kbs_path!("attestation-policy"))
+                            .route(web::post().to(http::attestation_policy)),
+                    );
+            }}
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "resource")] {
+                    server_app = server_app.app_data(web::Data::new(repository.clone()))
+                    .app_data(web::Data::new(token_verifier.clone()))
+                    .service(
+                        web::resource([
+                            kbs_path!("resource/{repository}/{type}/{tag}"),
+                            kbs_path!("resource/{type}/{tag}"),
+                        ])
+                        .route(web::get().to(http::get_resource))
+                        .route(web::post().to(http::set_resource)),
+                    );
+                }
+            }
+            server_app
         });
 
         if !self.insecure {
