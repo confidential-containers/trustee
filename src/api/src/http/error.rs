@@ -21,10 +21,17 @@ const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[allow(dead_code)]
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
     #[error("Attestation failed: {0}")]
     AttestationFailed(String),
+
+    #[error("Attestation claims get failed: {0}")]
+    AttestationClaimsGetFailed(String),
+
+    #[error("Received illegal attestation claims: {0}")]
+    AttestationClaimsParseFailed(String),
 
     #[error("The cookie is expired")]
     ExpiredCookie,

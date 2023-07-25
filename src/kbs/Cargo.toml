@@ -7,11 +7,13 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["coco-as-builtin", "rustls"]
-coco-as-builtin = ["api-server/coco-as-builtin"]
-coco-as-builtin-no-verifier = ["api-server/coco-as-builtin-no-verifier"]
-coco-as-grpc = ["api-server/coco-as-grpc"]
-amber-as = ["api-server/amber-as"]
+default = ["coco-as-builtin", "resource", "rustls"]
+as = []
+resource = ["api-server/resource"]
+coco-as-builtin = ["as", "api-server/coco-as-builtin"]
+coco-as-builtin-no-verifier = ["as", "api-server/coco-as-builtin-no-verifier"]
+coco-as-grpc = ["as", "api-server/coco-as-grpc"]
+amber-as = ["as", "api-server/amber-as"]
 rustls = ["api-server/rustls"]
 openssl = ["api-server/openssl"]
 

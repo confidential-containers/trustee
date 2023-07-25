@@ -19,21 +19,40 @@ use crate::raise_error;
 
 use super::*;
 
+#[allow(unused_assignments)]
 /// GET /resource/{repository}/{type}/{tag}
 /// GET /resource/{type}/{tag}
 pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
-    map: web::Data<SessionMap<'_>>,
+    #[cfg(feature = "as")] map: web::Data<SessionMap<'_>>,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
 ) -> Result<HttpResponse> {
-    let pubkey = if let Ok(pkey) = get_pubkey_from_cookie(&request, map).await {
+    #[allow(unused_mut)]
+    let mut claims_option = None;
+    #[cfg(feature = "as")]
+    {
+        claims_option = get_attest_claims_from_session(&request, map).await.ok();
+    }
+    let claims_str = if let Some(c) = claims_option {
         info!("Get pkey from session.");
-        pkey
+        c
     } else {
-        info!("Try get pkey from the auth header");
-        get_pubkey_from_header(&request, token_verifier).await?
+        info!("Get pkey from auth header");
+        get_attest_claims_from_header(&request, token_verifier).await?
     };
+    let claims: Value = serde_json::from_str(&claims_str).map_err(|e| {
+        Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
+    })?;
+
+    let pkey_value = claims
+        .get("tee-pubkey")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `tee-pubkey` in the attestation claims",
+        )))?;
+    let pubkey = TeePubKey::deserialize(pkey_value).map_err(|e| {
+        Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
+    })?;
 
     let resource_description = ResourceDesc {
         repository_name: request
@@ -71,10 +90,11 @@ pub(crate) async fn get_resource(
         .body(res))
 }
 
-async fn get_pubkey_from_cookie(
+#[cfg(feature = "as")]
+async fn get_attest_claims_from_session(
     request: &HttpRequest,
     map: web::Data<SessionMap<'_>>,
-) -> Result<TeePubKey> {
+) -> Result<String> {
     // check cookie
     let cookie = request
         .cookie(KBS_SESSION_ID)
@@ -99,17 +119,19 @@ async fn get_pubkey_from_cookie(
         raise_error!(Error::ExpiredCookie);
     }
 
-    let pubkey = session.tee_public_key().ok_or(Error::PublicKeyGetFailed(
-        "No public key in the session".into(),
-    ))?;
+    let claims = session
+        .attestation_claims()
+        .ok_or(Error::AttestationClaimsGetFailed(
+            "No attestation claims in the session".into(),
+        ))?;
 
-    Ok(pubkey)
+    Ok(claims)
 }
 
-async fn get_pubkey_from_header(
+async fn get_attest_claims_from_header(
     request: &HttpRequest,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
-) -> Result<TeePubKey> {
+) -> Result<String> {
     let bearer = Authorization::<Bearer>::parse(request)
         .map_err(|e| Error::InvalidRequest(format!("parse Authorization header failed: {e}")))?
         .into_scheme();
@@ -121,16 +143,7 @@ async fn get_pubkey_from_header(
         .await
         .verify(token)
         .map_err(|e| Error::TokenParseFailed(format!("verify token failed: {e}")))?;
-    let claims: Value = serde_json::from_str(&claims)
-        .map_err(|e| Error::TokenParseFailed(format!("illegal custom claims: {e}")))?;
-
-    let pkey_value = claims
-        .get("tee-pubkey")
-        .ok_or(Error::TokenParseFailed(String::from(
-            "No `tee-pubkey` in the custom claims",
-        )))?;
-    TeePubKey::deserialize(pkey_value)
-        .map_err(|e| Error::TokenParseFailed(format!("illegal custom claims: {e}")))
+    Ok(claims)
 }
 
 const RSA_ALGORITHM: &str = "RSA1_5";
