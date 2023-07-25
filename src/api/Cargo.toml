@@ -7,19 +7,21 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["coco-as-builtin", "rustls"]
-coco-as = []
+default = ["coco-as-builtin", "resource", "opa", "rustls"]
+resource = ["rsa", "aes-gcm"]
+as = []
+coco-as = ["as"]
 coco-as-builtin = ["coco-as", "attestation-service/default"]
 coco-as-builtin-no-verifier = ["coco-as", "attestation-service/rvps-native"]
 coco-as-grpc = ["coco-as", "tonic", "tonic-build", "prost"]
-amber-as = ["reqwest", "jsonwebtoken"]
+amber-as = ["as", "reqwest", "jsonwebtoken"]
 rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
 openssl = ["actix-web/openssl", "dep:openssl"]
 
 [dependencies]
 actix-web = "4"
 actix-web-httpauth = "0.8.0"
-aes-gcm = "0.10.1"
+aes-gcm = { version = "0.10.1", optional = true }
 anyhow.workspace = true
 async-trait.workspace = true
 as-types = { git = "https://github.com/jialez0/attestation-service.git", branch = "token"}
@@ -49,7 +51,7 @@ time = { version = "0.3.23", features = ["std"] }
 tokio.workspace = true
 tonic = { version = "0.9", optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
-openssl = "0.10.46"
+openssl = { version = "0.10.46", optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

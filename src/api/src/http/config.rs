@@ -4,6 +4,7 @@
 
 use super::*;
 
+#[cfg(feature = "as")]
 /// POST /attestation-policy
 pub(crate) async fn attestation_policy(
     request: HttpRequest,
@@ -34,6 +35,7 @@ pub(crate) async fn attestation_policy(
     Ok(HttpResponse::Ok().finish())
 }
 
+#[cfg(feature = "resource")]
 /// POST /resource/{repository}/{type}/{tag}
 /// POST /resource/{type}/{tag}
 ///
