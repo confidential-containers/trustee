@@ -12,7 +12,7 @@ use anyhow::anyhow;
 use serde::Deserialize;
 use serde_json::Value;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// KBS Config
 #[derive(Clone, Debug, Deserialize)]
@@ -59,6 +59,14 @@ pub struct Config {
     /// Only used in Amber AS mode.
     #[cfg(feature = "amber-as")]
     pub amber: Option<AmberConfig>,
+
+    /// The file path of the policy to evaluate
+    /// whether the TCB status has access to specific resource.
+    ///
+    /// This is only relevant when "policy" feature is enabled.
+    /// If empty, the default policy file path is used.
+    #[cfg(feature = "policy")]
+    pub policy_path: Option<PathBuf>,
 }
 
 impl Default for Config {
@@ -75,6 +83,8 @@ impl Default for Config {
             as_config_file_path: None,
             #[cfg(feature = "amber-as")]
             amber: None,
+            #[cfg(feature = "policy")]
+            policy_path: None,
         }
     }
 }
@@ -98,7 +108,8 @@ impl TryFrom<&Path> for Config {
     ///            "certs_file": "/etc/amber/amber-certs.txt",
     ///            # Optional, default is false.
     ///            "allow_unmatched_policy": true
-    ///        }
+    ///        },
+    ///        "policy_path": "/opt/confidential-containers/kbs/policy.rego"
     ///    }
     type Error = anyhow::Error;
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
