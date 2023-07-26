@@ -139,7 +139,7 @@ paths:
       summary: Register a secret resource into the Key Broker Service.
       requestBody:
         required: true
-        content: *
+        content: '*'
       parameters:
         - name: repository
           in: path
