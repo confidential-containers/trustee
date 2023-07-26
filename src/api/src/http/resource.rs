@@ -27,6 +27,7 @@ pub(crate) async fn get_resource(
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
     #[cfg(feature = "as")] map: web::Data<SessionMap<'_>>,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
+    #[cfg(feature = "policy")] policy_engine: web::Data<PolicyEngine>,
 ) -> Result<HttpResponse> {
     #[allow(unused_mut)]
     let mut claims_option = None;
@@ -73,6 +74,23 @@ pub(crate) async fn get_resource(
     };
 
     info!("Resource description: {:?}", &resource_description);
+
+    #[cfg(feature = "policy")]
+    {
+        let resource_path = format!(
+            "{}/{}/{}",
+            resource_description.repository_name,
+            resource_description.resource_type,
+            resource_description.resource_tag
+        );
+        policy_engine
+            .0
+            .lock()
+            .await
+            .evaluate(resource_path, claims_str)
+            .await
+            .map_err(|e| Error::PolicyEngineFailed(e.to_string()))?;
+    }
 
     let resource_byte = repository
         .read()

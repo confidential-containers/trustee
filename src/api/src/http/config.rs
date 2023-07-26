@@ -35,6 +35,44 @@ pub(crate) async fn attestation_policy(
     Ok(HttpResponse::Ok().finish())
 }
 
+#[cfg(feature = "policy")]
+/// POST /resource-policy
+pub(crate) async fn resource_policy(
+    request: HttpRequest,
+    input: web::Json<serde_json::Value>,
+    user_pub_key: web::Data<Option<Ed25519PublicKey>>,
+    insecure: web::Data<bool>,
+    policy_engine: web::Data<PolicyEngine>,
+) -> Result<HttpResponse> {
+    if !insecure.get_ref() {
+        let user_pub_key = user_pub_key
+            .as_ref()
+            .as_ref()
+            .ok_or(Error::UserPublicKeyNotProvided)?;
+
+        validate_auth(&request, user_pub_key).map_err(|e| {
+            Error::FailedAuthentication(format!("Requester is not an authorized user: {e}"))
+        })?;
+    }
+
+    policy_engine
+        .0
+        .lock()
+        .await
+        .set_policy(
+            input.into_inner()["policy"]
+                .as_str()
+                .ok_or(Error::PolicyEndpoint(
+                    "Get policy from request failed".to_string(),
+                ))?
+                .to_string(),
+        )
+        .await
+        .map_err(|e| Error::PolicyEndpoint(format!("Set policy error {e}")))?;
+
+    Ok(HttpResponse::Ok().finish())
+}
+
 #[cfg(feature = "resource")]
 /// POST /resource/{repository}/{type}/{tag}
 /// POST /resource/{type}/{tag}
