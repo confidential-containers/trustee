@@ -5,6 +5,8 @@
 #[cfg(feature = "as")]
 use crate::attestation::AttestationService;
 use crate::auth::validate_auth;
+#[cfg(feature = "policy")]
+use crate::policy_engine::PolicyEngine;
 #[cfg(feature = "resource")]
 use crate::resource::{set_secret_resource, Repository, ResourceDesc};
 #[cfg(feature = "as")]

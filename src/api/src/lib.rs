@@ -36,6 +36,9 @@ use openssl::ssl::SslAcceptorBuilder;
 #[cfg(feature = "as")]
 use crate::session::SessionMap;
 
+#[cfg(feature = "policy")]
+use crate::policy_engine::PolicyEngine;
+
 #[cfg(feature = "as")]
 /// Attestation Service
 pub mod attestation;
@@ -56,6 +59,10 @@ mod session;
 
 #[cfg(feature = "resource")]
 mod token;
+
+#[cfg(feature = "policy")]
+/// Resource Policy Engine
+pub mod policy_engine;
 
 static KBS_PREFIX: &str = "/kbs";
 static KBS_MAJOR_VERSION: u64 = 0;
@@ -228,6 +235,9 @@ impl ApiServer {
         #[cfg(feature = "resource")]
         let token_verifier = self.config.attestation_token_type.to_token_verifier()?;
 
+        #[cfg(feature = "policy")]
+        let policy_engine = PolicyEngine::new(&self.config).await?;
+
         let user_public_key = match self.insecure_api {
             true => None,
             false => match &self.user_public_key {
@@ -274,6 +284,14 @@ impl ApiServer {
                         ])
                         .route(web::get().to(http::get_resource))
                         .route(web::post().to(http::set_resource)),
+                    );
+                }
+            }
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "policy")] {
+                    server_app = server_app.app_data(web::Data::new(policy_engine.clone()))
+                    .service(
+                        web::resource(kbs_path!("resource-policy")).route(web::post().to(http::resource_policy)),
                     );
                 }
             }

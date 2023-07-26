@@ -54,6 +54,9 @@ pub enum Error {
     #[error("Policy error: {0}")]
     PolicyEndpoint(String),
 
+    #[error("Resource policy engine evaluate failed: {0}")]
+    PolicyEngineFailed(String),
+
     #[error("Public key get failed: {0}")]
     PublicKeyGetFailed(String),
 

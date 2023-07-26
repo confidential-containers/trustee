@@ -7,9 +7,10 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["coco-as-builtin", "resource", "rustls"]
+default = ["coco-as-builtin", "resource", "opa", "rustls"]
 as = []
 resource = ["api-server/resource"]
+opa = ["api-server/opa"]
 coco-as-builtin = ["as", "api-server/coco-as-builtin"]
 coco-as-builtin-no-verifier = ["as", "api-server/coco-as-builtin-no-verifier"]
 coco-as-grpc = ["as", "api-server/coco-as-grpc"]
