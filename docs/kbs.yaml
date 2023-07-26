@@ -114,16 +114,6 @@ paths:
           schema:
             type: string
           required: true
-      requestBody:
-        required: false
-        description: >-
-          A KBS provisioned token that includes the Tee public key.
-          KBS will then use the Tee public key to perform JSON Web Encryption
-          for the resource in a response if the token is valid.
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AttestationToken'
       responses:
         200:
           description: >-
