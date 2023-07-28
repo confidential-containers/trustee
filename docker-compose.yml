@@ -22,6 +22,8 @@ services:
       - ./data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
       - ./config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
       - ./config/kbs-config.json:/etc/kbs-config.json
+    depends_on:
+    - as
 
   as:
     image: ghcr.io/confidential-containers/attestation-service:latest
@@ -41,6 +43,8 @@ services:
       "--config",
       "/etc/as-config.json"
     ]
+    depends_on:
+    - rvps
 
   rvps:
     image: ghcr.io/confidential-containers/reference-value-provider-service:latest
@@ -66,3 +70,5 @@ services:
       "--auth-private-key",
       "/etc/private.key"
     ]
+    depends_on:
+    - kbs
