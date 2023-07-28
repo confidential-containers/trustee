@@ -14,3 +14,6 @@ data
 # test
 test/*
 !test/Makefile
+
+config/private.key
+config/public.pub
