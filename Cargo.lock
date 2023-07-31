@@ -429,7 +429,7 @@ dependencies = [
  "semver 1.0.18",
  "serde",
  "serde_json",
- "strum 0.24.1",
+ "strum 0.25.0",
  "strum_macros 0.24.3",
  "tempfile",
  "thiserror",
