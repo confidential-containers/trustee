@@ -1,62 +1,57 @@
-.PHONY: kbs
-kbs:
-	cargo build
+AS_TYPE ?= coco-as
+HTTPS_CRYPTO ?= rustls
+POLICY_ENGINE ?=
 
-.PHONY: kbs-no-as
-kbs-no-as:
-	cargo build --no-default-features --features rustls,resource
+COCO_AS_INTEGRATION_TYPE ?= builtin
 
-.PHONY: kbs-no-as-openssl
-kbs-no-as-openssl:
-	cargo build --no-default-features --features openssl,resource
+INSTALL_DESTDIR ?= /usr/local/bin
 
-.PHONY: kbs-coco-as
-kbs-coco-as:
-	cargo build --no-default-features --features coco-as-builtin,rustls,resource
+ifeq ($(AS_TYPE), coco-as)
+  AS_FEATURE = $(AS_TYPE)-$(COCO_AS_INTEGRATION_TYPE)
+else
+  AS_FEATURE = $(AS_TYPE)
+endif
 
-.PHONY: kbs-coco-as-grpc
-kbs-coco-as-grpc:
-	cargo build --no-default-features --features coco-as-grpc,rustls,resource
+build: background-check-kbs
 
-.PHONY: kbs-coco-as-no-verifier
-kbs-coco-as-no-verifier:
-	cargo build --no-default-features --features coco-as-builtin-no-verifier,rustls,resource
+.PHONY: background-check-kbs
+background-check-kbs:
+	cargo build --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE)
 
-.PHONY: kbs-coco-as-openssl
-kbs-coco-as-openssl:
-	cargo build --no-default-features --features coco-as-builtin,openssl,resource
+.PHONY: passport-issuer-kbs
+passport-issuer-kbs:
+	cargo build --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO)
+	mv target/release/kbs target/release/issuer-kbs
 
-.PHONY: kbs-coco-as-grpc-openssl
-kbs-coco-as-grpc-openssl:
-	cargo build --no-default-features --features coco-as-grpc,openssl,resource
+.PHONY: passport-kbs
+passport-resource-kbs:
+	cargo build --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
+	mv target/release/kbs target/release/resource-kbs
 
-.PHONY: kbs-coco-as-no-verifier-openssl
-kbs-coco-as-no-verifier-openssl:
-	cargo build --no-default-features --features coco-as-builtin-no-verifier,openssl,resource
+install-kbs:
+	install -D -m0755 target/release/kbs $(INSTALL_DESTDIR)
+	install -D -m0755 target/release/kbs-client $(INSTALL_DESTDIR)
 
-.PHONY: kbs-amber-as
-kbs-amber-as:
-	cargo build --no-default-features --features amber-as,rustls,resource
+install-issuer-kbs:
+	install -D -m0755 target/release/issuer-kbs $(INSTALL_DESTDIR)
+	install -D -m0755 target/release/kbs-client $(INSTALL_DESTDIR)
 
-.PHONY: kbs-amber-as-openssl
-kbs-amber-as-openssl:
-	cargo build --no-default-features --features amber-as,openssl,resource
+install-resource-kbs:
+	install -D -m0755 target/release/resource-kbs $(INSTALL_DESTDIR)
+	install -D -m0755 target/release/kbs-client $(INSTALL_DESTDIR)
 
-.PHONY: check
+uninstall:
+	rm -rf $(INSTALL_DESTDIR)/kbs $(INSTALL_DESTDIR)/kbs-client $(INSTALL_DESTDIR)/issuer-kbs $(INSTALL_DESTDIR)/resource-kbs
+
 check:
 	cargo test --lib
 
-.PHONY: lint
 lint:
-	cargo clippy -- -D warnings  -Wmissing-docs
+	cargo clippy -- -D warnings  -Wmissing-docs -A clippy::enum_variant_names
 
-.PHONY: format
 format:
 	cargo fmt -- --check --config format_code_in_doc_comments=true
 
-.PHONY: ci
-ci: kbs check lint format
-
-.PHONY: clean
 clean:
 	cargo clean
+

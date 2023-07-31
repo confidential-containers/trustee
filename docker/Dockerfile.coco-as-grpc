@@ -3,10 +3,14 @@ FROM rust:latest as builder
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt install -y protobuf-compiler
+RUN apt-get update && apt install -y protobuf-compiler wget
+
+RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Build and Install KBS
-RUN cargo install --path src/kbs --no-default-features --features coco-as-grpc,rustls
+RUN cargo install --path src/kbs --no-default-features --features coco-as-grpc,resource,opa,rustls
 
 
 FROM ubuntu:22.04

@@ -15,5 +15,5 @@ jobs:
     - name: Build Container Image
       run: |
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f docker/Dockerfile; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-openssl --build-arg KBS_FEATURES=coco-as-builtin,openssl . -f docker/Dockerfile; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-openssl --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f docker/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-grpc . -f docker/Dockerfile.coco-as-grpc

@@ -50,16 +50,16 @@ jobs:
         sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
     - name: KBS Build [Default]
-      run: make kbs
+      run: make
 
     - name: KBS Build [Built-in CoCo AS, OpenSSL]
-      run: make kbs-coco-as-openssl
+      run: make HTTPS_CRYPTO=openssl
 
     - name: KBS Build [gRPC CoCo AS, RustTLS]
-      run: make kbs-coco-as-grpc
+      run: make COCO_AS_INTEGRATE_TYPE=grpc
 
     - name: build KBS with amber AS mode
-      run: make kbs-amber-as
+      run: make AS_TYPE=amber-as
 
     - name: Lint
       run: make lint
