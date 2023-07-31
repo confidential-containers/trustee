@@ -31,7 +31,7 @@ install-dependencies:
 
 kbs:
 	cd $(PROJECT_DIR) && \
-	cargo build -p kbs --release && \
+	cargo build -p kbs --release --features rustls,coco-as-builtin,resource,opa && \
 	install -D --compare ./target/release/kbs $(CURDIR)/kbs
 
 client:

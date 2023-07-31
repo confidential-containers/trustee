@@ -3,8 +3,14 @@ FROM rust:latest as builder
 WORKDIR /usr/src/kbs
 COPY . .
 
+RUN apt-get update && apt install -y wget
+
+RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"
+
 # Build and Install KBS
-RUN cargo install --path src/kbs --no-default-features --features amber-as,rustls
+RUN cargo install --path src/kbs --no-default-features --features amber-as,rustls,resource,opa
 
 FROM ubuntu:22.04
 

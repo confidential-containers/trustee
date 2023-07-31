@@ -450,7 +450,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-service.git?branch=token#7b49fffb42748a179ad2fd0bc0dc6a27e86a154e"
+source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c54d50cf976fb28c94fee951528cc2e6bfb12646"
 dependencies = [
  "kbs-types",
  "serde",
@@ -554,7 +554,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components?rev=b005d9b#b005d9b863e29e54e03157422feac3e4de9ff036"
+source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1136,7 +1136,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components?rev=b005d9b#b005d9b863e29e54e03157422feac3e4de9ff036"
+source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2170,7 +2170,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components?rev=b005d9b#b005d9b863e29e54e03157422feac3e4de9ff036"
+source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2530,7 +2530,7 @@ dependencies = [
 [[package]]
 name = "occlum_dcap"
 version = "0.1.0"
-source = "git+https://github.com/occlum/occlum?tag=v0.29.6#6048d1fcc1cb209695316b3f10f0f8c75c942e29"
+source = "git+https://github.com/occlum/occlum?tag=v0.29.7#b5a32a8d8a81de2458c2b0d06b07ddce6fd10a44"
 dependencies = [
  "cfg-if",
  "libc",
@@ -3176,7 +3176,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components?rev=b005d9b#b005d9b863e29e54e03157422feac3e4de9ff036"
+source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
 dependencies = [
  "anyhow",
  "serde",
@@ -3679,7 +3679,7 @@ dependencies = [
 [[package]]
 name = "sgx_types"
 version = "1.1.5"
-source = "git+https://github.com/occlum/occlum?tag=v0.29.6#6048d1fcc1cb209695316b3f10f0f8c75c942e29"
+source = "git+https://github.com/occlum/occlum?tag=v0.29.7#b5a32a8d8a81de2458c2b0d06b07ddce6fd10a44"
 
 [[package]]
 name = "sha1"

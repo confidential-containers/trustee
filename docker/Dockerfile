@@ -35,7 +35,7 @@ RUN apt-get install -y --no-install-recommends \
     libtdx-attest-dev
 
 # Build and Install KBS
-ARG KBS_FEATURES=coco-as-builtin,rustls
+ARG KBS_FEATURES=coco-as-builtin,rustls,resource,opa
 RUN cargo install --path src/kbs --no-default-features --features ${KBS_FEATURES}
 
 FROM debian:stable-slim
