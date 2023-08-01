@@ -497,16 +497,18 @@ following example:
     "exp": 1568187398,
     "iat": 1568158598,
     "iss": "https://xxxxxx",
+    "jwk": $token-pubkey,
 
-    "tee-pubkey": $pubkey
-    <Custom Claims>
+    "tee-pubkey": $pubkey,
+    "tcb-status": $claims,
+    "evaluation-report": $report,
 }
 ```
 
 The token payload is divided into registered and private claims sets. The KBS
 might also include additional public claims set.
 
-The registered claims set must include the `exp`, `iat`' and `iss` names, which
+The registered claims set must include the `exp`, `iat`', `iss` and `jwk` names, which
 respectively declare the expiration time, issuing time and issuer (KBS URL
 address) of the token:
 
@@ -515,6 +517,7 @@ address) of the token:
 | `exp` | Expiration time | Seconds since the epoch | `99991231235959`     |
 | `iat` | Issuing time    | Seconds since the epoch | `180322235959`       |
 | `iss` | Issuer          | KBS URL                 | `https://my-kbs.io/` |
+| `jwk` | Public key to verify token signature | RSA Json Web Key | |
 
 The custom claims set must include the attestation result from the
 `Attestation Service`, which include the TCB status and measurements.
@@ -522,6 +525,9 @@ The custom claims set must include the attestation result from the
 The custom claims set can also include a `tee-pubkey` claim. This claim refers to
 the HW-TEE's public key sent by the KBC along with the attestation evidence,
 which is valid within the validity period of the token.
+
+`evaluation-report` is the output of the policy engine of the `Attestation Service`,
+it is AS policy's evaluation opinion on TEE evidence.
 
 When the KBC uses this token to request resources or services from a relying
 party service API, then the symmetric key used to encrypt the output payload can
@@ -547,7 +553,25 @@ The payload of the POST request should like:
 Where `type` is the policy format (e.g. `rego` or `opa`), `policy_id` provides the policy ID
 and `policy` is the base64 encoded policy content.
 Only authenticated users can send a POST request to this endpoint.
-KBS verifies the user identity with the user's private key signed JSON Web Token (JWT) that must be included in the request. 
+KBS verifies the user identity with the user's private key signed JSON Web Token (JWT) that must be included in the request.
+
+### Set Resource Policy
+User of KBS can set an resource policy through the following endpoint:
+
+```
+/kbs/v0/resource-policy
+```
+ The payload of the POST request should like:
+
+ ```json
+ {
+    "policy": <base64encoded policy>
+ }
+ ```
+
+ Where `policy` is the base64 encoded policy content.
+Only authenticated users can send a POST request to this endpoint.
+KBS verifies the user identity with the user's private key signed JSON Web Token (JWT) that must be included in the request.
 
 ##### Signature
 
@@ -579,20 +603,6 @@ let jws_signature = base64_url::encode(rs256_key_pair.sign(&jws_signature_input)
 
 let serialized_token = format!("{}.{}.{}", jwt_header, jwt_claims, jwt_signature);
 ```
-
-### Attestation Results Token Certificate Chain
-
-The KBS is configured with a specific Attestation Results Token Broker. The
-Broker generates and signs Attestation Results token that can be returned by the
-`/kbs/v0/attest` endpoint. In order for Relying Parties to
-authenticate the KBS Broker and validate the Attestation Results, the Broker
-certificate chain is made available by the KBS at the following endpoint:
-
-```
-/kbs/v0/token-certificate-chain
-```
-
-The Broker certificate chain is represented as a JWKS (https://www.rfc-editor.org/rfc/rfc7517#appendix-B).
 
 ## Error information
 

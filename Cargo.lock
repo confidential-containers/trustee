@@ -450,7 +450,7 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c54d50cf976fb28c94fee951528cc2e6bfb12646"
+source = "git+https://github.com/jialez0/attestation-service.git?branch=token#06a3fd5655aed3e358eae887fac2bb0332ac38b7"
 dependencies = [
  "kbs-types",
  "serde",
@@ -510,7 +510,7 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-service.git?branch=token#7b49fffb42748a179ad2fd0bc0dc6a27e86a154e"
+source = "git+https://github.com/jialez0/attestation-service.git?branch=token#06a3fd5655aed3e358eae887fac2bb0332ac38b7"
 dependencies = [
  "anyhow",
  "as-types 0.1.0 (git+https://github.com/jialez0/attestation-service.git?branch=token)",
@@ -532,6 +532,8 @@ dependencies = [
  "openssl",
  "path-clean",
  "prost",
+ "rand",
+ "rsa 0.9.2",
  "scroll",
  "serde",
  "serde_json",
@@ -554,12 +556,13 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
+source = "git+https://github.com/confidential-containers/guest-components#b5c5440fbdb25162d6707169af9f651ba6c32181"
 dependencies = [
  "anyhow",
  "async-trait",
  "az-snp-vtpm",
  "base64 0.21.2",
+ "kbs-types",
  "log",
  "occlum_dcap",
  "serde",
@@ -1136,7 +1139,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
+source = "git+https://github.com/confidential-containers/guest-components#b5c5440fbdb25162d6707169af9f651ba6c32181"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2153,6 +2156,7 @@ dependencies = [
  "kbs_protocol",
  "log",
  "reqwest",
+ "serde",
  "serde_json",
  "tokio",
 ]
@@ -2170,16 +2174,18 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
+source = "git+https://github.com/confidential-containers/guest-components#b5c5440fbdb25162d6707169af9f651ba6c32181"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
  "base64 0.21.2",
  "crypto",
+ "jwt-simple",
  "kbs-types",
  "log",
  "reqwest",
+ "resource_uri",
  "serde",
  "serde_json",
  "sha2",
@@ -3176,7 +3182,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c58e12bbbd23df83f54f3ca43fb5abbd785c07fe"
+source = "git+https://github.com/confidential-containers/guest-components#b5c5440fbdb25162d6707169af9f651ba6c32181"
 dependencies = [
  "anyhow",
  "serde",

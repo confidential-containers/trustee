@@ -85,6 +85,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AttestationPolicy'
+  
+  /resource-policy:
+    post:
+      operationId: setResourcePolicy
+      summary: Set resource distribution policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourcePolicy'
 
   /resource/{repository}/{type}/{tag}:
     get:
@@ -159,23 +170,6 @@ paths:
           schema:
             type: string
           required: true
-
-  /token-certificate-chain:
-    get:
-      operationId: getAttestationTokenCertificateChain
-      summary: Get the Attestation Results Token Broker certificate chain
-      responses:
-        200:
-          description: >-
-            The KBS reponse including the attestation token broker certificate
-            chain.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CertificateChain'
-        404:
-          description: >-
-            The KBS does not provide attestation token broker certificate chains.
 
 
 components:
@@ -290,6 +284,15 @@ components:
           description: >-
             Base64 encoded attestation verification policy.
 
+    ResourcePolicy:
+      required:
+        - policy
+      properties:
+        policy:
+          type: string
+          description: >-
+            Base64 encoded resource distribution policy.
+
     AttestationToken:
       required:
         - token
@@ -325,8 +328,10 @@ components:
         - ext
         - iat
         - iss
+        - jwk
         - tee-pubkey
-        - attestation-results
+        - tcb-status
+        - evaluation-report
       properties:
         ext:
           type: integer
@@ -337,28 +342,36 @@ components:
         iss:
           type: string
           description: The token issuer URL.
+        jwk:
+          type: string
+          description: >-
+            A JSON Web Key (https://www.rfc-editor.org/rfc/rfc7517) formatted RSA Public Key for token signature verification.
         tee-pubkey:
           $ref: '#/components/schemas/PublicKey'
-        attestation-results:
+        tcb-status:
           type: string
-
-    CertificateChain:
-      type: string
-      description: Certificate chain as a JWKS (https://www.rfc-editor.org/rfc/rfc7517#appendix-B)
+          description: Parsed claims from TEE evidence.
+        evaluation-report:
+          type: string
+          description: Evaluation report of TEE evidence.
 
     PublicKey:
       required:
+        - kty
         - alg
-        - k-mod
-        - k-exp
+        - n
+        - e
       properties:
+        kty:
+          type: stinrg
+          description: Key Type
         alg:
           type: string
           description: Key Algorithm
-        k-mod:
+        n:
           type: string
           description: Key modulus
-        k-exp:
+        e:
           type: string
           description: Key exponent
       description: >-

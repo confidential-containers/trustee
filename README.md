@@ -1,159 +1,122 @@
 # Key Broker Service
 
-The Confidential Containers Key Broker Service (KBS) is a remote attestation
-entry point, also known as a [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html)
-in [RATS](https://datatracker.ietf.org/doc/draft-ietf-rats-architecture/)
+The Confidential Containers Key Broker Service (KBS) is a remote server which facilitates remote attestation.
+It is the reference implementation of [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html)
+and [Verifier](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html) in [RATS](https://datatracker.ietf.org/doc/draft-ietf-rats-architecture/)
 role terminology.
 
-KBS integrates the [Attestation-Service](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
+This project relies on the [Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
 
-KBS can also be deployed as [RATS Verifier](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html).
-In this case, KBS will be responsible for distributing the Attestation Token (Following the RATS Passport model).
+The following TEE platforms are currently supported:
 
-## Protocol
+- AMD SEV-SNP
+- Azure SNP vTPM
+- Intel SGX
+- Intel TDX
 
+KBS has two deployment modes, which are consistent with [RATS](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html)
+- Background Check Mode: KBS integrates AS to verify TEE evidence, then distribute resource data.
+- Passport Mode: One KBS integrates AS to verify TEE evidence and distribute tokens,
+the other KBS verifies the token then distributes resource data.
+
+## Background Check Mode
+
+The name of [Background Check](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.2) is from RATS architecture.
+
+In this mode, the Client in TEE conveys Evidence to KBS,
+which treats it as opaque and simply forwards it to an integrated Attestation Service.
+AS compares the Evidence against its appraisal policy, and returns an Attestation Token (including parsed evidence claims) to KBS.
+The KBS then compares the Attestation Token against its own appraisal policy and return the requested resource data to client.
+
+**Here, the KBS is corresponding to the Relying Party of RATS and the AS is corresponding to the Verifier of RATS.**
+
+Build and install KBS with native integrated AS in background check mode:
+```shell
+make background-check-kbs
+make install-kbs
+```
+
+The optional compile parameters that can be added are as follows:
+```shell
+make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
+```
+
+where:
+- `HTTPS_CRYPTO`: 
+Can be `rustls` or `openssl`. Specify the library KBS uses to support HTTPS.
+Default value is `rustls`
+- `POLICY_ENGINE`: Can be `opa`.
+Specify the resource policy engine type of KBS.
+If not set this parameter, KBS will not integrate resource policy engine.
+- `AS_TYPES`: can be `coco-as` or `amber-as`.
+Specify the Attestation Service type KBS relies on.
+- `COCO_AS_INTEGRATION_TYPE`: can be `grpc` or `builtin`. This parameter only takes effect when `AS_TYPES=coco-as`.
+Specify the integration mode of CoCo Attestation Service.
+
+
+## Passport Mode
+
+The name of [Passport](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.1) is from RATS architecture.
+
+In this mode, the Client in TEE conveys Evidence to one KBS which is responsible for issuing token,
+this KBS relies on an integrated AS to verify the Evidence against its appraisal policy.
+This KBS then gives back the Attestation Token which the Client treats as opaque data.
+The Client can then present the Attestation Token (including parsed evidence claims) to the other KBS,
+which is responsible for distributing resources.
+This KBS then compares the Token's payload against its appraisal policy and returns the requested resource data to client.
+
+**Here, the KBS for issueing token is corresponding to the Verifier of RATS and the KBS for distributing resources is corresponding to the Rely Party of RATS.**
+
+Build and install KBS for issueing token:
+```shell
+make passport-issuer-kbs [HTTPS_CRYPTO=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
+make install-issuer-kbs
+```
+
+The explanation for compiling optional parameters is the same as above.
+
+Build and install KBS for distributing resources:
+```shell
+make passport-resource-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?]
+make install-resource-kbs
+```
+
+The explanation for compiling optional parameters is the same as above.
+
+## Documents
+
+### Quick Start
+
+We provide a [quick start](./quickstart.md) guide to deploy KBS locally and conduct configuration and testing on Ubuntu 22.04.
+
+### Attestation Protocol
 The KBS implements and supports a simple, vendor and hardware-agnostic
-[implementation protocol](https://github.com/confidential-containers/kbs/blob/main/docs/kbs_attestation_protocol.md).
+[implementation protocol](https://github.com/confidential-containers/kbs/blob/main/docs/kbs_attestation_protocol.md) to perform attestation.
 
-## API
-
+### API
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
 This API is formally described in its [OpenAPI formatted specification](./docs/kbs.yaml).
 
-## Attestation
+### Resource Repository
+The [resource repository](./docs/resource_repository.md) where KBS store resource data.
 
-By default, KBS relies on the [Confidential Containers Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service)
-to verify the TEE Evidence.
+### Config
+A custom, [JSON-formatted configuration file](./docs/config.md) can be provided to configure KBS.
 
-KBS can either integrate the CoCo AS as a dependent crate, or as a separated `gRPC`
-service. This integration interface is defined by the KBS `coco-as-builtin` feature.
+### Cluster
+We provide a `docker compose` script for quickly deploying the KBS in Background check with gRPC AS,
+the Reference Value Provider and the Key Provider
+as local cluster services. Please refer to the [Cluster Guide](./docs/cluster.md)
+for a quick start.
 
-### Integrated CoCo Attestation Service
+## Tools
 
-By default, KBS will integrate the CoCo Attestation Service as a crate.
-This can be build with:
+### KBS Client
+We provide a [KBS client](./tools/client/) rust SDK and binary cmdline tool.
 
-``` shell
-cargo build
-```
-
-or with the default Makefile target:
-
-``` shell
-make
-```
-
-The integrated Attestation Service configuration file can be provided at
-runtime through the [KBS config file](./docs/config.md), by using the `--config`
-command line option.
-
-### `gRPC` CoCo Attestation Service
-
-In some cases, it is preferable to deploy the Attestation Service as a separate
-(local or remote) service. KBS supports that model by using the AS `gRPC`
-interface, with the `coco-as-grpc` Cargo feature.
-
-This can be built with:
-
-``` shell
-cargo build --no-default-features --features coco-as-grpc
-```
-
-or with the corresponding Makefile target:
-
-``` shell
-make kbs-coco-as-grpc
-```
-
-The AS `gRPC` address can be specified in the [KBS config file](./docs/config.md),
-and by default KBS will try to reach a locally running AS at `127.0.0.1:50004`.
-
-### `Amber` Attestation Service
-
-KBS supports Amber as the Attestation Service with the `amber-as` Cargo feature.
-
-This can be built with:
-
-``` shell
-cargo build --no-default-features --features amber-as,rustls
-```
-
-or with the corresponding Makefile target:
-
-``` shell
-make kbs-amber-as
-```
-
-The Amber configuration can be specified in the [KBS config file](https://github.com/confidential-containers/kbs/blob/main/src/api/src/config.rs).
-
-## Resource Repository
-
-KBS stores confidential resources through a `Repository` abstraction specified
-by a Rust trait. The `Repository` interface can be implemented for different
-storage backends like e.g. databases or local file systems.
-
-The [KBS config file](./docs/config.md)
-defines which resource repository backend KBS will use. The default is the local
-file system (`LocalFs`).
-
-### Local File System Repository
-
-With the local file system `Repository` default implementation, each resource
-file maps to a KBS resource URL. The file path to URL conversion scheme is
-defined below:
-
-| Resource File Path  | Resource URL |
-| ------------------- | -------------- |
-| `file://<$(KBS_REPOSITORY_DIR)>/<repository_name>/<type>/<tag>`  |  `https://<kbs_address>/kbs/v0/resource/<repository_name>/<type>/<tag>`  |
-
-The KBS root file system resource path is specified in the KBS config file
-as well, and the default value is `/opt/confidential-containers/kbs/repository`.
-
-## Usage
-
-### Build and Run
-
-Start KBS and specify the `HTTPS` address it should listen to with `--socket`.
-When using `HTTPS`, a private key and a certificate must be provided as well:
-
-```shell
-make kbs
-./target/debug/kbs --private-key key.pem --certificate cert.pem --socket https://127.0.0.1:8080
-```
-
-KBS can also run in insecure mode, through `HTTP`. This is targeted for
-development purposes and should not be used in production.
-
-A custom, [JSON-formatted configuration file](./docs/config.md)
-can also be provided:
-
-```shell
-./target/debug/kbs --private-key key.pem --certificate cert.pem --socket https://127.0.0.1:8080 --config /path/to/config.json
-```
-
-### Build and Deploy with Container
-
-Build the KBS container image:
+### Dockerfile
+Build the KBS container (background check mode with native AS) image:
 
 ```shell
 DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f docker/Dockerfile
 ```
-
-Deploy KBS with the integrated Attestation Service:
-
-```shell
-docker run -it --name=kbs --ip=<IP> -p <PORT>:<PORT> kbs:coco-as kbs -s <IP>:<PORT>
-```
-
-**Note**: When relying on a local Provisioning Certificate Caching Service (PCCS)
-for verifying a TDX or SGX Evidence, the PCCS local port must be passed to
-the above described `docker run` command through the `-p` option. Using
-`--net host` will work as well for that use case.
-
-### KBS cluster
-
-We provide a `docker compose` script for quickly deploying the KBS, the
-Attestation Service, the Reference Value Provider and the Key Provider
-as local cluster services. Please refer to the [Cluster Guide](./docs/cluster.md)
-for a quick start.
-
