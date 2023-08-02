@@ -4,7 +4,7 @@
 
 //! A simple KBS client for test.
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use clap::{Args, Parser, Subcommand};
@@ -39,14 +39,32 @@ enum Commands {
         /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
         #[clap(long, value_parser)]
         path: String,
+
+        /// Custom TEE private Key (RSA) file path (PEM format)
+        /// Used to protect the Respond Payload
+        ///
+        /// If NOT set this argument,
+        /// KBS client will generate a new TEE Key pair internally.
+        #[clap(long, value_parser)]
+        tee_key_file: Option<PathBuf>,
+
+        /// Attestation Token file path
+        ///
+        /// If set this argument, `--tee_key_file` argument should also be set,
+        /// and the public part of TEE Key should be consistent with tee-pubkey in the token.
+        #[clap(long, value_parser)]
+        attestation_token: Option<PathBuf>,
     },
 
     /// Attestation and get attestation results token
     Attest {
-        /// Custom TEE public Key (RSA) file path (PEM format)
-        /// This key will be included in the token obtained by attestation
+        /// Custom TEE private Key (RSA) file path (PEM format)
+        /// The public part of this key will be included in the token obtained by attestation.
+        ///
+        /// If not set this argument,
+        /// KBS client will generate a new TEE Key pair internally.
         #[clap(long, value_parser)]
-        tee_pubkey_file: Option<PathBuf>,
+        tee_key_file: Option<PathBuf>,
     },
 }
 
@@ -79,6 +97,13 @@ enum ConfigCommands {
         policy_file: PathBuf,
     },
 
+    /// Set resource policy
+    SetResourcePolicy {
+        /// Policy file path
+        #[clap(long, value_parser)]
+        policy_file: PathBuf,
+    },
+
     /// Set confidential resource
     SetResource {
         /// KBS Resource path, e.g my_repo/resource_type/123abc
@@ -104,18 +129,51 @@ async fn main() -> Result<()> {
     };
 
     match cli.command {
-        Commands::Attest { tee_pubkey_file } => {
-            let tee_pubkey = match tee_pubkey_file {
+        Commands::Attest { tee_key_file } => {
+            let tee_key = match tee_key_file {
                 Some(f) => Some(std::fs::read_to_string(f)?),
                 None => None,
             };
-            let token = kbs_client::attestation(&cli.url, tee_pubkey, kbs_cert.clone()).await?;
+            let token = kbs_client::attestation(&cli.url, tee_key, kbs_cert.clone()).await?;
             println!("{token}");
         }
-        Commands::GetResource { path } => {
-            let resource_bytes =
-                kbs_client::get_resource(&cli.url, &path, kbs_cert.clone()).await?;
-            println!("{}", STANDARD.encode(resource_bytes));
+        Commands::GetResource {
+            path,
+            tee_key_file,
+            attestation_token,
+        } => {
+            let tee_key = match tee_key_file {
+                Some(f) => Some(std::fs::read_to_string(f)?),
+                None => None,
+            };
+            let token = match attestation_token {
+                Some(t) => Some(std::fs::read_to_string(t)?.trim().to_string()),
+                None => None,
+            };
+
+            if token.is_some() {
+                if tee_key.is_none() {
+                    bail!("if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token.");
+                }
+                let resource_bytes = kbs_client::get_resource_with_token(
+                    &cli.url,
+                    &path,
+                    tee_key.unwrap(),
+                    token.unwrap(),
+                    kbs_cert.clone(),
+                )
+                .await?;
+                println!("{}", STANDARD.encode(resource_bytes));
+            } else {
+                let resource_bytes = kbs_client::get_resource_with_attestation(
+                    &cli.url,
+                    &path,
+                    tee_key,
+                    kbs_cert.clone(),
+                )
+                .await?;
+                println!("{}", STANDARD.encode(resource_bytes));
+            }
         }
         Commands::Config(config) => {
             let auth_key = std::fs::read_to_string(config.auth_private_key)?;
@@ -137,6 +195,20 @@ async fn main() -> Result<()> {
                     .await?;
                     println!(
                         "Set attestation policy success \n policy: {}",
+                        STANDARD.encode(policy_bytes)
+                    );
+                }
+                ConfigCommands::SetResourcePolicy { policy_file } => {
+                    let policy_bytes = std::fs::read(policy_file)?;
+                    kbs_client::set_resource_policy(
+                        &cli.url,
+                        auth_key.clone(),
+                        policy_bytes.clone(),
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!(
+                        "Set resource policy success \n policy: {}",
                         STANDARD.encode(policy_bytes)
                     );
                 }
