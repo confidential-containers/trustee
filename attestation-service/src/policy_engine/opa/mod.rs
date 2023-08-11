@@ -62,7 +62,7 @@ impl PolicyEngine for OPA {
         reference_data_map: HashMap<String, Vec<String>>,
         input: String,
         policy_id: Option<String>,
-    ) -> Result<(bool, String)> {
+    ) -> Result<String> {
         let policy_file_path = format!(
             "{}/{}.rego",
             self.policy_dir_path
@@ -100,9 +100,16 @@ impl PolicyEngine for OPA {
             return Err(anyhow!(res));
         }
 
+        // If a clear approval opinion is given in the evaluation report,
+        // the rejection information will be reflected in the evaluation failure return value.
         let res_kv: Value = serde_json::from_str(&res)?;
+        if let Some(allow) = res_kv["allow"].as_bool() {
+            if !allow {
+                bail!("Untrusted TEE evidence")
+            }
+        }
 
-        Ok((res_kv["allow"].as_bool().unwrap_or(false), res))
+        Ok(res)
     }
 
     async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
@@ -168,13 +175,11 @@ mod tests {
             )
             .await;
         assert!(res.is_ok(), "OPA execution() should be success");
-        assert!(res.unwrap().0 == true, "allow should be true");
 
         let res = opa
             .evaluate(reference_data, dummy_input(0, 0), Some(default_policy_id))
             .await;
-        assert!(res.is_ok(), "OPA execution() should be success");
-        assert!(res.unwrap().0 == false, "allow should be false");
+        assert!(res.is_err(), "OPA execution() should be failed");
     }
 
     #[tokio::test]
