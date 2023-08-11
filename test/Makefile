@@ -31,8 +31,13 @@ install-dependencies:
 
 kbs:
 	cd $(PROJECT_DIR) && \
-	cargo build -p kbs --release --features rustls,coco-as-builtin,resource,opa && \
-	install -D --compare ./target/release/kbs $(CURDIR)/kbs
+	make background-check-kbs POLICY_ENGINE=opa && \
+	make install-kbs
+
+passport-resource-kbs:
+	cd $(PROJECT_DIR) && \
+	make passport-resource-kbs POLICY_ENGINE=opa && \
+	make install-resource-kbs
 
 client:
 	cd $(PROJECT_DIR) && \
@@ -41,7 +46,7 @@ client:
 	install -D --compare $(PROJECT_DIR)/target/release/kbs-client $(CURDIR)/client
 
 .PHONY: bins
-bins: kbs client
+bins: kbs passport-resource-kbs client
 
 kbs.key:
 	openssl genpkey -algorithm ed25519 > kbs.key
@@ -49,23 +54,34 @@ kbs.key:
 kbs.pem: kbs.key
 	openssl pkey -in kbs.key -pubout -out kbs.pem
 
+tee.key:
+	openssl genrsa -traditional -out tee.key 2048
+
 $(KBS_REPO_PATH)/one/two/three:
 	mkdir -p $(KBS_REPO_PATH)/one/two && \
 	openssl rand 16 > $(KBS_REPO_PATH)/one/two/three
 
 .PHONY: start-kbs
-start-kbs: kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
-	./kbs \
+start-kbs: kbs.pem tee.key $(KBS_REPO_PATH)/one/two/three
+	kbs \
 	  --socket 127.0.0.1:8080 \
+	  --insecure-http \
+	  --auth-public-key ./kbs.pem &
+	resource-kbs \
+	  --socket 127.0.0.1:50002 \
 	  --insecure-http \
 	  --auth-public-key ./kbs.pem &
 
 .PHONY: e2e-test
-e2e-test: start-kbs client
+e2e-test: start-kbs
 	./client get-resource --path one/two/three | base64 -d > roundtrip_secret && \
 	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
-	@echo "e2e test passed"
+	@echo "Background Check mode e2e test passed"
+	./client attest --tee-key-file tee.key > attestation_token
+	./client --url http://127.0.0.1:50002 get-resource --attestation-token attestation_token --tee-key-file tee.key --path one/two/three | base64 -d > roundtrip_secret && \
+	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
+	@echo "Passport mode e2e test passed"
 
 .PHONY: clean
 clean:
-	rm kbs kbs.key kbs.pem client roundtrip_secret $(KBS_REPO_PATH)/one/two/three
+	rm kbs kbs.key kbs.pem tee.key tee.pem client roundtrip_secret $(KBS_REPO_PATH)/one/two/three
