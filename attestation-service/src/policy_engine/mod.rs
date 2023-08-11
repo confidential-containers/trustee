@@ -36,7 +36,7 @@ pub trait PolicyEngine {
         reference_data_map: HashMap<String, Vec<String>>,
         input: String,
         policy_id: Option<String>,
-    ) -> Result<(bool, String)>;
+    ) -> Result<String>;
 
     async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()>;
 }
