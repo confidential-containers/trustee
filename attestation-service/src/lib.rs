@@ -23,7 +23,7 @@ pub mod verifier;
 
 use crate::token::AttestationTokenBroker;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use as_types::SetPolicyInput;
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
@@ -129,18 +129,16 @@ impl AttestationService {
             .map_err(|e| anyhow!("Generate reference data failed{:?}", e))?;
 
         // Now only support using default policy to evaluate
-        let (result, policy_engine_output) = self
+        let evaluation_report = self
             .policy_engine
             .evaluate(reference_data_map, tcb.clone(), None)
-            .await?;
-
-        if !result {
-            bail!("Policy Engine verification failed: {policy_engine_output}");
-        }
+            .await
+            .map_err(|e| anyhow!("Policy Engine evaluation failed: {e}"))?;
 
         let token_claims = json!({
             "tee-pubkey": attestation.tee_pubkey.clone(),
-            "tcb-status": flattened_claims
+            "tcb-status": flattened_claims,
+            "evaluation-report": evaluation_report,
         });
         let attestation_results_token = self.token_broker.issue(token_claims)?;
 
