@@ -33,6 +33,7 @@ fn to_grpc_tee(tee: Tee) -> GrpcTee {
         Tee::Sgx => GrpcTee::Sgx,
         Tee::Snp => GrpcTee::Snp,
         Tee::Tdx => GrpcTee::Tdx,
+        Tee::Csv => GrpcTee::Csv,
     }
 }
 
