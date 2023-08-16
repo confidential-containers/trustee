@@ -17,6 +17,9 @@ pub mod tdx;
 #[cfg(feature = "sgx-verifier")]
 pub mod sgx;
 
+#[cfg(feature = "csv-verifier")]
+pub mod csv;
+
 pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev | Tee::Cca => todo!(),
@@ -54,6 +57,15 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                     Ok(Box::<sgx::SgxVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     anyhow::bail!("feature `sgx-verifier` is not enabled!");
+                }
+            }
+        }
+        Tee::Csv => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "csv-verifier")] {
+                    Ok(Box::<csv::CsvVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    anyhow::bail!("feature `csv-verifier` is not enabled!");
                 }
             }
         }
