@@ -9,6 +9,7 @@ enum Tee {
     TDX = 3;
     Sample = 4;
     AzSnpVtpm = 5;
+    Csv = 6;
 }
 
 message AttestationRequest {
