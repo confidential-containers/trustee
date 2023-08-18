@@ -413,7 +413,7 @@ dependencies = [
  "env_logger 0.10.0",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.4.0 (git+https://github.com/virtee/kbs-types?rev=c90df0e)",
  "lazy_static",
  "log",
  "openssl",
@@ -442,9 +442,9 @@ dependencies = [
 [[package]]
 name = "as-types"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=9ef001e#9ef001e7e4116c64351ac4e26014943ddb04d786"
 dependencies = [
- "kbs-types",
+ "kbs-types 0.4.0 (git+https://github.com/virtee/kbs-types?rev=c90df0e)",
  "serde",
  "serde_json",
 ]
@@ -502,7 +502,7 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/attestation-service.git?tag=v0.7.0#0ada0f443a350114a979544b2a77b6b42eb7886c"
+source = "git+https://github.com/confidential-containers/attestation-service.git?rev=9ef001e#9ef001e7e4116c64351ac4e26014943ddb04d786"
 dependencies = [
  "anyhow",
  "as-types",
@@ -514,10 +514,12 @@ dependencies = [
  "byteorder",
  "cfg-if",
  "chrono",
+ "codicon",
+ "csv-rs",
  "eventlog-rs",
  "futures",
  "hex",
- "kbs-types",
+ "kbs-types 0.4.0 (git+https://github.com/virtee/kbs-types?rev=c90df0e)",
  "lazy_static",
  "log",
  "openssl",
@@ -544,9 +546,10 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c6306ebeaada71400c56ce77e100d4fd1a857066"
+source = "git+https://github.com/confidential-containers/guest-components?rev=dc15fdc#dc15fdc7b5396b21a9b956dc1fb772d1df016f29"
 dependencies = [
  "anyhow",
+ "async-trait",
  "az-snp-vtpm",
  "base64 0.21.2",
  "log",
@@ -1124,13 +1127,13 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c6306ebeaada71400c56ce77e100d4fd1a857066"
+source = "git+https://github.com/confidential-containers/guest-components?rev=dc15fdc#dc15fdc7b5396b21a9b956dc1fb772d1df016f29"
 dependencies = [
  "aes-gcm",
  "anyhow",
  "base64 0.21.2",
  "ctr",
- "kbs-types",
+ "kbs-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "rsa 0.9.2",
  "serde",
@@ -1161,6 +1164,25 @@ dependencies = [
  "generic-array",
  "rand_core",
  "typenum",
+]
+
+[[package]]
+name = "csv-rs"
+version = "0.1.0"
+source = "git+https://gitee.com/anolis/csv-rs?rev=8a90aac#8a90aac07d9039425d29358383a822bc86fc15b7"
+dependencies = [
+ "bitfield",
+ "codicon",
+ "hyper",
+ "hyper-tls",
+ "iocuddle",
+ "openssl",
+ "openssl-sys",
+ "rand",
+ "serde",
+ "serde-big-array",
+ "static_assertions",
+ "tokio",
 ]
 
 [[package]]
@@ -2134,16 +2156,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-types"
+version = "0.4.0"
+source = "git+https://github.com/virtee/kbs-types?rev=c90df0e#c90df0eb6575a63df015d7e700e26227e646bd0a"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#c6306ebeaada71400c56ce77e100d4fd1a857066"
+source = "git+https://github.com/confidential-containers/guest-components?rev=dc15fdc#dc15fdc7b5396b21a9b956dc1fb772d1df016f29"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
  "base64 0.21.2",
  "crypto",
- "kbs-types",
+ "kbs-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "reqwest",
  "serde",
@@ -2565,9 +2596,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-src"
-version = "111.26.0+1.1.1u"
+version = "111.27.0+1.1.1v"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efc62c9f12b22b8f5208c23a7200a442b2e5999f8bdf80233852122b5a4f6f37"
+checksum = "06e8f197c82d7511c5b014030c9b1efeda40d7d5f99d23b4ceed3524a5e63f02"
 dependencies = [
  "cc",
 ]
