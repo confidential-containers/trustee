@@ -23,7 +23,7 @@ passport-issuer-kbs:
 	cargo build --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO)
 	mv target/release/kbs target/release/issuer-kbs
 
-.PHONY: passport-kbs
+.PHONY: passport-resource-kbs
 passport-resource-kbs:
 	cargo build --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
 	mv target/release/kbs target/release/resource-kbs
