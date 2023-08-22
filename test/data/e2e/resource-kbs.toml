@@ -1,0 +1,3 @@
+sockets = ["127.0.0.1:50002"]
+auth_public_key = "./kbs.pem"
+insecure_http = true

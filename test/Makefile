@@ -64,13 +64,9 @@ $(KBS_REPO_PATH)/one/two/three:
 .PHONY: start-kbs
 start-kbs: kbs.pem tee.key $(KBS_REPO_PATH)/one/two/three
 	kbs \
-	  --socket 127.0.0.1:8080 \
-	  --insecure-http \
-	  --auth-public-key ./kbs.pem &
+	  --config-file ./data/e2e/kbs.toml &
 	resource-kbs \
-	  --socket 127.0.0.1:50002 \
-	  --insecure-http \
-	  --auth-public-key ./kbs.pem &
+	  --config-file ./data/e2e/resource-kbs.toml &
 
 .PHONY: e2e-test
 e2e-test: start-kbs
