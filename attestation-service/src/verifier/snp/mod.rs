@@ -3,7 +3,7 @@ use base64::Engine;
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
-use asn1_rs::{oid, Integer, Oid};
+use asn1_rs::{oid, Integer, OctetString, Oid};
 use async_trait::async_trait;
 use kbs_types::TeePubKey;
 use openssl::{
@@ -63,7 +63,7 @@ impl Verifier for Snp {
     }
 }
 
-fn get_oid<const N: usize>(
+fn get_oid_octets<const N: usize>(
     vcek: &x509_parser::certificate::TbsCertificate,
     oid: Oid,
 ) -> Result<[u8; N]> {
@@ -72,7 +72,19 @@ fn get_oid<const N: usize>(
         .ok_or_else(|| anyhow!("Oid not found"))?
         .value;
 
-    val.try_into().context("Oid data has wrong length.")
+    // Previously, the hwID extension hasn't been encoded as DER octet string.
+    // In this case, the value of the extension is the hwID itself (64 byte long),
+    // and we can just return the value.
+    if val.len() == N {
+        return Ok(val.try_into().unwrap());
+    }
+
+    // Parse the value as DER encoded octet string.
+    let (_, val_octet) = OctetString::from_der(val)?;
+    val_octet
+        .as_ref()
+        .try_into()
+        .context("Unexpected data size")
 }
 
 fn get_oid_int(vcek: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
@@ -96,7 +108,7 @@ fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
 
     // verify vcek fields
     // chip id
-    if get_oid::<64>(&parsed_vcek, HW_ID_OID)? != evidence.attestation_report.chip_id {
+    if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != evidence.attestation_report.chip_id {
         return Err(anyhow!("Chip ID mismatch"));
     }
 
@@ -249,7 +261,37 @@ mod tests {
             .1
             .tbs_certificate;
 
-        get_oid::<64>(&parsed_vcek, HW_ID_OID).unwrap();
+        get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
+        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
+        for oid in oids {
+            get_oid_int(&parsed_vcek, oid).unwrap();
+        }
+    }
+
+    #[test]
+    fn check_vcek_parsing_legacy() {
+        let vcek_der = include_bytes!("test-vcek-invalid-legacy.der");
+        let parsed_vcek = X509Certificate::from_der(vcek_der)
+            .unwrap()
+            .1
+            .tbs_certificate;
+
+        get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
+        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
+        for oid in oids {
+            get_oid_int(&parsed_vcek, oid).unwrap();
+        }
+    }
+
+    #[test]
+    fn check_vcek_parsing_new() {
+        let vcek_der = include_bytes!("test-vcek-invalid-new.der");
+        let parsed_vcek = X509Certificate::from_der(vcek_der)
+            .unwrap()
+            .1
+            .tbs_certificate;
+
+        get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
         let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
         for oid in oids {
             get_oid_int(&parsed_vcek, oid).unwrap();
