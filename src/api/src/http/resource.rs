@@ -73,6 +73,10 @@ pub(crate) async fn get_resource(
             .to_string(),
     };
 
+    if !resource_description.is_valid() {
+        return Err(Error::InvalidRequest("Invalid resource path".to_string()));
+    }
+
     info!("Resource description: {:?}", &resource_description);
 
     #[cfg(feature = "policy")]

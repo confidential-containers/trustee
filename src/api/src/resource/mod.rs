@@ -35,6 +35,19 @@ pub struct ResourceDesc {
     pub resource_tag: String,
 }
 
+impl ResourceDesc {
+    pub fn is_valid(&self) -> bool {
+        if &self.repository_name == "."
+            || &self.repository_name == ".."
+            || &self.resource_type == "."
+            || &self.resource_type == ".."
+        {
+            return false;
+        }
+        true
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, EnumString)]
 #[serde(tag = "type")]
 pub enum RepositoryConfig {
