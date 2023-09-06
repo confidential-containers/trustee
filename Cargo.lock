@@ -404,7 +404,7 @@ dependencies = [
  "actix-web-httpauth",
  "aes-gcm",
  "anyhow",
- "as-types 0.1.0 (git+https://github.com/jialez0/attestation-service.git?branch=token)",
+ "as-types",
  "async-trait",
  "attestation-service",
  "base64 0.21.2",
@@ -437,16 +437,6 @@ dependencies = [
  "tonic",
  "tonic-build",
  "uuid",
-]
-
-[[package]]
-name = "as-types"
-version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c2d2d29909c6e0c302610d9c1b4c1f79f985e386"
-dependencies = [
- "kbs-types",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -512,20 +502,21 @@ dependencies = [
 [[package]]
 name = "attestation-service"
 version = "0.1.0"
-source = "git+https://github.com/jialez0/attestation-service.git?branch=token#c2d2d29909c6e0c302610d9c1b4c1f79f985e386"
+source = "git+https://github.com/confidential-containers/attestation-service.git#0d4ffdaf105b2ea6d192f460fd7c8a416d080744"
 dependencies = [
  "anyhow",
- "as-types 0.1.0 (git+https://github.com/jialez0/attestation-service.git?branch=token)",
+ "as-types",
  "asn1-rs",
  "async-trait",
- "az-snp-vtpm",
+ "az-snp-vtpm 0.2.3 (git+https://github.com/kinvolk/azure-cvm-tooling?rev=09a8a0d)",
  "base64 0.21.2",
  "bincode",
  "byteorder",
+ "cbor-diag",
  "cfg-if",
  "chrono",
  "codicon",
- "csv-rs",
+ "csv-rs 0.1.0 (git+https://gitee.com/anolis/csv-rs?rev=bcf3bcc)",
  "eventlog-rs",
  "futures",
  "hex",
@@ -554,6 +545,7 @@ dependencies = [
  "tokio",
  "tonic-build",
  "uuid",
+ "veraison-apiclient",
  "x509-parser",
 ]
 
@@ -564,10 +556,10 @@ source = "git+https://github.com/confidential-containers/guest-components#1731d7
 dependencies = [
  "anyhow",
  "async-trait",
- "az-snp-vtpm",
+ "az-snp-vtpm 0.2.3 (git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411)",
  "base64 0.21.2",
  "codicon",
- "csv-rs",
+ "csv-rs 0.1.0 (git+https://gitee.com/anolis/csv-rs?rev=8a90aac)",
  "hyper",
  "hyper-tls",
  "kbs-types",
@@ -646,13 +638,33 @@ dependencies = [
 [[package]]
 name = "az-snp-vtpm"
 version = "0.2.3"
-source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411#2c2e411dfb6f64fb4ffa4443213c5777de7af30d"
+source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=09a8a0d#09a8a0d4a0c6347234de392064215037b09a1d0c"
 dependencies = [
  "bincode",
  "clap 4.3.21",
  "jsonwebkey",
  "memoffset 0.8.0",
  "openssl",
+ "rsa 0.8.2",
+ "serde",
+ "serde_json",
+ "sev 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha2",
+ "static_assertions",
+ "thiserror",
+ "tss-esapi",
+ "ureq",
+]
+
+[[package]]
+name = "az-snp-vtpm"
+version = "0.2.3"
+source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411#2c2e411dfb6f64fb4ffa4443213c5777de7af30d"
+dependencies = [
+ "bincode",
+ "clap 4.3.21",
+ "jsonwebkey",
+ "memoffset 0.8.0",
  "rsa 0.8.2",
  "serde",
  "serde_json",
@@ -822,6 +834,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bs58"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5353f36341f7451062466f0b755b96ac3a9547e4d7f6b70d603fc721a7d7896"
+dependencies = [
+ "tinyvec",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -855,6 +876,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26b52a9543ae338f279b96b0b9fed9c8093744685043739079ce85cd58f289a6"
 dependencies = [
  "cipher",
+]
+
+[[package]]
+name = "cbor-diag"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc245b6ecd09b23901a4fbad1ad975701fd5061ceaef6afa93a2d70605a64429"
+dependencies = [
+ "bs58",
+ "chrono",
+ "data-encoding",
+ "half",
+ "nom",
+ "num-bigint",
+ "num-rational",
+ "num-traits",
+ "separator",
+ "url",
+ "uuid",
 ]
 
 [[package]]
@@ -1165,6 +1205,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "crypto"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/guest-components#1731d7ddd55629a3495f2ccfef68e58236272237"
@@ -1226,6 +1272,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "csv-rs"
+version = "0.1.0"
+source = "git+https://gitee.com/anolis/csv-rs?rev=bcf3bcc#bcf3bcc0ae5b3d0e42d6d91c004e582d9b1c90fd"
+dependencies = [
+ "bitfield",
+ "codicon",
+ "hyper",
+ "hyper-tls",
+ "iocuddle",
+ "openssl",
+ "openssl-sys",
+ "rand",
+ "serde",
+ "serde-big-array",
+ "static_assertions",
+ "tokio",
+]
+
+[[package]]
 name = "ct-codecs"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1238,6 +1303,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0369ee1ad671834580515889b80f2ea915f23b8be8d0daa4bbaf2ac5c7590835"
 dependencies = [
  "cipher",
+]
+
+[[package]]
+name = "darling"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a01d95850c592940db9b8194bc39f4bc0e89dee5c4265e4b1807c34a9aba453c"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "859d65a907b6852c9361e3185c862aae7fafd2887876799fa55f5f99dc40d610"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim 0.10.0",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1770,6 +1870,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc52e53916c08643f1b56ec082790d1e86a32e58dc5268f897f313fbae7b4872"
+dependencies = [
+ "cfg-if",
+ "crunchy",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1978,6 +2088,12 @@ checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
@@ -2216,7 +2332,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api-server",
- "as-types 0.1.0 (git+https://github.com/confidential-containers/attestation-service.git)",
+ "as-types",
  "base64 0.21.2",
  "clap 4.3.21",
  "env_logger 0.10.0",
@@ -2569,6 +2685,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-rational"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
+dependencies = [
+ "autocfg",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2679,15 +2807,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
-name = "openssl-src"
-version = "111.27.0+1.1.1v"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06e8f197c82d7511c5b014030c9b1efeda40d7d5f99d23b4ceed3524a5e63f02"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "openssl-sys"
 version = "0.9.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2695,7 +2814,6 @@ checksum = "866b5f16f90776b9bb8dc1e1802ac6f0513de3a7a7465867bfbc563dc737faac"
 dependencies = [
  "cc",
  "libc",
- "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -3698,6 +3816,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "separator"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f97841a747eef040fcd2e7b3b9a220a7205926e60488e673d9e4926d27772ce5"
+
+[[package]]
 name = "serde"
 version = "1.0.183"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3765,6 +3889,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47a8ec0b2fd0506290348d9699c0e3eb2e3e8c0498b5a9a6158b3bd4d6970076"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_with"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
+dependencies = [
+ "base64 0.13.1",
+ "chrono",
+ "serde",
+ "serde_with_macros",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e182d6ec6f05393cc0e5ed1bf81ad6db3a8feedf8ee515ecdd369809bcce8082"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -4591,6 +4739,7 @@ dependencies = [
  "form_urlencoded",
  "idna 0.4.0",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
@@ -4620,6 +4769,21 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
+
+[[package]]
+name = "veraison-apiclient"
+version = "0.0.1"
+source = "git+https://github.com/chendave/rust-apiclient?branch=token#64fb77855bf0ce14e3167deec62cb2da3e6421c0"
+dependencies = [
+ "base64 0.13.1",
+ "chrono",
+ "jsonwebkey",
+ "reqwest",
+ "serde",
+ "serde_with",
+ "thiserror",
+ "url",
+]
 
 [[package]]
 name = "version_check"
