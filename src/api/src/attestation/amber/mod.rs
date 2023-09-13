@@ -13,7 +13,8 @@ use std::fs::File;
 use std::io::BufReader;
 
 #[derive(Deserialize, Debug)]
-struct TdxEvidence {
+struct AmberTeeEvidence {
+    #[serde(skip)]
     _cc_eventlog: Option<String>,
     quote: String,
 }
@@ -49,18 +50,18 @@ pub struct Amber {
 #[async_trait]
 impl Attest for Amber {
     async fn verify(&mut self, tee: Tee, _nonce: &str, attestation: &str) -> Result<String> {
-        if tee != Tee::Tdx {
-            bail!("Only implement for tdx now");
+        if tee != Tee::Tdx && tee != Tee::Sgx {
+            bail!("Amber: TEE {tee:?} is not supported.");
         }
         // get quote
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .map_err(|e| anyhow!("Deserialize Attestation failed: {:?}", e))?;
-        let tdx_evidence = serde_json::from_str::<TdxEvidence>(&attestation.tee_evidence)
-            .map_err(|e| anyhow!("Deserialize TDX Evidence failed: {:?}", e))?;
+        let evidence = serde_json::from_str::<AmberTeeEvidence>(&attestation.tee_evidence)
+            .map_err(|e| anyhow!("Deserialize supported TEE Evidence failed: {:?}", e))?;
 
         // construct attest request data
         let req_data = AttestReqData {
-            quote: tdx_evidence.quote,
+            quote: evidence.quote,
         };
 
         let attest_req_body = serde_json::to_string(&req_data)
