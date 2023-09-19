@@ -17,6 +17,7 @@ pub(crate) async fn auth(
     request: web::Json<Request>,
     map: web::Data<SessionMap<'_>>,
     timeout: web::Data<i64>,
+    _attestation_service: web::Data<AttestationService>,
 ) -> Result<HttpResponse> {
     info!("request: {:?}", &request);
 
