@@ -147,6 +147,8 @@ async fn get_attest_claims_from_session(
             "No attestation claims in the session".into(),
         ))?;
 
+    // TODO: also check claims expiration before Ok(): KBS user can configure
+    // the session length but AS may want short token expiration.
     Ok(claims)
 }
 

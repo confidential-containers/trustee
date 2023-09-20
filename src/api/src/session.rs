@@ -7,10 +7,7 @@ use actix_web::cookie::{
     Cookie, Expiration,
 };
 use anyhow::{anyhow, Result};
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
 use kbs_types::{Request, Tee, TeePubKey};
-use rand::{thread_rng, Rng};
 use semver::Version;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,16 +15,6 @@ use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
-
-fn nonce() -> Result<String> {
-    let mut nonce: Vec<u8> = vec![0; 32];
-
-    thread_rng()
-        .try_fill(&mut nonce[..])
-        .map_err(anyhow::Error::from)?;
-
-    Ok(STANDARD.encode(&nonce))
-}
 
 #[allow(dead_code)]
 pub(crate) struct Session<'a> {
@@ -42,7 +29,7 @@ pub(crate) struct Session<'a> {
 
 #[allow(dead_code)]
 impl<'a> Session<'a> {
-    pub fn from_request(req: &Request, timeout: i64) -> Result<Self> {
+    pub fn from_request(req: &Request, timeout: i64, nonce: String) -> Result<Self> {
         let version = Version::parse(&req.version).map_err(anyhow::Error::from)?;
         if !crate::VERSION_REQ.matches(&version) {
             return Err(anyhow!("Invalid Request version {}", req.version));
@@ -54,13 +41,15 @@ impl<'a> Session<'a> {
             Some(req.extra_params.clone())
         };
 
+        // TODO: make session initially only valid for the nonce lifetime?
         let cookie = Cookie::build(KBS_SESSION_ID, id)
             .expires(OffsetDateTime::now_utc() + Duration::minutes(timeout))
             .finish();
 
+        // TODO: do not store nonce in the session at all?
         Ok(Session {
             cookie,
-            nonce: nonce()?,
+            nonce: nonce.clone(),
             tee: req.tee.clone(),
             tee_extra_params,
             tee_pub_key: None,

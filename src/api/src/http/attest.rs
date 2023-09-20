@@ -17,11 +17,19 @@ pub(crate) async fn auth(
     request: web::Json<Request>,
     map: web::Data<SessionMap<'_>>,
     timeout: web::Data<i64>,
-    _attestation_service: web::Data<AttestationService>,
+    attestation_service: web::Data<AttestationService>,
 ) -> Result<HttpResponse> {
     info!("request: {:?}", &request);
 
-    let session = Session::from_request(&request, *timeout.into_inner())
+    let nonce = attestation_service
+        .0
+        .lock()
+        .await
+        .nonce()
+        .await
+        .map_err(|e| Error::FailedAuthentication(e.to_string()))?;
+
+    let session = Session::from_request(&request, *timeout.into_inner(), nonce)
         .map_err(|e| Error::FailedAuthentication(format!("Session: {e}")))?;
     let response = HttpResponse::Ok().cookie(session.cookie()).json(Challenge {
         nonce: session.nonce().to_string(),

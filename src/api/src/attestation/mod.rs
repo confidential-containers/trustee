@@ -14,6 +14,10 @@ use kbs_types::Tee;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
+use rand::{thread_rng, Rng};
+
 #[cfg(feature = "coco-as")]
 #[allow(missing_docs)]
 pub mod coco;
@@ -29,6 +33,17 @@ pub trait Attest: Send + Sync {
     /// Set Attestation Policy
     async fn set_policy(&mut self, _input: as_types::SetPolicyInput) -> Result<()> {
         Err(anyhow!("Set Policy API is unimplemented"))
+    }
+
+    /// Get nonce from AS
+    async fn nonce(&mut self) -> Result<String> {
+        let mut nonce: Vec<u8> = vec![0; 32];
+
+        thread_rng()
+            .try_fill(&mut nonce[..])
+            .map_err(anyhow::Error::from)?;
+
+        Ok(STANDARD.encode(&nonce))
     }
 
     /// Verify Attestation Evidence
