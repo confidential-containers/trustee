@@ -317,8 +317,9 @@ dependencies = [
 
 [[package]]
 name = "az-snp-vtpm"
-version = "0.2.3"
-source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=09a8a0d#09a8a0d4a0c6347234de392064215037b09a1d0c"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecd961e70ecc38d342942ffb3c6d963a68a871aae23faa3ab8199e3ca1bca8c6"
 dependencies = [
  "bincode",
  "clap 4.3.23",
@@ -753,7 +754,7 @@ dependencies = [
 [[package]]
 name = "csv-rs"
 version = "0.1.0"
-source = "git+https://gitee.com/anolis/csv-rs?rev=bcf3bcc#bcf3bcc0ae5b3d0e42d6d91c004e582d9b1c90fd"
+source = "git+https://gitee.com/anolis/csv-rs?rev=05fbacd#05fbacd8ffff3d48bb19319da1c9a84b763d9302"
 dependencies = [
  "bitfield",
  "codicon",
