@@ -7,7 +7,7 @@ use super::{Attestation, TeeEvidenceParsedClaim, Verifier};
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek, X509};
-use az_snp_vtpm::hcl::{HclData, RuntimeData};
+use az_snp_vtpm::hcl::HclData;
 use az_snp_vtpm::report::Validateable;
 use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
 use base64::Engine;
@@ -57,8 +57,7 @@ impl Verifier for AzSnpVtpm {
 }
 
 fn verify_quote(quote: &Quote, hcl_data: &HclData, hashed_nonce: &[u8]) -> Result<()> {
-    let runtime_data: RuntimeData = hcl_data.var_data().try_into()?;
-    let ak_pub = runtime_data.get_attestation_key()?;
+    let ak_pub = hcl_data.var_data().ak_pub()?;
 
     ak_pub
         .verify_quote(quote, hashed_nonce)
