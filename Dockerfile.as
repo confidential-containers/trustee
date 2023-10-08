@@ -25,12 +25,12 @@ RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key 
 RUN cargo install --path bin/grpc-as
 
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/attestation-service"
 
 # Install TDX Runtime Dependencies
-RUN apt-get update && apt-get install curl gnupg -y && \
+RUN apt-get update && apt-get install curl gnupg openssl -y && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 RUN curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
