@@ -61,7 +61,9 @@ tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
+ear = { git = "https://github.com/veraison/rust-ear", rev = "cc6ea53" }
 x509-parser = { version = "0.14.0", optional = true }
+jsonwebtoken = "8"
 
 [build-dependencies]
 shadow-rs.workspace = true
