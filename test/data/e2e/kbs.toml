@@ -1,3 +1,19 @@
 sockets = ["127.0.0.1:8080"]
 auth_public_key = "./kbs.pem"
 insecure_http = true
+
+[repository_config]
+type = "LocalFs"
+dir_path = "./data/repository"
+
+[as_config]
+work_dir = "./data/attestation-service"
+policy_engine = "opa"
+rvps_store_type = "LocalFs"
+attestation_token_broker = "Simple"
+
+[as_config.attestation_token_config]
+duration_min = 5
+
+[policy_engine_config]
+policy_path = "./data/policy_1.rego"
