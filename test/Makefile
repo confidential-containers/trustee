@@ -1,9 +1,12 @@
 OS := $(shell lsb_release -si)
 RELEASE := $(shell lsb_release -sr)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
-KBS_REPO_PATH := /opt/confidential-containers/kbs/repository
+KBS_REPO_PATH := ./data/repository
+KBS_CONFIG_PATH := ./data/e2e
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(MAKEFILE_DIR)/..
+BOLD := $(shell tput bold)
+SGR0 := $(shell tput sgr0)
 
 ifeq ($(OS),Ubuntu)
     ifneq ($(RELEASE),22.04)
@@ -32,12 +35,12 @@ install-dependencies:
 kbs:
 	cd $(PROJECT_DIR) && \
 	make background-check-kbs POLICY_ENGINE=opa && \
-	make install-kbs
+	install -D --compare $(PROJECT_DIR)/target/release/kbs $(CURDIR)/kbs
 
-passport-resource-kbs:
+resource-kbs:
 	cd $(PROJECT_DIR) && \
 	make passport-resource-kbs POLICY_ENGINE=opa && \
-	make install-resource-kbs
+	install -D --compare $(PROJECT_DIR)/target/release/resource-kbs $(CURDIR)/resource-kbs
 
 client:
 	cd $(PROJECT_DIR) && \
@@ -46,7 +49,7 @@ client:
 	install -D --compare $(PROJECT_DIR)/target/release/kbs-client $(CURDIR)/client
 
 .PHONY: bins
-bins: kbs passport-resource-kbs client
+bins: kbs resource-kbs client
 
 kbs.key:
 	openssl genpkey -algorithm ed25519 > kbs.key
@@ -62,22 +65,76 @@ $(KBS_REPO_PATH)/one/two/three:
 	openssl rand 16 > $(KBS_REPO_PATH)/one/two/three
 
 .PHONY: start-kbs
-start-kbs: kbs.pem tee.key $(KBS_REPO_PATH)/one/two/three
-	kbs \
-	  --config-file ./data/e2e/kbs.toml &
-	resource-kbs \
-	  --config-file ./data/e2e/resource-kbs.toml &
+start-kbs: kbs.PID
+
+.PHONY: start-resource-kbs
+start-resource-kbs: resource-kbs.PID
+
+kbs.PID: kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
+	@printf "${BOLD}start kbs${SGR0}\n"
+	{ \
+		RUST_LOG=actix-server=warn \
+		$(CURDIR)/kbs --config-file $(KBS_CONFIG_PATH)/kbs.toml \
+		& echo $$! > kbs.PID; \
+	} && \
+	sleep 1
+
+resource-kbs.PID: resource-kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
+	@printf "${BOLD}start resource-kbs${SGR0}\n"
+	{ \
+		RUST_LOG=actix-server=debug \
+		./resource-kbs --config-file $(KBS_CONFIG_PATH)/resource-kbs.toml \
+		& echo $$! > resource-kbs.PID; \
+	} && \
+	sleep 1
+
+.PHONY: stop-kbs
+stop-kbs: kbs.PID
+	@printf "${BOLD}stop kbs${SGR0}\n"
+	kill $$(cat $<) && rm $<
+
+.PHONY: stop-resource-kbs
+stop-resource-kbs: resource-kbs.PID
+	@printf "${BOLD}stop resource-kbs${SGR0}\n"
+	kill $$(cat $<) && rm $<
+
+test-bgcheck: client start-kbs
+	RUST_LOG=kbs_protocol=error ./client get-resource \
+		 --path one/two/three \
+		 | base64 -d > roundtrip_secret && \
+	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
+	@printf "${BOLD}background-check e2e test passed${SGR0}\n"
+
+.PHONY: attestation_token
+attestation_token: client tee.key start-kbs
+	RUST_LOG=kbs_protocol=warn ./client attest \
+		--tee-key-file tee.key \
+		> attestation_token
+
+test-passport: client attestation_token start-resource-kbs
+	RUST_LOG=kbs_protocol=warn ./client --url http://127.0.0.1:50002 get-resource \
+		--attestation-token attestation_token \
+		--tee-key-file tee.key \
+		--path one/two/three \
+		| base64 -d > roundtrip_secret && \
+	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
+	@printf "${BOLD}passport e2e test passed${SGR0}\n"
+
+.PHONY: stop
+stop: stop-kbs stop-resource-kbs
 
 .PHONY: e2e-test
-e2e-test: start-kbs
-	./client get-resource --path one/two/three | base64 -d > roundtrip_secret && \
-	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
-	@echo "Background Check mode e2e test passed"
-	./client attest --tee-key-file tee.key > attestation_token
-	./client --url http://127.0.0.1:50002 get-resource --attestation-token attestation_token --tee-key-file tee.key --path one/two/three | base64 -d > roundtrip_secret && \
-	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
-	@echo "Passport mode e2e test passed"
+e2e-test: test-bgcheck test-passport stop
 
 .PHONY: clean
 clean:
-	rm kbs kbs.key kbs.pem tee.key tee.pem client roundtrip_secret $(KBS_REPO_PATH)/one/two/three
+	rm -f \
+		kbs \
+		resource-kbs \
+		kbs.key \
+		kbs.pem \
+		tee.key \
+		tee.pem \
+		client \
+		roundtrip_secret \
+		$(KBS_REPO_PATH)/one/two/three
