@@ -45,7 +45,7 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
     let ndt = NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%SZ")
         .map_err(|err| serde::de::Error::custom::<String>(err.to_string()))?;
 
-    Ok(DateTime::<Utc>::from_utc(ndt, Utc))
+    Ok(DateTime::from_naive_utc_and_offset(ndt, Utc))
 }
 
 /// Define Reference Value stored inside RVPS.
