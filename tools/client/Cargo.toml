@@ -13,8 +13,7 @@ name = "kbs-client"
 path = "src/main.rs"
 
 [dependencies]
-# TODO: change it to "0.8.0", once released.
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git" }
+as-types.workspace = true
 anyhow.workspace = true
 api-server.workspace = true
 base64.workspace = true

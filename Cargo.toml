@@ -11,6 +11,7 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1.0"
 api-server = { path = "src/api", default-features = false }
+as-types = { git = "https://github.com/confidential-containers/attestation-service.git" }
 async-trait = "0.1.31"
 base64 = "0.21"
 env_logger = "0.10.0"
