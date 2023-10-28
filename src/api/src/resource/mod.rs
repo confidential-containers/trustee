@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::*;
-use local_fs::LocalFs;
-pub use local_fs::LocalFsRepoDesc;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
@@ -72,7 +70,7 @@ impl RepositoryConfig {
                     fs::create_dir_all(format!("{}/default", &dir_path))?;
                 }
 
-                Ok(Arc::new(RwLock::new(LocalFs::new(desc)?))
+                Ok(Arc::new(RwLock::new(local_fs::LocalFs::new(desc)?))
                     as Arc<RwLock<dyn Repository + Send + Sync>>)
             }
         }
