@@ -45,7 +45,7 @@ make install-kbs
 
 Start KBS with HTTP server:
 ```shell
-kbs --socket 127.0.0.1:50000 --insecure-http --auth-public-key config/public.pub
+kbs --config-file config/kbs-config.toml
 ```
 
 If you want start KBS with HTTPS server, use `--private-key` and `--certificate`
