@@ -554,7 +554,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#917d5cff1cf57e2555426b6dd8bf59dc3b7f0901"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1269,7 +1269,7 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#917d5cff1cf57e2555426b6dd8bf59dc3b7f0901"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2448,7 +2448,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#917d5cff1cf57e2555426b6dd8bf59dc3b7f0901"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2464,6 +2464,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror",
+ "tokio",
  "url",
  "zeroize",
 ]
@@ -3614,7 +3615,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components#917d5cff1cf57e2555426b6dd8bf59dc3b7f0901"
+source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
 dependencies = [
  "anyhow",
  "serde",
