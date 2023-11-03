@@ -35,18 +35,18 @@ install-dependencies:
 kbs:
 	cd $(PROJECT_DIR) && \
 	make background-check-kbs POLICY_ENGINE=opa && \
-	install -D --compare $(PROJECT_DIR)/target/release/kbs $(CURDIR)/kbs
+	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/kbs
 
 resource-kbs:
 	cd $(PROJECT_DIR) && \
 	make passport-resource-kbs POLICY_ENGINE=opa && \
-	install -D --compare $(PROJECT_DIR)/target/release/resource-kbs $(CURDIR)/resource-kbs
+	install -D --compare $(PROJECT_DIR)/../target/release/resource-kbs $(CURDIR)/resource-kbs
 
 client:
 	cd $(PROJECT_DIR) && \
 	cargo build -p kbs-client --release \
 		--features api-server/coco-as-builtin,api-server/rustls && \
-	install -D --compare $(PROJECT_DIR)/target/release/kbs-client $(CURDIR)/client
+	install -D --compare $(PROJECT_DIR)/../target/release/kbs-client $(CURDIR)/client
 
 .PHONY: bins
 bins: kbs resource-kbs client

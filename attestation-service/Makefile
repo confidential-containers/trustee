@@ -2,7 +2,7 @@ PROJDIR := $(shell readlink -f ..)
 TOP_DIR := .
 CUR_DIR := $(shell pwd)
 PREFIX := /usr/local
-TARGET_DIR := target
+TARGET_DIR := ../target
 BIN_NAMES := grpc-as
 
 DEBUG ?=
