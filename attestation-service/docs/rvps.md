@@ -46,7 +46,7 @@ It is the reference values really requested and used by Attestation Service to c
 
 ### Directly Build
 
-In this way, the RVPS can run as a single service. The [gRPC protos](../bin/rvps/proto/reference.proto) are defined.
+In this way, the RVPS can run as a single service. The [gRPC protos](../protos/reference.proto) are defined.
 
 We can run using the following command
 
@@ -104,7 +104,7 @@ Run RVPS
 cargo run --bin rvps -- --socket $RVPS_ADDR
 ```
 
-Edit an test message in [sample format](../src/rvps/extractors/extractor_modules/sample/README.md)
+Edit an test message in [sample format](../attestation-service/src/rvps/extractors/extractor_modules/sample/README.md)
 ```bash
 cat << EOF > sample
 {

@@ -141,7 +141,7 @@ OPA is a very flexible and powerful policy engine, AS allows users to define and
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about the `.rego`.
 
-If the user does not need to customize his own policy, AS will use the [default policy](src/policy_engine/opa/default_policy.rego).
+If the user does not need to customize his own policy, AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
 
 ## Reference Value Provider
 
