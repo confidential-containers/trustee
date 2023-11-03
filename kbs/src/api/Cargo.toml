@@ -26,8 +26,8 @@ actix-web-httpauth = "0.8.0"
 aes-gcm = { version = "0.10.1", optional = true }
 anyhow.workspace = true
 async-trait.workspace = true
-as-types = { git = "https://github.com/confidential-containers/attestation-service.git", tag = "v0.8.0" }
-attestation-service = { git = "https://github.com/confidential-containers/attestation-service.git", tag = "v0.8.0", default-features = false, optional = true }
+as-types.workspace = true
+attestation-service = { workspace = true, default-features = false, optional = true }
 base64.workspace = true
 cfg-if.workspace = true
 clap = { version = "4.3.21", features = ["derive", "env"] }
