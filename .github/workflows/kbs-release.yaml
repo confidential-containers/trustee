@@ -1,4 +1,4 @@
-name: Cut Release
+name: Cut KBS Release
 
 on:
   release:
@@ -23,7 +23,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./kbs/docker/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/key-broker-service:built-in-as-${{ github.ref_name }}
@@ -32,7 +32,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile.coco-as-grpc
+          file: ./kbs/docker/Dockerfile.coco-as-grpc
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/key-broker-service:${{ github.ref_name }}, ghcr.io/confidential-containers/key-broker-service:latest

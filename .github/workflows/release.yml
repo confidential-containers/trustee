@@ -1,4 +1,4 @@
-name: Cut Release
+name: Cut Attestation Service Release
 
 on:
   release:
@@ -23,7 +23,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile.as
+          file: ./attestation-service/Dockerfile.as
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/attestation-service:latest, ghcr.io/confidential-containers/attestation-service:${{ github.ref_name }}
@@ -32,7 +32,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile.rvps
+          file: ./attestation-service/Dockerfile.rvps
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/reference-value-provider-service:latest, ghcr.io/confidential-containers/reference-value-provider-service:${{ github.ref_name }}
