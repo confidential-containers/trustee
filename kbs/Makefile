@@ -16,16 +16,16 @@ build: background-check-kbs
 
 .PHONY: background-check-kbs
 background-check-kbs:
-	cargo build --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE)
+	cargo build --locked --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE)
 
 .PHONY: passport-issuer-kbs
 passport-issuer-kbs:
-	cargo build --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO)
+	cargo build --locked --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO)
 	mv target/release/kbs target/release/issuer-kbs
 
 .PHONY: passport-resource-kbs
 passport-resource-kbs:
-	cargo build --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
+	cargo build --locked --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
 	mv target/release/kbs target/release/resource-kbs
 
 install-kbs:
