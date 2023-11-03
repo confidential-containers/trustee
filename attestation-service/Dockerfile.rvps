@@ -15,7 +15,7 @@ COPY . .
 
 RUN apt-get update && apt-get install protobuf-compiler -y
 
-RUN cargo install --path bin/rvps
+RUN cargo install --path attestation-service/bin/rvps
 
 FROM debian:bullseye-slim
 

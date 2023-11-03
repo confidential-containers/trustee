@@ -37,7 +37,7 @@ WORKDIR /usr/src/kbs
 COPY . .
 
 ARG KBS_FEATURES=coco-as-builtin,rustls,resource,opa
-RUN cargo install --locked --path src/kbs --no-default-features --features ${KBS_FEATURES}
+RUN cargo install --locked --path kbs/src/kbs --no-default-features --features ${KBS_FEATURES}
 
 FROM debian:stable-slim
 
