@@ -548,7 +548,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "codicon",
- "csv-rs 0.1.0 (git+https://gitee.com/anolis/csv-rs?rev=9d8882e)",
+ "csv-rs",
  "ear",
  "eventlog-rs",
  "futures",
@@ -591,14 +591,14 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
+source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
 dependencies = [
  "anyhow",
  "async-trait",
  "az-snp-vtpm 0.2.3",
  "base64 0.21.5",
  "codicon",
- "csv-rs 0.1.0 (git+https://gitee.com/anolis/csv-rs?rev=05fbacd)",
+ "csv-rs",
  "hyper",
  "hyper-tls",
  "kbs-types",
@@ -1321,7 +1321,7 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
+source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1358,25 +1358,6 @@ dependencies = [
  "generic-array",
  "rand_core",
  "typenum",
-]
-
-[[package]]
-name = "csv-rs"
-version = "0.1.0"
-source = "git+https://gitee.com/anolis/csv-rs?rev=05fbacd#05fbacd8ffff3d48bb19319da1c9a84b763d9302"
-dependencies = [
- "bitfield 0.13.2",
- "codicon",
- "hyper",
- "hyper-tls",
- "iocuddle",
- "openssl",
- "openssl-sys",
- "rand",
- "serde",
- "serde-big-array",
- "static_assertions",
- "tokio",
 ]
 
 [[package]]
@@ -2552,7 +2533,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
+source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3734,7 +3715,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?tag=v0.8.0#e849dc8921d2a48bec915f1a7c02f8988721022d"
+source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
 dependencies = [
  "anyhow",
  "serde",
