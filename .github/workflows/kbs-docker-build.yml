@@ -1,0 +1,19 @@
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Code checkout
+      uses: actions/checkout@v4
+
+    - name: Build KBS Container Image
+      run: |
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f kbs/docker/Dockerfile; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-openssl --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-grpc . -f kbs/docker/Dockerfile.coco-as-grpc

@@ -1,4 +1,4 @@
-name: e2e
+name: KBS e2e
 
 on:
   pull_request:
@@ -42,11 +42,11 @@ jobs:
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
     - name: Install dependencies
-      working-directory: test
+      working-directory: kbs/test
       run: sudo make install-dependencies
 
     - name: Build bins
-      working-directory: test
+      working-directory: kbs/test
       run: make bins
 
     - name: Set cc_kbc sample attester env
@@ -54,5 +54,5 @@ jobs:
       run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
 
     - name: Run e2e test
-      working-directory: test
+      working-directory: kbs/test
       run: sudo -E make e2e-test

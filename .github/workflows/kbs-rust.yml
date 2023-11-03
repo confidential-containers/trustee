@@ -1,10 +1,18 @@
-name: rust tests
+name: kbs rust tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
+    paths:
+      - 'kbs/**'
+      - '.github/workflows/kbs-rust.yml'
+      - 'Cargo.toml'
   pull_request:
-    branches: [ "main" ]
+    paths:
+      - 'kbs/**'
+      - '.github/workflows/kbs-rust.yml'
+      - 'Cargo.toml'
 
 env:
   CARGO_TERM_COLOR: always
@@ -53,22 +61,29 @@ jobs:
         sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
     - name: KBS Build [Default]
+      working-directory: kbs
       run: make
 
     - name: KBS Build [Built-in CoCo AS, OpenSSL]
+      working-directory: kbs
       run: make HTTPS_CRYPTO=openssl
 
     - name: KBS Build [gRPC CoCo AS, RustTLS]
+      working-directory: kbs
       run: make COCO_AS_INTEGRATE_TYPE=grpc
 
     - name: build KBS with amber AS mode
+      working-directory: kbs
       run: make AS_TYPE=amber-as
 
     - name: Lint
+      working-directory: kbs
       run: make lint
 
     - name: Format
+      working-directory: kbs
       run: make format
 
     - name: Test
+      working-directory: kbs
       run: make check
