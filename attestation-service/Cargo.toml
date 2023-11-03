@@ -1,78 +1,35 @@
-[package]
-name = "attestation-service"
+[workspace]
+members = [
+    "as-types",
+    "attestation-service",
+    "bin/rvps",
+    "bin/grpc-as",
+    "bin/rvps-client",
+]
+
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
+authors = ["The Confidential Container Authors"]
+description = "Attestation Service"
+documentation = "https://github.com/confidential-containers/attestation-service"
 edition = "2021"
 
-[features]
-default = [ "rvps-native", "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "csv-verifier", "cca-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
-sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
-az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev" ]
-snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
-csv-verifier = [ "openssl", "csv-rs", "codicon" ]
-cca-verifier = [ "cbor-diag", "veraison-apiclient" ]
-
-rvps-native = []
-rvps-grpc = [ "tonic" ]
-
-[dependencies]
-anyhow.workspace = true
-asn1-rs = { version = "0.5.1", optional = true }
-async-trait.workspace = true
-as-types = { path = "../as-types" }
-az-snp-vtpm = { version = "0.3.0", default-features = false, features = ["verifier"], optional = true }
-base64 = "0.21"
-bincode = "1.3.3"
-byteorder = "1"
-cbor-diag = { version = "0.1.11", optional = true }
-cfg-if = "1.0.0"
-chrono = { version = "0.4.19", features = [ "serde" ] }
-codicon = { version = "3.0", optional = true }
-# TODO: change it to "0.1", once released.
-csv-rs = { git = "https://gitee.com/anolis/csv-rs", rev = "05fbacd", optional = true }
-eventlog-rs = { version = "0.1.3", optional = true }
-futures = "0.3.17"
-hex = "0.4.3"
-jsonwebtoken = "8"
-jwt = { version = "0.16.0", features = ["openssl"]}
-# TODO: change it to "0.5", once released.
-kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
-lazy_static = "1.4.0"
-log.workspace = true
-openssl = { version = "0.10.55", optional = true }
-path-clean = "1.0.1"
-prost.workspace = true
-rand = "0.8.5"
-rsa = { version = "0.9.2", features = ["sha2"] }
-scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
-serde.workspace = true
-serde_json.workspace = true
-serde_variant = "0.1.2"
-sev = { version = "1.2.0", features = ["openssl", "snp"], optional = true }
-sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
-sha2.workspace = true
-shadow-rs.workspace = true
-sled = "0.34.7"
-strum = "0.24.0"
-strum_macros = "0.24.0"
-tempfile = "3.3.0"
-time = { version = "0.3.23", features = ["std"] }
-tokio.workspace = true
-tonic = { workspace = true, optional = true }
-uuid = { version = "1.1.2", features = ["v4"] }
-veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
-ear = { git = "https://github.com/veraison/rust-ear", rev = "cc6ea53" }
-x509-parser = { version = "0.14.0", optional = true }
-
-[build-dependencies]
-shadow-rs.workspace = true
-tonic-build.workspace = true
-
-[dev-dependencies]
-assert-json-diff.workspace = true
-rstest.workspace = true
-serial_test.workspace = true
-sha2.workspace = true
-testing_logger = "0.1.1"
-walkdir = "2.3.2"
+[workspace.dependencies]
+anyhow = "1.0"
+assert-json-diff = "2.0.2"
+async-trait = "0.1.31"
+clap = { version = "3.2.6", features = ["derive"] }
+env_logger = "0.9.1"
+log = "0.4.17"
+prost = "0.11.0"
+rstest = "0.17.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "*"
+serial_test = "0.9.0"
+sha2 = "0.10"
+shadow-rs = "0.19.0"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "fs"] }
+tonic = "0.8.1"
+tonic-build = "0.8.0"
