@@ -1,0 +1,44 @@
+[workspace]
+members = [
+    "kbs/src/kbs",
+    "kbs/src/api",
+    "kbs/tools/client",
+    "attestation-service/as-types",
+    "attestation-service/attestation-service",
+    "attestation-service/bin/rvps",
+    "attestation-service/bin/grpc-as",
+    "attestation-service/bin/rvps-client"
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["The Confidential Container Authors"]
+description = "Confidential Container Tools and Components for the tenant side"
+documentation = "https://github.com/confidential-containers/kbs"
+edition = "2021"
+
+[workspace.dependencies]
+anyhow = "1.0"
+api-server = { path = "kbs/src/api", default-features = false }
+assert-json-diff = "2.0.2"
+as-types.path = "attestation-service/as-types"
+async-trait = "0.1.31"
+attestation-service = { path = "attestation-service/attestation-service", default-features = false }
+base64 = "0.21"
+cfg-if = "1.0.0"
+clap = { version = "3.2.6", features = ["derive"] }
+env_logger = "0.10.0"
+kbs-types.path = "attestation-service/as-types"
+log = "0.4.17"
+prost = "0.11.0"
+rstest = "0.18.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.89"
+serial_test = "0.9.0"
+sha2 = "0.10"
+shadow-rs = "0.19.0"
+thiserror = "1.0"
+tokio = { version = "1.23.0", features = ["full"] }
+tempfile = "3.4.0"
+tonic = "0.8.1"
+tonic-build = "0.8.0"
