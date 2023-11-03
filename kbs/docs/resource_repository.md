@@ -4,7 +4,7 @@ KBS stores confidential resources through a `Repository` abstraction specified
 by a Rust trait. The `Repository` interface can be implemented for different
 storage backends like e.g. databases or local file systems.
 
-The [KBS config file](./docs/config.md)
+The [KBS config file](./config.md)
 defines which resource repository backend KBS will use. The default is the local
 file system (`LocalFs`).
 
