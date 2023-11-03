@@ -4,7 +4,7 @@
 
 ## API
 
-gRPC Attestation Service provides gRPC endpoints which is defined in [protobuf](proto/attestation.proto).
+gRPC Attestation Service provides gRPC endpoints which is defined in [protobuf](../../protos/attestation.proto).
 
 ## Usage
 
