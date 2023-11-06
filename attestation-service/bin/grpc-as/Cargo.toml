@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-as-types = { path = "../../as-types" }
 async-trait.workspace = true
 attestation-service = { path = "../../attestation-service", features = ["rvps-grpc"] }
 clap.workspace = true

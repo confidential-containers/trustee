@@ -9,7 +9,6 @@ use std::{
 };
 
 use anyhow::*;
-use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
 use base64::Engine;
 use kbs_types::Attestation;
@@ -24,7 +23,7 @@ use sha2::{Digest, Sha384};
 
 use self::types::sgx_quote3_t;
 
-use super::Verifier;
+use super::{TeeEvidenceParsedClaim, Verifier};
 
 #[allow(non_camel_case_types)]
 mod types;

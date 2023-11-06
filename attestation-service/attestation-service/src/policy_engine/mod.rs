@@ -1,11 +1,17 @@
 use anyhow::Result;
-use as_types::SetPolicyInput;
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
 pub mod opa;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetPolicyInput {
+    pub r#type: String,
+    pub policy_id: String,
+    pub policy: String,
+}
 
 #[derive(Debug, EnumString, Deserialize)]
 #[strum(ascii_case_insensitive)]

@@ -71,10 +71,9 @@ impl Grpc {
 
 #[async_trait]
 impl Attest for Grpc {
-    async fn set_policy(&mut self, input: as_types::SetPolicyInput) -> Result<()> {
-        let req = tonic::Request::new(SetPolicyRequest {
-            input: serde_json::to_string(&input)?,
-        });
+    async fn set_policy(&mut self, input: &[u8]) -> Result<()> {
+        let input = String::from_utf8(input.to_vec()).context("parse SetPolicyInput")?;
+        let req = tonic::Request::new(SetPolicyRequest { input });
 
         let _ = self
             .inner

@@ -42,9 +42,10 @@
 //! ```
 
 use anyhow::*;
-use as_types::TeeEvidenceParsedClaim;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde_json::{Map, Value};
+
+use crate::verifier::TeeEvidenceParsedClaim;
 
 use super::{
     eventlog::{CcEventLog, MeasuredEntity},
