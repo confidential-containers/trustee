@@ -44,13 +44,13 @@ uninstall:
 	rm -rf $(INSTALL_DESTDIR)/kbs $(INSTALL_DESTDIR)/kbs-client $(INSTALL_DESTDIR)/issuer-kbs $(INSTALL_DESTDIR)/resource-kbs
 
 check:
-	cargo test --lib
+	cargo test -p kbs -p api-server -p kbs-client
 
 lint:
-	cargo clippy -- -D warnings  -Wmissing-docs -A clippy::enum_variant_names
+	cargo clippy -p kbs -p api-server -p kbs-client -- -D warnings -A clippy::enum_variant_names
 
 format:
-	cargo fmt -- --check --config format_code_in_doc_comments=true
+	cargo fmt -p kbs -p api-server -p kbs-client -- --check --config format_code_in_doc_comments=true
 
 clean:
 	cargo clean
