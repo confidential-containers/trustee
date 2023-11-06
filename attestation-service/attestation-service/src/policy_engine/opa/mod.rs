@@ -1,6 +1,5 @@
 use crate::policy_engine::{PolicyEngine, PolicyType};
 use anyhow::{anyhow, bail, Result};
-use as_types::SetPolicyInput;
 use async_trait::async_trait;
 use base64::Engine;
 use serde_json::Value;
@@ -10,6 +9,8 @@ use std::fs;
 use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use super::SetPolicyInput;
 
 // Link import cgo function
 #[link(name = "cgo")]

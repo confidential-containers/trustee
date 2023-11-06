@@ -3,7 +3,6 @@ members = [
     "kbs/src/kbs",
     "kbs/src/api",
     "kbs/tools/client",
-    "attestation-service/as-types",
     "attestation-service/attestation-service",
     "attestation-service/bin/rvps",
     "attestation-service/bin/grpc-as",
@@ -21,7 +20,6 @@ edition = "2021"
 anyhow = "1.0"
 api-server = { path = "kbs/src/api", default-features = false }
 assert-json-diff = "2.0.2"
-as-types.path = "attestation-service/as-types"
 async-trait = "0.1.31"
 attestation-service = { path = "attestation-service/attestation-service", default-features = false }
 base64 = "0.21"

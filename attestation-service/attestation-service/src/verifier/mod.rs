@@ -1,5 +1,4 @@
 use anyhow::*;
-use as_types::TeeEvidenceParsedClaim;
 use async_trait::async_trait;
 use kbs_types::{Attestation, Tee};
 
@@ -85,6 +84,8 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
         }
     }
 }
+
+pub type TeeEvidenceParsedClaim = serde_json::Value;
 
 #[async_trait]
 pub trait Verifier {

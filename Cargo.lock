@@ -405,7 +405,6 @@ dependencies = [
  "actix-web-httpauth",
  "aes-gcm",
  "anyhow",
- "as-types",
  "async-trait",
  "attestation-service",
  "base64 0.21.5",
@@ -438,15 +437,6 @@ dependencies = [
  "tonic 0.9.2",
  "tonic-build",
  "uuid",
-]
-
-[[package]]
-name = "as-types"
-version = "0.1.0"
-dependencies = [
- "kbs-types",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -536,7 +526,6 @@ name = "attestation-service"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "as-types",
  "asn1-rs",
  "assert-json-diff",
  "async-trait",
@@ -1973,7 +1962,6 @@ name = "grpc-as"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "as-types",
  "async-trait",
  "attestation-service",
  "clap 3.2.25",
@@ -2508,7 +2496,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api-server",
- "as-types",
  "base64 0.21.5",
  "clap 4.4.7",
  "env_logger 0.10.0",
