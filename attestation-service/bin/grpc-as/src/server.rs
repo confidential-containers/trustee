@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use attestation_service::policy_engine::SetPolicyInput;
 use attestation_service::{config::Config, AttestationService as Service, Tee};
 use log::{debug, info};
 use std::path::Path;
@@ -74,7 +75,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
         debug!("SetPolicyInput: {}", &request.input);
 
-        let set_policy_input: as_types::SetPolicyInput = serde_json::from_str(&request.input)
+        let set_policy_input: SetPolicyInput = serde_json::from_str(&request.input)
             .map_err(|_| Status::aborted("Bad SetPolicyInput"))?;
 
         self.write()

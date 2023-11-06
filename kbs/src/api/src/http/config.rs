@@ -8,7 +8,7 @@ use super::*;
 /// POST /attestation-policy
 pub(crate) async fn attestation_policy(
     request: HttpRequest,
-    input: web::Json<as_types::SetPolicyInput>,
+    input: web::Bytes,
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
     insecure: web::Data<bool>,
     attestation_service: web::Data<AttestationService>,
@@ -28,7 +28,7 @@ pub(crate) async fn attestation_policy(
         .0
         .lock()
         .await
-        .set_policy(input.into_inner())
+        .set_policy(&input)
         .await
         .map_err(|e| Error::PolicyEndpoint(format!("Set policy error {e}")))?;
 

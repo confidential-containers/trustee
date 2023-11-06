@@ -24,10 +24,9 @@ pub mod verifier;
 use crate::token::AttestationTokenBroker;
 
 use anyhow::{anyhow, Context, Result};
-use as_types::SetPolicyInput;
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
-use policy_engine::PolicyEngine;
+use policy_engine::{PolicyEngine, SetPolicyInput};
 use rvps::{Message, RVPSAPI};
 use serde_json::json;
 use std::collections::HashMap;
