@@ -2,6 +2,7 @@ use crate::policy_engine::{PolicyEngine, PolicyType};
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use base64::Engine;
+use log::debug;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::ffi::CStr;

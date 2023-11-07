@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "rvps-grpc", "all-verifier" ]
+default = [ "rvps-grpc", "rvps-builtin", "all-verifier" ]
 all-verifier = [ "verifier/all-verifier" ]
 tdx-verifier = [ "verifier/tdx-verifier" ]
 sgx-verifier = [ "verifier/sgx-verifier" ]
@@ -13,7 +13,9 @@ snp-verifier = [ "verifier/snp-verifier" ]
 csv-verifier = [ "verifier/csv-verifier" ]
 cca-verifier = [ "verifier/cca-verifier" ]
 
-rvps-native = []
+# Only for testing and CI
+rvps-builtin = [ "reference-value-provider-service" ]
+
 rvps-grpc = [ "tonic" ]
 
 [dependencies]
@@ -21,28 +23,22 @@ anyhow.workspace = true
 async-trait.workspace = true
 base64 = "0.21"
 cfg-if = "1.0.0"
-chrono = { version = "0.4.19", features = [ "serde" ] }
 futures = "0.3.17"
-jsonwebtoken = "8"
-jwt = { version = "0.16.0", features = ["openssl"]}
 # TODO: change it to "0.5", once released.
 kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
 lazy_static = "1.4.0"
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
-path-clean = "1.0.1"
 prost.workspace = true
 rand = "0.8.5"
 rsa = { version = "0.9.2", features = ["sha2"] }
-scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
+reference-value-provider-service = { path = "../rvps", optional = true }
 serde.workspace = true
 serde_json.workspace = true
 serde_variant = "0.1.2"
 sha2.workspace = true
 shadow-rs.workspace = true
-sled = "0.34.7"
-strum = "0.24.0"
-strum_macros = "0.24.0"
+strum.workspace = true
 time = { version = "0.3.23", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }

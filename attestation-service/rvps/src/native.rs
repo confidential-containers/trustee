@@ -3,15 +3,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use log::{info, warn};
 use std::time::SystemTime;
 
+use crate::store::StoreType;
+
 use super::{
     extractors::{Extractors, ExtractorsImpl},
-    pre_processor::{PreProcessor, PreProcessorAPI, Ware},
-    Message, Store, TrustedDigest, MESSAGE_VERSION, RVPSAPI,
+    pre_processor::{PreProcessor, PreProcessorAPI},
+    Message, Store, TrustedDigest, MESSAGE_VERSION,
 };
 
 /// The core of the RVPS, s.t. componants except communication componants.
@@ -23,28 +25,30 @@ pub struct Core {
 
 impl Core {
     /// Instantiate  a new RVPS Core
-    pub fn new(store: Box<dyn Store + Send + Sync>) -> Self {
+    pub fn new(store_type: &str) -> Result<Self> {
         let pre_processor = PreProcessor::default();
 
         let extractors = ExtractorsImpl::default();
 
-        Core {
+        let store_type = StoreType::try_from(store_type)?;
+        let store = store_type.to_store()?;
+
+        Ok(Core {
             pre_processor,
             extractors,
             store,
-        }
+        })
     }
 
     /// Add Ware to the Core's Pre-Processor
-    pub fn with_ware(&mut self, ware: Box<dyn Ware + Send + Sync>) -> &Self {
-        self.pre_processor.add_ware(ware);
+    pub fn with_ware(&mut self, _ware: &str) -> &Self {
+        // TODO: no wares implemented now.
         self
     }
-}
 
-#[async_trait::async_trait]
-impl RVPSAPI for Core {
-    async fn verify_and_extract(&mut self, mut message: Message) -> Result<()> {
+    pub async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+        let mut message: Message = serde_json::from_str(message).context("parse message")?;
+
         // Judge the version field
         if message.version != MESSAGE_VERSION {
             bail!(
@@ -67,7 +71,7 @@ impl RVPSAPI for Core {
         Ok(())
     }
 
-    async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
+    pub async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
         let rv = self.store.get(name)?;
         match rv {
             None => Ok(None),

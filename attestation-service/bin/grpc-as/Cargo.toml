@@ -7,7 +7,7 @@ edition = "2021"
 anyhow.workspace = true
 async-trait.workspace = true
 attestation-service = { path = "../../attestation-service", features = ["rvps-grpc"] }
-clap.workspace = true
+clap = "3"
 env_logger.workspace = true
 log.workspace = true
 prost.workspace = true

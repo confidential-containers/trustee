@@ -8,7 +8,7 @@
 use anyhow::*;
 use std::collections::HashMap;
 
-use crate::rvps::ReferenceValue;
+use crate::ReferenceValue;
 
 #[cfg(feature = "in-toto")]
 pub mod in_toto;

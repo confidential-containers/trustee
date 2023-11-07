@@ -43,9 +43,9 @@ pub struct AttestationService(pub Arc<Mutex<dyn Attest>>);
 impl AttestationService {
     /// Create and initialize AttestationService.
     #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
-    pub fn new(config: &AsConfig) -> Result<Self> {
+    pub async fn new(config: &AsConfig) -> Result<Self> {
         let attestation_service: Arc<Mutex<dyn Attest>> =
-            Arc::new(Mutex::new(coco::builtin::Native::new(config)?));
+            Arc::new(Mutex::new(coco::builtin::Native::new(config).await?));
 
         Ok(Self(attestation_service))
     }

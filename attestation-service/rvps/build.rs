@@ -5,7 +5,7 @@ fn real_main() -> Result<(), String> {
     println!("cargo:rerun-if-changed={out_dir}");
     println!("cargo:rustc-link-search=native={out_dir}");
 
-    tonic_build::compile_protos("../../protos/reference.proto").map_err(|e| format!("{e}"))?;
+    tonic_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
 
     Ok(())
 }

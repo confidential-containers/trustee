@@ -5,9 +5,8 @@ members = [
     "kbs/tools/client",
     "attestation-service/attestation-service",
     "attestation-service/verifier",
-    "attestation-service/bin/rvps",
+    "attestation-service/rvps",
     "attestation-service/bin/grpc-as",
-    "attestation-service/bin/rvps-client"
 ]
 
 [workspace.package]
@@ -25,7 +24,8 @@ async-trait = "0.1.31"
 attestation-service = { path = "attestation-service/attestation-service", default-features = false }
 base64 = "0.21"
 cfg-if = "1.0.0"
-clap = { version = "3.2.6", features = ["derive"] }
+chrono = "0.4.19"
+clap = { version = "4", features = ["derive"] }
 env_logger = "0.10.0"
 kbs-types.path = "attestation-service/as-types"
 log = "0.4.17"
@@ -36,6 +36,7 @@ serde_json = "1.0.89"
 serial_test = "0.9.0"
 sha2 = "0.10"
 shadow-rs = "0.19.0"
+strum = { version = "0.25", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.23.0", features = ["full"] }
 tempfile = "3.4.0"

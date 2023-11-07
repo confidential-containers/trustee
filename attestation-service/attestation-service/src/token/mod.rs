@@ -6,7 +6,7 @@
 use anyhow::*;
 use serde::Deserialize;
 use serde_json::Value;
-use strum_macros::EnumString;
+use strum::EnumString;
 
 mod simple;
 
