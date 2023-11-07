@@ -1,8 +1,3 @@
-// Copyright (c) 2022 Alibaba Cloud
-//
-// SPDX-License-Identifier: Apache-2.0
-//
-
 use anyhow::*;
 use tokio::sync::Mutex;
 
@@ -11,13 +6,12 @@ use self::rvps_api::{
     ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
 };
 
-use super::{Message, TrustedDigest, RVPSAPI};
+use super::RvpsApi;
 
 pub mod rvps_api {
     tonic::include_proto!("reference");
 }
 
-/// An agent for rvps, uses grpc to connect
 pub struct Agent {
     client: Mutex<ReferenceValueProviderServiceClient<tonic::transport::Channel>>,
 }
@@ -33,10 +27,11 @@ impl Agent {
 }
 
 #[async_trait::async_trait]
-impl RVPSAPI for Agent {
-    async fn verify_and_extract(&mut self, message: Message) -> Result<()> {
-        let message = serde_json::to_string(&message)?;
-        let req = tonic::Request::new(ReferenceValueRegisterRequest { message });
+impl RvpsApi for Agent {
+    async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+        let req = tonic::Request::new(ReferenceValueRegisterRequest {
+            message: message.to_string(),
+        });
         let _ = self
             .client
             .lock()
@@ -47,7 +42,7 @@ impl RVPSAPI for Agent {
         Ok(())
     }
 
-    async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
+    async fn get_digests(&self, name: &str) -> Result<Vec<String>> {
         let req = tonic::Request::new(ReferenceValueQueryRequest {
             name: name.to_string(),
         });

@@ -530,29 +530,23 @@ dependencies = [
  "async-trait",
  "base64 0.21.5",
  "cfg-if",
- "chrono",
  "futures",
- "jsonwebtoken",
- "jwt",
  "kbs-types",
  "lazy_static",
  "log",
  "openssl",
- "path-clean",
  "prost",
  "rand",
+ "reference-value-provider-service",
  "rsa 0.9.3",
  "rstest",
- "scroll",
  "serde",
  "serde_json",
  "serde_variant",
  "serial_test",
  "sha2",
  "shadow-rs",
- "sled",
- "strum 0.24.1",
- "strum_macros 0.24.3",
+ "strum 0.25.0",
  "testing_logger",
  "time",
  "tokio",
@@ -1040,10 +1034,8 @@ checksum = "4ea181bf566f71cb9a5d17a59e1871af638180a18fb0035c92ae62b705207123"
 dependencies = [
  "atty",
  "bitflags 1.3.2",
- "clap_derive 3.2.25",
  "clap_lex 0.2.4",
  "indexmap 1.9.3",
- "once_cell",
  "strsim 0.10.0",
  "termcolor",
  "textwrap 0.16.0",
@@ -1056,7 +1048,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac495e00dcec98c83465d5ad66c5c4fabd652fd6686e7c6269b117e729a6f17b"
 dependencies = [
  "clap_builder",
- "clap_derive 4.4.7",
+ "clap_derive",
 ]
 
 [[package]]
@@ -1069,19 +1061,6 @@ dependencies = [
  "anstyle",
  "clap_lex 0.6.0",
  "strsim 0.10.0",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae6371b8bdc8b7d3959e9cf7b22d4435ef3e79e138688421ec654acf8c81b008"
-dependencies = [
- "heck",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -2408,22 +2387,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jwt"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6204285f77fe7d9784db3fdc449ecce1a0114927a51d5a41c4c7a292011c015f"
-dependencies = [
- "base64 0.13.1",
- "crypto-common",
- "digest",
- "hmac",
- "openssl",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "jwt-simple"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3100,12 +3063,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
-name = "path-clean"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
-
-[[package]]
 name = "pathdiff"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3606,6 +3563,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "reference-value-provider-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert-json-diff",
+ "async-trait",
+ "base64 0.21.5",
+ "cfg-if",
+ "chrono",
+ "clap 4.4.7",
+ "env_logger 0.10.0",
+ "log",
+ "prost",
+ "rstest",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "shadow-rs",
+ "sled",
+ "strum 0.25.0",
+ "tempfile",
+ "tokio",
+ "tonic 0.8.3",
+ "tonic-build",
+]
+
+[[package]]
 name = "regex"
 version = "1.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3948,38 +3932,6 @@ name = "rustversion"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
-
-[[package]]
-name = "rvps"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "attestation-service",
- "clap 3.2.25",
- "env_logger 0.10.0",
- "log",
- "prost",
- "serde_json",
- "shadow-rs",
- "tokio",
- "tonic 0.8.3",
- "tonic-build",
-]
-
-[[package]]
-name = "rvps-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.2.25",
- "env_logger 0.10.0",
- "log",
- "prost",
- "shadow-rs",
- "tokio",
- "tonic 0.8.3",
- "tonic-build",
-]
 
 [[package]]
 name = "ryu"

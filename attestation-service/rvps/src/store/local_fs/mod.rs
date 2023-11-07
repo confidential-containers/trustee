@@ -9,7 +9,7 @@ use std::path::Path;
 
 use anyhow::*;
 
-use crate::rvps::ReferenceValue;
+use crate::ReferenceValue;
 
 use super::Store;
 
@@ -75,7 +75,9 @@ impl Store for LocalFs {
 mod tests {
     use serial_test::serial;
 
-    use crate::rvps::{store::local_fs::LocalFs, ReferenceValue, Store};
+    use crate::{ReferenceValue, Store};
+
+    use super::LocalFs;
 
     const KEY: &str = "test1";
 

@@ -28,9 +28,9 @@ impl Attest for Native {
 }
 
 impl Native {
-    pub fn new(config: &AsConfig) -> Result<Self> {
+    pub async fn new(config: &AsConfig) -> Result<Self> {
         Ok(Self {
-            inner: AttestationService::new(config.clone())?,
+            inner: AttestationService::new(config.clone()).await?,
         })
     }
 }

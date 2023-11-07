@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     let attestation_service = {
         cfg_if::cfg_if! {
             if #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))] {
-                AttestationService::new(&kbs_config.as_config.unwrap_or_default())?
+                AttestationService::new(&kbs_config.as_config.unwrap_or_default()).await?
             } else if #[cfg(feature = "coco-as-grpc")] {
                 AttestationService::new(&kbs_config.grpc_config.unwrap_or_default()).await?
             } else if #[cfg(feature = "amber-as")] {

@@ -37,14 +37,6 @@ async fn main() -> Result<()> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("rvps-addr")
-                .long("rvps-address")
-                .value_name("rvps-addr")
-                .help("Address of Reference Value Provider Service")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("config")
                 .long("config")
                 .value_name("config")
@@ -54,9 +46,8 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    let rvps_addr = matches.value_of("rvps-addr");
     let config_path = matches.value_of("config");
-    let server = server::start(matches.value_of("socket"), rvps_addr, config_path);
+    let server = server::start(matches.value_of("socket"), config_path);
     tokio::try_join!(server)?;
 
     Ok(())
