@@ -7,6 +7,7 @@
 
 use anyhow::Result;
 use serde::Deserialize;
+use strum::EnumString;
 
 use self::local_fs::LocalFs;
 
@@ -20,7 +21,6 @@ pub enum StoreType {
 }
 
 impl StoreType {
-    #[allow(dead_code)]
     pub fn to_store(&self) -> Result<Box<dyn Store + Send + Sync>> {
         match self {
             StoreType::LocalFs => Ok(Box::<LocalFs>::default() as Box<dyn Store + Send + Sync>),

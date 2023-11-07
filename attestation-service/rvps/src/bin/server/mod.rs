@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use attestation_service::rvps::{Core, Store, RVPSAPI};
 use log::{debug, info};
+use reference_value_provider_service::Core;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -41,7 +41,9 @@ impl ReferenceValueProviderService for RVPSServer {
             .await
             .get_digests(&request.name)
             .await
-            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?
+            .map(|rvs| rvs.hash_values)
+            .unwrap_or_default();
         let reference_value_results = serde_json::to_string(&rvs)
             .map_err(|e| Status::aborted(format!("Serde reference value: {e}")))?;
         info!("Reference values: {}", reference_value_results);
@@ -60,12 +62,10 @@ impl ReferenceValueProviderService for RVPSServer {
 
         debug!("registry reference value: {}", request.message);
 
-        let message = serde_json::from_str(&request.message)
-            .map_err(|e| Status::aborted(format!("Parse message: {e}")))?;
         self.rvps
             .lock()
             .await
-            .verify_and_extract(message)
+            .verify_and_extract(&request.message)
             .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
@@ -74,8 +74,8 @@ impl ReferenceValueProviderService for RVPSServer {
     }
 }
 
-pub async fn start(socket: SocketAddr, storage: Box<dyn Store + Send + Sync>) -> Result<()> {
-    let service = Core::new(storage);
+pub async fn start(socket: SocketAddr, storage: &str) -> Result<()> {
+    let service = Core::new(storage)?;
     let inner = Arc::new(Mutex::new(service));
     let rvps_server = RVPSServer::new(inner.clone());
 

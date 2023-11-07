@@ -6,18 +6,13 @@ FROM rust:latest as builder
 
 WORKDIR /usr/src/rvps
 
-RUN wget https://go.dev/dl/go1.20.2.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz
-
-ENV PATH="/usr/local/go/bin:${PATH}"
-
 COPY . .
 
 RUN apt-get update && apt-get install protobuf-compiler -y
 
-RUN cargo install --path attestation-service/bin/rvps
+RUN cargo install --bin rvps --path attestation-service/rvps
 
-FROM debian:bullseye-slim
+FROM debian
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/attestation-service"
 
