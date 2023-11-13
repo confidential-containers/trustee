@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use core::fmt;
+use log::{debug, warn};
 use qvl::{
     sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
@@ -252,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_parse_tdx_quote() {
-        let quote_bin = fs::read("../test_data/tdx_quote_4.dat").unwrap();
+        let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_tdx_quote(&quote_bin);
 
         assert!(quote.is_ok());
@@ -264,7 +265,7 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_verify_tdx_quote() {
-        let quote_bin = fs::read("../test_data/quote.dat").unwrap();
+        let quote_bin = fs::read("./test_data/quote.dat").unwrap();
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
         assert!(res.is_ok(), "error");
     }

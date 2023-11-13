@@ -6,8 +6,7 @@
 use anyhow::*;
 use serde_json::{Map, Value};
 use serde_variant::to_variant_name;
-
-use crate::verifier::TeeEvidenceParsedClaim;
+use verifier::TeeEvidenceParsedClaim;
 
 /// This funciton will transpose the following structured json
 /// ```json
