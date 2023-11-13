@@ -73,17 +73,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -p attestation-service -p as-types -p grpc-as -p rvps -p rvps-client
+          args: -p attestation-service -p grpc-as -p reference-value-provider-service
 
       - name: Run cargo fmt check
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: -p attestation-service -p as-types -p grpc-as -p rvps -p rvps-client --check
+          args: -p attestation-service -p grpc-as -p reference-value-provider-service --check
 
       - name: Run rust lint check
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           # We are getting error in generated code due to derive_partial_eq_without_eq check, so ignore it for now
-          args: -p attestation-service -p as-types -p grpc-as -p rvps -p rvps-client -- -D warnings -A clippy::derive_partial_eq_without_eq
+          args: -p attestation-service -p grpc-as -p reference-value-provider-service -- -D warnings -A clippy::derive_partial_eq_without_eq
