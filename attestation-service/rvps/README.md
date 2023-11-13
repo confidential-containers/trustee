@@ -16,7 +16,7 @@ RVPS contains the following componants:
 ## Message Flow
 
 The message flow of RVPS is like the following figure
-![](./rvps.svg)
+![](./diagrams/rvps.svg)
 
 ### Message
 
@@ -51,7 +51,9 @@ In this way, the RVPS can run as a single service. The [gRPC protos](../protos/r
 We can run using the following command
 
 ```bash
-cargo run --bin rvps --features="rvps-native rvps-grpc tokio/rt-multi-thread"
+git clone https://github.com/confidential-containers/kbs
+cd kbs/attestation-service/rvps
+make build && make install
 ```
 
 To by default listen to `localhost:50003` to wait for requests
@@ -61,7 +63,7 @@ To by default listen to `localhost:50003` to wait for requests
 We can build RVPS docker image
 
 ```bash
-docker build -t rvps -f Dockerfile.rvps .
+cd ../.. && docker build -t rvps -f attestation-service/rvps/Dockerfile .
 ```
 
 Run
@@ -71,25 +73,23 @@ docker run -d -p 50003:50003 rvps
 
 ## Integrate RVPS into AS
 
-### Native Mode
+### Native Mode (Not Recommend)
 
-In this way RVPS will work as a crate inside AS binary.
+In this way RVPS will work as a crate inside AS binary. If AS is built without feature `rvps-grpc`
+and with feature `rvps-builtin`, the RVPS will be built-in AS. 
 
-```bash
-cargo run --bin grpc-as
-```
-
-![](./rvps-native.svg)
+![](./diagrams/rvps-native.svg)
 
 ### gRPC Mode
 
-In this way AS will connect to a remote RVPS.
+In this way AS will connect to a remote RVPS. If AS is built with feature `rvps-grpc`, the remote RVPS
+will be connected to.
 
 ```bash
-cargo run --bin grpc-as -- --rvps-address $RVPS_ADDR
+cd ../attestation-service && cargo run --bin as-grpc -- --config-file config.json
 ```
 
-![](./rvps-grpc.svg)
+![](./diagrams/rvps-grpc.svg)
 
 ## Client Tool
 
@@ -99,12 +99,13 @@ A client tool helps to perform as a client to rvps. It can
 
 ### Quick guide to interact with RVPS
 
-Run RVPS
+Run RVPS in docker or the following commands
 ```bash
-cargo run --bin rvps -- --socket $RVPS_ADDR
+RVPS_ADDR=127.0.0.1:50003
+rvps --socket $RVPS_ADDR
 ```
 
-Edit an test message in [sample format](../attestation-service/src/rvps/extractors/extractor_modules/sample/README.md)
+Edit an test message in [sample format](./src/extractors/extractor_modules/sample/README.md)
 ```bash
 cat << EOF > sample
 {
@@ -130,7 +131,7 @@ EOF
 
 Register the provenance into RVPS
 ```bash
-cargo run --bin rvps-client -- register --path ./message --addr $RVPS_HTTP_ADDR
+rvps-tool register --path ./message --addr http://$RVPS_ADDR
 ```
 
 Then it will say something like
@@ -140,11 +141,11 @@ Then it will say something like
 
 Let's then query the reference value
 ```bash
-cargo run --bin rvps-client -- query --name test-binary-1 --addr $RVPS_HTTP_ADDR
+rvps-tool query --name test-binary-1 --addr http://$RVPS_ADDR
 ```
 
 Then the reference values will be output
 ```
 [2023-03-09T05:13:50Z INFO  rvps_client] Get reference values succeeded:
-     {"name":"test-binary-1","hash_values":["reference-value-1","reference-value-2"]}
+    ["reference-value-1","reference-value-2"]
 ```
