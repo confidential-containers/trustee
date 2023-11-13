@@ -19,7 +19,6 @@ pub mod policy_engine;
 pub mod rvps;
 mod token;
 mod utils;
-pub mod verifier;
 
 use crate::token::AttestationTokenBroker;
 
@@ -29,6 +28,8 @@ pub use kbs_types::{Attestation, Tee};
 use policy_engine::{PolicyEngine, SetPolicyInput};
 use rvps::{Message, RVPSAPI};
 use serde_json::json;
+use sha2::{Digest, Sha384};
+use verifier::{ReportData, InitDataHash};
 use std::collections::HashMap;
 
 #[cfg(any(feature = "rvps-grpc", feature = "rvps-native"))]
@@ -108,15 +109,44 @@ impl AttestationService {
             .map_err(|e| anyhow!("Cannot Set Policy: {:?}", e))
     }
 
+    fn accumulate_hash(materials: &[Vec<u8>]) -> Option<Vec<u8>> {
+        if materials.is_empty() {
+            return None;
+        }
+        let mut hasher = Sha384::new();
+        materials.iter().for_each(|m| hasher.update(m));
+        Some(hasher.finalize().to_vec())
+    }
+
     /// Evaluate Attestation Evidence.
     /// Issue an attestation results token which contain TCB status and TEE public key.
     pub async fn evaluate(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation")?;
-        let verifier = crate::verifier::to_verifier(&tee)?;
+        let verifier = verifier::to_verifier(&tee)?;
+
+        let report_data = Self::accumulate_hash(&[
+            nonce.as_bytes().to_vec(),
+            attestation.tee_pubkey.k_mod.as_bytes().to_vec(),
+            attestation.tee_pubkey.k_exp.as_bytes().to_vec(),
+        ]);
+
+        let report_data = match &report_data {
+            Some(value) => ReportData::Value(value),
+            None => ReportData::NotProvided,
+        };
 
         let claims_from_tee_evidence = verifier
-            .evaluate(nonce.to_string(), &attestation)
+            .evaluate(
+                attestation.tee_evidence.as_bytes(),
+                &report_data,
+                // We currently do not need to check the initdata hash in AS when using
+                // `verifier` crate.
+                //
+                // We will refactor the CoCo-AS' API to leverage the parameter.
+                // See https://github.com/confidential-containers/kbs/issues/177
+                &InitDataHash::NotProvided,
+            )
             .await
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 

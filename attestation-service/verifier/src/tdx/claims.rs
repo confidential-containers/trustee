@@ -43,9 +43,10 @@
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
+use log::{debug, warn};
 use serde_json::{Map, Value};
 
-use crate::verifier::TeeEvidenceParsedClaim;
+use crate::TeeEvidenceParsedClaim;
 
 use super::{
     eventlog::{CcEventLog, MeasuredEntity},
@@ -228,7 +229,7 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use serde_json::{json, to_value, Map, Value};
 
-    use crate::verifier::tdx::{eventlog::CcEventLog, quote::parse_tdx_quote};
+    use crate::tdx::{eventlog::CcEventLog, quote::parse_tdx_quote};
 
     use super::{generate_parsed_claim, parse_kernel_parameters};
 
@@ -241,8 +242,8 @@ mod tests {
 
     #[test]
     fn parse_tdx_claims() {
-        let quote_bin = std::fs::read("../test_data/tdx_quote_4.dat").expect("read quote failed");
-        let ccel_bin = std::fs::read("../test_data/CCEL_data").expect("read ccel failed");
+        let quote_bin = std::fs::read("./test_data/tdx_quote_4.dat").expect("read quote failed");
+        let ccel_bin = std::fs::read("./test_data/CCEL_data").expect("read ccel failed");
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
         let claims = generate_parsed_claim(quote, Some(ccel)).expect("parse claim failed");

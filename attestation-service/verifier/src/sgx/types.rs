@@ -7,37 +7,20 @@ use core::fmt;
 
 use scroll::Pread;
 
-pub type sgx_misc_select_t = u32;
-pub type sgx_prod_id_t = u16;
-pub type sgx_isv_svn_t = u16;
-pub type sgx_config_svn_t = u16;
-
-#[repr(C)]
-#[derive(Debug, Pread)]
-pub struct sgx_measurement_t {
-    pub m: [u8; 32],
-}
-
 #[derive(Debug, Pread)]
 pub struct sgx_attributes_t {
-    pub flags: u64,
-    pub xfrm: u64,
-}
-
-#[repr(C)]
-#[derive(Debug, Pread)]
-pub struct sgx_report_data_t {
-    pub d: [u8; 64],
+    pub flags: [u8; 8],
+    pub xfrm: [u8; 8],
 }
 
 #[repr(C)]
 #[derive(Debug, Pread)]
 pub struct sgx_report_body_t {
     /// (  0) Security Version of the CPU
-    pub cpu_svn: sgx_cpu_svn_t,
+    pub cpu_svn: [u8; 16],
 
     /// ( 16) Which fields defined in SSA.MISC
-    pub misc_select: sgx_misc_select_t,
+    pub misc_select: [u8; 4],
 
     /// ( 20)
     pub reserved1: [u8; 12],
@@ -49,13 +32,13 @@ pub struct sgx_report_body_t {
     pub attributes: sgx_attributes_t,
 
     /// ( 64) The value of the enclave's ENCLAVE measurement
-    pub mr_enclave: sgx_measurement_t,
+    pub mr_enclave: [u8; 32],
 
     /// ( 96)
     pub reserved2: [u8; 32],
 
     /// (128) The value of the enclave's SIGNER measurement
-    pub mr_signer: sgx_measurement_t,
+    pub mr_signer: [u8; 32],
 
     /// (160)
     pub reserved3: [u8; 32],
@@ -64,13 +47,13 @@ pub struct sgx_report_body_t {
     pub config_id: [u8; 64],
 
     /// (256) Product ID of the Enclave
-    pub isv_prod_id: sgx_prod_id_t,
+    pub isv_prod_id: [u8; 2],
 
     /// (258) Security Version of the Enclave
-    pub isv_svn: sgx_isv_svn_t,
+    pub isv_svn: [u8; 2],
 
     /// (260) CONFIGSVN
-    pub config_svn: sgx_config_svn_t,
+    pub config_svn: [u8; 2],
 
     /// (262)
     pub reserved4: [u8; 42],
@@ -79,33 +62,27 @@ pub struct sgx_report_body_t {
     pub isv_family_id: [u8; 16],
 
     /// (320) Data provided by the user
-    pub report_data: sgx_report_data_t,
-}
-
-#[repr(C)]
-#[derive(Debug, Pread)]
-pub struct sgx_cpu_svn_t {
-    pub svn: [u8; 16],
+    pub report_data: [u8; 64],
 }
 
 #[repr(C)]
 #[derive(Debug, Pread)]
 pub struct sgx_quote_header_t {
     ///< 0:  The version this quote structure.
-    pub version: u16,
+    pub version: [u8; 2],
 
     ///< 2:  sgx_attestation_algorithm_id_t.  Describes the type of
     /// signature in the signature_data[] field.
-    pub att_key_type: u16,
+    pub att_key_type: [u8; 2],
 
     ///< 4:  Optionally stores additional data associated with the att_key_type.
-    pub att_key_data_0: u32,
+    pub att_key_data_0: [u8; 4],
 
     ///< 8:  The ISV_SVN of the Quoting Enclave when the quote was generated.
-    pub qe_svn: sgx_isv_svn_t,
+    pub qe_svn: [u8; 2],
 
     ///< 10: The ISV_SVN of the PCE when the quote was generated.
-    pub pce_svn: sgx_isv_svn_t,
+    pub pce_svn: [u8; 2],
 
     ///< 12: Unique identifier of QE Vendor.
     pub vendor_id: [u8; 16],
@@ -173,15 +150,15 @@ REPORT BODY
 \treserved4:\t{:X?}
 \tisv_family_id:\t{:X?}
 \treport_data:\t{:X?}\n",
-            self.report_body.cpu_svn.svn,
+            self.report_body.cpu_svn,
             self.report_body.misc_select,
             self.report_body.reserved1,
             self.report_body.isv_ext_prod_id,
             self.report_body.attributes.flags,
             self.report_body.attributes.xfrm,
-            self.report_body.mr_enclave.m,
+            self.report_body.mr_enclave,
             self.report_body.reserved2,
-            self.report_body.mr_signer.m,
+            self.report_body.mr_signer,
             self.report_body.reserved3,
             self.report_body.config_id,
             self.report_body.isv_prod_id,
@@ -189,7 +166,7 @@ REPORT BODY
             self.report_body.config_svn,
             self.report_body.reserved4,
             self.report_body.isv_family_id,
-            self.report_body.report_data.d,
+            self.report_body.report_data,
         )?;
 
         write!(

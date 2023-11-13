@@ -4,35 +4,25 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "rvps-native", "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "csv-verifier", "cca-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
-sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
-az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
-snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
-csv-verifier = [ "openssl", "csv-rs", "codicon" ]
-cca-verifier = [ "cbor-diag", "veraison-apiclient" ]
+default = [ "rvps-grpc", "all-verifier" ]
+all-verifier = [ "verifier/all-verifier" ]
+tdx-verifier = [ "verifier/tdx-verifier" ]
+sgx-verifier = [ "verifier/sgx-verifier" ]
+az-snp-vtpm-verifier = [ "verifier/az-snp-vtpm-verifier" ]
+snp-verifier = [ "verifier/snp-verifier" ]
+csv-verifier = [ "verifier/csv-verifier" ]
+cca-verifier = [ "verifier/cca-verifier" ]
 
 rvps-native = []
 rvps-grpc = [ "tonic" ]
 
 [dependencies]
 anyhow.workspace = true
-asn1-rs = { version = "0.5.1", optional = true }
 async-trait.workspace = true
-az-snp-vtpm = { version = "0.3.0", default-features = false, features = ["verifier"], optional = true }
 base64 = "0.21"
-bincode = "1.3.3"
-byteorder = "1"
-cbor-diag = { version = "0.1.11", optional = true }
 cfg-if = "1.0.0"
 chrono = { version = "0.4.19", features = [ "serde" ] }
-codicon = { version = "3.0", optional = true }
-# TODO: change it to "0.1", once released.
-csv-rs = { git = "https://gitee.com/anolis/csv-rs", rev = "9d8882e", optional = true }
-eventlog-rs = { version = "0.1.3", optional = true }
 futures = "0.3.17"
-hex = "0.4.3"
 jsonwebtoken = "8"
 jwt = { version = "0.16.0", features = ["openssl"]}
 # TODO: change it to "0.5", once released.
@@ -48,21 +38,16 @@ scroll = { version = "0.11.0", default-features = false, features = ["derive"], 
 serde.workspace = true
 serde_json.workspace = true
 serde_variant = "0.1.2"
-sev = { version = "1.2.0", features = ["openssl", "snp"], optional = true }
-sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
 sha2.workspace = true
 shadow-rs.workspace = true
 sled = "0.34.7"
 strum = "0.24.0"
 strum_macros = "0.24.0"
-tempfile = "3.3.0"
 time = { version = "0.3.23", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
-veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
-ear = { git = "https://github.com/veraison/rust-ear", rev = "cc6ea53" }
-x509-parser = { version = "0.14.0", optional = true }
+verifier = { path = "../verifier", default-features = false }
 
 [build-dependencies]
 shadow-rs.workspace = true

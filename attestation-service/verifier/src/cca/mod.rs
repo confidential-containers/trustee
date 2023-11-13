@@ -10,9 +10,9 @@ use base64::Engine;
 use core::result::Result::Ok;
 use ear::Ear;
 use jsonwebtoken::{self as jwt};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use sha2::{Digest, Sha384};
 use std::str;
 use veraison_apiclient::*;
 
@@ -57,10 +57,29 @@ fn my_evidence_builder(
 impl Verifier for CCA {
     async fn evaluate(
         &self,
-        nonce: String,
-        attestation: &Attestation,
+        evidence: &[u8],
+        expected_report_data: &ReportData,
+        expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let evidence = serde_json::from_str::<CcaEvidence>(&attestation.tee_evidence)
+        let ReportData::Value(expected_report_data) = expected_report_data else {
+            bail!("CCA verifier must provide report data field!");
+        };
+
+        let mut expected_report_data = expected_report_data.to_vec();
+
+        match expected_report_data.len() {
+            0..=63 => {
+                warn!("The input report_data of CCA is shorter than 64 bytes, will be padded with '\\0'.");
+                expected_report_data.resize(64, b'\0');
+            }
+            64 => {}
+            _ => {
+                warn!("The input report_data of CCA is longer than 64 bytes, will be truncated to 64 bytes.");
+                expected_report_data.truncate(64);
+            }
+        };
+
+        let evidence = serde_json::from_slice::<CcaEvidence>(evidence)
             .context("Deserialize CCA Evidence failed.")?;
 
         let host_url =
@@ -81,20 +100,8 @@ impl Verifier for CCA {
             .with_new_session_url(api_endpoint)
             .build()?;
 
-        let mut hasher = Sha384::new();
-        hasher.update(&nonce);
-        hasher.update(&attestation.tee_pubkey.k_mod);
-        hasher.update(&attestation.tee_pubkey.k_exp);
-        let mut hash_of_nonce_pubkey = hasher.finalize().to_vec();
-        hash_of_nonce_pubkey.resize(64, 0);
-
-        log::info!(
-            "HASH(nonce||pubkey):\n\t{}\n",
-            hex::encode(&hash_of_nonce_pubkey)
-        );
-
         let token = evidence.token;
-        let n = Nonce::Value(hash_of_nonce_pubkey.clone());
+        let n = Nonce::Value(expected_report_data.clone());
         let result = match cr.run(n, my_evidence_builder, token.clone()).await {
             Err(e) => {
                 log::error!("Error: {}", e);
@@ -115,8 +122,12 @@ impl Verifier for CCA {
             .decode(ear_nonce.to_string())
             .context("decode nonce byte from ear")?;
 
-        if hash_of_nonce_pubkey != nonce_byte {
-            bail!("HASH(nonce||pubkey) is different from that in ear's session nonce");
+        if expected_report_data != nonce_byte {
+            bail!("report data is different from that in ear's session nonce");
+        }
+
+        if let InitDataHash::Value(_) = expected_init_data_hash {
+            warn!("CCA currently does not support parse `cca_realm_personalization_value`. Init data hash check skipped.");
         }
 
         // NOTE: The tcb returned is actually an empty `Evidence`, the code here is just a show case the parse of the CCA token
@@ -278,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_cca_generate_parsed_claim() {
-        let s = fs::read("../test_data/cca-claims.json").unwrap();
+        let s = fs::read("./test_data/cca-claims.json").unwrap();
         let evidence = String::from_utf8_lossy(&s);
         let tcb = serde_json::from_str::<Evidence>(&evidence).unwrap();
         let parsed_claim = cca_generate_parsed_claim(tcb);

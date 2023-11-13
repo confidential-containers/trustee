@@ -4,6 +4,7 @@ members = [
     "kbs/src/api",
     "kbs/tools/client",
     "attestation-service/attestation-service",
+    "attestation-service/verifier",
     "attestation-service/bin/rvps",
     "attestation-service/bin/grpc-as",
     "attestation-service/bin/rvps-client"

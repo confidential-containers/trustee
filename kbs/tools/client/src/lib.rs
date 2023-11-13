@@ -5,7 +5,6 @@
 //! KBS client SDK.
 
 use anyhow::{anyhow, bail, Result};
-use as_types::SetPolicyInput;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair, EdDSAKeyPairLike};
@@ -102,6 +101,13 @@ pub async fn get_resource_with_attestation(
         .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
         .await?;
     Ok(resource_bytes)
+}
+
+#[derive(Serialize)]
+pub struct SetPolicyInput {
+    pub r#type: String,
+    pub policy_id: String,
+    pub policy: String,
 }
 
 /// Set attestation policy

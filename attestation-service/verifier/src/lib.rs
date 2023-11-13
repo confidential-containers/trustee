@@ -1,6 +1,6 @@
 use anyhow::*;
 use async_trait::async_trait;
-use kbs_types::{Attestation, Tee};
+use kbs_types::Tee;
 
 pub mod sample;
 
@@ -22,7 +22,7 @@ pub mod csv;
 #[cfg(feature = "cca-verifier")]
 pub mod cca;
 
-pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {
@@ -30,7 +30,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
                     Ok(Box::<az_snp_vtpm::AzSnpVtpm>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    todo!()
+                    bail!("feature `az-snp-vtpm-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -39,7 +39,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "tdx-verifier")] {
                     Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    todo!()
+                    bail!("feature `tdx-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -48,7 +48,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "snp-verifier")] {
                     Ok(Box::<snp::Snp>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    bail!("SNP Verifier not enabled.")
+                    bail!("feature `snp-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -58,7 +58,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "sgx-verifier")] {
                     Ok(Box::<sgx::SgxVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    anyhow::bail!("feature `sgx-verifier` is not enabled!");
+                    bail!("feature `sgx-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -68,7 +68,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "csv-verifier")] {
                     Ok(Box::<csv::CsvVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    anyhow::bail!("feature `csv-verifier` is not enabled!");
+                    bail!("feature `csv-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -78,7 +78,7 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
                 if #[cfg(feature = "cca-verifier")] {
                     Ok(Box::<cca::CCA>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
-                    anyhow::bail!("feature `cca-verifier` is not enabled!");
+                    bail!("feature `cca-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
@@ -87,14 +87,46 @@ pub(crate) fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> 
 
 pub type TeeEvidenceParsedClaim = serde_json::Value;
 
+pub enum ReportData<'a> {
+    Value(&'a [u8]),
+    NotProvided,
+}
+
+pub enum InitDataHash<'a> {
+    Value(&'a [u8]),
+    NotProvided,
+}
+
 #[async_trait]
 pub trait Verifier {
-    /// Verify the hardware signature and report data in TEE quote.
-    /// If the verification is successful, a key-value pairs map of TCB status will be returned,
-    /// The policy engine of AS will carry out the verification of TCB status.
+    /// Verify the hardware signature.
+    ///
+    ///
+    /// `evidence` is a bytes slice of TEE evidence. Please note that
+    /// it might not be the raw attestation quote/evidence from hardware.
+    /// On some platforms they are wrapped by some extra context information.
+    /// Please see the concrete verifier implementations to check the format.
+    ///
+    ///
+    /// If `report_data` is given, the binding of the `report_data`
+    /// against the `report_data` inside the hardware evidence will
+    /// be checked. So do `init_data_hash`.
+    ///
+    ///
+    /// Semantically, a `report_data` is a byte slice given when
+    /// a hardware evidence is generated. The `report_data` will be
+    /// included inside the hardware evidence, thus its integrity will
+    /// be protected by the signature of the hardware.
+    ///
+    ///
+    /// A `init_data_hash` is another byte slice given when the TEE
+    /// instance is created. It is always provided by untrusted host,
+    /// but its integrity will be protected by the tee evidence.
+    /// Typical `init_data_hash` is `HOSTDATA` for SNP.
     async fn evaluate(
         &self,
-        nonce: String,
-        attestation: &Attestation,
+        evidence: &[u8],
+        expected_report_data: &ReportData,
+        expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim>;
 }
