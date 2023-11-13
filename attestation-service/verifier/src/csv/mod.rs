@@ -4,6 +4,7 @@
 //
 
 use anyhow::{Context, Result};
+use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -14,9 +15,7 @@ use csv_rs::{
     api::guest::{AttestationReport, Body},
     certs::{ca, csv, Verifiable},
 };
-use kbs_types::TeePubKey;
 use serde_json::json;
-use sha2::{Digest, Sha384};
 
 #[derive(Serialize, Deserialize)]
 struct CertificateChain {
@@ -27,7 +26,7 @@ struct CertificateChain {
 
 #[derive(Serialize, Deserialize)]
 struct CsvEvidence {
-    attestation_report: AttestationReport,
+    attestation_report: String,
     cert_chain: CertificateChain,
 }
 
@@ -40,58 +39,60 @@ pub struct CsvVerifier {}
 impl Verifier for CsvVerifier {
     async fn evaluate(
         &self,
-        nonce: String,
-        attestation: &Attestation,
+        evidence: &[u8],
+        expected_report_data: &ReportData,
+        expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_str::<CsvEvidence>(&attestation.tee_evidence)
-            .context("Deserialize Quote failed.")?;
+        let tee_evidence =
+            serde_json::from_slice::<CsvEvidence>(evidence).context("Deserialize Quote failed.")?;
 
-        verify_report_signature(&tee_evidence)?;
+        let attestation_report = base64::engine::general_purpose::STANDARD
+            .decode(tee_evidence.attestation_report)
+            .context("base64 decode attestation report")?;
 
-        let report_raw = restore_attestation_report(tee_evidence.attestation_report)?;
+        let attestation_report: AttestationReport = serde_json::from_slice(&attestation_report)
+            .context("parse attestation report failed")?;
+        verify_report_signature(&attestation_report, &tee_evidence.cert_chain)?;
 
-        let expected_report_data = calculate_expected_report_data(&nonce, &attestation.tee_pubkey);
-        if report_raw.body.report_data != expected_report_data {
-            bail!("Report Data Mismatch");
+        let report_raw = restore_attestation_report(attestation_report)?;
+
+        if let ReportData::Value(expected_report_data) = expected_report_data {
+            debug!("Check the binding of REPORT_DATA.");
+            if *expected_report_data != report_raw.body.report_data {
+                bail!("REPORT_DATA is different from that in CSV Quote");
+            }
+        }
+
+        if let InitDataHash::Value(_) = expected_init_data_hash {
+            warn!("CSV does not support init data hash mechanism. skip.");
         }
 
         parse_tee_evidence(&report_raw)
     }
 }
 
-fn calculate_expected_report_data(nonce: &String, tee_pubkey: &TeePubKey) -> [u8; 64] {
-    let mut hasher = Sha384::new();
-
-    hasher.update(nonce.as_bytes());
-    hasher.update(&tee_pubkey.k_mod);
-    hasher.update(&tee_pubkey.k_exp);
-
-    let partial_hash = hasher.finalize();
-
-    let mut hash = [0u8; 64];
-    hash[..48].copy_from_slice(&partial_hash);
-
-    hash
-}
-
-fn verify_report_signature(evidence: &CsvEvidence) -> Result<()> {
+fn verify_report_signature(
+    attestation_report: &AttestationReport,
+    cert_chain: &CertificateChain,
+) -> Result<()> {
     // Verify certificate chain
     let hrk = ca::Certificate::decode(&mut &HRK[..], ())?;
     (&hrk, &hrk)
         .verify()
         .context("HRK cert Signature validation failed.")?;
-    (&hrk, &evidence.cert_chain.hsk)
+    (&hrk, &cert_chain.hsk)
         .verify()
         .context("HSK cert Signature validation failed.")?;
-    (&evidence.cert_chain.hsk, &evidence.cert_chain.cek)
+    (&cert_chain.hsk, &cert_chain.cek)
         .verify()
         .context("CEK cert Signature validation failed.")?;
-    (&evidence.cert_chain.cek, &evidence.cert_chain.pek)
+    (&cert_chain.cek, &cert_chain.pek)
         .verify()
         .context("PEK cert Signature validation failed.")?;
 
     // Verify the TEE Hardware signature.
-    (&evidence.cert_chain.pek, &evidence.attestation_report)
+
+    (&cert_chain.pek, attestation_report)
         .verify()
         .context("Attestation Report Signature validation failed.")?;
 
