@@ -64,7 +64,7 @@ The main architecture of the Attestation Service is shown in the figure below:
 ```
 
 The Reference Value Provider Service supports different deploy mode,
-please refer to [the doc](./docs/rvps.md#run-mode) for more details.
+please refer to [the doc](./rvps/README.md#run-mode) for more details.
 
 ### Evidence format:
 
@@ -145,6 +145,6 @@ If the user does not need to customize his own policy, AS will use the [default 
 
 ## Reference Value Provider
 
-[Reference Value Provider Service](docs/rvps.md) (RVPS for short) is a module integrated in the AS to verify,
+[Reference Value Provider Service](rvps/README.md) (RVPS for short) is a module integrated in the AS to verify,
 store and provide reference values. RVPS receives and verifies the provenance input from the software supply chain,
 stores the measurement values, and generates reference value claims for the AS according to the evidence content when the AS verifies the evidence.
