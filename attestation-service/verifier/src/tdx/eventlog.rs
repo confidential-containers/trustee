@@ -4,7 +4,7 @@ use core::mem::size_of;
 use eventlog_rs::Eventlog;
 use std::convert::{TryFrom, TryInto};
 use std::string::ToString;
-use strum_macros::{Display, EnumString};
+use strum::{Display, EnumString};
 
 #[derive(Debug, Clone, EnumString, Display)]
 pub enum MeasuredEntity {

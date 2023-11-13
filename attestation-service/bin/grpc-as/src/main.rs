@@ -1,5 +1,8 @@
+use std::net::SocketAddr;
+
 use anyhow::Result;
-use clap::{App, Arg};
+use clap::Parser;
+use log::info;
 use shadow_rs::shadow;
 
 pub mod as_api {
@@ -14,6 +17,19 @@ shadow!(build);
 
 mod server;
 
+/// gRPC CoCo-AS command-line arguments.
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    /// Path to a CoCo-AS config file.
+    #[arg(short, long)]
+    pub config_file: Option<String>,
+
+    /// Socket that the server will listen on to accept requests.
+    #[arg(short, long, default_value = "127.0.0.1:3000")]
+    pub socket: SocketAddr,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -25,29 +41,11 @@ async fn main() -> Result<()> {
         build::BUILD_TIME
     );
 
-    let matches = App::new("grpc-attestation-service")
-        .version(version.as_str())
-        .long_version(version.as_str())
-        .author("Confidential-Containers Team")
-        .arg(
-            Arg::with_name("socket")
-                .long("socket")
-                .value_name("SOCKET")
-                .help("Socket that the server will listen on to accept requests.")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("config")
-                .long("config")
-                .value_name("config")
-                .help("File path of AS config (JSON), left blank to use default config")
-                .required(false)
-                .takes_value(true),
-        )
-        .get_matches();
+    info!("CoCo AS: {version}");
 
-    let config_path = matches.value_of("config");
-    let server = server::start(matches.value_of("socket"), config_path);
+    let cli = Cli::parse();
+
+    let server = server::start(cli.socket, cli.config_file);
     tokio::try_join!(server)?;
 
     Ok(())
