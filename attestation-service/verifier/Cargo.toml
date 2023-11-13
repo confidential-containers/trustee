@@ -38,8 +38,7 @@ serde.workspace = true
 serde_json.workspace = true
 sev = { version = "1.2.0", features = ["openssl", "snp"], optional = true }
 sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
-strum = "0.24.0"
-strum_macros = "0.24.0"
+strum.workspace = true
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
 ear = { git = "https://github.com/veraison/rust-ear", rev = "cc6ea53" }
 x509-parser = { version = "0.14.0", optional = true }
