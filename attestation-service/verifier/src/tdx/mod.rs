@@ -1,16 +1,14 @@
 use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
-extern crate serde;
-extern crate strum;
 
 use crate::tdx::claims::generate_parsed_claim;
 
-use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
 use base64::Engine;
 use eventlog::{CcEventLog, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote};
+use serde::{Deserialize, Serialize};
 
 mod claims;
 mod eventlog;

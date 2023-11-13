@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use attestation_service::policy_engine::SetPolicyInput;
 use attestation_service::{config::Config, AttestationService as Service, Tee};
 use log::{debug, info};
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -22,8 +23,6 @@ use crate::rvps_api::{
     ReferenceValueRegisterResponse,
 };
 
-const DEFAULT_SOCK: &str = "127.0.0.1:3000";
-
 fn to_kbs_tee(tee: GrpcTee) -> Tee {
     match tee {
         GrpcTee::Sev => Tee::Sev,
@@ -41,9 +40,9 @@ pub struct AttestationServer {
 }
 
 impl AttestationServer {
-    pub async fn new(config_path: Option<&str>) -> Result<Self> {
+    pub async fn new(config_path: Option<String>) -> Result<Self> {
         let config = match config_path {
-            Some(path) => Config::try_from(Path::new(path))
+            Some(path) => Config::try_from(Path::new(&path))
                 .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?,
             None => Config::default(),
         };
@@ -143,8 +142,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: Option<&str>, config_path: Option<&str>) -> Result<()> {
-    let socket = socket.unwrap_or(DEFAULT_SOCK).parse()?;
+pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()> {
     info!("Listen socket: {}", &socket);
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
