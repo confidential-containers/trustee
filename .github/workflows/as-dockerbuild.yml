@@ -32,4 +32,4 @@ jobs:
 
     - name: Build RVPS Container Image
       run: |
-        Docker_BUILDKIT=1 docker build -t rvps:latest . -f attestation-service/Dockerfile.rvps
+        Docker_BUILDKIT=1 docker build -t rvps:latest . -f attestation-service/rvps/Dockerfile
