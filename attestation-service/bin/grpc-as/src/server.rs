@@ -133,7 +133,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         self.write()
             .await
             .attestation_service
-            .registry_reference_value(message)
+            .register_reference_value(message)
             .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
