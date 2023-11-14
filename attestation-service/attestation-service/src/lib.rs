@@ -155,7 +155,7 @@ impl AttestationService {
     }
 
     /// Registry a new reference value
-    pub async fn registry_reference_value(&mut self, message: &str) -> Result<()> {
+    pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
         self.rvps.verify_and_extract(message).await
     }
 }
