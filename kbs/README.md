@@ -91,7 +91,7 @@ We provide a [quick start](./quickstart.md) guide to deploy KBS locally and cond
 
 ### Attestation Protocol
 The KBS implements and supports a simple, vendor and hardware-agnostic
-[implementation protocol](https://github.com/confidential-containers/kbs/blob/main/docs/kbs_attestation_protocol.md) to perform attestation.
+[implementation protocol](./docs/kbs_attestation_protocol.md) to perform attestation.
 
 ### API
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
