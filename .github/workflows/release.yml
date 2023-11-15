@@ -20,7 +20,7 @@ jobs:
           password: ${{secrets.GITHUB_TOKEN}}
       -
         name: Build and push attestation-service
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./attestation-service/Dockerfile.as
@@ -29,7 +29,7 @@ jobs:
           tags: ghcr.io/confidential-containers/attestation-service:latest, ghcr.io/confidential-containers/attestation-service:${{ github.ref_name }}
       -
         name: Build and push reference-value-provider-service
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./attestation-service/Dockerfile.rvps
