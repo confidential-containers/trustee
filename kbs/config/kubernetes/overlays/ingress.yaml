@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kbs
+  namespace: coco-tenant
+  annotations:
+    kubernetes.io/ingress.class: $KBS_INGRESS_CLASS
+spec:
+  rules:
+  - host: $KBS_INGRESS_HOST
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kbs
+            port:
+              number: 8080
