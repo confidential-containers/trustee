@@ -6,16 +6,16 @@ resources:
 - ../base
 
 patches:
-- target:
+- path: patch.yaml
+  target:
     group: apps
-    version: v1
     kind: Deployment
     name: kbs
-  path: patch.yaml
+    version: v1
 
-secretGenerator:
 # Store keys that KBS will release to workloads after attestation:
 # kbs:///reponame/workload_key/key.bin
-- name: keys
-  files:
+secretGenerator:
+- files:
   - key.bin
+  name: keys
