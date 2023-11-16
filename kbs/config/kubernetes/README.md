@@ -26,6 +26,24 @@ If you have more than one secret, copy them over to the `config/kubernetes/overl
 
 With the default configuration the keys will be stored in `reponame/workload_key/`. If you wish to define a different repository make necessary changes to the `overlays/patch.yaml` file.
 
+## Optional: Expose KBS using Ingress
+
+If you would like to expose KBS using Ingress, then run the following commands:
+
+> [!NOTE]
+> If you are using AKS then set the `KBS_INGRESS_CLASS` to `addon-http-application-routing` and get the `CLUSTER_SPECIFIC_DNS_ZONE` by following the instructions [here](https://learn.microsoft.com/en-us/azure/aks/http-application-routing#enable-http-application-routing).
+
+```bash
+export KBS_INGRESS_CLASS="REPLACE_ME"
+export CLUSTER_SPECIFIC_DNS_ZONE="REPLACE_ME"
+export KBS_INGRESS_HOST="kbs.${CLUSTER_SPECIFIC_DNS_ZONE}"
+
+pushd overlays
+envsubst <ingress.yaml >ingress.yaml.tmp && mv ingress.yaml.tmp ingress.yaml
+kustomize edit add resource ingress.yaml
+popd
+```
+
 ## Deploy KBS
 
 Deploy KBS by running the following command:
