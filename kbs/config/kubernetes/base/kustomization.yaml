@@ -12,14 +12,14 @@ resources:
 - deployment.yaml
 - service.yaml
 
-configMapGenerator:
 # KBS configuration.
-- name: kbs-config
-  files:
+configMapGenerator:
+- files:
   - kbs-config.toml
+  name: kbs-config
 
-secretGenerator:
 # KBS auth public key.
-- name: kbs-auth-public-key
-  files:
+secretGenerator:
+- files:
   - kbs.pem
+  name: kbs-auth-public-key
