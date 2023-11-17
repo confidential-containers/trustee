@@ -34,7 +34,7 @@ csv-rs = { git = "https://gitee.com/anolis/csv-rs", rev = "9d8882e", optional = 
 eventlog-rs = { version = "0.1.3", optional = true }
 futures = "0.3.17"
 hex = "0.4.3"
-jsonwebtoken = "8"
+jsonwebtoken = "9"
 jwt = { version = "0.16.0", features = ["openssl"]}
 # TODO: change it to "0.5", once released.
 kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
