@@ -10,6 +10,7 @@ use openssl::{
     ec::EcKey,
     ecdsa,
     pkey::{PKey, Public},
+    sha::sha384,
     x509,
 };
 use serde_json::json;
@@ -138,8 +139,11 @@ fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
     let sig = ecdsa::EcdsaSig::try_from(&evidence.attestation_report.signature)?;
     let data = &bincode::serialize(&evidence.attestation_report)?[..=0x29f];
 
-    sig.verify(data, EcKey::try_from(vcek.public_key()?)?.as_ref())
-        .context("Signature validation failed.")?;
+    let pub_key = EcKey::try_from(vcek.public_key()?)?;
+    let signed = sig.verify(&sha384(data), &pub_key)?;
+    if !signed {
+        return Err(anyhow!("Signature validation failed."));
+    }
 
     Ok(())
 }
@@ -314,5 +318,35 @@ mod tests {
 
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
         assert!(verify_cert_chain(&cert_table).is_err());
+    }
+
+    #[test]
+    fn check_report_signature() {
+        let vcek = include_bytes!("test-vcek.der").to_vec();
+        let bytes = include_bytes!("test-report.bin");
+        let attestation_report = bincode::deserialize::<AttestationReport>(bytes).unwrap();
+        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let evidence = SnpEvidence {
+            attestation_report,
+            cert_chain,
+        };
+        verify_report_signature(&evidence).unwrap();
+    }
+
+    #[test]
+    fn check_report_signature_failure() {
+        let vcek = include_bytes!("test-vcek.der").to_vec();
+        let mut bytes = include_bytes!("test-report.bin").to_vec();
+
+        // corrupt some byte
+        bytes[42] += 1;
+
+        let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
+        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let evidence = SnpEvidence {
+            attestation_report,
+            cert_chain,
+        };
+        verify_report_signature(&evidence).unwrap_err();
     }
 }
