@@ -20,7 +20,7 @@ use sha2::{Digest, Sha384};
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
-struct SnpEvidence {
+pub struct SnpEvidence {
     attestation_report: AttestationReport,
     cert_chain: Vec<CertTableEntry>,
 }
@@ -41,12 +41,13 @@ impl Verifier for Snp {
         nonce: String,
         attestation: &Attestation,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_str::<SnpEvidence>(&attestation.tee_evidence)
-            .context("Deserialize Quote failed.")?;
+        let SnpEvidence {
+            attestation_report: report,
+            cert_chain,
+        } = serde_json::from_str(&attestation.tee_evidence).context("Deserialize Quote failed.")?;
 
-        verify_report_signature(&tee_evidence)?;
+        verify_report_signature(&report, &cert_chain)?;
 
-        let report = tee_evidence.attestation_report;
         if report.version != 2 {
             return Err(anyhow!("Unexpected report version"));
         }
@@ -98,9 +99,12 @@ fn get_oid_int(vcek: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Res
     val_int.as_u8().context("Unexpected data size")
 }
 
-fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
+pub(crate) fn verify_report_signature(
+    report: &AttestationReport,
+    cert_chain: &[CertTableEntry],
+) -> Result<()> {
     // check cert chain
-    let vcek = verify_cert_chain(&evidence.cert_chain)?;
+    let vcek = verify_cert_chain(cert_chain)?;
 
     // OpenSSL bindings do not expose custom extensions
     // Parse the vcek using x509_parser
@@ -109,35 +113,31 @@ fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
 
     // verify vcek fields
     // chip id
-    if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != evidence.attestation_report.chip_id {
+    if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != report.chip_id {
         return Err(anyhow!("Chip ID mismatch"));
     }
 
     // tcb version
     // these integer extensions are 3 bytes with the last byte as the data
-    if get_oid_int(&parsed_vcek, UCODE_SPL_OID)?
-        != evidence.attestation_report.reported_tcb.microcode
-    {
+    if get_oid_int(&parsed_vcek, UCODE_SPL_OID)? != report.reported_tcb.microcode {
         return Err(anyhow!("Microcode verion mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, SNP_SPL_OID)? != evidence.attestation_report.reported_tcb.snp {
+    if get_oid_int(&parsed_vcek, SNP_SPL_OID)? != report.reported_tcb.snp {
         return Err(anyhow!("SNP verion mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, TEE_SPL_OID)? != evidence.attestation_report.reported_tcb.tee {
+    if get_oid_int(&parsed_vcek, TEE_SPL_OID)? != report.reported_tcb.tee {
         return Err(anyhow!("TEE verion mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, LOADER_SPL_OID)?
-        != evidence.attestation_report.reported_tcb.bootloader
-    {
+    if get_oid_int(&parsed_vcek, LOADER_SPL_OID)? != report.reported_tcb.bootloader {
         return Err(anyhow!("Boot loader verion mismatch"));
     }
 
     // verify report signature
-    let sig = ecdsa::EcdsaSig::try_from(&evidence.attestation_report.signature)?;
-    let data = &bincode::serialize(&evidence.attestation_report)?[..=0x29f];
+    let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
+    let data = &bincode::serialize(&report)?[..=0x29f];
 
     let pub_key = EcKey::try_from(vcek.public_key()?)?;
     let signed = sig.verify(&sha384(data), &pub_key)?;
@@ -148,7 +148,7 @@ fn verify_report_signature(evidence: &SnpEvidence) -> Result<()> {
     Ok(())
 }
 
-fn load_milan_cert_chain() -> Result<(x509::X509, x509::X509)> {
+pub fn load_milan_cert_chain() -> Result<(x509::X509, x509::X509)> {
     let certs = x509::X509::stack_from_pem(include_bytes!("milan_ask_ark.pem"))?;
     if certs.len() != 2 {
         bail!("Malformed Milan ASK/ARK");
@@ -197,7 +197,7 @@ fn calculate_expected_report_data(nonce: &String, tee_pubkey: &TeePubKey) -> [u8
     hash
 }
 
-fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
+pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     let claims_map = json!({
         // policy fields
         "policy_abi_major": format!("{}",report.policy.abi_major()),
@@ -326,11 +326,7 @@ mod tests {
         let bytes = include_bytes!("test-report.bin");
         let attestation_report = bincode::deserialize::<AttestationReport>(bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let evidence = SnpEvidence {
-            attestation_report,
-            cert_chain,
-        };
-        verify_report_signature(&evidence).unwrap();
+        verify_report_signature(&attestation_report, &cert_chain).unwrap();
     }
 
     #[test]
@@ -343,10 +339,6 @@ mod tests {
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let evidence = SnpEvidence {
-            attestation_report,
-            cert_chain,
-        };
-        verify_report_signature(&evidence).unwrap_err();
+        verify_report_signature(&attestation_report, &cert_chain).unwrap_err();
     }
 }
