@@ -208,14 +208,12 @@ fn parse_kernel_parameters(kernel_parameters: &[u8]) -> Result<Map<String, Value
             if item.is_empty() {
                 return None;
             }
-            let it: Vec<&str> = item.split('=').collect();
-            match it.len() {
-                1 => Some((it[0].to_owned(), Value::Null)),
-                2 => Some((it[0].to_owned(), Value::String(it[1].to_owned()))),
-                _ => {
-                    warn!("Illegal parameter: {item}");
-                    None
-                }
+
+            let it = item.split_once('=');
+
+            match it {
+                Some((k, v)) => Some((k.into(), v.into())),
+                None => Some((item.to_string(), Value::Null)),
             }
         })
         .collect();
@@ -348,15 +346,27 @@ mod tests {
                 ("c\"".to_string(), Value::Null),
                 ("params_with_spaces_do_not_work".to_string(), to_value("\"a").unwrap()),
     ].into_iter())))]
-    // Params containing equals in their values are silently dropped
-    #[case(b"a==", Ok(Map::from_iter(vec![].into_iter())))]
-    #[case(b"a==b", Ok(Map::from_iter(vec![].into_iter())))]
-    #[case(b"a==b=", Ok(Map::from_iter(vec![].into_iter())))]
-    #[case(b"a=b=c", Ok(Map::from_iter(vec![].into_iter())))]
-    #[case(b"a==b==c", Ok(Map::from_iter(vec![].into_iter())))]
-    #[case(b"module_foo=bar=baz,wibble_setting=2", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a==", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("=").unwrap())
+    ].into_iter())))]
+    #[case(b"a==b", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("=b").unwrap())
+    ].into_iter())))]
+    #[case(b"a==b=", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("=b=").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b=c", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b=c").unwrap())
+    ].into_iter())))]
+    #[case(b"a==b==c", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("=b==c").unwrap())
+    ].into_iter())))]
+    #[case(b"module_foo=bar=baz,wibble_setting=2", Ok(Map::from_iter(vec![
+                ("module_foo".to_string(), to_value("bar=baz,wibble_setting=2").unwrap())
+    ].into_iter())))]
     #[case(b"a=b c== d=e", Ok(Map::from_iter(vec![
                 ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("=").unwrap()),
                 ("d".to_string(), to_value("e").unwrap()),
     ].into_iter())))]
     fn test_parse_kernel_parameters(
