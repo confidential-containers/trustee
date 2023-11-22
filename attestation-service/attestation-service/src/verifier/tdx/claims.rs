@@ -225,12 +225,20 @@ fn parse_kernel_parameters(kernel_parameters: &[u8]) -> Result<Map<String, Value
 
 #[cfg(test)]
 mod tests {
+    use anyhow::{anyhow, Result};
     use assert_json_diff::assert_json_eq;
-    use serde_json::json;
+    use serde_json::{json, to_value, Map, Value};
 
     use crate::verifier::tdx::{eventlog::CcEventLog, quote::parse_tdx_quote};
 
-    use super::generate_parsed_claim;
+    use super::{generate_parsed_claim, parse_kernel_parameters};
+
+    use rstest::rstest;
+
+    // This is used with anyhow!() to create an actual error. However, we
+    // don't care about the type of error: it's simply used to denote that
+    // some sort of Err() occurred.
+    const SOME_ERROR: &str = "an error of some sort occurred";
 
     #[test]
     fn parse_tdx_claims() {
@@ -274,5 +282,138 @@ mod tests {
         });
 
         assert_json_eq!(expected, claims);
+    }
+
+    #[rstest]
+    #[trace]
+    #[case(b"", Ok(Map::from_iter(vec![].into_iter())))]
+    // Invalid UTF8 data
+    #[case(b"\xff\xff", Err(anyhow!(SOME_ERROR)))]
+    // Invalid UTF8 data
+    #[case(b"foo=\xff\xff", Err(anyhow!(SOME_ERROR)))]
+    #[case(b"name_only", Ok(Map::from_iter(vec![
+                ("name_only".to_string(), Value::Null)
+    ].into_iter())))]
+    #[case(b"a=b", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap())
+    ].into_iter())))]
+    #[case(b"\ra=b", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap())
+    ].into_iter())))]
+    #[case(b"\na=b", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\nc=d", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\n\nc=d", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\rc=d", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\r\rc=d", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\rc=d\ne=foo", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap()),
+                ("e".to_string(), to_value("foo").unwrap())
+    ].into_iter())))]
+    #[case(b"a=b\rc=d\nname_only\0e=foo", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("c".to_string(), to_value("d").unwrap()),
+                ("name_only".to_string(), Value::Null),
+                ("e".to_string(), to_value("foo").unwrap())
+    ].into_iter())))]
+    #[case(b"foo='bar'", Ok(Map::from_iter(vec![
+                ("foo".to_string(), to_value("'bar'").unwrap())
+    ].into_iter())))]
+    #[case(b"foo=\"bar\"", Ok(Map::from_iter(vec![
+                ("foo".to_string(), to_value("\"bar\"").unwrap())
+    ].into_iter())))]
+    // Spaces in parameter values are not supported.
+    // XXX: Note carefully the apostrophe values below!
+    #[case(b"params_with_spaces_do_not_work='a b c'", Ok(Map::from_iter(vec![
+                ("b".to_string(), Value::Null),
+                ("c'".to_string(), Value::Null),
+                ("params_with_spaces_do_not_work".to_string(), to_value("'a").unwrap()),
+    ].into_iter())))]
+    #[case(b"params_with_spaces_do_not_work=\"a b c\"", Ok(Map::from_iter(vec![
+                ("b".to_string(), Value::Null),
+                ("c\"".to_string(), Value::Null),
+                ("params_with_spaces_do_not_work".to_string(), to_value("\"a").unwrap()),
+    ].into_iter())))]
+    // Params containing equals in their values are silently dropped
+    #[case(b"a==", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a==b", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a==b=", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a=b=c", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a==b==c", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"module_foo=bar=baz,wibble_setting=2", Ok(Map::from_iter(vec![].into_iter())))]
+    #[case(b"a=b c== d=e", Ok(Map::from_iter(vec![
+                ("a".to_string(), to_value("b").unwrap()),
+                ("d".to_string(), to_value("e").unwrap()),
+    ].into_iter())))]
+    fn test_parse_kernel_parameters(
+        #[case] params: &[u8],
+        #[case] result: Result<Map<String, Value>>,
+    ) {
+        let msg = format!(
+            "test: params: {:?}, result: {result:?}",
+            String::from_utf8_lossy(&params.to_vec())
+        );
+
+        let actual_result = parse_kernel_parameters(params);
+
+        let msg = format!("{msg}: actual result: {actual_result:?}");
+
+        if std::env::var("DEBUG").is_ok() {
+            println!("DEBUG: {msg}");
+        }
+
+        if result.is_err() {
+            assert!(actual_result.is_err(), "{msg}");
+            return;
+        }
+
+        let expected_result_str = format!("{result:?}");
+        let actual_result_str = format!("{actual_result:?}");
+
+        assert_eq!(expected_result_str, actual_result_str, "{msg}");
+
+        let result = result.unwrap();
+        let actual_result = actual_result.unwrap();
+
+        let expected_count = result.len();
+
+        let actual_count = actual_result.len();
+
+        let msg = format!("{msg}: expected_count: {expected_count}, actual_count: {actual_count}");
+
+        assert_eq!(expected_count, actual_count, "{msg}");
+
+        for expected_kv in &result {
+            let key = expected_kv.0.to_string();
+            let value = expected_kv.1.to_string();
+
+            let value_found = actual_result.get(&key);
+
+            let kv_msg = format!("{msg}: key: {key:?}, value: {value:?}");
+
+            if std::env::var("DEBUG").is_ok() {
+                println!("DEBUG: {kv_msg}");
+            }
+
+            assert!(value_found.is_some(), "{kv_msg}");
+
+            let value_found = value_found.unwrap().to_string();
+
+            assert_eq!(value_found, value, "{kv_msg}");
+        }
     }
 }
