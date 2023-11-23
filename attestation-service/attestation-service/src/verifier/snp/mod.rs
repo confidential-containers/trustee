@@ -11,7 +11,7 @@ use openssl::{
     ecdsa,
     pkey::{PKey, Public},
     sha::sha384,
-    x509,
+    x509::{self, X509},
 };
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
@@ -104,7 +104,8 @@ pub(crate) fn verify_report_signature(
     cert_chain: &[CertTableEntry],
 ) -> Result<()> {
     // check cert chain
-    let vcek = verify_cert_chain(cert_chain)?;
+    let (ask, ark) = load_milan_cert_chain()?;
+    let vcek = verify_cert_chain(cert_chain, ask, ark)?;
 
     // OpenSSL bindings do not expose custom extensions
     // Parse the vcek using x509_parser
@@ -158,9 +159,13 @@ pub fn load_milan_cert_chain() -> Result<(x509::X509, x509::X509)> {
     Ok((certs[0].clone(), certs[1].clone()))
 }
 
-fn verify_cert_chain(cert_chain: &[CertTableEntry]) -> Result<x509::X509> {
-    let (ask, ark) = load_milan_cert_chain()?;
+fn verify_signature(cert: &X509, issuer: &X509, name: &str) -> Result<()> {
+    cert.verify(&(issuer.public_key()? as PKey<Public>))?
+        .then_some(())
+        .ok_or_else(|| anyhow!("Invalid {name} signature"))
+}
 
+fn verify_cert_chain(cert_chain: &[CertTableEntry], ask: X509, ark: X509) -> Result<X509> {
     let raw_vcek = cert_chain
         .iter()
         .find(|c| c.cert_type == CertType::VCEK)
@@ -168,16 +173,11 @@ fn verify_cert_chain(cert_chain: &[CertTableEntry]) -> Result<x509::X509> {
     let vcek = x509::X509::from_der(raw_vcek.data()).context("Failed to load VCEK")?;
 
     // ARK -> ARK
-    ark.verify(&(ark.public_key().unwrap() as PKey<Public>))
-        .context("Invalid ARK Signature")?;
-
+    verify_signature(&ark, &ark, "ARK")?;
     // ARK -> ASK
-    ask.verify(&(ark.public_key()? as PKey<Public>))
-        .context("Invalid ASK Signature")?;
-
+    verify_signature(&ask, &ark, "ASK")?;
     // ASK -> VCEK
-    vcek.verify(&(ask.public_key()? as PKey<Public>))
-        .context("Invalid VCEK Signature")?;
+    verify_signature(&vcek, &ask, "VCEK")?;
 
     Ok(vcek)
 }
@@ -306,18 +306,30 @@ mod tests {
     fn check_vcek_signature_verification() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        verify_cert_chain(&cert_table).unwrap();
+        let (ask, ark) = load_milan_cert_chain().unwrap();
+        verify_cert_chain(&cert_table, ask, ark).unwrap();
     }
 
     #[test]
     fn check_vcek_signature_failure() {
         let mut vcek = include_bytes!("test-vcek.der").to_vec();
 
-        // corrupt some byte
-        vcek[7] += 1;
+        // corrupt some byte, while it should remain a valid cert
+        vcek[42] += 1;
+        X509::from_der(&vcek).expect("failed to parse der");
 
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        assert!(verify_cert_chain(&cert_table).is_err());
+        let (ask, ark) = load_milan_cert_chain().unwrap();
+        verify_cert_chain(&cert_table, ask, ark).unwrap_err();
+    }
+
+    #[test]
+    fn check_milan_chain_signature_failure() {
+        let vcek = include_bytes!("test-vcek.der").to_vec();
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        // toggle ark <=> ask
+        let (ark, ask) = load_milan_cert_chain().unwrap();
+        verify_cert_chain(&cert_table, ask, ark).unwrap_err();
     }
 
     #[test]
