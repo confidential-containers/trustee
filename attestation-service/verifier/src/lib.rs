@@ -28,7 +28,8 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
-                    Ok(Box::<az_snp_vtpm::AzSnpVtpm>::default() as Box<dyn Verifier + Send + Sync>)
+                    let verifier = az_snp_vtpm::AzSnpVtpm::new()?;
+                    Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `az-snp-vtpm-verifier` is not enabled for `verifier` crate.")
                 }
@@ -46,7 +47,8 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
         Tee::Snp => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "snp-verifier")] {
-                    Ok(Box::<snp::Snp>::default() as Box<dyn Verifier + Send + Sync>)
+                    let verifier = snp::Snp::new()?;
+                    Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `snp-verifier` is not enabled for `verifier` crate.")
                 }

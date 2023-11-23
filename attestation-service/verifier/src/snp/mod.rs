@@ -16,6 +16,7 @@ use openssl::{
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
+use std::sync::OnceLock;
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
@@ -30,8 +31,43 @@ const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
 const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
 const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
 
-#[derive(Debug, Default)]
-pub struct Snp {}
+#[derive(Debug)]
+pub struct Snp {
+    vendor_certs: VendorCertificates,
+}
+
+pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
+    static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
+    MILAN_CERT_CHAIN.get_or_init(|| {
+        let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark.pem"))?;
+        if certs.len() != 2 {
+            bail!("Malformed Milan ASK/ARK");
+        }
+
+        // ask, ark
+        let vendor_certs = VendorCertificates {
+            ask: certs[0].clone(),
+            ark: certs[1].clone(),
+        };
+        Ok(vendor_certs)
+    })
+}
+
+impl Snp {
+    pub fn new() -> Result<Self> {
+        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
+            bail!("Failed to load Milan cert chain");
+        };
+        let vendor_certs = vendor_certs.clone();
+        Ok(Self { vendor_certs })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct VendorCertificates {
+    ask: X509,
+    ark: X509,
+}
 
 #[async_trait]
 impl Verifier for Snp {
@@ -46,7 +82,7 @@ impl Verifier for Snp {
             cert_chain,
         } = serde_json::from_slice(evidence).context("Deserialize Quote failed.")?;
 
-        verify_report_signature(&report, &cert_chain)?;
+        verify_report_signature(&report, &cert_chain, &self.vendor_certs)?;
 
         if report.version != 2 {
             return Err(anyhow!("Unexpected report version"));
@@ -114,9 +150,10 @@ fn get_oid_int(vcek: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Res
 pub(crate) fn verify_report_signature(
     report: &AttestationReport,
     cert_chain: &[CertTableEntry],
+    vendor_certs: &VendorCertificates,
 ) -> Result<()> {
     // check cert chain
-    let (ask, ark) = load_milan_cert_chain()?;
+    let VendorCertificates { ask, ark } = vendor_certs;
     let vcek = verify_cert_chain(cert_chain, ask, ark)?;
 
     // OpenSSL bindings do not expose custom extensions
@@ -161,23 +198,13 @@ pub(crate) fn verify_report_signature(
     Ok(())
 }
 
-pub fn load_milan_cert_chain() -> Result<(x509::X509, x509::X509)> {
-    let certs = x509::X509::stack_from_pem(include_bytes!("milan_ask_ark.pem"))?;
-    if certs.len() != 2 {
-        bail!("Malformed Milan ASK/ARK");
-    }
-
-    // ask, ark
-    Ok((certs[0].clone(), certs[1].clone()))
-}
-
 fn verify_signature(cert: &X509, issuer: &X509, name: &str) -> Result<()> {
     cert.verify(&(issuer.public_key()? as PKey<Public>))?
         .then_some(())
         .ok_or_else(|| anyhow!("Invalid {name} signature"))
 }
 
-fn verify_cert_chain(cert_chain: &[CertTableEntry], ask: X509, ark: X509) -> Result<X509> {
+fn verify_cert_chain(cert_chain: &[CertTableEntry], ask: &X509, ark: &X509) -> Result<X509> {
     let raw_vcek = cert_chain
         .iter()
         .find(|c| c.cert_type == CertType::VCEK)
@@ -185,11 +212,11 @@ fn verify_cert_chain(cert_chain: &[CertTableEntry], ask: X509, ark: X509) -> Res
     let vcek = x509::X509::from_der(raw_vcek.data()).context("Failed to load VCEK")?;
 
     // ARK -> ARK
-    verify_signature(&ark, &ark, "ARK")?;
+    verify_signature(ark, ark, "ARK")?;
     // ARK -> ASK
-    verify_signature(&ask, &ark, "ASK")?;
+    verify_signature(ask, ark, "ASK")?;
     // ASK -> VCEK
-    verify_signature(&vcek, &ask, "VCEK")?;
+    verify_signature(&vcek, ask, "VCEK")?;
 
     Ok(vcek)
 }
@@ -229,9 +256,9 @@ mod tests {
 
     #[test]
     fn check_milan_certificates() {
-        let (ask, ark) = load_milan_cert_chain().unwrap();
-        assert_eq!(get_common_name(&ark).unwrap(), "ARK-Milan");
-        assert_eq!(get_common_name(&ask).unwrap(), "SEV-Milan");
+        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
+        assert_eq!(get_common_name(ark).unwrap(), "ARK-Milan");
+        assert_eq!(get_common_name(ask).unwrap(), "SEV-Milan");
 
         assert!(ark
             .verify(&(ark.public_key().unwrap() as PKey<Public>))
@@ -303,7 +330,7 @@ mod tests {
     fn check_vcek_signature_verification() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let (ask, ark) = load_milan_cert_chain().unwrap();
+        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         verify_cert_chain(&cert_table, ask, ark).unwrap();
     }
 
@@ -316,7 +343,7 @@ mod tests {
         X509::from_der(&vcek).expect("failed to parse der");
 
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let (ask, ark) = load_milan_cert_chain().unwrap();
+        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         verify_cert_chain(&cert_table, ask, ark).unwrap_err();
     }
 
@@ -324,9 +351,9 @@ mod tests {
     fn check_milan_chain_signature_failure() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         // toggle ark <=> ask
-        let (ark, ask) = load_milan_cert_chain().unwrap();
-        verify_cert_chain(&cert_table, ask, ark).unwrap_err();
+        verify_cert_chain(&cert_table, ark, ask).unwrap_err();
     }
 
     #[test]
@@ -335,7 +362,8 @@ mod tests {
         let bytes = include_bytes!("test-report.bin");
         let attestation_report = bincode::deserialize::<AttestationReport>(bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        verify_report_signature(&attestation_report, &cert_chain).unwrap();
+        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
     }
 
     #[test]
@@ -348,6 +376,7 @@ mod tests {
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        verify_report_signature(&attestation_report, &cert_chain).unwrap_err();
+        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
     }
 }
