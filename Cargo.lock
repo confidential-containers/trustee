@@ -531,6 +531,7 @@ dependencies = [
  "base64 0.21.5",
  "cfg-if",
  "futures",
+ "hex",
  "kbs-types",
  "lazy_static",
  "log",
