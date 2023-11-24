@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
 use attestation_service::policy_engine::SetPolicyInput;
+use attestation_service::HashAlgorithm;
 use attestation_service::{config::Config, AttestationService as Service, Tee};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use log::{debug, info};
 use std::net::SocketAddr;
 use std::path::Path;
@@ -32,6 +35,7 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
         GrpcTee::Csv => Tee::Csv,
         GrpcTee::Sample => Tee::Sample,
         GrpcTee::AzSnpVtpm => Tee::AzSnpVtpm,
+        GrpcTee::Cca => Tee::Cca,
     }
 }
 
@@ -86,20 +90,95 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
         debug!("Evidence: {}", &request.evidence);
 
+        let tee = to_kbs_tee(
+            GrpcTee::from_i32(request.tee)
+                .ok_or_else(|| Status::aborted(format!("Invalid TEE {}", request.tee)))?,
+        );
+        let evidence = URL_SAFE_NO_PAD
+            .decode(request.evidence)
+            .map_err(|e| Status::aborted(format!("Illegal input Evidence: {e}")))?;
+
+        let runtime_data = match request.runtime_data {
+            Some(runtime_data) => match runtime_data {
+                crate::as_api::attestation_request::RuntimeData::RawRuntimeData(raw) => {
+                    let raw_runtime = URL_SAFE_NO_PAD
+                        .decode(raw)
+                        .map_err(|e| Status::aborted(format!("base64 decode runtime data: {e}")))?;
+                    Some(attestation_service::Data::Raw(raw_runtime))
+                }
+                crate::as_api::attestation_request::RuntimeData::StructuredRuntimeData(
+                    structured,
+                ) => {
+                    let structured = serde_json::from_str(&structured).map_err(|e| {
+                        Status::aborted(format!("parse structured runtime data: {e}"))
+                    })?;
+                    Some(attestation_service::Data::Structured(structured))
+                }
+            },
+            None => None,
+        };
+
+        let init_data = match request.init_data {
+            Some(init_data) => match init_data {
+                crate::as_api::attestation_request::InitData::RawInitData(raw) => {
+                    let raw_init = URL_SAFE_NO_PAD
+                        .decode(raw)
+                        .map_err(|e| Status::aborted(format!("base64 decode init data: {e}")))?;
+                    Some(attestation_service::Data::Raw(raw_init))
+                }
+                crate::as_api::attestation_request::InitData::StructuredInitData(structured) => {
+                    let structured = serde_json::from_str(&structured)
+                        .map_err(|e| Status::aborted(format!("parse structured init data: {e}")))?;
+                    Some(attestation_service::Data::Structured(structured))
+                }
+            },
+            None => None,
+        };
+
+        let runtime_data_hash_algorithm = match request.runtime_data_hash_algorithm.is_empty() {
+            false => {
+                HashAlgorithm::try_from(&request.runtime_data_hash_algorithm[..]).map_err(|e| {
+                    Status::aborted(format!("parse runtime data HashAlgorithm failed: {e}"))
+                })?
+            }
+            true => {
+                info!("No Runtime Data Hash Algorithm provided, use `sha384` by default.");
+                HashAlgorithm::Sha384
+            }
+        };
+
+        let init_data_hash_algorithm = match request.init_data_hash_algorithm.is_empty() {
+            false => {
+                HashAlgorithm::try_from(&request.init_data_hash_algorithm[..]).map_err(|e| {
+                    Status::aborted(format!("parse init data HashAlgorithm failed: {e}"))
+                })?
+            }
+            true => {
+                info!("No Init Data Hash Algorithm provided, use `sha384` by default.");
+                HashAlgorithm::Sha384
+            }
+        };
+
+        let policy_ids = match request.policy_ids.is_empty() {
+            true => vec!["default".into()],
+            false => request.policy_ids,
+        };
+
         let attestation_token = self
             .read()
             .await
             .attestation_service
             .evaluate(
-                to_kbs_tee(
-                    GrpcTee::from_i32(request.tee)
-                        .ok_or_else(|| Status::aborted(format!("Invalid TEE {}", request.tee)))?,
-                ),
-                &request.nonce,
-                &request.evidence,
+                evidence,
+                tee,
+                runtime_data,
+                runtime_data_hash_algorithm,
+                init_data,
+                init_data_hash_algorithm,
+                policy_ids,
             )
             .await
-            .map_err(|e| Status::aborted(format!("Attestation: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Attestation: {e:?}")))?;
 
         debug!("Attestation Token: {}", &attestation_token);
 
