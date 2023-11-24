@@ -24,6 +24,7 @@ async-trait.workspace = true
 base64 = "0.21"
 cfg-if = "1.0.0"
 futures = "0.3.17"
+hex.workspace = true
 # TODO: change it to "0.5", once released.
 kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
 lazy_static = "1.4.0"
@@ -51,6 +52,7 @@ tonic-build.workspace = true
 
 [dev-dependencies]
 assert-json-diff.workspace = true
+hex.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
 sha2.workspace = true
