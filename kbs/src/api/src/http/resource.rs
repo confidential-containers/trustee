@@ -47,6 +47,22 @@ pub(crate) async fn get_resource(
     })?;
 
     let pkey_value = claims
+        .get("customized_claims")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `customized_claims` in the attestation claims thus no `tee-pubkey`",
+        )))?
+        .as_object()
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "`customized_claims` should be a JSON map",
+        )))?
+        .get("runtime_data")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `runtime_data` in the attestation claims thus no `tee-pubkey`",
+        )))?
+        .as_object()
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "`runtime_data` should be a JSON map",
+        )))?
         .get("tee-pubkey")
         .ok_or(Error::AttestationClaimsParseFailed(String::from(
             "No `tee-pubkey` in the attestation claims",
