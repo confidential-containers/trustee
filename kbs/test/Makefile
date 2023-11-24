@@ -25,6 +25,7 @@ install-dependencies:
 	sudo apt-get install -y \
 		build-essential \
 		clang \
+		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify-dev \
 		libtdx-attest-dev \
 		libtss2-dev \
