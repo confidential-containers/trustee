@@ -13,7 +13,6 @@ fn real_main() -> Result<(), String> {
             &format!("{out_dir}/libcgo.a"),
             "-buildmode=c-archive",
             "opa.go",
-            "intoto.go",
         ])
         .current_dir(cgo_dir)
         .output()

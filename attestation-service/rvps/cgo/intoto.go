@@ -83,3 +83,5 @@ func verifyGo(
 
 	return C.CString(string(jsonBytes))
 }
+
+func main() {}

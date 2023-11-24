@@ -2,10 +2,7 @@ module cgo
 
 go 1.20
 
-require (
-	github.com/in-toto/in-toto-golang v0.9.0
-	github.com/open-policy-agent/opa v0.56.0
-)
+require github.com/in-toto/in-toto-golang v0.9.0
 
 require (
 	github.com/secure-systems-lab/go-securesystemslib v0.7.0 // indirect
