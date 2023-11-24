@@ -554,7 +554,6 @@ dependencies = [
  "tonic-build",
  "uuid",
  "verifier",
- "walkdir",
 ]
 
 [[package]]
@@ -3063,6 +3062,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
+name = "path-clean"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
+
+[[package]]
 name = "pathdiff"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3575,11 +3580,13 @@ dependencies = [
  "clap 4.4.7",
  "env_logger 0.10.0",
  "log",
+ "path-clean",
  "prost",
  "rstest",
  "serde",
  "serde_json",
  "serial_test",
+ "sha2",
  "shadow-rs",
  "sled",
  "strum",
@@ -3587,6 +3594,7 @@ dependencies = [
  "tokio",
  "tonic 0.8.3",
  "tonic-build",
+ "walkdir",
 ]
 
 [[package]]

@@ -23,12 +23,13 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use base64::{engine::general_purpose::STANDARD, Engine};
+use chrono::{DateTime, Utc};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::rvps::ReferenceValue;
+use crate::ReferenceValue;
 
 use super::Extractor;
 
@@ -96,7 +97,7 @@ impl Extractor for InTotoExtractor {
             let (file_path, dir) = get_file_path(&tempdir_str[..], relative_path);
             create_dir_all(dir)?;
             let mut file = File::create(&file_path)?;
-            let bytes = base64::decode(content_base64)?;
+            let bytes = STANDARD.decode(content_base64)?;
             file.write_all(&bytes)?;
 
             file_paths.push(file_path);
@@ -146,7 +147,7 @@ impl Extractor for InTotoExtractor {
             }
 
             let layout = match layout_base64 {
-                Value::String(inner) => base64::decode(inner),
+                Value::String(inner) => STANDARD.decode(inner),
                 _ => bail!("Unexpected payload, expected a base64 encoded string"),
             }?;
 
@@ -154,9 +155,8 @@ impl Extractor for InTotoExtractor {
             let expire_str = layout["expires"]
                 .as_str()
                 .ok_or_else(|| anyhow!("failed to get expired time"))?;
-            let ndt = NaiveDateTime::parse_from_str(expire_str, "%Y-%m-%dT%H:%M:%SZ")?;
 
-            DateTime::<Utc>::from_utc(ndt, Utc)
+            expire_str.parse::<DateTime<Utc>>()?
         };
 
         env::set_current_dir(tempdir_path)?;
@@ -204,24 +204,26 @@ fn get_file_path(tempdir: &str, relative_file_path: &str) -> (String, String) {
     abs_path.push('/');
     abs_path.push_str(relative_file_path);
     let abs_path = path_clean::clean(&abs_path[..]);
+    let abs_path = abs_path.to_string_lossy();
     let dir = abs_path
         .rsplit_once('/')
         .unwrap_or((&abs_path[..], ""))
         .0
         .to_string();
-    (abs_path, dir)
+    (abs_path.to_string(), dir)
 }
 
 #[cfg(test)]
 pub mod test {
     use std::{collections::HashMap, fs};
 
+    use base64::{engine::general_purpose::STANDARD, Engine};
     use chrono::{TimeZone, Utc};
     use serial_test::serial;
     use sha2::{Digest, Sha256};
     use walkdir::WalkDir;
 
-    use crate::rvps::{extractors::extractor_modules::Extractor, ReferenceValue};
+    use crate::{extractors::extractor_modules::Extractor, ReferenceValue};
 
     use super::{InTotoExtractor, Provenance, INTOTO_VERSION};
 
@@ -254,7 +256,7 @@ pub mod test {
                 .strip_prefix("tests/in-toto/")
                 .expect("failed to strip prefix")
                 .into();
-            let content_base64 = base64::encode(content);
+            let content_base64 = STANDARD.encode(content);
 
             files.insert(file_name, content_base64);
         }

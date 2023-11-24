@@ -8,6 +8,9 @@ default = [ "bin" ]
 # Used to build rvps binary
 bin = [ "clap", "env_logger", "prost", "shadow-rs", "tokio", "tonic" ]
 
+# Support in-toto provenance (not ready)
+in-toto =[ "path-clean", "sha2" ]
+
 [[bin]]
 name = "rvps"
 required-features = [ "bin" ]
@@ -25,12 +28,15 @@ chrono = { workspace = true, features = [ "serde" ] }
 clap = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 log.workspace = true
+path-clean = { version = "1.0.1", optional = true }
 prost = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
+sha2 = { workspace = true, optional = true }
 shadow-rs = { workspace = true, optional = true }
 sled = "0.34.7"
 strum.workspace = true
+tempfile.workspace = true
 tokio = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
 
@@ -42,5 +48,5 @@ tonic-build.workspace = true
 assert-json-diff.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
-tempfile = "3.3.0"
 tokio.workspace = true
+walkdir = "2.3.2"
