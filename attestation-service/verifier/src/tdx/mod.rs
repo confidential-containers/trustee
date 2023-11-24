@@ -10,9 +10,9 @@ use eventlog::{CcEventLog, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote};
 use serde::{Deserialize, Serialize};
 
-mod claims;
+pub(crate) mod claims;
 mod eventlog;
-mod quote;
+pub(crate) mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TdxEvidence {

@@ -31,6 +31,7 @@ pub const COCO_AS_HASH_ALGORITHM: &str = "sha384";
 fn to_grpc_tee(tee: Tee) -> GrpcTee {
     match tee {
         Tee::AzSnpVtpm => GrpcTee::AzSnpVtpm,
+        Tee::AzTdxVtpm => GrpcTee::AzTdxVtpm,
         Tee::Cca => GrpcTee::Cca,
         Tee::Csv => GrpcTee::Csv,
         Tee::Sample => GrpcTee::Sample,
@@ -38,7 +39,6 @@ fn to_grpc_tee(tee: Tee) -> GrpcTee {
         Tee::Sgx => GrpcTee::Sgx,
         Tee::Snp => GrpcTee::Snp,
         Tee::Tdx => GrpcTee::Tdx,
-        Tee::AzTdxVtpm => GrpcTee::AzTdxVtpm,
     }
 }
 

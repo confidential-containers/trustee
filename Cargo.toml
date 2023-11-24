@@ -28,7 +28,7 @@ chrono = "0.4.19"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.10.0"
 hex = "0.4.3"
-kbs-types = "0.5"
+kbs-types = "0.5.3"
 log = "0.4.17"
 prost = "0.11.0"
 rstest = "0.18.1"

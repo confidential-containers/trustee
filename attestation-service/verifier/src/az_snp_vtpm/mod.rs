@@ -125,16 +125,16 @@ fn verify_snp_report(
 mod tests {
     use super::*;
 
-    const REPORT: &[u8; 2048] = include_bytes!("../../test_data/az-hcl-data.bin");
-    const SIGNATURE: &[u8; 256] = include_bytes!("../../test_data/az-vtpm-quote-sig.bin");
-    const MESSAGE: &[u8; 122] = include_bytes!("../../test_data/az-vtpm-quote-msg.bin");
+    const REPORT: &[u8; 2048] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
+    const SIGNATURE: &[u8; 256] = include_bytes!("../../test_data/az-snp-vtpm/tpm-quote.sig");
+    const MESSAGE: &[u8; 122] = include_bytes!("../../test_data/az-snp-vtpm/tpm-quote.msg");
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
 
     #[test]
     fn test_verify_snp_report() {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
-        let vcek = Vcek::from_pem(include_str!("../../test_data/az-vcek.pem")).unwrap();
+        let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_snp_report(&snp_report, &vcek, vendor_certs).unwrap();
     }
@@ -146,7 +146,7 @@ mod tests {
         wrong_report[0x00b0] = 0;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
-        let vcek = Vcek::from_pem(include_str!("../../test_data/az-vcek.pem")).unwrap();
+        let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_snp_report(&snp_report, &vcek, vendor_certs).unwrap_err();
     }
@@ -197,7 +197,7 @@ mod tests {
             signature: SIGNATURE.to_vec(),
             message: MESSAGE.to_vec(),
         };
-        let report = include_bytes!("../../test_data/az-hcl-data.bin");
+        let report = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
         let hcl_report = HclReport::new(report.to_vec()).unwrap();
         let mut report_data = REPORT_DATA.to_vec();
         report_data.reverse();

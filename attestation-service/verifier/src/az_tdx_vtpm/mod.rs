@@ -1,0 +1,162 @@
+// Copyright (c) Microsoft Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+use super::tdx::claims::generate_parsed_claim;
+use super::tdx::quote::{ecdsa_quote_verification, parse_tdx_quote, Quote as TdQuote};
+use super::{TeeEvidenceParsedClaim, Verifier};
+use crate::{InitDataHash, ReportData};
+use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
+use az_tdx_vtpm::hcl::HclReport;
+use az_tdx_vtpm::vtpm::Quote as TpmQuote;
+use log::{debug, warn};
+use openssl::pkey::PKey;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct Evidence {
+    tpm_quote: TpmQuote,
+    hcl_report: Vec<u8>,
+    td_quote: Vec<u8>,
+}
+
+#[derive(Default)]
+pub struct AzTdxVtpm;
+
+#[async_trait]
+impl Verifier for AzTdxVtpm {
+    /// The following verification steps are performed:
+    /// 1. TPM Quote has been signed by AK included in the HCL variable data
+    /// 2. Attestation nonce matches TPM Quote nonce
+    /// 3. TD Quote is genuine
+    /// 4. TD Report's report_data field matches hashed HCL variable data
+    async fn evaluate(
+        &self,
+        evidence: &[u8],
+        expected_report_data: &ReportData,
+        expected_init_data_hash: &InitDataHash,
+    ) -> Result<TeeEvidenceParsedClaim> {
+        let ReportData::Value(expected_report_data) = expected_report_data else {
+            bail!("unexpected empty report data");
+        };
+
+        if let InitDataHash::Value(_) = expected_init_data_hash {
+            warn!("Azure TDX vTPM verifier does not support verify init data hash, will ignore the input `init_data_hash`");
+        }
+
+        let evidence = serde_json::from_slice::<Evidence>(evidence)
+            .context("Failed to deserialize Azure vTPM TDX evidence")?;
+
+        let hcl_report = HclReport::new(evidence.hcl_report)?;
+        verify_tpm_signature(&evidence.tpm_quote, &hcl_report)?;
+
+        verify_tpm_nonce(&evidence.tpm_quote, expected_report_data)?;
+
+        ecdsa_quote_verification(&evidence.td_quote).await?;
+        let td_quote = parse_tdx_quote(&evidence.td_quote)?;
+
+        verify_hcl_var_data(&hcl_report, &td_quote)?;
+
+        let claim = generate_parsed_claim(td_quote, None)?;
+        Ok(claim)
+    }
+}
+
+fn verify_hcl_var_data(hcl_report: &HclReport, td_quote: &TdQuote) -> Result<()> {
+    let var_data_hash = hcl_report.var_data_sha256();
+    if var_data_hash != td_quote.report_body.report_data[..32] {
+        bail!("TDX Quote report data mismatch");
+    }
+    debug!("Report data verification completed successfully.");
+    Ok(())
+}
+
+fn verify_tpm_signature(quote: &TpmQuote, hcl_report: &HclReport) -> Result<()> {
+    let ak_pub = hcl_report.ak_pub().context("Failed to get AKpub")?;
+    let der = ak_pub.key.try_to_der()?;
+    let ak_pub = PKey::public_key_from_der(&der).context("Failed to parse AKpub")?;
+
+    quote
+        .verify_signature(&ak_pub)
+        .context("Failed to verify vTPM quote")?;
+    Ok(())
+}
+
+fn verify_tpm_nonce(quote: &TpmQuote, report_data: &[u8]) -> Result<()> {
+    let nonce = quote.nonce()?;
+    if nonce != report_data[..] {
+        bail!("TPM quote nonce doesn't match expected report_data");
+    }
+    debug!("TPM report_data verification completed successfully");
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-tdx-vtpm/hcl-report.bin");
+    const SIGNATURE: &[u8; 256] = include_bytes!("../../test_data/az-tdx-vtpm/tpm-quote.sig");
+    const MESSAGE: &[u8; 126] = include_bytes!("../../test_data/az-tdx-vtpm/tpm-quote.msg");
+    const TD_QUOTE: &[u8; 5006] = include_bytes!("../../test_data/az-tdx-vtpm/td-quote.bin");
+
+    #[test]
+    fn test_verify_hcl_var_data() {
+        let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
+        let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
+        verify_hcl_var_data(&hcl_report, &td_quote).unwrap();
+    }
+
+    #[test]
+    fn test_verify_hcl_var_data_failure() {
+        let mut wrong_report = REPORT.clone();
+        wrong_report[0x0880] += 1;
+        let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
+        let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
+        verify_hcl_var_data(&hcl_report, &td_quote).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_tpm_signature() {
+        let quote = TpmQuote {
+            signature: SIGNATURE.to_vec(),
+            message: MESSAGE.to_vec(),
+        };
+        let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
+        verify_tpm_signature(&quote, &hcl_report).unwrap();
+    }
+
+    #[test]
+    fn test_verify_tpm_signature_failure() {
+        let mut wrong_message = MESSAGE.clone();
+        wrong_message.reverse();
+        let wrong_quote = TpmQuote {
+            signature: SIGNATURE.to_vec(),
+            message: wrong_message.to_vec(),
+        };
+        let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
+        verify_tpm_signature(&wrong_quote, &hcl_report).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_tpm_nonce() {
+        let quote = TpmQuote {
+            signature: SIGNATURE.to_vec(),
+            message: MESSAGE.to_vec(),
+        };
+        let nonce = "tdx challenge".as_bytes();
+        verify_tpm_nonce(&quote, nonce).unwrap();
+    }
+
+    #[test]
+    fn test_verify_tpm_nonce_failure() {
+        let quote = TpmQuote {
+            signature: SIGNATURE.to_vec(),
+            message: MESSAGE.to_vec(),
+        };
+        let wrong_nonce = "wrong".as_bytes();
+        verify_tpm_nonce(&quote, wrong_nonce).unwrap_err();
+    }
+}
