@@ -1910,6 +1910,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "attestation-service",
+ "base64 0.21.5",
  "clap 4.4.10",
  "env_logger 0.10.1",
  "log",
