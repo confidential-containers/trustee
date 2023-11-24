@@ -34,7 +34,8 @@ fn main() -> Result<(), String> {
     }
 
     #[cfg(feature = "tonic-build")]
-    tonic_build::compile_protos("../../proto/attestation.proto").map_err(|e| format!("{e}"))?;
+    tonic_build::compile_protos("../../../attestation-service/protos/attestation.proto")
+        .map_err(|e| format!("{e}"))?;
 
     Ok(())
 }
