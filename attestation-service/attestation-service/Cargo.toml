@@ -9,6 +9,7 @@ all-verifier = [ "verifier/all-verifier" ]
 tdx-verifier = [ "verifier/tdx-verifier" ]
 sgx-verifier = [ "verifier/sgx-verifier" ]
 az-snp-vtpm-verifier = [ "verifier/az-snp-vtpm-verifier" ]
+az-tdx-vtpm-verifier = [ "verifier/az-tdx-vtpm-verifier" ]
 snp-verifier = [ "verifier/snp-verifier" ]
 csv-verifier = [ "verifier/csv-verifier" ]
 cca-verifier = [ "verifier/cca-verifier" ]
@@ -42,7 +43,6 @@ clap = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 futures = "0.3.17"
 hex.workspace = true
-# TODO: change it to "0.5", once released.
 kbs-types.workspace = true
 lazy_static = "1.4.0"
 log.workspace = true

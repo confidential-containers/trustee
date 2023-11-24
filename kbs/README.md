@@ -10,7 +10,8 @@ This project relies on the [Attestation-Service (AS)](https://github.com/confide
 The following TEE platforms are currently supported:
 
 - AMD SEV-SNP
-- Azure SNP vTPM
+- Azure SEV-SNP vTPM
+- Azure TDX vTPM
 - Intel SGX
 - Intel TDX
 
