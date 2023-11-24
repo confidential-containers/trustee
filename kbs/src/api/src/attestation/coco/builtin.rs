@@ -6,9 +6,11 @@ use crate::attestation::Attest;
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{
-    config::Config as AsConfig, policy_engine::SetPolicyInput, AttestationService,
+    config::Config as AsConfig, policy_engine::SetPolicyInput, AttestationService, Data,
+    HashAlgorithm,
 };
-use kbs_types::Tee;
+use kbs_types::{Attestation, Tee};
+use serde_json::json;
 
 pub struct Native {
     inner: AttestationService,
@@ -23,7 +25,22 @@ impl Attest for Native {
     }
 
     async fn verify(&mut self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        self.inner.evaluate(tee, nonce, attestation).await
+        let attestation: Attestation = serde_json::from_str(attestation)?;
+
+        // TODO: align with the guest-components/kbs-protocol side.
+        let runtime_data_plaintext = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce});
+
+        self.inner
+            .evaluate(
+                attestation.tee_evidence.into_bytes(),
+                tee,
+                Some(Data::Structured(runtime_data_plaintext)),
+                HashAlgorithm::Sha384,
+                None,
+                HashAlgorithm::Sha384,
+                vec!["default".into()],
+            )
+            .await
     }
 }
 
