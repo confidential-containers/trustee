@@ -26,8 +26,9 @@ struct CertificateChain {
 
 #[derive(Serialize, Deserialize)]
 struct CsvEvidence {
-    attestation_report: String,
+    attestation_report: AttestationReport,
     cert_chain: CertificateChain,
+    serial_number: Vec<u8>,
 }
 
 pub const HRK: &[u8] = include_bytes!("hrk.cert");
@@ -46,15 +47,9 @@ impl Verifier for CsvVerifier {
         let tee_evidence =
             serde_json::from_slice::<CsvEvidence>(evidence).context("Deserialize Quote failed.")?;
 
-        let attestation_report = base64::engine::general_purpose::STANDARD
-            .decode(tee_evidence.attestation_report)
-            .context("base64 decode attestation report")?;
+        verify_report_signature(&tee_evidence.attestation_report, &tee_evidence.cert_chain)?;
 
-        let attestation_report: AttestationReport = serde_json::from_slice(&attestation_report)
-            .context("parse attestation report failed")?;
-        verify_report_signature(&attestation_report, &tee_evidence.cert_chain)?;
-
-        let report_raw = restore_attestation_report(attestation_report)?;
+        let report_raw = restore_attestation_report(tee_evidence.attestation_report)?;
 
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");
@@ -67,7 +62,7 @@ impl Verifier for CsvVerifier {
             warn!("CSV does not support init data hash mechanism. skip.");
         }
 
-        parse_tee_evidence(&report_raw)
+        parse_tee_evidence(&report_raw, tee_evidence.serial_number.clone())
     }
 }
 
@@ -140,7 +135,10 @@ fn restore_attestation_report(report: AttestationReport) -> Result<AttestationRe
 }
 
 // Dump the CSV information from the report.
-fn parse_tee_evidence(report: &AttestationReport) -> Result<TeeEvidenceParsedClaim> {
+fn parse_tee_evidence(
+    report: &AttestationReport,
+    serial_number: Vec<u8>,
+) -> Result<TeeEvidenceParsedClaim> {
     let body = &report.body;
     let claims_map = json!({
         // policy fields
@@ -162,8 +160,14 @@ fn parse_tee_evidence(report: &AttestationReport) -> Result<TeeEvidenceParsedCla
         "vm_id": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.vm_id)),
         "vm_version": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.vm_version)),
 
+        // Chip ID
+        "serial_number": format!("{}", base64::engine::general_purpose::STANDARD.encode(serial_number)),
+
         // measurement
         "measurement": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.measure)),
+
+        // report data
+        "report_data": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.report_data)),
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
