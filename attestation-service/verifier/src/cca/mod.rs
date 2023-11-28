@@ -10,7 +10,7 @@ use base64::Engine;
 use core::result::Result::Ok;
 use ear::{Ear, RawValue};
 use jsonwebtoken::{self as jwt};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, str};
 use veraison_apiclient::*;
@@ -150,13 +150,22 @@ impl Verifier for CCA {
         };
         let evidence = &cca_mod.annotated_evidence;
 
-        if let InitDataHash::Value(_) = expected_init_data_hash {
-            warn!("CCA currently does not support parse `cca_realm_personalization_value`. Init data hash check skipped.");
+        // NOTE: CCA validation by the Verasion has some overlapping with the RVPS, the similar validation has been done by the Verasion already.
+        // The generation of CCA evidence here is to align with other verifier, e.g. TDX, to support initdata mechanism and RVPS if that is the case of future planning.
+        let tcb = parse_cca_evidence(evidence)?;
+
+        if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
+            debug!("Check the binding of init data.");
+            if *expected_init_data_hash
+                != base64::engine::general_purpose::STANDARD
+                    .decode(&tcb.realm.cca_realm_personalization_value)
+                    .context("Failed to decode base64")?
+                    .as_slice()
+            {
+                bail!("init data hash is different from that in CCA token");
+            }
         }
 
-        // NOTE: CCA validation by the Verasion has some overlapping with the RVPS, the similar validation has been done by the Verasion already.
-        // The generation of CCA evidence here is to align with other verifier, e.g. TDX, and to support RVPS if that is the case of future planning.
-        let tcb = parse_cca_evidence(evidence)?;
         // Return Evidence parsed claim
         cca_generate_parsed_claim(tcb).map_err(|e| anyhow!("error from CCA Verifier: {:?}", e))
     }
