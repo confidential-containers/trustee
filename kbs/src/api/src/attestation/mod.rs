@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "amber-as")]
-use amber::AmberConfig;
 use anyhow::*;
 use async_trait::async_trait;
 #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
 use attestation_service::config::Config as AsConfig;
 #[cfg(feature = "coco-as-grpc")]
 use coco::grpc::GrpcConfig;
+#[cfg(feature = "intel-trust-authority-as")]
+use intel_trust_authority::IntelTrustAuthorityConfig;
 use kbs_types::Tee;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -18,8 +18,8 @@ use tokio::sync::Mutex;
 #[allow(missing_docs)]
 pub mod coco;
 
-#[cfg(feature = "amber-as")]
-pub mod amber;
+#[cfg(feature = "intel-trust-authority-as")]
+pub mod intel_trust_authority;
 
 /// Interface for Attestation Services.
 ///
@@ -60,10 +60,11 @@ impl AttestationService {
     }
 
     /// Create and initialize AttestationService.
-    #[cfg(feature = "amber-as")]
-    pub fn new(config: &AmberConfig) -> Result<Self> {
-        let attestation_service: Arc<Mutex<dyn Attest>> =
-            Arc::new(Mutex::new(amber::Amber::new(config)?));
+    #[cfg(feature = "intel-trust-authority-as")]
+    pub fn new(config: &IntelTrustAuthorityConfig) -> Result<Self> {
+        let attestation_service: Arc<Mutex<dyn Attest>> = Arc::new(Mutex::new(
+            intel_trust_authority::IntelTrustAuthority::new(config)?,
+        ));
 
         Ok(Self(attestation_service))
     }
