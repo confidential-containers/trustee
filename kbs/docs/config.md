@@ -91,18 +91,20 @@ This section is **optional**. When omitted, a default configuration is used.
 |-----------|--------|------------------------------|----------|--------------------------|
 | `as_addr` | String | Attestation service address. | No       | `http://127.0.0.1:50004` |
 
-### Amber Attestation
+### Intel Trust Authority (formerly known as Amber)
 
-The following properties can be set under the `amber_config` section.
+The following properties can be set under the `intel_trust_authority_config` section.
 
->This section is available only when the `amber-as` feature is enabled.
+>This section is available only when the `intel-trust-authority-as` feature is enabled.
 
 | Property                 | Type    | Description                                                                            | Required                | Default |
 |--------------------------|---------|----------------------------------------------------------------------------------------|-------------------------|---------|
-| `base_url`               | String  | URL of the Amber API.                                                                  | Yes                     | -       |
-| `api_key`                | String  | Amber API key.                                                                         | Yes                     | -       |
-| `certs_file`             | String  | Path to a JWKS file to be used for Amber token verification.                           | Yes                     | -       |
-| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `amber_unmatched_policy_ids` field in an Amber token. | No                      | false   |
+| `base_url`               | String  | Intel Trust Authority API URL.                                                         | Yes                     | -       |
+| `api_key`                | String  | Intel Trust Authority API key.                                                         | Yes                     | -       |
+| `certs_file`             | String  | Path to an Intel Trust Authority certificates JWKS file used for token verification.   | Yes                     | -       |
+| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                   | No                      | false   |
+
+Detailed [documentation](https://docs.trustauthority.intel.com).
 
 ### Policy Engine Configuration
 
@@ -150,7 +152,7 @@ dir_path = "/opt/confidential-containers/kbs/repository"
 as_addr = "http://127.0.0.1:50004"
 ```
 
-Running with Amber attestation service:
+Running with Intel Trust Authority attestation service:
 
 ```toml
 insecure_http = true
@@ -160,10 +162,10 @@ insecure_api = true
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 
-[amber_config]
-base_url = "https://amber.com"
+[intel_trust_authority_config]
+base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
-certs_file = "/etc/amber/amber-certs.txt"
+certs_file = "/etc/intel-trust-authority-certs.txt"
 allow_unmatched_policy = true
 ```
 

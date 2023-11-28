@@ -10,7 +10,7 @@ RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Build and Install KBS
-RUN cargo install --path kbs/src/kbs --no-default-features --features amber-as,rustls,resource,opa
+RUN cargo install --path kbs/src/kbs --no-default-features --features intel-trust-authority-as,rustls,resource,opa
 
 FROM ubuntu:22.04
 

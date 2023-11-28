@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 #[derive(Deserialize, Debug)]
-struct AmberTeeEvidence {
+struct IntelTrustAuthorityTeeEvidence {
     #[serde(skip)]
     _cc_eventlog: Option<String>,
     quote: String,
@@ -31,33 +31,34 @@ struct AttestRespData {
 
 #[derive(Deserialize, Debug)]
 struct Claims {
-    amber_unmatched_policy_ids: Option<Vec<serde_json::Value>>,
+    policy_ids_unmatched: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct AmberConfig {
+pub struct IntelTrustAuthorityConfig {
     pub base_url: String,
     pub api_key: String,
     pub certs_file: String,
     pub allow_unmatched_policy: Option<bool>,
 }
 
-pub struct Amber {
-    config: AmberConfig,
+pub struct IntelTrustAuthority {
+    config: IntelTrustAuthorityConfig,
     certs: jwk::JwkSet,
 }
 
 #[async_trait]
-impl Attest for Amber {
+impl Attest for IntelTrustAuthority {
     async fn verify(&mut self, tee: Tee, _nonce: &str, attestation: &str) -> Result<String> {
         if tee != Tee::Tdx && tee != Tee::Sgx {
-            bail!("Amber: TEE {tee:?} is not supported.");
+            bail!("Intel Trust Authority: TEE {tee:?} is not supported.");
         }
         // get quote
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .map_err(|e| anyhow!("Deserialize Attestation failed: {:?}", e))?;
-        let evidence = serde_json::from_str::<AmberTeeEvidence>(&attestation.tee_evidence)
-            .map_err(|e| anyhow!("Deserialize supported TEE Evidence failed: {:?}", e))?;
+        let evidence =
+            serde_json::from_str::<IntelTrustAuthorityTeeEvidence>(&attestation.tee_evidence)
+                .map_err(|e| anyhow!("Deserialize supported TEE Evidence failed: {:?}", e))?;
 
         // construct attest request data
         let req_data = AttestReqData {
@@ -109,7 +110,7 @@ impl Attest for Amber {
 
         // check unmatched policy
         let allow = self.config.allow_unmatched_policy.unwrap_or(false);
-        if allow == false && token.claims.amber_unmatched_policy_ids.is_some() {
+        if allow == false && token.claims.policy_ids_unmatched.is_some() {
             bail!("Evidence doesn't match policy");
         }
 
@@ -117,8 +118,8 @@ impl Attest for Amber {
     }
 }
 
-impl Amber {
-    pub fn new(config: &AmberConfig) -> Result<Self> {
+impl IntelTrustAuthority {
+    pub fn new(config: &IntelTrustAuthorityConfig) -> Result<Self> {
         let file = File::open(&config.certs_file)
             .map_err(|e| anyhow!("Open certs file failed: {:?}", e))?;
         let reader = BufReader::new(file);
