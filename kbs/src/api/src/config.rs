@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "amber-as")]
-use crate::attestation::amber::AmberConfig;
 #[cfg(feature = "coco-as-grpc")]
 use crate::attestation::coco::grpc::GrpcConfig;
+#[cfg(feature = "intel-trust-authority-as")]
+use crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig;
 #[cfg(feature = "policy")]
 use crate::policy_engine::PolicyEngineConfig;
 #[cfg(feature = "resource")]
@@ -50,9 +50,9 @@ pub struct KbsConfig {
     #[cfg(feature = "coco-as-grpc")]
     pub grpc_config: Option<GrpcConfig>,
 
-    /// Configuration for Amber attestation.
-    #[cfg(feature = "amber-as")]
-    pub amber_config: AmberConfig,
+    /// Configuration for Intel Trust Authority attestation.
+    #[cfg(feature = "intel-trust-authority-as")]
+    pub intel_trust_authority_config: IntelTrustAuthorityConfig,
 
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
     pub sockets: Vec<SocketAddr>,

@@ -14,7 +14,7 @@ opa = ["api-server/opa"]
 coco-as-builtin = ["as", "api-server/coco-as-builtin"]
 coco-as-builtin-no-verifier = ["as", "api-server/coco-as-builtin-no-verifier"]
 coco-as-grpc = ["as", "api-server/coco-as-grpc"]
-amber-as = ["as", "api-server/amber-as"]
+intel-trust-authority-as = ["as", "api-server/intel-trust-authority-as"]
 rustls = ["api-server/rustls"]
 openssl = ["api-server/openssl"]
 

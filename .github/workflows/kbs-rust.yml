@@ -72,9 +72,9 @@ jobs:
       working-directory: kbs
       run: make COCO_AS_INTEGRATE_TYPE=grpc
 
-    - name: build KBS with amber AS mode
+    - name: build KBS for Intel Trust Authority
       working-directory: kbs
-      run: make AS_TYPE=amber-as
+      run: make AS_TYPE=intel-trust-authority-as
 
     - name: Lint
       working-directory: kbs

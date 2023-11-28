@@ -48,7 +48,7 @@ Default value is `rustls`
 - `POLICY_ENGINE`: Can be `opa`.
 Specify the resource policy engine type of KBS.
 If not set this parameter, KBS will not integrate resource policy engine.
-- `AS_TYPES`: can be `coco-as` or `amber-as`.
+- `AS_TYPES`: can be `coco-as` or `intel-trust-authority-as`.
 Specify the Attestation Service type KBS relies on.
 - `COCO_AS_INTEGRATION_TYPE`: can be `grpc` or `builtin`. This parameter only takes effect when `AS_TYPES=coco-as`.
 Specify the integration mode of CoCo Attestation Service.
