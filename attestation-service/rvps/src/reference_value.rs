@@ -91,7 +91,7 @@ impl ReferenceValue {
         })
     }
 
-    /// Get version of the ReferenceValue.
+    /// Set version of the ReferenceValue.
     pub fn set_version(mut self, version: &str) -> Self {
         self.version = version.into();
         self
@@ -102,7 +102,7 @@ impl ReferenceValue {
         &self.version
     }
 
-    /// Get expired time of the ReferenceValue.
+    /// Set expired time of the ReferenceValue.
     pub fn set_expired(mut self, expired: DateTime<Utc>) -> Self {
         self.expired = expired.with_nanosecond(0).expect("Set nanosecond failed.");
         self
@@ -113,18 +113,18 @@ impl ReferenceValue {
         &self.expired
     }
 
-    /// Get version of the ReferenceValue.
+    /// Set hash value of the ReferenceValue.
     pub fn add_hash_value(mut self, alg: String, value: String) -> Self {
         self.hash_value.push(HashValuePair::new(alg, value));
         self
     }
 
-    /// Get version of the ReferenceValue.
+    /// Get hash value of the ReferenceValue.
     pub fn hash_values(&self) -> &Vec<HashValuePair> {
         &self.hash_value
     }
 
-    /// Set name for Reference Value
+    /// Set artifact name for Reference Value
     pub fn set_name(mut self, name: &str) -> Self {
         self.name = name.into();
         self
