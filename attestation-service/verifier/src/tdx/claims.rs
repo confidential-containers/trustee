@@ -123,6 +123,10 @@ pub fn generate_parsed_claim(
     let mut claims = Map::new();
     parse_claim!(claims, "quote", quote_map);
     parse_claim!(claims, "ccel", ccel_map);
+
+    parse_claim!(claims, "report_data", quote.report_body.report_data);
+    parse_claim!(claims, "init_data", quote.report_body.mr_config_id);
+
     log::info!("\nParsed Evidence claims map: \n{:?}\n", &claims);
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)

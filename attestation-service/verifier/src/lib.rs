@@ -125,6 +125,12 @@ pub trait Verifier {
     /// instance is created. It is always provided by untrusted host,
     /// but its integrity will be protected by the tee evidence.
     /// Typical `init_data_hash` is `HOSTDATA` for SNP.
+    ///
+    ///
+    /// There will be two claims by default regardless of architectures:
+    /// - `init_data_hash`: init data hash of the evidence
+    /// - `report_data`: report data of the evidence
+    /// TODO: See https://github.com/confidential-containers/kbs/issues/228
     async fn evaluate(
         &self,
         evidence: &[u8],
