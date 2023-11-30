@@ -17,13 +17,15 @@ use verifier::TeeEvidenceParsedClaim;
 ///     "d": "e"
 /// }
 /// ```
-/// into a flatten one with '.' to separate, s.t.
+/// into a flatten one with '.' to separate and also be added a prefix of tee name, e.g.
 /// ```json
 /// {
-///     "a.b": "c",
-///     "d": "e"
+///     "sample.a.b": "c",
+///     "sample.d": "e"
 /// }
 /// ```
+///
+/// But the key `init_data` and `report_data` will not be added the prefix.
 pub fn flatten_claims(
     tee: kbs_types::Tee,
     claims: &TeeEvidenceParsedClaim,
@@ -33,8 +35,21 @@ pub fn flatten_claims(
     match claims {
         Value::Object(obj) => {
             for (k, v) in obj {
-                flatten_helper(&mut map, v, format!("{tee_type}.{}", k.clone()));
+                if k != "report_data" && k != "init_data" {
+                    flatten_helper(&mut map, v, format!("{tee_type}.{}", k.clone()));
+                }
             }
+            let report_data = obj
+                .get("report_data")
+                .cloned()
+                .unwrap_or(Value::String(String::new()));
+            map.insert("report_data".to_string(), report_data.clone());
+
+            let report_data = obj
+                .get("init_data")
+                .cloned()
+                .unwrap_or(Value::String(String::new()));
+            map.insert("init_data".to_string(), report_data.clone());
         }
         _ => bail!("input claims must be a map"),
     }
@@ -112,7 +127,9 @@ mod tests {
                     "tcb_svn": "03000500000000000000000000000000",
                     "xfam": "e742060000000000"
                 }
-            }
+            },
+            "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
+            "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         });
         let flatten = flatten_claims(kbs_types::Tee::Tdx, &json).expect("flatten failed");
         let expected = json!({
@@ -136,7 +153,9 @@ mod tests {
                 "tdx.quote.body.td_attributes": "0100001000000000",
                 "tdx.quote.body.mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
                 "tdx.quote.body.tcb_svn": "03000500000000000000000000000000",
-                "tdx.quote.body.xfam": "e742060000000000"
+                "tdx.quote.body.xfam": "e742060000000000",
+                "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
+                "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         });
         assert_json_eq!(expected, flatten);
     }
