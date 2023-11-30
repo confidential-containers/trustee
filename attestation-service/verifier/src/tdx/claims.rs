@@ -35,7 +35,11 @@
 //!        "td_attributes": "0100001000000000",
 //!        "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
 //!        "tcb_svn": "03000500000000000000000000000000",
-//!        "xfam": "e742060000000000"
+//!        "xfam": "e742060000000000",
+//!        "rtmr_0": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "rtmr_1": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "rtmr_2": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+//!        "rtmr_3": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 //!    }
 //!  }
 //!}
@@ -99,6 +103,10 @@ pub fn generate_parsed_claim(
         "mr_owner_config",
         quote.report_body.mr_owner_config
     );
+    parse_claim!(quote_body, "rtmr_0", quote.report_body.rtmr_0);
+    parse_claim!(quote_body, "rtmr_1", quote.report_body.rtmr_1);
+    parse_claim!(quote_body, "rtmr_2", quote.report_body.rtmr_2);
+    parse_claim!(quote_body, "rtmr_3", quote.report_body.rtmr_3);
     parse_claim!(quote_body, "report_data", quote.report_body.report_data);
 
     parse_claim!(quote_map, "header", quote_header);
