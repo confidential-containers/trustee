@@ -15,7 +15,7 @@ struct SampleTeeEvidence {
     report_data: String,
 
     #[serde(default = "String::default")]
-    init_data_hash: String,
+    init_data: String,
 }
 
 #[derive(Debug, Default)]
@@ -64,7 +64,7 @@ async fn verify_tee_evidence(
     if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
         debug!("Check the binding of init_data_digest.");
         let ev_init_data_hash = base64::engine::general_purpose::STANDARD
-            .decode(&evidence.init_data_hash)
+            .decode(&evidence.init_data)
             .context("base64 decode init data hash for sample evidence")?;
         if *expected_init_data_hash != ev_init_data_hash {
             bail!("INIT DATA HASH is different from that in Sample Quote");
@@ -79,6 +79,8 @@ async fn verify_tee_evidence(
 fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClaim> {
     let claims_map = json!({
         "svn": quote.svn,
+        "report_data": quote.report_data,
+        "init_data": quote.init_data,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
