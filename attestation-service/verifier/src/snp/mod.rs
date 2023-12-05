@@ -254,6 +254,11 @@ mod tests {
     use openssl::nid::Nid;
     use sev::firmware::host::CertTableEntry;
 
+    const VCEK: &[u8; 1360] = include_bytes!("../../test_data/snp/test-vcek.der");
+    const VCEK_LEGACY: &[u8; 1361] = include_bytes!("../../test_data/snp/test-vcek-invalid-legacy.der");
+    const VCEK_NEW: &[u8; 1362] = include_bytes!("../../test_data/snp/test-vcek-invalid-new.der");
+    const REPORT: &[u8; 1184] = include_bytes!("../../test_data/snp/test-report.bin");
+
     #[test]
     fn check_milan_certificates() {
         let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
@@ -283,8 +288,7 @@ mod tests {
 
     #[test]
     fn check_vcek_parsing() {
-        let vcek_der = include_bytes!("test-vcek.der");
-        let parsed_vcek = X509Certificate::from_der(vcek_der)
+        let parsed_vcek = X509Certificate::from_der(VCEK)
             .unwrap()
             .1
             .tbs_certificate;
@@ -298,8 +302,7 @@ mod tests {
 
     #[test]
     fn check_vcek_parsing_legacy() {
-        let vcek_der = include_bytes!("test-vcek-invalid-legacy.der");
-        let parsed_vcek = X509Certificate::from_der(vcek_der)
+        let parsed_vcek = X509Certificate::from_der(VCEK_LEGACY)
             .unwrap()
             .1
             .tbs_certificate;
@@ -313,8 +316,7 @@ mod tests {
 
     #[test]
     fn check_vcek_parsing_new() {
-        let vcek_der = include_bytes!("test-vcek-invalid-new.der");
-        let parsed_vcek = X509Certificate::from_der(vcek_der)
+        let parsed_vcek = X509Certificate::from_der(VCEK_NEW)
             .unwrap()
             .1
             .tbs_certificate;
@@ -328,29 +330,27 @@ mod tests {
 
     #[test]
     fn check_vcek_signature_verification() {
-        let vcek = include_bytes!("test-vcek.der").to_vec();
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
         let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         verify_cert_chain(&cert_table, ask, ark).unwrap();
     }
 
     #[test]
     fn check_vcek_signature_failure() {
-        let mut vcek = include_bytes!("test-vcek.der").to_vec();
+        let mut vcek = VCEK.clone();
 
         // corrupt some byte, while it should remain a valid cert
         vcek[42] += 1;
         X509::from_der(&vcek).expect("failed to parse der");
 
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek.to_vec())];
         let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         verify_cert_chain(&cert_table, ask, ark).unwrap_err();
     }
 
     #[test]
     fn check_milan_chain_signature_failure() {
-        let vcek = include_bytes!("test-vcek.der").to_vec();
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
         let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
         // toggle ark <=> ask
         verify_cert_chain(&cert_table, ark, ask).unwrap_err();
@@ -358,24 +358,21 @@ mod tests {
 
     #[test]
     fn check_report_signature() {
-        let vcek = include_bytes!("test-vcek.der").to_vec();
-        let bytes = include_bytes!("test-report.bin");
-        let attestation_report = bincode::deserialize::<AttestationReport>(bytes).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let attestation_report = bincode::deserialize::<AttestationReport>(REPORT.as_slice()).unwrap();
+        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
     }
 
     #[test]
     fn check_report_signature_failure() {
-        let vcek = include_bytes!("test-vcek.der").to_vec();
-        let mut bytes = include_bytes!("test-report.bin").to_vec();
+        let mut bytes = REPORT.clone();
 
         // corrupt some byte
         bytes[42] += 1;
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
     }
