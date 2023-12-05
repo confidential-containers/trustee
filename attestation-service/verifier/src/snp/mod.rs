@@ -243,6 +243,10 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
 
         // measurement
         "measurement": format!("{}", base64::engine::general_purpose::STANDARD.encode(report.measurement)),
+
+        // report data and host data
+        "report_data": format!("{}", hex::encode(report.report_data)),
+        "init_data": format!("{}", hex::encode(report.host_data)),
     });
 
     claims_map as TeeEvidenceParsedClaim
