@@ -72,3 +72,30 @@ The following fields always exist.
 - `sgx.body.reserved4`: Reserved.
 - `sgx.body.isv_family_id`: ISV assigned Family ID.
 - `sgx.body.report_data`: Data provided by the user.
+
+## AMD SEV-SNP
+
+- `init_data` HostData value set at boot time
+- `measurement` Launch Digest covering initial guest memory
+- `platform_smt_enabled`:  Whether Simultaneous Multithreading is enabled on the system
+- `platform_tsme_enabled`: Whether Transparent SME is enabled on the system
+- `policy_abi_major`: Minimum ABI major version allowed for guest
+- `policy_abi_minor`: Minimum ABI minor version allowed for guest
+- `policy_debug_allowed`: Whether SNP debug features are allowed for guest
+- `policy_migrate_ma`: Whether migration agent can be connected to guest
+- `policy_single_socket`: Whether guest can be activated only on one socket
+- `policy_smt_allowed`: Whether guest can run on a system with SMT enabled
+- `report_data`: Data set from inside guest when report is requested
+- `reported_tcb_bootloader`: Reported SVN of ASP bootloader
+- `reported_tcb_microcode`: Reported microcode version
+- `reported_tcb_snp`: Reported SVN of SNP Firmware
+- `reported_tcb_tee`: Reported SVN of ASP OS
+
+The claims map only includes the reported TCB version.
+An SEV-SNP Attestation Report contains four sets of TCB version information.
+Often all four values are the same, but sometimes the reported TCB might lag
+behind the true firmware version. This is done to minimize churn of policies
+and certificates while the provider updates to provisional firmware.
+The actual firmware must always be newer than or equal to the reported TCB.
+Generally, policies should be evaluated against the reported TCB.
+
