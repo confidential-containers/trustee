@@ -560,11 +560,11 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
+source = "git+https://github.com/Xynnn007/guest-components.git?rev=b2f863f#b2f863ff86fb004a93bab1a0b7bd76c126652c2a"
 dependencies = [
  "anyhow",
  "async-trait",
- "az-snp-vtpm 0.2.3",
+ "az-snp-vtpm",
  "base64 0.21.5",
  "codicon",
  "csv-rs",
@@ -663,26 +663,6 @@ dependencies = [
  "thiserror",
  "tss-esapi",
  "zerocopy",
-]
-
-[[package]]
-name = "az-snp-vtpm"
-version = "0.2.3"
-source = "git+https://github.com/kinvolk/azure-cvm-tooling?rev=2c2e411#2c2e411dfb6f64fb4ffa4443213c5777de7af30d"
-dependencies = [
- "bincode",
- "clap 4.4.10",
- "jsonwebkey",
- "memoffset 0.8.0",
- "rsa 0.8.2",
- "serde",
- "serde_json",
- "sev",
- "sha2",
- "static_assertions",
- "thiserror",
- "tss-esapi",
- "ureq",
 ]
 
 [[package]]
@@ -1256,7 +1236,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
+source = "git+https://github.com/Xynnn007/guest-components.git?rev=b2f863f#b2f863ff86fb004a93bab1a0b7bd76c126652c2a"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2441,7 +2421,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
+source = "git+https://github.com/Xynnn007/guest-components.git?rev=b2f863f#b2f863ff86fb004a93bab1a0b7bd76c126652c2a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2639,15 +2619,6 @@ name = "memoffset"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "memoffset"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d61c719bcfbcf5d62b3a09efa6088de8c54bc0bfcd3ea7ae39fcc186108b8de1"
 dependencies = [
  "autocfg",
 ]
@@ -3652,7 +3623,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components?rev=8dd91e0#8dd91e0084805b916e5c27fb573a1de355de0be1"
+source = "git+https://github.com/Xynnn007/guest-components.git?rev=b2f863f#b2f863ff86fb004a93bab1a0b7bd76c126652c2a"
 dependencies = [
  "anyhow",
  "serde",
@@ -5117,7 +5088,7 @@ dependencies = [
  "asn1-rs",
  "assert-json-diff",
  "async-trait",
- "az-snp-vtpm 0.4.0",
+ "az-snp-vtpm",
  "base64 0.21.5",
  "bincode",
  "byteorder",
