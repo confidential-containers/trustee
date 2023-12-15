@@ -6,7 +6,6 @@ members = [
     "attestation-service/attestation-service",
     "attestation-service/verifier",
     "attestation-service/rvps",
-    "attestation-service/bin/grpc-as",
 ]
 
 [workspace.package]

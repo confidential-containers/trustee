@@ -15,7 +15,7 @@ pub mod rvps_api {
 
 shadow!(build);
 
-mod server;
+mod grpc;
 
 /// gRPC CoCo-AS command-line arguments.
 #[derive(Debug, Parser)]
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let server = server::start(cli.socket, cli.config_file);
+    let server = grpc::start(cli.socket, cli.config_file);
     tokio::try_join!(server)?;
 
     Ok(())

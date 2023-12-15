@@ -16,13 +16,23 @@ cca-verifier = [ "verifier/cca-verifier" ]
 # Only for testing and CI
 rvps-builtin = [ "reference-value-provider-service" ]
 
-rvps-grpc = [ "tonic" ]
+rvps-grpc = [ "prost", "tonic" ]
+
+# For building gRPC CoCo-AS binary
+grpc-bin = [ "clap", "env_logger", "prost", "tonic" ]
+
+
+[[bin]]
+name = "grpc-as"
+required-features = [ "bin" ]
 
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-base64 = "0.21"
-cfg-if = "1.0.0"
+base64.workspace = true
+cfg-if.workspace = true
+clap = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
 futures = "0.3.17"
 hex.workspace = true
 # TODO: change it to "0.5", once released.
@@ -30,7 +40,7 @@ kbs-types.workspace = true
 lazy_static = "1.4.0"
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
-prost.workspace = true
+prost = { workspace = true, optional = true }
 rand = "0.8.5"
 rsa = { version = "0.9.2", features = ["sha2"] }
 reference-value-provider-service = { path = "../rvps", optional = true }
