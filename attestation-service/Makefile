@@ -5,6 +5,7 @@ PREFIX := /usr/local
 TARGET_DIR := ../target
 BIN_NAMES := grpc-as
 
+
 DEBUG ?=
 DESTDIR ?= $(PREFIX)/bin
 
@@ -19,7 +20,8 @@ endif
 build: grpc-as
 
 grpc-as:
-	cargo build --bin grpc-as $(release)
+	cargo build --bin grpc-as $(release) --features grpc-bin
+
 
 install:
 	for bin_name in $(BIN_NAMES); do \
