@@ -4,7 +4,7 @@
 
 ## API
 
-gRPC Attestation Service provides gRPC endpoints which is defined in [protobuf](../../protos/attestation.proto).
+gRPC Attestation Service provides gRPC endpoints which is defined in [protobuf](../protos/attestation.proto).
 
 ## Usage
 
@@ -12,12 +12,19 @@ Here are the steps of building and running gRPC Attestation Service:
 
 ### Build
 
-Build and install:
+Build and install binary
 ```shell
 git clone https://github.com/confidential-containers/kbs
 cd kbs/attestation-service
 WORKDIR=$(pwd)
 make && make install
+```
+
+Build and run container image
+```shell
+git clone https://github.com/confidential-containers/kbs
+cd kbs
+docker build -t coco-as:grpc -f attestation-service/Dockerfile.as-grpc .
 ```
 
 ### Run
@@ -44,7 +51,7 @@ RUST_LOG=debug grpc-as --socket 127.0.0.1:50004
 
 ### API
 
-The API of gRPC CoCo-AS is defined in the [proto](../../protos/attestation.proto).
+The API of gRPC CoCo-AS is defined in the [proto](../protos/attestation.proto).
 
 ### Test
 

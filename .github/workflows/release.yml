@@ -23,7 +23,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./attestation-service/Dockerfile.as
+          file: ./attestation-service/Dockerfile.as-grpc
           platforms: linux/amd64
           push: true
           tags: ghcr.io/confidential-containers/attestation-service:latest, ghcr.io/confidential-containers/attestation-service:${{ github.ref_name }}

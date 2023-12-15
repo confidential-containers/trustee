@@ -530,6 +530,8 @@ dependencies = [
  "async-trait",
  "base64 0.21.5",
  "cfg-if",
+ "clap 4.4.10",
+ "env_logger 0.10.1",
  "futures",
  "hex",
  "kbs-types",
@@ -1881,25 +1883,6 @@ dependencies = [
  "ff",
  "rand_core",
  "subtle",
-]
-
-[[package]]
-name = "grpc-as"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "attestation-service",
- "base64 0.21.5",
- "clap 4.4.10",
- "env_logger 0.10.1",
- "log",
- "prost",
- "serde_json",
- "shadow-rs",
- "tokio",
- "tonic 0.8.3",
- "tonic-build",
 ]
 
 [[package]]
