@@ -78,9 +78,20 @@ impl Verifier for AzSnpVtpm {
         let vcek = Vcek::from_pem(&evidence.vcek)?;
         verify_snp_report(&snp_report, &vcek, &self.vendor_certs)?;
 
-        let claim = parse_tee_evidence(&snp_report);
+        let mut claim = parse_tee_evidence(&snp_report);
+        drop_unsupported_claims(&mut claim)?;
         Ok(claim)
     }
+}
+
+fn drop_unsupported_claims(claim: &mut serde_json::Value) -> Result<()> {
+    let claim_map = claim
+        .as_object_mut()
+        .ok_or(anyhow::anyhow!("couldn't get claim map"))?;
+
+    claim_map.remove("init_data");
+    claim_map.remove("report_data");
+    Ok(())
 }
 
 fn verify_quote(quote: &Quote, hcl_report: &HclReport, report_data: &[u8]) -> Result<()> {
