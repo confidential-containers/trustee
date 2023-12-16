@@ -33,6 +33,7 @@ attestation-service = { git = "https://github.com/confidential-containers/kbs", 
 This project provides the Attestation Service binary program that can be run as an independent server:
 
 - [`grpc-as`](docs/grpc-as.md): Provide AS APIs based on gRPC protocol.
+- [`restful-as`](docs/restful-as.md): Provide AS APIs based on RESTful.
 
 # Usage
 

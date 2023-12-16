@@ -16,6 +16,8 @@ documentation = "https://github.com/confidential-containers/kbs"
 edition = "2021"
 
 [workspace.dependencies]
+actix-web = "4"
+actix-web-httpauth = "0.8.0"
 anyhow = "1.0"
 api-server = { path = "kbs/src/api", default-features = false }
 assert-json-diff = "2.0.2"
