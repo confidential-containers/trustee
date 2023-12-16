@@ -525,6 +525,7 @@ dependencies = [
 name = "attestation-service"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "assert-json-diff",
  "async-trait",
@@ -551,6 +552,7 @@ dependencies = [
  "shadow-rs",
  "strum",
  "testing_logger",
+ "thiserror",
  "time",
  "tokio",
  "tonic 0.8.3",
