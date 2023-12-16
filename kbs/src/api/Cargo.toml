@@ -21,8 +21,8 @@ rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
 openssl = ["actix-web/openssl", "dep:openssl"]
 
 [dependencies]
-actix-web = "4"
-actix-web-httpauth = "0.8.0"
+actix-web.workspace = true
+actix-web-httpauth.workspace = true
 aes-gcm = { version = "0.10.1", optional = true }
 anyhow.workspace = true
 async-trait.workspace = true

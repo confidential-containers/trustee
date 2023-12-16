@@ -3,8 +3,7 @@ TOP_DIR := .
 CUR_DIR := $(shell pwd)
 PREFIX := /usr/local
 TARGET_DIR := ../target
-BIN_NAMES := grpc-as
-
+BIN_NAMES := grpc-as restful-as
 
 DEBUG ?=
 DESTDIR ?= $(PREFIX)/bin
@@ -17,11 +16,13 @@ else
     TARGET_DIR := $(TARGET_DIR)/release
 endif
 
-build: grpc-as
+build: grpc-as restful-as
 
 grpc-as:
 	cargo build --bin grpc-as $(release) --features grpc-bin
 
+restful-as:
+	cargo build --bin restful-as $(release) --features restful-bin
 
 install:
 	for bin_name in $(BIN_NAMES); do \
