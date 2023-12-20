@@ -5,44 +5,85 @@
 use anyhow::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use rsa::pkcs1v15::SigningKey;
-use rsa::sha2::Sha384;
-use rsa::signature::{RandomizedSigner, SignatureEncoding};
-use rsa::traits::PublicKeyParts;
-use rsa::RsaPrivateKey;
+use openssl::rsa::Rsa;
+use openssl::sign::Signer;
+use openssl::x509::X509;
+use openssl::{
+    hash::MessageDigest,
+    pkey::{PKey, Private},
+};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde_json::{json, Value};
 
 use crate::token::{AttestationTokenBroker, AttestationTokenConfig};
 
-const ISSUER_NAME: &str = "CoCo-Attestation-Service";
-const RSA_KEY_BITS: usize = 2048;
+pub const COCO_AS_ISSUER_NAME: &str = "CoCo-Attestation-Service";
+const RSA_KEY_BITS: u32 = 2048;
 const SIMPLE_TOKEN_ALG: &str = "RS384";
 
 pub struct SimpleAttestationTokenBroker {
-    private_key: RsaPrivateKey,
+    private_key: Rsa<Private>,
     config: AttestationTokenConfig,
+    cert_url: Option<String>,
+    cert_chain: Option<Vec<X509>>,
 }
 
 impl SimpleAttestationTokenBroker {
     pub fn new(config: AttestationTokenConfig) -> Result<Self> {
-        let mut rng = rand::thread_rng();
-        let private_key = RsaPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
+        if config.signer.is_none() {
+            log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
+            return Ok(Self {
+                private_key: Rsa::generate(RSA_KEY_BITS)?,
+                config,
+                cert_url: None,
+                cert_chain: None,
+            });
+        }
+
+        let signer = config.signer.clone().unwrap();
+        let pem_data = std::fs::read(&signer.key_path)
+            .map_err(|e| anyhow!("Read Token Signer private key failed: {:?}", e))?;
+        let private_key = Rsa::private_key_from_pem(&pem_data)?;
+
+        let cert_chain = signer
+            .cert_path
+            .as_ref()
+            .map(|cert_path| -> Result<Vec<X509>> {
+                let pem_cert_chain = std::fs::read_to_string(cert_path)
+                    .map_err(|e| anyhow!("Read Token Signer cert file failed: {:?}", e))?;
+                let mut chain = Vec::new();
+
+                for pem in pem_cert_chain.split("-----END CERTIFICATE-----") {
+                    let trimmed = format!("{}\n-----END CERTIFICATE-----", pem.trim());
+                    if !trimmed.starts_with("-----BEGIN CERTIFICATE-----") {
+                        continue;
+                    }
+                    let cert = X509::from_pem(trimmed.as_bytes())
+                        .map_err(|_| anyhow!("Invalid PEM certificate chain"))?;
+                    chain.push(cert);
+                }
+                Ok(chain)
+            })
+            .transpose()?;
 
         Ok(Self {
             private_key,
             config,
+            cert_url: signer.cert_url,
+            cert_chain,
         })
     }
 }
 
 impl SimpleAttestationTokenBroker {
     fn rs384_sign(&self, payload: &[u8]) -> Result<Vec<u8>> {
-        let mut rng = rand::thread_rng();
-        let signing_key = SigningKey::<Sha384>::new(self.private_key.clone());
-        let signature = signing_key.sign_with_rng(&mut rng, payload);
-        Ok(signature.to_bytes().to_vec())
+        let rsa_pkey = PKey::from_rsa(self.private_key.clone())?;
+        let mut signer = Signer::new(MessageDigest::sha384(), &rsa_pkey)?;
+        signer.update(payload)?;
+        let signature = signer.sign_to_vec()?;
+
+        Ok(signature)
     }
 }
 
@@ -65,7 +106,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             .collect();
 
         let mut claims = json!({
-            "iss": ISSUER_NAME,
+            "iss": self.config.issuer_name.clone(),
             "iat": now.unix_timestamp(),
             "jti": id,
             "jwk": serde_json::from_str::<Value>(&self.pubkey_jwks()?)?["keys"][0].clone(),
@@ -97,20 +138,44 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
     }
 
     fn pubkey_jwks(&self) -> Result<String> {
-        let pubkey = self.private_key.to_public_key();
-        let n = pubkey.n().to_bytes_be();
-        let e = pubkey.e().to_bytes_be();
+        let n = self.private_key.n().to_vec();
+        let e = self.private_key.e().to_vec();
 
-        let jwk = json!({
-            "kty": "RSA",
-            "alg": SIMPLE_TOKEN_ALG,
-            "n": URL_SAFE_NO_PAD.encode(n),
-            "e": URL_SAFE_NO_PAD.encode(e),
-        });
+        let mut jwk = Jwk {
+            kty: "RSA".to_string(),
+            alg: SIMPLE_TOKEN_ALG.to_string(),
+            n: URL_SAFE_NO_PAD.encode(n),
+            e: URL_SAFE_NO_PAD.encode(e),
+            x5u: None,
+            x5c: None,
+        };
+
+        jwk.x5u = self.cert_url.clone();
+        if let Some(cert_chain) = self.cert_chain.clone() {
+            let mut x5c = Vec::new();
+            for cert in cert_chain {
+                let der = cert.to_der()?;
+                x5c.push(URL_SAFE_NO_PAD.encode(der));
+            }
+            jwk.x5c = Some(x5c);
+        }
+
         let jwks = json!({
             "keys": vec![jwk],
         });
 
         Ok(serde_json::to_string(&jwks)?)
     }
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct Jwk {
+    kty: String,
+    alg: String,
+    n: String,
+    e: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x5u: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x5c: Option<Vec<String>>,
 }
