@@ -1,6 +1,9 @@
 insecure_http = true
 insecure_api = true
 
+[attestation_token_config]
+attestation_token_type = "CoCo"
+
 [intel_trust_authority_config]
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."

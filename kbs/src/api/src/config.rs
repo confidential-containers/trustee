@@ -11,7 +11,7 @@ use crate::policy_engine::PolicyEngineConfig;
 #[cfg(feature = "resource")]
 use crate::resource::RepositoryConfig;
 #[cfg(feature = "resource")]
-use crate::token::AttestationTokenVerifierType;
+use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
 use attestation_service::config::Config as AsConfig;
@@ -22,7 +22,6 @@ use serde_json::Value;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_ATTESTATION_TOKEN_TYPE: &str = "CoCo";
 const DEFAULT_INSECURE_API: bool = false;
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
@@ -35,12 +34,9 @@ pub struct KbsConfig {
     #[cfg(feature = "resource")]
     pub repository_config: Option<RepositoryConfig>,
 
-    /// Attestation token result broker type.
-    ///
-    /// Possible values:
-    /// * `CoCo`
+    /// Attestation token result broker config.
     #[cfg(feature = "resource")]
-    pub attestation_token_type: AttestationTokenVerifierType,
+    pub attestation_token_config: AttestationTokenVerifierConfig,
 
     /// Configuration for the built-in Attestation Service.
     #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
@@ -92,7 +88,6 @@ impl TryFrom<&Path> for KbsConfig {
     /// `config` crate. See `KbsConfig` for schema information.
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
         let c = Config::builder()
-            .set_default("attestation_token_type", DEFAULT_ATTESTATION_TOKEN_TYPE)?
             .set_default("insecure_api", DEFAULT_INSECURE_API)?
             .set_default("insecure_http", DEFAULT_INSECURE_HTTP)?
             .set_default("sockets", vec![DEFAULT_SOCKET])?

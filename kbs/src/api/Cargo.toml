@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = ["coco-as-builtin", "resource", "opa", "rustls"]
-resource = ["rsa", "aes-gcm"]
+resource = ["rsa", "dep:openssl", "reqwest", "aes-gcm"]
 as = []
 policy = []
 opa = ["policy"]
