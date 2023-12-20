@@ -28,7 +28,7 @@ use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use std::path::PathBuf;
 use std::{net::SocketAddr, sync::Arc};
 #[cfg(feature = "resource")]
-use token::AttestationTokenVerifierType;
+use token::AttestationTokenVerifierConfig;
 
 #[cfg(feature = "rustls")]
 use rustls::ServerConfig;
@@ -112,7 +112,7 @@ pub struct ApiServer {
     #[cfg(feature = "resource")]
     repository_config: RepositoryConfig,
     #[cfg(feature = "resource")]
-    attestation_token_type: AttestationTokenVerifierType,
+    attestation_token_config: AttestationTokenVerifierConfig,
     #[cfg(feature = "policy")]
     policy_engine_config: PolicyEngineConfig,
 }
@@ -131,7 +131,7 @@ impl ApiServer {
         http_timeout: i64,
         insecure_api: bool,
         #[cfg(feature = "resource")] repository_config: RepositoryConfig,
-        #[cfg(feature = "resource")] attestation_token_type: AttestationTokenVerifierType,
+        #[cfg(feature = "resource")] attestation_token_config: AttestationTokenVerifierConfig,
         #[cfg(feature = "policy")] policy_engine_config: PolicyEngineConfig,
     ) -> Result<Self> {
         if !insecure && (private_key.is_none() || certificate.is_none()) {
@@ -159,7 +159,7 @@ impl ApiServer {
             #[cfg(feature = "resource")]
             repository_config,
             #[cfg(feature = "resource")]
-            attestation_token_type,
+            attestation_token_config,
             #[cfg(feature = "policy")]
             policy_engine_config,
         })
@@ -256,7 +256,8 @@ impl ApiServer {
         let repository = self.repository_config.initialize()?;
 
         #[cfg(feature = "resource")]
-        let token_verifier = self.attestation_token_type.to_token_verifier()?;
+        let token_verifier =
+            crate::token::create_token_verifier(self.attestation_token_config.clone())?;
 
         #[cfg(feature = "policy")]
         let policy_engine = PolicyEngine::new(&self.policy_engine_config).await?;
