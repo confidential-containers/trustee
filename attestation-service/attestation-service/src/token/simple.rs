@@ -10,6 +10,8 @@ use rsa::sha2::Sha384;
 use rsa::signature::{RandomizedSigner, SignatureEncoding};
 use rsa::traits::PublicKeyParts;
 use rsa::RsaPrivateKey;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde_json::{json, Value};
 
 use crate::token::{AttestationTokenBroker, AttestationTokenConfig};
@@ -56,8 +58,16 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         let now = time::OffsetDateTime::now_utc();
         let exp = now + time::Duration::minutes(self.config.duration_min);
 
+        let id: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect();
+
         let mut claims = json!({
             "iss": ISSUER_NAME,
+            "iat": now.unix_timestamp(),
+            "jti": id,
             "jwk": serde_json::from_str::<Value>(&self.pubkey_jwks()?)?["keys"][0].clone(),
             "nbf": now.unix_timestamp(),
             "exp": exp.unix_timestamp(),
