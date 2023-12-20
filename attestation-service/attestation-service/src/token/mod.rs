@@ -6,6 +6,7 @@
 use anyhow::*;
 use serde::Deserialize;
 use serde_json::Value;
+use simple::COCO_AS_ISSUER_NAME;
 use strum::EnumString;
 
 mod simple;
@@ -46,14 +47,31 @@ pub struct AttestationTokenConfig {
     /// The Attestation Result Token duration time(in minute)
     pub duration_min: i64,
 
-    pub issuer_name: Option<String>,
+    #[serde(default = "default_issuer_name")]
+    pub issuer_name: String,
+
+    pub signer: Option<TokenSignerConfig>,
+}
+
+fn default_issuer_name() -> String {
+    COCO_AS_ISSUER_NAME.to_string()
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct TokenSignerConfig {
+    pub key_path: String,
+    pub cert_url: Option<String>,
+
+    // PEM format certificate chain.
+    pub cert_path: Option<String>,
 }
 
 impl Default for AttestationTokenConfig {
     fn default() -> Self {
         Self {
             duration_min: DEFAULT_TOKEN_TIMEOUT,
-            issuer_name: None,
+            issuer_name: COCO_AS_ISSUER_NAME.to_string(),
+            signer: None,
         }
     }
 }
