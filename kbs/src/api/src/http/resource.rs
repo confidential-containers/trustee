@@ -183,6 +183,7 @@ async fn get_attest_claims_from_header(
         .read()
         .await
         .verify(token)
+        .await
         .map_err(|e| Error::TokenParseFailed(format!("verify token failed: {e}")))?;
     Ok(claims)
 }

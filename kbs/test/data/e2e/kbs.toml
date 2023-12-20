@@ -2,6 +2,9 @@ sockets = ["127.0.0.1:8080"]
 auth_public_key = "./kbs.pem"
 insecure_http = true
 
+[attestation_token_config]
+attestation_token_type = "CoCo"
+
 [repository_config]
 type = "LocalFs"
 dir_path = "./data/repository"
