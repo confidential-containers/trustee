@@ -1,0 +1,6 @@
+{
+    "tee": "%GRPC_TEE_ENUM%",
+    "evidence": "%EVIDENCE%",
+    "raw_runtime_data": "%RUNTIME_DATA%",
+    "policy_ids": []
+}

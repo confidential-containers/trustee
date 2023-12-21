@@ -1,0 +1,68 @@
+name: CoCo-AS e2e
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+# Self-hosted runners do not set -o pipefail otherwise
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  e2e-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+         # TODO: Add real HW-TEE test
+         # See https://github.com/confidential-containers/kbs/issues/223
+          # - runner: self-hosted
+          #   generate_evidence: true
+          #   grpc_tee_enum: 3
+          #   restful_tee_enum: tdx
+          - runner: ubuntu-22.04
+            generate_evidence: false
+            grpc_tee_enum: 2
+            restful_tee_enum: snp
+    name: TEE=${{ matrix.restful_tee_enum }} Generate Evidence Dynamically=${{ matrix.generate_evidence }}
+    runs-on: ${{ matrix.runner }}
+    env:
+      GRPC_TEE_ENUM: ${{ matrix.grpc_tee_enum }}
+      RESTFUL_TEE_ENUM: ${{ matrix.restful_tee_enum }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+
+    - name: Set up rust build cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          target/
+        key: rust-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install dependencies
+      if: ${{ matrix.runner == 'ubuntu-22.04' }}
+      working-directory: attestation-service/tests/e2e
+      run: |
+        make install-dependencies
+        go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+    - name: Run e2e test (gRPC)
+      working-directory: attestation-service/tests/e2e
+      run: make e2e-grpc-test
+
+    - name: Run e2e test (RESTful)
+      working-directory: attestation-service/tests/e2e
+      run: make e2e-restful-test
