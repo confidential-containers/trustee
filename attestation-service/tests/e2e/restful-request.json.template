@@ -1,0 +1,8 @@
+{
+    "tee": "%RESTFUL_TEE_ENUM%",
+    "evidence": "%EVIDENCE%",
+    "runtime_data": {
+        "raw": "%RUNTIME_DATA%"
+    },
+    "policy_ids": []
+}
