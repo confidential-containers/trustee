@@ -23,7 +23,6 @@ section:
 
 | Property                 | Type         | Description                                                                                                | Required | Default              |
 |--------------------------|--------------|------------------------------------------------------------------------------------------------------------|----------|----------------------|
-| `attestation_token_type` | String       | Attestation token broker type. Available only when the `resource` feature is enabled. Valid values: `CoCo` | No       | `CoCo`               |
 | `sockets`                | String array | One or more sockets to listen on.                                                                          | No       | `["127.0.0.1:8080"]` |
 | `insecure_api`           | Boolean      | Enable KBS insecure APIs such as Resource Registration without JWK verification.                           | No       | `false`              |
 | `insecure_http`          | Boolean      | Don't use TLS for the KBS HTTP endpoint.                                                                   | No       | `false`              |
@@ -31,6 +30,20 @@ section:
 | `private_key`            | String       | Path to a private key file to be used for HTTPS.                                                           | No       | -                    |
 | `certificate`            | String       | Path to a certificate file to be used for HTTPS.                                                           | No       | -                    |
 | `auth_public_key`        | String       | Path to a public key file to be used for authenticating the resource registration endpoint token (JWT).    | No       | -                    |
+
+### Attestation Token Configuration
+
+The following properties can be set under the `attestation_token_config` section.
+
+>This section is available only when the `resource` feature is enabled.
+
+| Property                   | Type          | Description                                         | Required | Default   |
+|----------------------------|---------------|-----------------------------------------------------|----------|-----------|
+| `attestation_token_config` | String        | Attestation token broker type. Valid values: `CoCo` | Yes      | -         |
+| `trusted_certs_paths`        | String Array  | Trusted root certificates file paths (PEM format).  | No       | -         |
+
+If `trusted_certs_paths` is set, KBS will forcibly check the validity of the Attestation Token signature public key certificate,
+if not set this field, KBS will skip the verification of the certificate.
 
 ### Repository Configuration
 
@@ -74,10 +87,23 @@ This section is **optional**. When omitted, a default configuration is used.
 
 #### AttestationTokenConfig
 
-| Property       | Type    | Description                                          | Required | Default |
-|----------------|---------|------------------------------------------------------|----------|---------|
-| `duration_min` | Integer | Duration of the attestation result token in minutes. | Yes      | -       |
-| `issuer_name`  | String  | Issure name of the attestation result token.         | No       | -       |
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | Yes      | -       |
+| `issuer_name`  | String                  | Issure name of the attestation result token.         | No       | -       |
+| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | -       |
+
+[1]: #tokensignerconfig
+
+#### TokenSignerConfig
+
+This section is **optional**. When omitted, a new RSA key pair is generated and used.
+
+| Property       | Type    | Description                                              | Required | Default |
+|----------------|---------|----------------------------------------------------------|----------|---------|
+| `key_path`     | String  | RSA Key Pair file (PEM format) path.                     | Yes      | -       |
+| `cert_url`     | String  | RSA Public Key certificate chain (PEM format) URL.       | No       | -       |
+| `cert_path`    | String  | RSA Public Key certificate chain (PEM format) file path. | No       | -       |
 
 ### gRPC Attestation
 
