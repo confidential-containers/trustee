@@ -20,7 +20,7 @@ clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 jwt-simple = "0.11.4"
 # TODO: change the git repo after https://github.com/confidential-containers/guest-components/pull/406 is merged.
-kbs_protocol = { git = "https://github.com/Xynnn007/guest-components.git", rev = "b2f863f" }
+kbs_protocol = { git = "https://github.com/Xynnn007/guest-components.git", branch = "fix-kbs-protocol" }
 log.workspace = true
 reqwest = { version = "0.11.18", default-features = false, features = ["cookies", "json"] }
 serde = { version = "1.0", features = ["derive"] }
