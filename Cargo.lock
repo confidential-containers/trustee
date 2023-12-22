@@ -560,7 +560,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components.git?branch=fix-kbs-protocol#b4d778821759eda37d2713392d0c7b656a4f707a"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1e76429#1e76429b46f9da61485dba229b2fffca94025a61"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1236,7 +1236,7 @@ dependencies = [
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components.git?branch=fix-kbs-protocol#b4d778821759eda37d2713392d0c7b656a4f707a"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1e76429#1e76429b46f9da61485dba229b2fffca94025a61"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2422,7 +2422,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components.git?branch=fix-kbs-protocol#b4d778821759eda37d2713392d0c7b656a4f707a"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1e76429#1e76429b46f9da61485dba229b2fffca94025a61"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3624,7 +3624,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/Xynnn007/guest-components.git?branch=fix-kbs-protocol#b4d778821759eda37d2713392d0c7b656a4f707a"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1e76429#1e76429b46f9da61485dba229b2fffca94025a61"
 dependencies = [
  "anyhow",
  "serde",
