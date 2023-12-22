@@ -9,6 +9,8 @@ data
 test/*
 !test/Makefile
 !test/data/
+test/data/attestation-service
+test/data/repository
 
 config/private.key
 config/public.pub

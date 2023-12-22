@@ -62,6 +62,10 @@ jobs:
     - name: Build bins
       working-directory: kbs/test
       run: make bins
+    
+    - name: Generate Attestation Token Signer
+      working-directory: kbs/test
+      run: make generate-attestation-token-signer
 
     - name: Set cc_kbc sample attester env
       if: inputs.sample == true

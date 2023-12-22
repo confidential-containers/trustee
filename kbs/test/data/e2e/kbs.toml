@@ -18,6 +18,10 @@ attestation_token_broker = "Simple"
 [as_config.attestation_token_config]
 duration_min = 5
 
+[as_config.attestation_token_config.signer]
+key_path = "./token-signer/token-key.pem"
+cert_path = "./token-signer/token-cert-chain.pem"
+
 [as_config.rvps_config]
 store_type = "LocalFs"
 remote_addr = ""
