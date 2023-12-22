@@ -61,7 +61,7 @@ impl<'a> Session<'a> {
         Ok(Session {
             cookie,
             nonce: nonce()?,
-            tee: req.tee.clone(),
+            tee: req.tee,
             tee_extra_params,
             tee_pub_key: None,
             authenticated: false,
@@ -82,7 +82,7 @@ impl<'a> Session<'a> {
     }
 
     pub fn tee(&self) -> Tee {
-        self.tee.clone()
+        self.tee
     }
 
     pub fn tee_public_key(&self) -> Option<TeePubKey> {
