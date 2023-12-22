@@ -50,6 +50,17 @@ client:
 .PHONY: bins
 bins: kbs resource-kbs client
 
+.PHONY: generate-attestation-token-signer
+generate-attestation-token-signer:
+	mkdir $(CURDIR)/token-signer/
+	openssl genrsa -traditional -out ./token-signer/cakey.pem 2048
+	openssl req -new -key ./token-signer/cakey.pem -out ./token-signer/careq.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-test-root"
+	openssl req -x509 -days 3650 -key ./token-signer/cakey.pem -in ./token-signer/careq.csr -out ./token-signer/cacert.pem
+	openssl genrsa -traditional -out ./token-signer/token-key.pem 2048
+	openssl req -new -key ./token-signer/token-key.pem -out ./token-signer/token-cert-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS"
+	openssl x509 -req -in ./token-signer/token-cert-req.csr -CA ./token-signer/cacert.pem -CAkey ./token-signer/cakey.pem -CAcreateserial -out ./token-signer/token-cert.pem -extensions req_ext
+	cat ./token-signer/token-cert.pem ./token-signer/cacert.pem > ./token-signer/token-cert-chain.pem
+
 kbs.key:
 	openssl genpkey -algorithm ed25519 > kbs.key
 
@@ -133,7 +144,7 @@ e2e-test: test-bgcheck test-passport stop
 
 .PHONY: clean
 clean:
-	rm -f \
+	rm -rf \
 		kbs \
 		resource-kbs \
 		kbs.key \
@@ -141,5 +152,6 @@ clean:
 		tee.key \
 		tee.pem \
 		client \
+		token-signer \
 		roundtrip_secret \
 		$(KBS_REPO_PATH)/one/two/three

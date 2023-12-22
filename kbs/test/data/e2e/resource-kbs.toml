@@ -4,6 +4,7 @@ insecure_http = true
 
 [attestation_token_config]
 attestation_token_type = "CoCo"
+trusted_certs_paths = ["./token-signer/cacert.pem"]
 
 [repository_config]
 type = "LocalFs"
