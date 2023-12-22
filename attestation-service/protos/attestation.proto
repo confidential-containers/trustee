@@ -11,6 +11,7 @@ enum Tee {
     AzSnpVtpm = 5;
     CSV = 6;
     CCA = 7;
+    AzTdxVtpm = 8;
 }
 
 message AttestationRequest {

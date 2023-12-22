@@ -84,6 +84,7 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
                 }
             }
         }
+        Tee::AzTdxVtpm => todo!(),
     }
 }
 

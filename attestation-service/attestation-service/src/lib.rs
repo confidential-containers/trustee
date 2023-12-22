@@ -172,7 +172,7 @@ impl AttestationService {
             .await
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
-        let flattened_claims = flatten_claims(tee.clone(), &claims_from_tee_evidence)?;
+        let flattened_claims = flatten_claims(tee, &claims_from_tee_evidence)?;
 
         let tcb_json = serde_json::to_string(&flattened_claims)?;
 

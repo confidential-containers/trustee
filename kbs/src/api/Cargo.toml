@@ -34,8 +34,7 @@ config = "0.13.3"
 env_logger.workspace = true
 jsonwebtoken = { version = "8", default-features = false, optional = true }
 jwt-simple = "0.11.6"
-# TODO: change it to "0.5", once released.
-kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "c90df0e" }
+kbs-types.workspace = true
 lazy_static = "1.4.0"
 log.workspace = true
 prost = { version = "0.11", optional = true }
