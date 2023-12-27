@@ -138,12 +138,13 @@ async fn get_attest_claims_from_session(
         .cookie(KBS_SESSION_ID)
         .ok_or(Error::UnAuthenticatedCookie)?;
 
-    let session_map = map.sessions.read().await;
-    let locked_session = session_map
-        .get(cookie.value())
+    let session = map
+        .sessions
+        .get_async(cookie.value())
+        .await
         .ok_or(Error::UnAuthenticatedCookie)?;
 
-    let session = locked_session.lock().await;
+    let session = session.get();
 
     info!("Cookie {} request to get resource", session.id());
 
