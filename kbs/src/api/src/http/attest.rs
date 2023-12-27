@@ -57,10 +57,12 @@ pub(crate) async fn attest(
         (session.tee(), session.nonce().to_string())
     };
 
+    let attestation_str = serde_json::to_string(&attestation)
+        .map_err(|e| Error::AttestationFailed(format!("serialize attestation failed : {e:?}")))?;
     let token = attestation_service
-        .verify(tee, &nonce, &serde_json::to_string(&attestation).unwrap())
+        .verify(tee, &nonce, &attestation_str)
         .await
-        .map_err(|e| Error::AttestationFailed(e.to_string()))?;
+        .map_err(|e| Error::AttestationFailed(format!("{e:?}")))?;
 
     let claims_b64 = token
         .split('.')
