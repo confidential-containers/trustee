@@ -12,9 +12,6 @@ use base64::Engine;
 use kbs_types::{Request, Tee, TeePubKey};
 use rand::{thread_rng, Rng};
 use semver::Version;
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
@@ -123,13 +120,13 @@ impl<'a> Session<'a> {
 }
 
 pub(crate) struct SessionMap<'a> {
-    pub sessions: RwLock<HashMap<String, Arc<Mutex<Session<'a>>>>>,
+    pub sessions: scc::HashMap<String, Session<'a>>,
 }
 
 impl<'a> SessionMap<'a> {
     pub fn new() -> Self {
         SessionMap {
-            sessions: RwLock::new(HashMap::new()),
+            sessions: scc::HashMap::new(),
         }
     }
 }

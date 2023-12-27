@@ -49,7 +49,7 @@ pub struct IntelTrustAuthority {
 
 #[async_trait]
 impl Attest for IntelTrustAuthority {
-    async fn verify(&mut self, tee: Tee, _nonce: &str, attestation: &str) -> Result<String> {
+    async fn verify(&self, tee: Tee, _nonce: &str, attestation: &str) -> Result<String> {
         if tee != Tee::Tdx && tee != Tee::Sgx {
             bail!("Intel Trust Authority: TEE {tee:?} is not supported.");
         }
@@ -119,7 +119,7 @@ impl Attest for IntelTrustAuthority {
 }
 
 impl IntelTrustAuthority {
-    pub fn new(config: &IntelTrustAuthorityConfig) -> Result<Self> {
+    pub fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
         let file = File::open(&config.certs_file)
             .map_err(|e| anyhow!("Open certs file failed: {:?}", e))?;
         let reader = BufReader::new(file);

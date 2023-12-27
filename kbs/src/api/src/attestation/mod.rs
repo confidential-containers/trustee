@@ -7,12 +7,10 @@ use async_trait::async_trait;
 #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
 use attestation_service::config::Config as AsConfig;
 #[cfg(feature = "coco-as-grpc")]
-use coco::grpc::GrpcConfig;
+use coco::grpc::*;
 #[cfg(feature = "intel-trust-authority-as")]
-use intel_trust_authority::IntelTrustAuthorityConfig;
+use intel_trust_authority::*;
 use kbs_types::Tee;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[cfg(feature = "coco-as")]
 #[allow(missing_docs)]
@@ -27,45 +25,68 @@ pub mod intel_trust_authority;
 #[async_trait]
 pub trait Attest: Send + Sync {
     /// Set Attestation Policy
-    async fn set_policy(&mut self, _input: &[u8]) -> Result<()> {
+    async fn set_policy(&self, _input: &[u8]) -> Result<()> {
         Err(anyhow!("Set Policy API is unimplemented"))
     }
 
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
-    async fn verify(&mut self, tee: Tee, nonce: &str, attestation: &str) -> Result<String>;
+    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String>;
 }
 
 /// Attestation Service
-#[derive(Clone)]
-pub struct AttestationService(pub Arc<Mutex<dyn Attest>>);
+pub enum AttestationService {
+    #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+    CoCoASBuiltIn(coco::builtin::BuiltInCoCoAs),
+
+    #[cfg(feature = "coco-as-grpc")]
+    CoCoASgRPC(GrpcClientPool),
+
+    #[cfg(feature = "intel-trust-authority-as")]
+    IntelTA(IntelTrustAuthority),
+}
 
 impl AttestationService {
     /// Create and initialize AttestationService.
     #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
-    pub async fn new(config: &AsConfig) -> Result<Self> {
-        let attestation_service: Arc<Mutex<dyn Attest>> =
-            Arc::new(Mutex::new(coco::builtin::Native::new(config).await?));
-
-        Ok(Self(attestation_service))
+    pub async fn new(config: AsConfig) -> Result<Self> {
+        let built_in_as = coco::builtin::BuiltInCoCoAs::new(config).await?;
+        Ok(Self::CoCoASBuiltIn(built_in_as))
     }
 
     /// Create and initialize AttestationService.
     #[cfg(feature = "coco-as-grpc")]
-    pub async fn new(config: &GrpcConfig) -> Result<Self> {
-        let attestation_service: Arc<Mutex<dyn Attest>> =
-            Arc::new(Mutex::new(coco::grpc::Grpc::new(config).await?));
-
-        Ok(Self(attestation_service))
+    pub async fn new(config: GrpcConfig) -> Result<Self> {
+        let pool = GrpcClientPool::new(config).await?;
+        Ok(Self::CoCoASgRPC(pool))
     }
 
     /// Create and initialize AttestationService.
     #[cfg(feature = "intel-trust-authority-as")]
-    pub fn new(config: &IntelTrustAuthorityConfig) -> Result<Self> {
-        let attestation_service: Arc<Mutex<dyn Attest>> = Arc::new(Mutex::new(
-            intel_trust_authority::IntelTrustAuthority::new(config)?,
-        ));
+    pub fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
+        let ta_client = intel_trust_authority::IntelTrustAuthority::new(config)?;
+        Ok(Self::IntelTA(ta_client))
+    }
 
-        Ok(Self(attestation_service))
+    pub async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
+        match self {
+            #[cfg(feature = "coco-as-grpc")]
+            AttestationService::CoCoASgRPC(inner) => inner.verify(tee, nonce, attestation).await,
+            #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+            AttestationService::CoCoASBuiltIn(inner) => inner.verify(tee, nonce, attestation).await,
+            #[cfg(feature = "intel-trust-authority-as")]
+            AttestationService::IntelTA(inner) => inner.verify(tee, nonce, attestation).await,
+        }
+    }
+
+    pub async fn set_policy(&self, input: &[u8]) -> Result<()> {
+        match self {
+            #[cfg(feature = "coco-as-grpc")]
+            AttestationService::CoCoASgRPC(inner) => inner.set_policy(input).await,
+            #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+            AttestationService::CoCoASBuiltIn(inner) => inner.set_policy(input).await,
+            #[cfg(feature = "intel-trust-authority-as")]
+            AttestationService::IntelTA(inner) => inner.set_policy(input).await,
+        }
     }
 }

@@ -27,10 +27,7 @@ pub(crate) async fn auth(
         extra_params: "".to_string(),
     });
 
-    map.sessions
-        .write()
-        .await
-        .insert(session.id().to_string(), Arc::new(Mutex::new(session)));
+    let _ = map.sessions.insert(session.id().to_string(), session);
 
     Ok(response)
 }
@@ -40,30 +37,28 @@ pub(crate) async fn attest(
     attestation: web::Json<Attestation>,
     request: HttpRequest,
     map: web::Data<SessionMap<'_>>,
-    attestation_service: web::Data<AttestationService>,
+    attestation_service: web::Data<Arc<AttestationService>>,
 ) -> Result<HttpResponse> {
     let cookie = request.cookie(KBS_SESSION_ID).ok_or(Error::MissingCookie)?;
 
-    let sessions = map.sessions.read().await;
-    let locked_session = sessions.get(cookie.value()).ok_or(Error::InvalidCookie)?;
+    let (tee, nonce) = {
+        let session = map
+            .sessions
+            .get_async(cookie.value())
+            .await
+            .ok_or(Error::InvalidCookie)?;
+        let session = session.get();
 
-    let mut session = locked_session.lock().await;
+        info!("Cookie {} attestation {:?}", session.id(), attestation);
 
-    info!("Cookie {} attestation {:?}", session.id(), attestation);
-
-    if session.is_expired() {
-        raise_error!(Error::ExpiredCookie);
-    }
+        if session.is_expired() {
+            raise_error!(Error::ExpiredCookie);
+        }
+        (session.tee(), session.nonce().to_string())
+    };
 
     let token = attestation_service
-        .0
-        .lock()
-        .await
-        .verify(
-            session.tee(),
-            session.nonce(),
-            &serde_json::to_string(&attestation).unwrap(),
-        )
+        .verify(tee, &nonce, &serde_json::to_string(&attestation).unwrap())
         .await
         .map_err(|e| Error::AttestationFailed(e.to_string()))?;
 
@@ -78,6 +73,12 @@ pub(crate) async fn attest(
     )
     .map_err(|e| Error::TokenIssueFailed(format!("Illegal token base64 claims: {e}")))?;
 
+    let mut session = map
+        .sessions
+        .get_async(cookie.value())
+        .await
+        .ok_or(Error::InvalidCookie)?;
+    let session = session.get_mut();
     session.set_tee_public_key(attestation.tee_pubkey.clone());
     session.set_authenticated();
     session.set_attestation_claims(claims);
