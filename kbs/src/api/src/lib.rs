@@ -25,8 +25,8 @@ use jwt_simple::prelude::Ed25519PublicKey;
 #[cfg(feature = "resource")]
 use resource::RepositoryConfig;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::{net::SocketAddr, sync::Arc};
 #[cfg(feature = "resource")]
 use token::AttestationTokenVerifierType;
 
@@ -105,7 +105,7 @@ pub struct ApiServer {
     insecure: bool,
 
     #[cfg(feature = "as")]
-    attestation_service: AttestationService,
+    attestation_service: Arc<AttestationService>,
 
     http_timeout: i64,
     insecure_api: bool,
@@ -126,7 +126,7 @@ impl ApiServer {
         certificate: Option<PathBuf>,
         insecure: bool,
 
-        #[cfg(feature = "as")] attestation_service: &AttestationService,
+        #[cfg(feature = "as")] attestation_service: AttestationService,
 
         http_timeout: i64,
         insecure_api: bool,
@@ -152,7 +152,7 @@ impl ApiServer {
             insecure,
 
             #[cfg(feature = "as")]
-            attestation_service: attestation_service.clone(),
+            attestation_service: Arc::new(attestation_service),
 
             http_timeout,
             insecure_api,
