@@ -233,10 +233,22 @@ impl ApiServer {
         );
 
         #[cfg(feature = "as")]
-        let attestation_service = web::Data::new(self.attestation_service.clone());
+        let (attestation_service, sessions) = {
+            let attestation_service = web::Data::new(self.attestation_service.clone());
+            let sessions = web::Data::new(SessionMap::new());
+            let sessions_clone = sessions.clone();
 
-        #[cfg(feature = "as")]
-        let sessions = web::Data::new(SessionMap::new());
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    sessions_clone
+                        .sessions
+                        .retain_async(|_, v| !v.is_expired())
+                        .await;
+                }
+            });
+            (attestation_service, sessions)
+        };
 
         let http_timeout = self.http_timeout;
 

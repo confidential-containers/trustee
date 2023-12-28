@@ -10,7 +10,7 @@ use crate::policy_engine::PolicyEngine;
 #[cfg(feature = "resource")]
 use crate::resource::{set_secret_resource, Repository, ResourceDesc};
 #[cfg(feature = "as")]
-use crate::session::{Session, SessionMap, KBS_SESSION_ID};
+use crate::session::{SessionMap, KBS_SESSION_ID};
 #[cfg(feature = "resource")]
 use crate::token::AttestationTokenVerifier;
 use actix_web::Responder;
