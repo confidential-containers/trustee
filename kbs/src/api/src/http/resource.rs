@@ -25,7 +25,7 @@ use super::*;
 pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
-    #[cfg(feature = "as")] map: web::Data<SessionMap<'_>>,
+    #[cfg(feature = "as")] map: web::Data<SessionMap>,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
     #[cfg(feature = "policy")] policy_engine: web::Data<PolicyEngine>,
 ) -> Result<HttpResponse> {
@@ -131,9 +131,11 @@ pub(crate) async fn get_resource(
 #[cfg(feature = "as")]
 async fn get_attest_claims_from_session(
     request: &HttpRequest,
-    map: web::Data<SessionMap<'_>>,
+    map: web::Data<SessionMap>,
 ) -> Result<String> {
     // check cookie
+
+    use crate::session::SessionStatus;
     let cookie = request
         .cookie(KBS_SESSION_ID)
         .ok_or(Error::UnAuthenticatedCookie)?;
@@ -148,23 +150,19 @@ async fn get_attest_claims_from_session(
 
     info!("Cookie {} request to get resource", session.id());
 
-    if !session.is_authenticated() {
-        error!("UnAuthenticated KBS cookie {}", cookie.value());
-        raise_error!(Error::UnAuthenticatedCookie);
-    }
-
     if session.is_expired() {
         error!("Expired KBS cookie {}", cookie.value());
         raise_error!(Error::ExpiredCookie);
     }
 
-    let claims = session
-        .attestation_claims()
-        .ok_or(Error::AttestationClaimsGetFailed(
-            "No attestation claims in the session".into(),
-        ))?;
+    let SessionStatus::Attested {
+        attestation_claims, ..
+    } = session
+    else {
+        raise_error!(Error::UnAuthenticatedCookie);
+    };
 
-    Ok(claims)
+    Ok(attestation_claims.to_owned())
 }
 
 async fn get_attest_claims_from_header(
