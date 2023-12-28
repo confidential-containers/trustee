@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::raise_error;
+use crate::{raise_error, session::SessionStatus};
 
 use super::*;
 
@@ -15,19 +15,19 @@ use serde_json::json;
 /// POST /auth
 pub(crate) async fn auth(
     request: web::Json<Request>,
-    map: web::Data<SessionMap<'_>>,
+    map: web::Data<SessionMap>,
     timeout: web::Data<i64>,
 ) -> Result<HttpResponse> {
     info!("request: {:?}", &request);
 
-    let session = Session::from_request(&request, *timeout.into_inner())
+    let session = SessionStatus::auth(request.0, **timeout)
         .map_err(|e| Error::FailedAuthentication(format!("Session: {e}")))?;
-    let response = HttpResponse::Ok().cookie(session.cookie()).json(Challenge {
-        nonce: session.nonce().to_string(),
-        extra_params: "".to_string(),
-    });
 
-    let _ = map.sessions.insert(session.id().to_string(), session);
+    let response = HttpResponse::Ok()
+        .cookie(session.cookie())
+        .json(session.challenge());
+
+    map.insert(session);
 
     Ok(response)
 }
@@ -36,7 +36,7 @@ pub(crate) async fn auth(
 pub(crate) async fn attest(
     attestation: web::Json<Attestation>,
     request: HttpRequest,
-    map: web::Data<SessionMap<'_>>,
+    map: web::Data<SessionMap>,
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> Result<HttpResponse> {
     let cookie = request.cookie(KBS_SESSION_ID).ok_or(Error::MissingCookie)?;
@@ -54,7 +54,7 @@ pub(crate) async fn attest(
         if session.is_expired() {
             raise_error!(Error::ExpiredCookie);
         }
-        (session.tee(), session.nonce().to_string())
+        (session.request().tee, session.challenge().nonce.to_string())
     };
 
     let attestation_str = serde_json::to_string(&attestation)
@@ -81,9 +81,7 @@ pub(crate) async fn attest(
         .await
         .ok_or(Error::InvalidCookie)?;
     let session = session.get_mut();
-    session.set_tee_public_key(attestation.tee_pubkey.clone());
-    session.set_authenticated();
-    session.set_attestation_claims(claims);
+    session.attest(claims);
 
     let body = serde_json::to_string(&json!({
         "token": token,

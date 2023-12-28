@@ -27,9 +27,6 @@ pub enum Error {
     #[error("Attestation failed: {0}")]
     AttestationFailed(String),
 
-    #[error("Attestation claims get failed: {0}")]
-    AttestationClaimsGetFailed(String),
-
     #[error("Received illegal attestation claims: {0}")]
     AttestationClaimsParseFailed(String),
 

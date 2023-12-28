@@ -4,12 +4,13 @@
 
 use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
-    Cookie, Expiration,
+    Cookie,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use kbs_types::{Request, Tee, TeePubKey};
+use kbs_types::{Challenge, Request};
+use log::warn;
 use rand::{thread_rng, Rng};
 use semver::Version;
 use uuid::Uuid;
@@ -26,107 +27,112 @@ fn nonce() -> Result<String> {
     Ok(STANDARD.encode(&nonce))
 }
 
-#[allow(dead_code)]
-pub(crate) struct Session<'a> {
-    cookie: Cookie<'a>,
-    nonce: String,
-    tee: Tee,
-    tee_extra_params: Option<String>,
-    tee_pub_key: Option<TeePubKey>,
-    authenticated: bool,
-    attestation_claims: Option<String>,
+/// Finite State Machine model for RCAR handshake
+pub(crate) enum SessionStatus {
+    Authed {
+        request: Request,
+        challenge: Challenge,
+        id: String,
+        timeout: OffsetDateTime,
+    },
+
+    Attested {
+        attestation_claims: String,
+        id: String,
+        timeout: OffsetDateTime,
+    },
 }
 
-#[allow(dead_code)]
-impl<'a> Session<'a> {
-    pub fn from_request(req: &Request, timeout: i64) -> Result<Self> {
-        let version = Version::parse(&req.version).map_err(anyhow::Error::from)?;
+macro_rules! impl_member {
+    ($attr: ident, $typ: ident) => {
+        pub fn $attr(&self) -> &$typ {
+            match self {
+                SessionStatus::Authed { $attr, .. } => $attr,
+                SessionStatus::Attested { $attr, .. } => $attr,
+            }
+        }
+    };
+    ($attr: ident, $typ: ident, $branch: ident) => {
+        pub fn $attr(&self) -> &$typ {
+            match self {
+                SessionStatus::$branch { $attr, .. } => $attr,
+                _ => panic!("unexpected status"),
+            }
+        }
+    };
+}
+
+impl SessionStatus {
+    pub fn auth(request: Request, timeout: i64) -> Result<Self> {
+        let version = Version::parse(&request.version).map_err(anyhow::Error::from)?;
         if !crate::VERSION_REQ.matches(&version) {
-            return Err(anyhow!("Invalid Request version {}", req.version));
+            bail!("Invalid Request version {}", request.version);
         }
         let id = Uuid::new_v4().as_simple().to_string();
-        let tee_extra_params = if req.extra_params.is_empty() {
-            None
-        } else {
-            Some(req.extra_params.clone())
-        };
 
-        let cookie = Cookie::build(KBS_SESSION_ID, id)
-            .expires(OffsetDateTime::now_utc() + Duration::minutes(timeout))
-            .finish();
+        let timeout = OffsetDateTime::now_utc() + Duration::minutes(timeout);
 
-        Ok(Session {
-            cookie,
-            nonce: nonce()?,
-            tee: req.tee,
-            tee_extra_params,
-            tee_pub_key: None,
-            authenticated: false,
-            attestation_claims: None,
+        Ok(Self::Authed {
+            request,
+            challenge: Challenge {
+                nonce: nonce()?,
+                extra_params: String::new(),
+            },
+            id,
+            timeout,
         })
     }
 
-    pub fn id(&self) -> &str {
-        self.cookie.value()
+    pub fn cookie<'a>(&self) -> Cookie<'a> {
+        match self {
+            SessionStatus::Authed { id, timeout, .. } => Cookie::build(KBS_SESSION_ID, id.clone())
+                .expires(*timeout)
+                .finish(),
+            SessionStatus::Attested { id, timeout, .. } => {
+                Cookie::build(KBS_SESSION_ID, id.clone())
+                    .expires(*timeout)
+                    .finish()
+            }
+        }
     }
 
-    pub fn cookie(&self) -> Cookie {
-        self.cookie.clone()
-    }
-
-    pub fn nonce(&self) -> &str {
-        &self.nonce
-    }
-
-    pub fn tee(&self) -> Tee {
-        self.tee
-    }
-
-    pub fn tee_public_key(&self) -> Option<TeePubKey> {
-        self.tee_pub_key.clone()
-    }
-
-    pub fn attestation_claims(&self) -> Option<String> {
-        self.attestation_claims.clone()
-    }
-
-    pub fn is_authenticated(&self) -> bool {
-        self.authenticated
-    }
-
-    pub fn set_authenticated(&mut self) {
-        self.authenticated = true
-    }
+    impl_member!(request, Request, Authed);
+    impl_member!(challenge, Challenge, Authed);
+    impl_member!(id, str);
+    impl_member!(timeout, OffsetDateTime);
 
     pub fn is_expired(&self) -> bool {
-        if let Some(Expiration::DateTime(time)) = self.cookie.expires() {
-            return OffsetDateTime::now_utc() > time;
+        return *self.timeout() < OffsetDateTime::now_utc();
+    }
+
+    pub fn attest(&mut self, attestation_claims: String) {
+        match self {
+            SessionStatus::Authed { id, timeout, .. } => {
+                *self = SessionStatus::Attested {
+                    attestation_claims,
+                    id: id.clone(),
+                    timeout: *timeout,
+                };
+            }
+            SessionStatus::Attested { .. } => {
+                warn!("session already attested.");
+            }
         }
-
-        false
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.is_authenticated() && !self.is_expired()
-    }
-
-    pub fn set_tee_public_key(&mut self, key: TeePubKey) {
-        self.tee_pub_key = Some(key)
-    }
-
-    pub fn set_attestation_claims(&mut self, claims: String) {
-        self.attestation_claims = Some(claims)
     }
 }
 
-pub(crate) struct SessionMap<'a> {
-    pub sessions: scc::HashMap<String, Session<'a>>,
+pub(crate) struct SessionMap {
+    pub sessions: scc::HashMap<String, SessionStatus>,
 }
 
-impl<'a> SessionMap<'a> {
+impl SessionMap {
     pub fn new() -> Self {
         SessionMap {
             sessions: scc::HashMap::new(),
         }
+    }
+
+    pub fn insert(&self, session: SessionStatus) {
+        let _ = self.sessions.insert(session.id().to_string(), session);
     }
 }
