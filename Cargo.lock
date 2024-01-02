@@ -2381,7 +2381,6 @@ name = "kbs-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "api-server",
  "base64 0.21.5",
  "clap 4.4.10",
  "env_logger 0.10.1",
