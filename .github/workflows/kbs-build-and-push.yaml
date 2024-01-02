@@ -23,8 +23,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build Container Image
+    - name: Build Container Image KBS (built-in AS)
       run: |
         commit_sha=${{ github.sha }}
         DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/kbs:${commit_sha} -t ghcr.io/confidential-containers/staged-images/kbs:latest --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile --push
 
+    - name: Build Container Image KBS (gRPC AS)
+      run: |
+        commit_sha=${{ github.sha }}
+        DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/kbs-grpc-as:${commit_sha} -t ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest . -f kbs/docker/Dockerfile.coco-as-grpc --push
