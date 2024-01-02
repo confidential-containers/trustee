@@ -185,3 +185,58 @@ Where `/path/to/policy` should be replaced by the real path to your policy file.
 Resource policy also needs to be the `rego` syntax defined by [Open Policy Agent](https://www.openpolicyagent.org/).
 
 You can read the notes of [default resource policy file](./src/api/src/policy_engine/opa/default_policy.rego) for more details of resource policy.
+
+## Attestation Token Certificate
+
+You can configure certificate of the signing key of Attestation Token (JWT) by config files.
+
+### Configure signing key and certificate chain of AS Token
+
+Adding the following content to the config file of Issuer KBS to specify token signing key and its certificate chain,
+which both should be PEM format.
+
+#### Builtin AS mode
+
+Adding the following content to TOML config file of KBS itself:
+```toml
+[as_config.attestation_token_config.signer]
+key_path = "/path/to/token-key.pem"
+cert_path = "/path/to/token-cert-chain.pem"
+```
+
+Refer to [config.md](./docs/config.md) for more details.
+
+#### gRPC AS mode
+
+Adding the following content to JSON config file of gRPC AS:
+```json
+{
+    ...
+
+    "attestation_token_config": {
+        "duration_min": 5,
+		"signer": {
+			"key_path": "/path/to/token-key.pem",
+			"cert_path": "/path/to/token-cert-chain.pem"
+		}
+    }
+}
+```
+
+### Configure trusted root certificate of KBS
+
+Adding the following content to the config file of Resource KBS to specify trusted root certificate (PEM format),
+which used to verify the trustworthy of the certificate in Attestation Token:
+
+```toml
+[attestation_token_config]
+attestation_token_type = "CoCo"
+trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
+```
+
+If `trusted_certs_paths` field is not set, KBS will skip the verification of the certificate in Attestation Token.
+
+Refer to [config.md](./docs/config.md) for more details.
+
+
+
