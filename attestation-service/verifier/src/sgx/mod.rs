@@ -19,7 +19,7 @@ use sgx_dcap_quoteverify_rs::{
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
 };
 
-use crate::{InitDataHash, ReportData};
+use crate::{regularize_data, InitDataHash, ReportData};
 
 use self::types::sgx_quote3_t;
 
@@ -81,15 +81,18 @@ async fn verify_evidence(
     let quote = parse_sgx_quote(&quote_bin)?;
     if let ReportData::Value(expected_report_data) = expected_report_data {
         debug!("Check the binding of REPORT_DATA.");
-        if *expected_report_data != quote.report_body.report_data {
+        let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "SGX");
+        if expected_report_data != quote.report_body.report_data {
             bail!("REPORT_DATA is different from that in SGX Quote");
         }
     }
 
     if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
         debug!("Check the binding of CONFIGID.");
-        if *expected_init_data_hash != quote.report_body.config_id {
-            bail!("MRCONFIGID is different from that in SGX Quote");
+        let expected_init_data_hash =
+            regularize_data(expected_init_data_hash, 64, "CONFIGID", "SGX");
+        if expected_init_data_hash != quote.report_body.config_id {
+            bail!("CONFIGID is different from that in SGX Quote");
         }
     }
 

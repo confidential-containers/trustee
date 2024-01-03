@@ -10,7 +10,7 @@ use base64::Engine;
 use core::result::Result::Ok;
 use ear::{Ear, RawValue};
 use jsonwebtoken::{self as jwt};
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, str};
 use veraison_apiclient::*;
@@ -83,19 +83,7 @@ impl Verifier for CCA {
             bail!("CCA verifier must provide report data field!");
         };
 
-        let mut expected_report_data = expected_report_data.to_vec();
-
-        match expected_report_data.len() {
-            0..=63 => {
-                warn!("The input report_data of CCA is shorter than 64 bytes, will be padded with '\\0'.");
-                expected_report_data.resize(64, b'\0');
-            }
-            64 => {}
-            _ => {
-                warn!("The input report_data of CCA is longer than 64 bytes, will be truncated to 64 bytes.");
-                expected_report_data.truncate(64);
-            }
-        };
+        let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "CCA");
 
         let evidence = serde_json::from_slice::<CcaEvidence>(evidence)
             .context("Deserialize CCA Evidence failed.")?;

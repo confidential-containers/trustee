@@ -97,14 +97,17 @@ impl Verifier for Snp {
         };
 
         debug!("Check the binding of REPORT_DATA.");
+        let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "SNP");
 
-        if *expected_report_data != report.report_data {
+        if expected_report_data != report.report_data {
             bail!("Report Data Mismatch");
         }
 
         if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
             debug!("Check the binding of HOST_DATA.");
-            if *expected_init_data_hash != report.host_data {
+            let expected_init_data_hash =
+                regularize_data(expected_init_data_hash, 32, "HOST_DATA", "SNP");
+            if expected_init_data_hash != report.host_data {
                 bail!("Host Data Mismatch");
             }
         }

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{InitDataHash, ReportData};
+use crate::{regularize_data, InitDataHash, ReportData};
 
 use super::{TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
@@ -61,6 +61,9 @@ impl Verifier for AzSnpVtpm {
             bail!("unexpected empty report data");
         };
 
+        let expected_report_data =
+            regularize_data(expected_report_data, 64, "REPORT_DATA", "Azure SNP vTPM");
+
         if let InitDataHash::Value(_) = expected_init_data_hash {
             warn!("Azure SNP vTPM verifier does not support verify init data hash, will ignore the input `init_data_hash`.");
         }
@@ -69,7 +72,7 @@ impl Verifier for AzSnpVtpm {
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
 
         let hcl_report = HclReport::new(evidence.report)?;
-        verify_quote(&evidence.quote, &hcl_report, expected_report_data)?;
+        verify_quote(&evidence.quote, &hcl_report, &expected_report_data)?;
 
         let var_data_hash = hcl_report.var_data_sha256();
         let snp_report = hcl_report.try_into()?;
