@@ -1,6 +1,9 @@
+use std::cmp::Ordering;
+
 use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
+use log::warn;
 
 pub mod sample;
 
@@ -138,4 +141,22 @@ pub trait Verifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim>;
+}
+
+/// Padding or truncate the given data slice to the given `len` bytes.
+fn regularize_data(data: &[u8], len: usize, data_name: &str, arch: &str) -> Vec<u8> {
+    let data_len = data.len();
+    match data_len.cmp(&len) {
+        Ordering::Less => {
+            warn!("The input {data_name} of {arch} is shorter than {len} bytes, will be padded with '\\0'.");
+            let mut data = data.to_vec();
+            data.resize(len, b'\0');
+            data
+        }
+        Ordering::Equal => data.to_vec(),
+        Ordering::Greater => {
+            warn!("The input {data_name} of {arch} is longer than {len} bytes, will be truncated to {len} bytes.");
+            data[..len].to_vec()
+        }
+    }
 }

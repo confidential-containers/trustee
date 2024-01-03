@@ -53,7 +53,9 @@ impl Verifier for CsvVerifier {
 
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");
-            if *expected_report_data != report_raw.body.report_data {
+            let expected_report_data =
+                regularize_data(expected_report_data, 64, "REPORT_DATA", "CSV");
+            if expected_report_data != report_raw.body.report_data {
                 bail!("REPORT_DATA is different from that in CSV Quote");
             }
         }
