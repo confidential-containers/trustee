@@ -59,14 +59,17 @@ async fn verify_evidence(
 
     if let ReportData::Value(expected_report_data) = expected_report_data {
         debug!("Check the binding of REPORT_DATA.");
-        if *expected_report_data != quote.report_body.report_data {
+        let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "TDX");
+        if expected_report_data != quote.report_body.report_data {
             bail!("REPORT_DATA is different from that in TDX Quote");
         }
     }
 
     if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
         debug!("Check the binding of MRCONFIGID.");
-        if *expected_init_data_hash != quote.report_body.mr_config_id {
+        let expected_init_data_hash =
+            regularize_data(expected_init_data_hash, 48, "MRCONFIGID", "TDX");
+        if expected_init_data_hash != quote.report_body.mr_config_id {
             bail!("MRCONFIGID is different from that in TDX Quote");
         }
     }
