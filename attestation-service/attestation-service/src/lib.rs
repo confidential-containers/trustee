@@ -179,7 +179,7 @@ impl AttestationService {
         let reference_data_map = self
             .get_reference_data(flattened_claims.keys())
             .await
-            .map_err(|e| anyhow!("Generate reference data failed{:?}", e))?;
+            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
 
         let evaluation_report = self
             .policy_engine
