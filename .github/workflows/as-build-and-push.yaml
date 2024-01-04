@@ -1,4 +1,4 @@
-name: Build and Push CoCoAS Image
+name: Build and Push CoCoAS / RVPS Image
 
 on:
   push:
@@ -8,6 +8,19 @@ on:
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - docker_file: attestation-service/Dockerfile.as-grpc
+            tag: coco-as-grpc
+            name: gRPC CoCo-AS
+          - docker_file: attestation-service/Dockerfile.as-restful
+            tag: coco-as-restful
+            name: RESTful CoCo-AS
+          - docker_file: attestation-service/rvps/Dockerfile
+            tag: rvps
+            name: RVPS
 
     steps:
     - name: Checkout code
@@ -23,12 +36,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build gRPC CoCo-AS Container Image
+    - name: Build ${{ matrix.name }} Container Image
       run: |
         commit_sha=${{ github.sha }}
-        DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/coco-as-grpc:${commit_sha} -t ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest . -f attestation-service/Dockerfile.as-grpc --push
-
-    - name: Build RESTful CoCo-AS Container Image
-      run: |
-        commit_sha=${{ github.sha }}
-        DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/coco-as-restful:${commit_sha} -t ghcr.io/confidential-containers/staged-images/coco-as-restful:latest . -f attestation-service/Dockerfile.as-restful --push
+        DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha} -t ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest . -f ${{ matrix.docker_file }} --push
