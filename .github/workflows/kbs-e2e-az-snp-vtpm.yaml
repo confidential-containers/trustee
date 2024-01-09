@@ -1,0 +1,58 @@
+name: KBS e2e with az-snp-vtpm TEE
+
+on:
+  push:
+    branches:
+    - main
+  # Note on repository checkout: pull_request_target sets `GITHUB_SHA` to the
+  # "last commit on the PR base branch", meaning that by default `actions/checkout`
+  # is going to checkout the repository main branch. In order to pick up the pull
+  # request code, this workflow uses the `github.event.pull_request.head.sha`
+  # property to get the last commit on the HEAD branch. One limitation of this approach
+  # is that, unlike the `pull_request` event, the checked pull request isn't necessarily
+  # rebased to main (so it is up to the workflow to ensure the pull request is rebased
+  # **before* the workflow is triggering)
+  pull_request_target:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    # This workflow will be run if the pull request is labeled 'test_e2e'
+    - labeled
+    branches:
+    - 'main'
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'test_e2e')
+    steps:
+    - run: "true"
+
+  checkout-and-rebase:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        ref: main
+
+    - name: Rebase the source
+      run: ./kbs/hack/ci-helper.sh rebase-atop-of-the-latest-target-branch
+
+    - name: Archive source
+      run: git archive -o kbs.tar.gz HEAD
+
+    - uses: actions/upload-artifact@v4
+      with:
+        path: ./kbs.tar.gz
+
+  e2e-test:
+    needs:
+    - authorize
+    - checkout-and-rebase
+    uses: confidential-containers/kbs/.github/workflows/kbs-e2e.yml@main
+    with:
+      runs-on: '["self-hosted","azure-cvm"]'
+      tarball: kbs.tar.gz
