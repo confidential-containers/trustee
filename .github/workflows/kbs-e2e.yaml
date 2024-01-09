@@ -1,8 +1,19 @@
 name: KBS e2e
 
 on:
-  pull_request:
-    branches: [ "main" ]
+  workflow_call:
+    inputs:
+      sample:
+        type: boolean
+        default: false
+      runs-on:
+        type: string
+        default: '["ubuntu-22.04"]'
+        description: JSON representation of runner labels
+      tarball:
+        type: string
+        description: Artifact containing checked out source from a prior job
+        required: true
 
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
@@ -11,16 +22,13 @@ defaults:
 
 jobs:
   e2e-test:
-    strategy:
-      matrix:
-        tee:
-        - sample
-        # - az-snp-vtpm
-
-    runs-on: ${{ ((matrix.tee == 'az-snp-vtpm') && fromJSON('["self-hosted","azure-cvm"]')) || 'ubuntu-22.04' }}
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+
+    - name: Extract tarball
+      run: tar xzf ${{ inputs.tarball }}
 
     - uses: actions-rs/toolchain@v1
       with:
@@ -43,14 +51,17 @@ jobs:
 
     - name: Install dependencies
       working-directory: kbs/test
-      run: sudo make install-dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y make --no-install-recommends
+        sudo make install-dependencies
 
     - name: Build bins
       working-directory: kbs/test
       run: make bins
 
     - name: Set cc_kbc sample attester env
-      if: matrix.tee == 'sample'
+      if: inputs.sample == true
       run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
 
     - name: Run e2e test
