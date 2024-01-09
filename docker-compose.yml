@@ -1,0 +1,73 @@
+version: '3.2'
+services:
+  kbs:
+    build:
+      context: .
+      dockerfile: ./kbs/docker/Dockerfile.coco-as-grpc
+    #image: ghcr.io/confidential-containers/key-broker-service:latest
+    command: [
+        "/usr/local/bin/kbs",
+        "--config-file",
+        "/etc/kbs-config.toml",
+      ]
+    restart: always # keep the server running
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./kbs/data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
+      - ./kbs/config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
+      - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
+    depends_on:
+    - as
+
+  as:
+    build:
+      context: .
+      dockerfile: ./attestation-service/Dockerfile.as-grpc
+    #image: ghcr.io/confidential-containers/attestation-service:latest
+    ports:
+    - "50004:50004"
+    restart: always
+    volumes:
+    - ./kbs/data/attestation-service:/opt/confidential-containers/attestation-service:rw
+    - ./kbs/config/as-config.json:/etc/as-config.json:rw
+    - ./kbs/config/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf:rw
+    command: [
+      "grpc-as",
+      "--socket",
+      "0.0.0.0:50004",
+      "--config-file",
+      "/etc/as-config.json"
+    ]
+    depends_on:
+    - rvps
+
+  rvps:
+    #image: ghcr.io/confidential-containers/reference-value-provider-service:latest
+    build:
+      context: .
+      dockerfile: ./attestation-service/rvps/Dockerfile
+    restart: always # keep the server running
+    ports:
+      - "50003:50003"
+    volumes:
+      - ./kbs/data/reference-values:/opt/confidential-containers/attestation-service/reference_values:rw
+
+  keyprovider:
+    image: ghcr.io/confidential-containers/coco-keyprovider:latest
+    restart: always
+    ports:
+      - "50000:50000"
+    volumes:
+      - ./kbs/config/private.key:/etc/private.key
+    command: [
+      "coco_keyprovider",
+      "--socket",
+      "0.0.0.0:50000",
+      "--kbs",
+      "http://kbs:8080",
+      "--auth-private-key",
+      "/etc/private.key"
+    ]
+    depends_on:
+    - kbs

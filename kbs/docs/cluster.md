@@ -1,6 +1,6 @@
 # KBS Cluster
 
-KBS provides a simple cluster defined by `docker-compose`, include itself, [Attestation Service](https://github.com/confidential-containers/attestation-service), [Reference Value Provider Service](https://github.com/confidential-containers/attestation-service/tree/main/bin/rvps) and [CoCo Keyprovider](https://github.com/confidential-containers/attestation-agent/tree/cc4e84c/sample_keyprovider)
+KBS provides a simple cluster defined by `docker-compose`, include itself, [Attestation Service](https://github.com/confidential-containers/kbs/tree/main/attestation-service), [Reference Value Provider Service](https://github.com/confidential-containers/kbs/tree/main/attestation-service/rvps) and [CoCo Keyprovider](https://github.com/confidential-containers/guest-components/tree/main/attestation-agent/coco_keyprovider)
 
 Users can use very simple command to:
 - launch KBS service.
@@ -19,8 +19,8 @@ Users can use very simple command to:
 Generate a user auth key pair
 ```
 cd $KBS
-openssl genpkey -algorithm ed25519 > config/private.key
-openssl pkey -in config/private.key -pubout -out config/public.pub
+openssl genpkey -algorithm ed25519 > kbs/config/private.key
+openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
 ```
 
 Run the cluster
