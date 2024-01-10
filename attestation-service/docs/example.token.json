@@ -47,5 +47,6 @@
         "sgx.header.user_data": "dccde9b31ce8860548173bb4a2a57a1600000000",
         "sgx.header.vendor_id": "939a7233f79c4ca9940a0db3957f0607",
         "sgx.header.version": "0300"
-    }
+    },
+    "tee": "sgx"
 }

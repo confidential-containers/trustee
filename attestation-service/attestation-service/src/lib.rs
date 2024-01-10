@@ -19,6 +19,7 @@ use log::debug;
 use policy_engine::{PolicyEngine, PolicyEngineType, SetPolicyInput};
 use rvps::RvpsApi;
 use serde_json::{json, Value};
+use serde_variant::to_variant_name;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::{collections::HashMap, str::FromStr};
 use strum::{AsRefStr, EnumString};
@@ -204,6 +205,7 @@ impl AttestationService {
             .collect();
 
         let token_claims = json!({
+            "tee": to_variant_name(&tee)?,
             "evaluation-reports": policies,
             "tcb-status": flattened_claims,
             "reference-data": reference_data_map,
