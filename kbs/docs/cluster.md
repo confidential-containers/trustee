@@ -28,6 +28,10 @@ Run the cluster
 docker-compose up -d
 ```
 
+Note that by defaultthe KBS cluster blocks sample evidence.
+If you are testing with sample evidence you will need to
+set a more permissive resource policy.
+
 Then the kbs cluster is launched.
 
 Use `skopeo` to encrypt an image

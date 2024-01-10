@@ -103,13 +103,17 @@ pub(crate) async fn get_resource(
             resource_description.resource_type,
             resource_description.resource_tag
         );
-        policy_engine
+        let (resource_allowed, _extra_policy_output) = policy_engine
             .0
             .lock()
             .await
             .evaluate(resource_path, claims_str)
             .await
             .map_err(|e| Error::PolicyEngineFailed(e.to_string()))?;
+
+        if !resource_allowed {
+            raise_error!(Error::PolicyReject);
+        }
     }
 
     let resource_byte = repository

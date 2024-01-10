@@ -75,9 +75,14 @@ Run following command to get resource data from KBS:
 kbs-client --url http://127.0.0.1:50000 get-resource --path default/test/dummy
 ```
 
-By default, the attestation mechanism of KBS requires that the above commands can only correctly obtain
-by running within a real TEE.
-But you can directly test locally using the sample TEE type by setting the environment variable `AA_SAMPLE_ATTESTER_TEST` to `yes`.
+If you run the client outside of a TEE, the sample attester will be used.
+By default the KBS rejects all sample evidence.
+To test the KBS with sample evidence, you'll need to update the resource policy
+to something more permissive.
+This can be done with a command such as
+```shell
+./kbs-client --url http://127.0.0.1:50000 config --auth-private-key config/private.key  set-resource-policy --policy-file allow_all.rego
+```
 
 ## Passport Mode
 
