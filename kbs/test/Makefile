@@ -98,6 +98,9 @@ stop-resource-kbs: resource-kbs.PID
 	kill $$(cat $<) && rm $<
 
 test-bgcheck: client start-kbs
+	RUST_LOG=kbs_protocol=warn ./client \
+		config --auth-private-key kbs.key \
+		set-resource-policy --policy-file $(MAKEFILE_DIR)/data/policy_2.rego && \
 	RUST_LOG=kbs_protocol=error ./client get-resource \
 		 --path one/two/three \
 		 | base64 -d > roundtrip_secret && \
@@ -111,6 +114,9 @@ attestation_token: client tee.key start-kbs
 		> attestation_token
 
 test-passport: client attestation_token start-resource-kbs
+	RUST_LOG=kbs_protocol=warn ./client --url http://127.0.0.1:50002 \
+		config --auth-private-key kbs.key \
+		set-resource-policy --policy-file $(MAKEFILE_DIR)/data/policy_2.rego && \
 	RUST_LOG=kbs_protocol=warn ./client --url http://127.0.0.1:50002 get-resource \
 		--attestation-token attestation_token \
 		--tee-key-file tee.key \
