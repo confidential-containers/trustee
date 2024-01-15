@@ -27,8 +27,11 @@ jobs:
     steps:
     - uses: actions/download-artifact@v4
 
+    - name: Debug
+      run: find
+
     - name: Extract tarball
-      run: tar xzf ${{ inputs.tarball }}
+      run: tar xzf ./artifact/${{ inputs.tarball }}
 
     - uses: actions-rs/toolchain@v1
       with:
