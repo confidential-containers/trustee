@@ -12,12 +12,13 @@ mod utils;
 
 use crate::token::AttestationTokenBroker;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
+use thiserror::Error;
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::debug;
 use policy_engine::{PolicyEngine, PolicyEngineType, SetPolicyInput};
-use rvps::RvpsApi;
+use rvps::{RvpsApi, RvpsError};
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -77,6 +78,24 @@ pub enum Data {
     Structured(Value),
 }
 
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Parse error:{0}")]
+    ParseError(#[from] strum::ParseError),
+    #[error("Policy Engine {0} is not supported")]
+    UnsupportedPolicyEngine(String),
+    #[error("Create rvps failed.")]
+    Rvps(#[from] RvpsError),
+    #[error("Set Policy failed {0}")]
+    SetPolicyFailed(String),
+    #[error("Starting service failed: {0}")]
+    StartService(String),
+    #[error("Anyhow error: {0}")]
+    Anyhow(#[from] anyhow::Error)
+}
+
 pub struct AttestationService {
     _config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
@@ -86,22 +105,20 @@ pub struct AttestationService {
 
 impl AttestationService {
     /// Create a new Attestation Service instance.
-    pub async fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: Config) -> Result<Self, ServiceError> {
         if !config.work_dir.as_path().exists() {
             fs::create_dir_all(&config.work_dir)
-                .await
-                .context("Create AS work dir failed: {:?}")?;
+                .await?;
         }
 
-        let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
-            .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
-            .to_policy_engine(config.work_dir.as_path())?;
-
+        let policy_engine = PolicyEngineType::from_str(&config.policy_engine)?
+            .to_policy_engine(config.work_dir.as_path())
+            .map_err(|e| ServiceError::UnsupportedPolicyEngine(e.to_string()))?;
+        
         let rvps = config
             .rvps_config
             .to_rvps()
-            .await
-            .context("create rvps failed.")?;
+            .await?;
 
         let token_broker = config
             .attestation_token_broker
@@ -116,11 +133,13 @@ impl AttestationService {
     }
 
     /// Set Attestation Verification Policy.
-    pub async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
+    pub async fn set_policy(&mut self, input: SetPolicyInput) -> Result<(), ServiceError> {
         self.policy_engine
             .set_policy(input)
             .await
-            .map_err(|e| anyhow!("Cannot Set Policy: {:?}", e))
+            .map_err(|e| ServiceError::SetPolicyFailed(e.to_string()))?;
+        
+        Ok(())
     }
 
     /// Evaluate Attestation Evidence.
@@ -153,7 +172,7 @@ impl AttestationService {
         let verifier = verifier::to_verifier(&tee)?;
 
         let (report_data, runtime_data_claims) =
-            parse_data(runtime_data, &runtime_data_hash_algorithm).context("parse runtime data")?;
+            parse_data(runtime_data, &runtime_data_hash_algorithm)?;
 
         let report_data = match &report_data {
             Some(data) => ReportData::Value(data),
@@ -161,7 +180,7 @@ impl AttestationService {
         };
 
         let (init_data, init_data_claims) =
-            parse_data(init_data, &init_data_hash_algorithm).context("parse init data")?;
+            parse_data(init_data, &init_data_hash_algorithm)?;
 
         let init_data_hash = match &init_data {
             Some(data) => InitDataHash::Value(data),
@@ -170,8 +189,7 @@ impl AttestationService {
 
         let claims_from_tee_evidence = verifier
             .evaluate(&evidence, &report_data, &init_data_hash)
-            .await
-            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+            .await?;
 
         let flattened_claims = flatten_claims(tee, &claims_from_tee_evidence)?;
 
@@ -179,14 +197,12 @@ impl AttestationService {
 
         let reference_data_map = self
             .get_reference_data(flattened_claims.keys())
-            .await
-            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
+            .await?;
 
         let evaluation_report = self
             .policy_engine
             .evaluate(reference_data_map.clone(), tcb_json, policy_ids.clone())
-            .await
-            .map_err(|e| anyhow!("Policy Engine evaluation failed: {e}"))?;
+            .await?;
 
         let policies: Vec<_> = evaluation_report
             .into_iter()
@@ -215,7 +231,8 @@ impl AttestationService {
             },
         });
 
-        let attestation_results_token = self.token_broker.issue(token_claims)?;
+        let attestation_results_token = self.token_broker
+            .issue(token_claims)?;
 
         Ok(attestation_results_token)
     }
@@ -253,7 +270,7 @@ fn parse_data(
             Data::Structured(structured) => {
                 // by default serde_json will enforence the alphabet order for keys
                 let hash_materials =
-                    serde_json::to_vec(&structured).context("parse JSON structured data")?;
+                    serde_json::to_vec(&structured)?;
                 let digest = hash_algorithm.accumulate_hash(hash_materials);
                 Ok((Some(digest), structured))
             }

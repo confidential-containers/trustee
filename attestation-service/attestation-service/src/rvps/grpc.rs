@@ -1,5 +1,6 @@
-use anyhow::*;
+use anyhow::Result;
 use tokio::sync::Mutex;
+use crate::rvps::RvpsError;
 
 use self::rvps_api::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
@@ -16,8 +17,9 @@ pub struct Agent {
     client: Mutex<ReferenceValueProviderServiceClient<tonic::transport::Channel>>,
 }
 
+
 impl Agent {
-    pub async fn new(addr: &str) -> Result<Self> {
+    pub async fn new(addr: &str) -> Result<Self, RvpsError> {
         Ok(Self {
             client: Mutex::new(
                 ReferenceValueProviderServiceClient::connect(addr.to_string()).await?,
@@ -25,10 +27,9 @@ impl Agent {
         })
     }
 }
-
 #[async_trait::async_trait]
 impl RvpsApi for Agent {
-    async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+    async fn verify_and_extract(&mut self, message: &str) -> Result<(), RvpsError> {
         let req = tonic::Request::new(ReferenceValueRegisterRequest {
             message: message.to_string(),
         });
@@ -37,12 +38,11 @@ impl RvpsApi for Agent {
             .lock()
             .await
             .register_reference_value(req)
-            .await
-            .context("register failed")?;
+            .await?;
         Ok(())
     }
 
-    async fn get_digests(&self, name: &str) -> Result<Vec<String>> {
+    async fn get_digests(&self, name: &str) -> Result<Vec<String>, RvpsError> {
         let req = tonic::Request::new(ReferenceValueQueryRequest {
             name: name.to_string(),
         });

@@ -3,7 +3,7 @@ use crate::{
     token::{AttestationTokenBrokerType, AttestationTokenConfig},
 };
 
-use anyhow::{anyhow, Result};
+use thiserror::Error;
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -32,6 +32,14 @@ pub struct Config {
 
     /// The Attestation Result Token Broker Config
     pub attestation_token_config: AttestationTokenConfig,
+}
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("io error")]
+    IO(#[from] std::io::Error),
+    #[error("Serde Json Error")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl Default for Config {
@@ -65,12 +73,9 @@ impl TryFrom<&Path> for Config {
     ///            "duration_min": 5
     ///        }
     ///    }
-    type Error = anyhow::Error;
-    fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
-        let file = File::open(config_path)
-            .map_err(|e| anyhow!("failed to open AS config file {}", e.to_string()))?;
-
-        serde_json::from_reader::<File, Config>(file)
-            .map_err(|e| anyhow!("failed to parse AS config file {}", e.to_string()))
+    type Error = ConfigError;
+    fn try_from(config_path: &Path) -> Result<Self, ConfigError> {
+        let file = File::open(config_path)?;
+        Ok(serde_json::from_reader::<File, Config>(file)?)
     }
 }

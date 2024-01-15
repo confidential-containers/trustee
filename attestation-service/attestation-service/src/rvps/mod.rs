@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::*;
+use anyhow::Result;
 use log::{info, warn};
 use serde::Deserialize;
+use thiserror::Error;
+
 
 /// The interfaces of Reference Value Provider Service
 /// * `verify_and_extract` is responsible for verify a message and
@@ -55,10 +57,28 @@ impl Default for RvpsConfig {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum RvpsError {
+    #[error("Failed creating rvps service: {0}")]
+    CreateRvps(String),
+    #[error("feature `rvps-grpc` or `rvps-builtin` not enabled: {0}")]
+    FeatureNotEnabled(String),
+    #[error("Failed to register grpc agent: {0}")]
+    AgentRegistration(String),
+    #[error("Serde Json Error")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("Returned status: {0}")]
+    Status(#[from] tonic::Status),
+    #[error("tonic transport error: {0}")]
+    TonicTransport(#[from] tonic::transport::Error),
+    #[error("anyhow error: {0}")]
+    Anyhow(#[from] anyhow::Error)
+}
+
 impl RvpsConfig {
     /// If remote addr is specified and the feature `rvps-grpc` is enabled when
     /// built, will try to connect the remote rvps. Or, will use a built-in rvps.
-    pub async fn to_rvps(&self) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+    pub async fn to_rvps(&self) -> Result<Box<dyn RvpsApi + Send + Sync>, RvpsError> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "rvps-grpc")] {
                 if !self.remote_addr.is_empty() {
@@ -70,7 +90,7 @@ impl RvpsConfig {
                             warn!("No RVPS address provided and will launch a built-in rvps");
                             Ok(Box::new(builtin::Rvps::new(&self.store_type)?) as Box<dyn RvpsApi + Send + Sync>)
                         } else {
-                            Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
+                            return RvpsError::FeatureNotEnabled;
                         }
                     }
                 }
@@ -78,7 +98,7 @@ impl RvpsConfig {
                 info!("launch a built-in RVPS.");
                 Ok(Box::new(builtin::Rvps::new(&self.store_type)) as Box<dyn RvpsApi + Send + Sync>)
             } else {
-                Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
+                return RvpsError::FeatureNotEnabled; 
             }
         }
     }

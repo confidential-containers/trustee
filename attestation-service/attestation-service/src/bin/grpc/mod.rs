@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Result};
+use thiserror::Error;
 use attestation_service::policy_engine::SetPolicyInput;
 use attestation_service::HashAlgorithm;
-use attestation_service::{config::Config, AttestationService as Service, Tee};
+use attestation_service::{config::Config, config::ConfigError,  AttestationService as Service, Tee, ServiceError};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use log::{debug, info};
@@ -40,15 +40,22 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum GrpcError {
+    #[error("Read AS config file failed: {0}")]
+    Config(#[from] ConfigError),
+    #[error("Creating attestation service failed: {0}")]
+    Service(#[from] ServiceError),
+}
+
 pub struct AttestationServer {
     attestation_service: Service,
 }
 
 impl AttestationServer {
-    pub async fn new(config_path: Option<String>) -> Result<Self> {
+    pub async fn new(config_path: Option<String>) -> Result<Self, GrpcError> {
         let config = match config_path {
-            Some(path) => Config::try_from(Path::new(&path))
-                .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?,
+            Some(path) => Config::try_from(Path::new(&path))?,
             None => Config::default(),
         };
 
@@ -222,7 +229,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()> {
+pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
     info!("Listen socket: {}", &socket);
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
@@ -231,6 +238,7 @@ pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()
         .add_service(AttestationServiceServer::new(attestation_server.clone()))
         .add_service(ReferenceValueProviderServiceServer::new(attestation_server))
         .serve(socket)
-        .await?;
+        .await
+        .map_err(|e| ServiceError::StartService(e.to_string()))?;
     Ok(())
 }
