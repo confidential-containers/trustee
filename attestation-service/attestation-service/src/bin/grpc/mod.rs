@@ -1,13 +1,15 @@
-use anyhow::{anyhow, Result};
 use attestation_service::policy_engine::SetPolicyInput;
 use attestation_service::HashAlgorithm;
-use attestation_service::{config::Config, AttestationService as Service, Tee};
+use attestation_service::{
+    config::Config, config::ConfigError, AttestationService as Service, ServiceError, Tee,
+};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use log::{debug, info};
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -40,15 +42,24 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum GrpcError {
+    #[error("Read AS config file failed: {0}")]
+    Config(#[source] ConfigError),
+    #[error("Creating attestation service failed: {0}")]
+    Service(#[from] ServiceError),
+    #[error("tonic transport error: {0}")]
+    TonicTransport(#[from] tonic::transport::Error),
+}
+
 pub struct AttestationServer {
     attestation_service: Service,
 }
 
 impl AttestationServer {
-    pub async fn new(config_path: Option<String>) -> Result<Self> {
+    pub async fn new(config_path: Option<String>) -> Result<Self, GrpcError> {
         let config = match config_path {
-            Some(path) => Config::try_from(Path::new(&path))
-                .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?,
+            Some(path) => Config::try_from(Path::new(&path)).map_err(GrpcError::Config)?,
             None => Config::default(),
         };
 
@@ -225,7 +236,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()> {
+pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
     info!("Listen socket: {}", &socket);
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));

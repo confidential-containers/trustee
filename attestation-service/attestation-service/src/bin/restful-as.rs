@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use actix_web::{web, App, HttpServer};
-use anyhow::{anyhow, Context, Result};
-use attestation_service::{config::Config, AttestationService};
+use anyhow::Result;
+use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
 use clap::{arg, command, Parser};
 use log::info;
 use openssl::{
@@ -10,6 +10,7 @@ use openssl::{
     ssl::{SslAcceptor, SslMethod},
 };
 use strum::{AsRefStr, EnumString};
+use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::restful::{attestation, set_policy};
@@ -49,8 +50,30 @@ enum WebApi {
     Policy,
 }
 
+#[derive(Error, Debug)]
+pub enum RestfulError {
+    #[error("Creating service failed: {0}")]
+    Service(#[from] ServiceError),
+    #[error("Failed to read AS config file: {0}")]
+    Config(#[from] ConfigError),
+    #[error("Openssl errorstack: {0}")]
+    Openssl(#[from] openssl::error::ErrorStack),
+    #[error("failed to read HTTPS private key: {0}")]
+    ReadHttpsKey(#[source] std::io::Error),
+    #[error("failed to get HTTPS private key from pem: {0}")]
+    ReadHttpsKeyFromPem(#[source] openssl::error::ErrorStack),
+    #[error("set private key failed: {0}")]
+    SetPrivateKey(#[source] openssl::error::ErrorStack),
+    #[error("set HTTPS public key cert: {0}")]
+    SetHttpsCert(#[source] openssl::error::ErrorStack),
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+}
+
 #[actix_web::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), RestfulError> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let cli = Cli::parse();
@@ -58,8 +81,7 @@ async fn main() -> Result<()> {
     let config = match cli.config_file {
         Some(path) => {
             info!("Using config file {path}");
-            Config::try_from(Path::new(&path))
-                .map_err(|e| anyhow!("Read AS config file failed: {:?}", e))?
+            Config::try_from(Path::new(&path))?
         }
         None => {
             info!("No confile path provided, use default one.");
@@ -83,16 +105,16 @@ async fn main() -> Result<()> {
 
             let prikey = tokio::fs::read(prikey)
                 .await
-                .context("read HTTPS private key")?;
+                .map_err(RestfulError::ReadHttpsKey)?;
             let prikey =
-                PKey::private_key_from_pem(&prikey).context("read HTTPS private key from pem")?;
+                PKey::private_key_from_pem(&prikey).map_err(RestfulError::ReadHttpsKeyFromPem)?;
 
             builder
                 .set_private_key(&prikey)
-                .context("set private key failed")?;
+                .map_err(RestfulError::SetPrivateKey)?;
             builder
                 .set_certificate_chain_file(pubkey_cert)
-                .context("set HTTPS public key cert")?;
+                .map_err(RestfulError::SetHttpsCert)?;
             log::info!("starting HTTPS server at https://{}", cli.socket);
             server.bind_openssl(cli.socket, builder)?.run()
         }
@@ -105,6 +127,5 @@ async fn main() -> Result<()> {
     };
 
     server.await?;
-
     Ok(())
 }

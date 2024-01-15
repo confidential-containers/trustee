@@ -1,8 +1,8 @@
+use super::RvpsApi;
 use anyhow::*;
 use async_trait::async_trait;
+use core::result::Result::Ok;
 use reference_value_provider_service::{Config, Core};
-
-use super::RvpsApi;
 
 pub struct Rvps {
     core: Core,
@@ -18,7 +18,8 @@ impl Rvps {
 #[async_trait]
 impl RvpsApi for Rvps {
     async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
-        self.core.verify_and_extract(message).await
+        self.core.verify_and_extract(message).await?;
+        Ok(())
     }
 
     async fn get_digests(&self, name: &str) -> Result<Vec<String>> {
