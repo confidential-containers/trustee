@@ -19,7 +19,7 @@ jobs:
 
   e2e-test:
     needs: checkout
-    uses: confidential-containers/kbs/.github/workflows/kbs-e2e.yml@main
+    uses: ./.github/workflows/kbs-e2e.yaml
     with:
       sample: true
       tarball: kbs.tar.gz

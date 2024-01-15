@@ -52,7 +52,7 @@ jobs:
     needs:
     - authorize
     - checkout-and-rebase
-    uses: confidential-containers/kbs/.github/workflows/kbs-e2e.yml@main
+    uses: ./.github/workflows/kbs-e2e.yaml
     with:
       runs-on: '["self-hosted","azure-cvm"]'
       tarball: kbs.tar.gz
