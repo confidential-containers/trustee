@@ -17,12 +17,13 @@ use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::debug;
 use policy_engine::{PolicyEngine, PolicyEngineType, SetPolicyInput};
-use rvps::RvpsApi;
+use rvps::{RvpsApi, RvpsError};
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::{collections::HashMap, str::FromStr};
 use strum::{AsRefStr, EnumString};
+use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData};
 
@@ -77,6 +78,20 @@ pub enum Data {
     Structured(Value),
 }
 
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Create AS work dir failed: {0}")]
+    CreateDir(#[source] std::io::Error),
+    #[error("Policy Engine is not supported: {0}")]
+    UnsupportedPolicy(#[source] strum::ParseError),
+    #[error("Create rvps failed: {0}")]
+    Rvps(#[source] RvpsError),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+}
+
 pub struct AttestationService {
     _config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
@@ -86,20 +101,20 @@ pub struct AttestationService {
 
 impl AttestationService {
     /// Create a new Attestation Service instance.
-    pub async fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: Config) -> Result<Self, ServiceError> {
         if !config.work_dir.as_path().exists() {
             fs::create_dir_all(&config.work_dir)
                 .await
-                .context("Create AS work dir failed: {:?}")?;
+                .map_err(ServiceError::CreateDir)?;
         }
 
         let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
-            .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
+            .map_err(ServiceError::UnsupportedPolicy)?
             .to_policy_engine(config.work_dir.as_path())?;
 
         let rvps = rvps::initialize_rvps_client(&config.rvps_config)
             .await
-            .context("create rvps failed.")?;
+            .map_err(ServiceError::Rvps)?;
 
         let token_broker = config
             .attestation_token_broker
@@ -115,10 +130,8 @@ impl AttestationService {
 
     /// Set Attestation Verification Policy.
     pub async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
-        self.policy_engine
-            .set_policy(input)
-            .await
-            .map_err(|e| anyhow!("Cannot Set Policy: {:?}", e))
+        self.policy_engine.set_policy(input).await?;
+        Ok(())
     }
 
     /// Evaluate Attestation Evidence.
