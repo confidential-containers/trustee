@@ -4,22 +4,34 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
-sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
-az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
-az-tdx-vtpm-verifier = [ "az-tdx-vtpm", "openssl", "tdx-verifier" ]
-snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
-csv-verifier = [ "openssl", "csv-rs", "codicon" ]
-cca-verifier = [ "ear", "veraison-apiclient" ]
+default = ["all-verifier"]
+all-verifier = [
+    "tdx-verifier",
+    "sgx-verifier",
+    "snp-verifier",
+    "az-snp-vtpm-verifier",
+    "az-tdx-vtpm-verifier",
+    "csv-verifier",
+    "cca-verifier",
+]
+tdx-verifier = ["eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs"]
+sgx-verifier = ["scroll", "sgx-dcap-quoteverify-rs"]
+az-snp-vtpm-verifier = ["az-snp-vtpm", "sev", "snp-verifier"]
+az-tdx-vtpm-verifier = ["az-tdx-vtpm", "openssl", "tdx-verifier"]
+snp-verifier = ["asn1-rs", "openssl", "sev", "x509-parser"]
+csv-verifier = ["openssl", "csv-rs", "codicon"]
+cca-verifier = ["ear", "veraison-apiclient"]
 
 [dependencies]
 anyhow.workspace = true
 asn1-rs = { version = "0.5.1", optional = true }
 async-trait.workspace = true
-az-snp-vtpm = { version = "0.4.1", default-features = false, features = ["verifier"], optional = true }
-az-tdx-vtpm = { version = "0.4.1", default-features = false, features = ["verifier"], optional = true }
+az-snp-vtpm = { version = "0.4.1", default-features = false, features = [
+    "verifier",
+], optional = true }
+az-tdx-vtpm = { version = "0.4.1", default-features = false, features = [
+    "verifier",
+], optional = true }
 base64 = "0.21"
 bincode = "1.3.3"
 byteorder = "1"
@@ -33,7 +45,9 @@ jsonwebtoken = "8"
 kbs-types.workspace = true
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
-scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
+scroll = { version = "0.11.0", default-features = false, features = [
+    "derive",
+], optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sev = { version = "1.2.0", features = ["openssl", "snp"], optional = true }
