@@ -5,12 +5,13 @@
 use super::Attest;
 use anyhow::*;
 use async_trait::async_trait;
-use jsonwebtoken::{decode, decode_header, jwk, DecodingKey, Validation};
+use jsonwebtoken::{decode, decode_header, jwk, Algorithm, DecodingKey, Validation};
 use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
+use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
 struct IntelTrustAuthorityTeeEvidence {
@@ -101,8 +102,13 @@ impl Attest for IntelTrustAuthority {
 
         // find jwk
         let key = self.certs.find(&kid).ok_or(anyhow!("Find jwk failed"))?;
-        let alg = key.common.algorithm.ok_or(anyhow!("Get jwk alg failed"))?;
+        let alg = key
+            .common
+            .key_algorithm
+            .ok_or(anyhow!("Get jwk alg failed"))?
+            .to_string();
 
+        let alg = Algorithm::from_str(alg.as_str())?;
         // verify and decode token
         let dkey = DecodingKey::from_jwk(&key)?;
         let token = decode::<Claims>(&resp_data.token, &dkey, &Validation::new(alg))
