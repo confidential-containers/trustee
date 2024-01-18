@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{regularize_data, InitDataHash, ReportData};
+use crate::{InitDataHash, ReportData};
 
 use super::{TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
@@ -47,7 +47,7 @@ impl AzSnpVtpm {
 impl Verifier for AzSnpVtpm {
     /// The following verification steps are performed:
     /// 1. TPM Quote has been signed by AK included in the HCL variable data
-    /// 2. Attestation nonce matches TPM Quote nonce
+    /// 2. Attestation report_data matches TPM Quote nonce
     /// 3. SNP report's report_data field matches hashed HCL variable data
     /// 4. SNP Report is genuine
     /// 5. SNP Report has been issued in VMPL 0
@@ -61,9 +61,6 @@ impl Verifier for AzSnpVtpm {
             bail!("unexpected empty report data");
         };
 
-        let expected_report_data =
-            regularize_data(expected_report_data, 64, "REPORT_DATA", "Azure SNP vTPM");
-
         if let InitDataHash::Value(_) = expected_init_data_hash {
             warn!("Azure SNP vTPM verifier does not support verify init data hash, will ignore the input `init_data_hash`.");
         }
@@ -72,7 +69,9 @@ impl Verifier for AzSnpVtpm {
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
 
         let hcl_report = HclReport::new(evidence.report)?;
-        verify_quote(&evidence.quote, &hcl_report, &expected_report_data)?;
+        verify_signature(&evidence.quote, &hcl_report)?;
+
+        verify_nonce(&evidence.quote, expected_report_data)?;
 
         let var_data_hash = hcl_report.var_data_sha256();
         let snp_report = hcl_report.try_into()?;
@@ -86,14 +85,24 @@ impl Verifier for AzSnpVtpm {
     }
 }
 
-fn verify_quote(quote: &Quote, hcl_report: &HclReport, report_data: &[u8]) -> Result<()> {
+fn verify_nonce(quote: &Quote, report_data: &[u8]) -> Result<()> {
+    let nonce = quote.nonce()?;
+    if nonce != report_data[..] {
+        bail!("TPM quote nonce doesn't match expected report_data");
+    }
+    debug!("TPM report_data verification completed successfully");
+    Ok(())
+}
+
+fn verify_signature(quote: &Quote, hcl_report: &HclReport) -> Result<()> {
     let ak_pub = hcl_report.ak_pub().context("Failed to get AKpub")?;
     let der = ak_pub.key.try_to_der()?;
     let ak_pub = PKey::public_key_from_der(&der).context("Failed to parse AKpub")?;
 
     quote
-        .verify(&ak_pub, report_data)
-        .context("Failed to verify vTPM quote")?;
+        .verify_signature(&ak_pub)
+        .context("vTPM quote is not signed by AKpub")?;
+    debug!("Signature verification completed successfully");
     Ok(())
 }
 
@@ -101,7 +110,7 @@ fn verify_report_data(var_data_hash: &[u8; 32], snp_report: &AttestationReport) 
     if *var_data_hash != snp_report.report_data[..32] {
         bail!("SNP report report_data mismatch");
     }
-    debug!("Report data verification completed successfully.");
+    debug!("SNP report_data verification completed successfully");
     Ok(())
 }
 
@@ -170,13 +179,13 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_quote() {
+    fn test_verify_signature() {
         let quote = Quote {
             signature: SIGNATURE.to_vec(),
             message: MESSAGE.to_vec(),
         };
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        verify_quote(&quote, &hcl_report, REPORT_DATA).unwrap();
+        verify_signature(&quote, &hcl_report).unwrap();
     }
 
     #[test]
@@ -188,24 +197,11 @@ mod tests {
             message: wrong_message.to_vec(),
         };
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        verify_quote(&wrong_quote, &hcl_report, REPORT_DATA).unwrap_err();
+        verify_signature(&wrong_quote, &hcl_report).unwrap_err();
     }
 
     #[test]
-    fn test_verify_quote_nonce_failure() {
-        let quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
-        let report = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
-        let hcl_report = HclReport::new(report.to_vec()).unwrap();
-        let mut report_data = REPORT_DATA.to_vec();
-        report_data.reverse();
-        verify_quote(&quote, &hcl_report, &report_data).unwrap_err();
-    }
-
-    #[test]
-    fn test_verify_quote_akpub_failure() {
+    fn test_verify_akpub_failure() {
         let quote = Quote {
             signature: SIGNATURE.to_vec(),
             message: MESSAGE.to_vec(),
@@ -214,6 +210,26 @@ mod tests {
         // messing with AKpub in var data
         wrong_report[0x0540] = 0;
         let wrong_hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
-        verify_quote(&quote, &wrong_hcl_report, REPORT_DATA).unwrap_err();
+        verify_signature(&quote, &wrong_hcl_report).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_quote_nonce() {
+        let quote = Quote {
+            signature: SIGNATURE.to_vec(),
+            message: MESSAGE.to_vec(),
+        };
+        verify_nonce(&quote, &REPORT_DATA).unwrap();
+    }
+
+    #[test]
+    fn test_verify_quote_nonce_failure() {
+        let quote = Quote {
+            signature: SIGNATURE.to_vec(),
+            message: MESSAGE.to_vec(),
+        };
+        let mut wrong_report_data = REPORT_DATA.to_vec();
+        wrong_report_data.reverse();
+        verify_nonce(&quote, &wrong_report_data).unwrap_err();
     }
 }
