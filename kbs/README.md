@@ -1,35 +1,45 @@
 # Key Broker Service
 
-The Confidential Containers Key Broker Service (KBS) is a remote server which facilitates remote attestation.
-It is the reference implementation of [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html)
-and [Verifier](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html) in [RATS](https://datatracker.ietf.org/doc/draft-ietf-rats-architecture/)
-role terminology.
+The Confidential Containers Key Broker Service (KBS) facilitates remote attestation and secret delivery.
+The KBS is an implementation of a [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html).
+The KBS itself does not validate attestation evidence. Instead, it relies on the [Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
 
-This project relies on the [Attestation-Service (AS)](https://github.com/confidential-containers/attestation-service) to verify TEE evidence.
-
-The following TEE platforms are currently supported:
+In conjunction with the AS or Intel Trust Authority (ITA), the KBS supports the following TEEs:
 
 - AMD SEV-SNP
-- Azure SEV-SNP vTPM
-- Azure TDX vTPM
-- Intel SGX
+- AMD SEV-SNP on Azure with vTPM
+- Intel TDX on Azure with vTPM
 - Intel TDX
+- Intel SGX
+- ARM CCA
+- Hygon CSV
 
-KBS has two deployment modes, which are consistent with [RATS](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html)
-- Background Check Mode: KBS integrates AS to verify TEE evidence, then distribute resource data.
-- Passport Mode: One KBS integrates AS to verify TEE evidence and distribute tokens,
-the other KBS verifies the token then distributes resource data.
+# Deployment Configurations
+
+The KBS can be deployed in several different environments, including as part of a docker compose cluster, part of a Kubernetes cluster
+or without any containerization. Additionally, the KBS can interact with other attestation components in different ways.
+This section focuses on the different ways the KBS can interact with other components.
 
 ## Background Check Mode
 
-The name of [Background Check](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.2) is from RATS architecture.
+Background check mode is the most common way to configure the KBS and AS.
+The term [Background Check](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.2) is from the RATS architecture.
+In background check mode, the KBS releases secrets to a confidential guest after the attestation agent has validated the hardware evidence.
 
-In this mode, the Client in TEE conveys Evidence to KBS,
-which treats it as opaque and simply forwards it to an integrated Attestation Service.
-AS compares the Evidence against its appraisal policy, and returns an Attestation Token (including parsed evidence claims) to KBS.
-The KBS then compares the Attestation Token against its own appraisal policy and return the requested resource data to client.
+```mermaid
+flowchart LR
+    AA -- attests guest --> KBS
+    CDH -- requests resource ----> KBS
+    subgraph Guest
+        AA <.-> CDH
+    end
+    subgraph KBS Cluster
+        AS -- validates evidence--> KBS
+    end
+```
+In background check mode, the KBS is the relying party and the AS is the verifier.
 
-**Here, the KBS is corresponding to the Relying Party of RATS and the AS is corresponding to the Verifier of RATS.**
+The background check configuration can be invoked using the Makefile.
 
 Build and install KBS with native integrated AS in background check mode:
 ```shell
@@ -37,54 +47,100 @@ make background-check-kbs
 make install-kbs
 ```
 
-The optional compile parameters that can be added are as follows:
-```shell
-make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
-```
-
-where:
-- `HTTPS_CRYPTO`: 
-Can be `rustls` or `openssl`. Specify the library KBS uses to support HTTPS.
-Default value is `rustls`
-- `POLICY_ENGINE`: Can be `opa`.
-Specify the resource policy engine type of KBS.
-If not set this parameter, KBS will not integrate resource policy engine.
-- `AS_TYPES`: can be `coco-as` or `intel-trust-authority-as`.
-Specify the Attestation Service type KBS relies on.
-- `COCO_AS_INTEGRATION_TYPE`: can be `grpc` or `builtin`. This parameter only takes effect when `AS_TYPES=coco-as`.
-Specify the integration mode of CoCo Attestation Service.
-
+The Makefile has other optional parameters that are described below.
 
 ## Passport Mode
 
-The name of [Passport](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.1) is from RATS architecture.
+Passport mode decouples the provisioning of resources from the validation of evidence.
+In background check mode these tasks are already handled by separate components,
+but in passport mode they are decoupled even more.
+The term [Passport](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#section-5.1) is from the RATS architecture.
 
-In this mode, the Client in TEE conveys Evidence to one KBS which is responsible for issuing token,
-this KBS relies on an integrated AS to verify the Evidence against its appraisal policy.
-This KBS then gives back the Attestation Token which the Client treats as opaque data.
-The Client can then present the Attestation Token (including parsed evidence claims) to the other KBS,
-which is responsible for distributing resources.
-This KBS then compares the Token's payload against its appraisal policy and returns the requested resource data to client.
+In passport mode, there are two KBSes, one that uses a KBS to verify the evidence and a second to provision resources.
 
-**Here, the KBS for issueing token is corresponding to the Verifier of RATS and the KBS for distributing resources is corresponding to the Rely Party of RATS.**
+```mermaid
+flowchart LR
+    CDH -- requests resource ----> KBS2
+    AA -- attests guest --> KBS1
+    subgraph Guest
+        CDH <.-> AA
+    end
+    subgraph KBS Cluster 1
+        AS -- validates evidence--> KBS1
+    end
+    subgraph KBS Cluster 2
+        KBS2
+    end
+```
 
-Build and install KBS for issueing token:
+In the RATS passport model the client typically connects directly to the verifier to get an attestation token (a passport).
+In CoCo we do not support direct conections to the AS, so KBS1 serves as an intermediary.
+Together KBS1 and the AS represent the verifier.
+KBS2 is the relying party.
+
+Passport mode is good for use cases when resource provisioning and attestation are handled by separate entities.
+
+Passport mode can be enable via the Makefile.
+You will need to build two KBSes to use passport mode.
+
+Build and install KBS for issuing token (KBS1):
 ```shell
 make passport-issuer-kbs [HTTPS_CRYPTO=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
 make install-issuer-kbs
 ```
 
-The explanation for compiling optional parameters is the same as above.
+See below for explanation of additional parameters.
 
-Build and install KBS for distributing resources:
+Build and install KBS for distributing resources (KBS2):
 ```shell
 make passport-resource-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?]
 make install-resource-kbs
 ```
 
-The explanation for compiling optional parameters is the same as above.
+## Other Parameters
 
-## Documents
+The Makefile supports a number of other configuration parameters.
+For example,
+```shell
+make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
+```
+
+### HTTPS Support
+
+The KBS can use HTTPS. This requires a crypto backend.
+`HTTPS_CRYPTO` determines which backend will be used.
+The options are `rustls` and `openssl`. The default is `rustls`.
+
+### Policy Engine
+
+The KBS has a policy engine to determine when a resource should be released.
+This should not be confused with the policy engine in the AS,
+which determines whether or not TEE evidence is valid.
+
+`POLICY_ENGINE` determines which type of policy engine the KBS will use.
+Today only `opa` is supported. The KBS can also be built without a policy engine
+if it is not required.
+
+### AS Type
+
+The KBS supports multiple verifiers.
+`AS_TYPES` selects which verifier to use.
+The options are `coco-as` and `intel-trust-authority-as`.
+
+### AS Integration
+
+The KBS can connect to the CoCo AS in multiple ways.
+`COCO_AS_INTEGRATION_TYPE` can be set either to `grpc` or `builtin`.
+With `grpc` the KBS will make a remote connection to the AS.
+If you are manually building and configuring the components,
+you'll need to set them up so that this connection can be established.
+Similar to passport mode, the remote AS can be useful if secret provisioning
+and attestation verification are not in the same scope.
+
+With `builtin` the KBA uses the AS as a crate. This is recommended if you want
+to avoid the complexity of a remote connection.
+
+# Resources
 
 ### Quick Start
 
