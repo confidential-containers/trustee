@@ -574,7 +574,7 @@ dependencies = [
  "az-tdx-vtpm",
  "base64 0.21.6",
  "codicon",
- "csv-rs",
+ "csv-rs 0.1.0 (git+https://gitee.com/anolis/csv-rs?rev=9d8882e)",
  "hyper",
  "hyper-tls",
  "kbs-types",
@@ -1304,6 +1304,26 @@ dependencies = [
 name = "csv-rs"
 version = "0.1.0"
 source = "git+https://gitee.com/anolis/csv-rs?rev=9d8882e#9d8882e005ab0f64f4e3802a37aebfc61bc4fe32"
+dependencies = [
+ "bitfield 0.13.2",
+ "codicon",
+ "hyper",
+ "hyper-tls",
+ "iocuddle",
+ "libc",
+ "openssl",
+ "openssl-sys",
+ "rand",
+ "serde",
+ "serde-big-array",
+ "static_assertions",
+ "tokio",
+]
+
+[[package]]
+name = "csv-rs"
+version = "0.1.0"
+source = "git+https://github.com/openanolis/csv-rs?rev=9d8882e#9d8882e005ab0f64f4e3802a37aebfc61bc4fe32"
 dependencies = [
  "bitfield 0.13.2",
  "codicon",
@@ -5228,7 +5248,7 @@ dependencies = [
  "byteorder",
  "cfg-if",
  "codicon",
- "csv-rs",
+ "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=9d8882e)",
  "ear",
  "eventlog-rs",
  "hex",
