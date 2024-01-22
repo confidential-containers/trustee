@@ -1,6 +1,9 @@
 # Quick Start
 
-A quick start guide on Ubuntu22.04 to deploy KBS locally and conduct configuration and testing.
+This is a guide for building and deploying the KBS components locally (without containers) on Ubuntu 22.04.
+The guide also covers configuration and testing.
+If you're looking for something even quicker, you might want to deploy the KBS components with
+[docker compose](./docs/cluster.md) or the [KBS operator](https://github.com/confidential-containers/kbs-operator).
 
 ## Prerequisite
 
@@ -237,6 +240,3 @@ trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
 If `trusted_certs_paths` field is not set, KBS will skip the verification of the certificate in Attestation Token.
 
 Refer to [config.md](./docs/config.md) for more details.
-
-
-

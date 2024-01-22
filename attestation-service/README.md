@@ -1,55 +1,20 @@
 # Attestation Service
 
-Attestation Service (AS for short, also known as CoCo-AS) is a general function set that can verify TEE evidence.
-With Confidential Containers, the attestation service must run in an secure environment, outside of the guest node.
+The Attestation Service (AS or CoCo-AS) verifies hardware evidence.
+The AS was designed to be used with the [KBS](../kbs) for Confidential Containers,
+but it can be used in a wide variety of situations.
+The AS can be used anytime TEE evidence needs to be validated.
 
-With remote attestation, Attesters (e.g. the [Attestation Agent](https://github.com/confidential-containers/guest-components/tree/main/attestation-agent)) running on the guest node will request a resource (e.g. a container image decryption key) from the [Key Broker Service (KBS)](https://github.com/confidential-containers/kbs).
-The KBS receives the attestation evidence from the client in TEE and forwards it to the Attestation Service (AS). The AS role is to verify the attestation evidence and provide Attestation Results token back to the KBS. Verifying the evidence is a two steps process:
+Today, the AS can validate evidence from the following TEEs:
+- Intel TDX
+- Intel SGX
+- AMD SEV-SNP
+- ARM CCA
+- Hygon CSV
+- Intel TDX with vTPM on Azure
+- AMD SEV-SNP with vTPM on Azure
 
-1. Verify the evidence signature, and assess that it's been signed with a trusted key of TEE.
-2. Verify that the TCB described by that evidence (including hardware status and software measurements) meets the guest owner expectations.
-
-Those two steps are accomplished by respectively one of the [Verifier Drivers](#verifier-drivers) and the AS [Policy Engine](#policy-engine). The policy engine can be customized with different policy configurations.
-
-In addition, CoCo-AS can also run independently as a remote attestation service which receives TEE evidence and returns the verification results as a token.
-
-The AS can be built as a library (i.e. a Rust crate) by other confidential computing resources providers, like for example the KBS.
-It can also run as a standalone binary, which exposes APIs in gRPC way.
-
-# Components
-
-## Library
-
-The AS can be built and imported as a Rust crate into any project providing attestation services.
-
-As the AS API is not yet fully stable, the AS crate needs to be imported from GitHub directly:
-
-```toml
-attestation-service = { git = "https://github.com/confidential-containers/kbs", branch = "main" }
-```
-
-## Server
-
-This project provides the Attestation Service binary program that can be run as an independent server:
-
-- [`grpc-as`](docs/grpc-as.md): Provide AS APIs based on gRPC protocol.
-- [`restful-as`](docs/restful-as.md): Provide AS APIs based on RESTful.
-
-# Usage
-
-Build and install AS components:
-
-```shell
-git clone https://github.com/confidential-containers/kbs
-cd kbs/attestation-service
-make && make install
-```
-
-`grpc-as` will be installed into `/usr/local/bin`.
-
-# Architecture
-
-The main architecture of the Attestation Service is shown in the figure below:
+# Overview
 ```
                                       ┌───────────────────────┐
 ┌───────────────────────┐ Evidence    │  Attestation Service  │
@@ -66,27 +31,85 @@ The main architecture of the Attestation Service is shown in the figure below:
                                       └───────────────────────┘
 ```
 
-The Reference Value Provider Service supports different deploy mode,
-please refer to [the doc](./rvps/README.md#run-mode) for more details.
+The AS has a simple API. It receives attestation evidence and returns an attestation token
+containing the results of a two-step verification process.
+The AS can be consumed directly as a Rust crate (library) or built as a standalone service,
+exposing a REST or gRPC API.
+In Confidential Containers, the client of the AS is the KBS, but the evidence originates
+from the Attestation Agent inside the guest.
+
+The AS has a two-step verification process.
+
+1. Verify the format and provenance of evidence itself (i.e. check the signature of the evidence).
+2. Evaluate the claims presented by the evidence (i.e. check that measurements are what the client expects).
+
+The first step is accomplished by one of the platform-specific [Verifier Drivers](#verifier-drivers).
+The second step is driven by the [Policy Engine](#policy-engine) with help from the [RVPS](#reference-value-provider-service).
+
+# Usage
+## Library
+
+The AS can be built and imported as a Rust crate into any project providing attestation services.
+
+As the AS API is not yet fully stable, the AS crate needs to be imported from GitHub directly:
+
+```toml
+attestation-service = { git = "https://github.com/confidential-containers/kbs" }
+```
+
+## Server
+
+This project provides the Attestation Service binary program that can be run as an independent server:
+
+- [`grpc-as`](docs/grpc-as.md): Provide AS APIs based on gRPC protocol.
+- [`restful-as`](docs/restful-as.md): Provide AS APIs based on RESTful.
+
+Build and install AS as a standalone server
+
+```shell
+git clone https://github.com/confidential-containers/kbs
+cd kbs/attestation-service
+make && make install
+```
+
+`grpc-as` will be installed into `/usr/local/bin`.
+
+# APIs
+## Input
+
+The AS should be queried with a request containing
+- `tee` - The type of platform being attested
+- `evidence` - The serialized hardware evidence (see next section)
+- either `raw_runtime_data` or `structured_runtime_data` - the data expected to have been added to the evidence by the guest at runtime
+- either `raw_init_data` or `structured_init_data` - the data expected to have been added to the evidence by the host at boot
+- `runtime_data_hash_algorithm` - the hashing algorithm used with the above field
+- `init_data_hash_algorithm` - the hasing algorithm used with the other above field
+- `policy_ids` - a list of policies which the AS will use to evaluate the evidence claims
+
+For more details see [gRPC proto](https://github.com/confidential-containers/kbs/blob/main/attestation-service/protos/attestation.proto)
 
 ### Evidence format:
 
-The evidence format is different from TEE to TEE. Please refer to the concrete code definition for the specified format.
+The attestation request must include attestation evidence.
+The format of the attestation evidence depends on the platform
+and the implementation of the verifier.
+
+Please refer to the individual verifiers for the specific format of the evidence.
 - Intel TDX: [TdxEvidence](./verifier/src/tdx/mod.rs)
 - Intel SGX: [SgxEvidence](./verifier/src/sgx/mod.rs)
 - AMD SNP: [SnpEvidence](./verifier/src/snp/mod.rs)
 - Azure SNP vTPM: [Evidence](./verifier/src/az_snp_vtpm/mod.rs)
+- Azure TDX vTPM: [Evidence](./verifier/src/az_tdx_vtpm/mod.rs)
 - Arm CCA: [CcaEvidence](./verifier/src/cca/mod.rs)
 - Hygon CSV: [CsvEvidence](./verifier/src/csv/mod.rs)
 
-### Attestation Results Token:
+## Output
 
-If the verification of TEE evidence is successful, AS will return an Attestation Results Token.
-Otherwise, AS will return an Error which contain verifier output or policy engine output.
+If the verification of TEE evidence does not fail, the AS will return an Attestation Results Token.
 
 Attestation results token is a [JSON Web Token](https://datatracker.ietf.org/doc/html/rfc7519) which contains the parsed evidence claims such as TCB status.
 
-Claims format of the attestation results token is:
+The format of the attestation results token is:
 
 ```json
 {
@@ -112,9 +135,11 @@ Claims format of the attestation results token is:
 * `reference-data`: Reference values in a map used to enforce the OPA policy.
 * `customized_claims`: Customized claims whose integrity is protected by binding its digest into the evidence. It will be a JSON map.
 
+# Components
+
 ## Verifier Drivers
 
-A verifier driver parse the HW-TEE specific attestation evidence, and performs the following tasks:
+A verifier driver parses the HW-TEE specific attestation evidence, and performs the following tasks:
 
 1. Verify HW-TEE hardware signature of the TEE quote/report in the evidence.
 
@@ -132,18 +157,20 @@ Supported Verifier Drivers:
 
 ## Policy Engine
 
-The AS supports modular policy engine, which can be specified through the AS configuration. The currently supported policy engines are:
+[OPA](https://www.openpolicyagent.org/docs/latest/) is a flexible policy engine.
+The AS allows users to define and upload their own OPA policy when performing evidence verification.
+The `policy_ids` field of the attestation request determines which policies are evaluated.
+The results of every policy that is evaluated are included in the attestation token.
 
-### [Open Policy Agent (OPA)](https://www.openpolicyagent.org/docs/latest/)
+**Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about Rego.
 
-OPA is a very flexible and powerful policy engine, AS allows users to define and upload their own policy when performing evidence verification.
+If the policy is not updated, the AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
 
-**Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about the `.rego`.
+## Reference Value Provider Service
 
-If the user does not need to customize his own policy, AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
-
-## Reference Value Provider
-
-[Reference Value Provider Service](rvps/README.md) (RVPS for short) is a module integrated in the AS to verify,
+The [Reference Value Provider Service](rvps/README.md) (RVPS) is a module integrated into the AS to verify,
 store and provide reference values. RVPS receives and verifies the provenance input from the software supply chain,
 stores the measurement values, and generates reference value claims for the AS according to the evidence content when the AS verifies the evidence.
+
+The Reference Value Provider Service supports different deployment modes,
+please refer to [the doc](./rvps/README.md#run-mode) for more details.
