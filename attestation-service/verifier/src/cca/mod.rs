@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_cca_generate_parsed_claim() {
-        let s = fs::read("../test_data/cca-claims.json").unwrap();
+        let s = fs::read("./test_data/cca-claims.json").unwrap();
         let evidence = String::from_utf8_lossy(&s);
         let tcb = serde_json::from_str::<Evidence>(&evidence).unwrap();
         let parsed_claim = cca_generate_parsed_claim(tcb);
