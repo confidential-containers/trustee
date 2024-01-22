@@ -73,7 +73,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -p attestation-service -p reference-value-provider-service
+          args: -p attestation-service -p reference-value-provider-service -p verifier
 
       - name: Run cargo fmt check
         uses: actions-rs/cargo@v1
