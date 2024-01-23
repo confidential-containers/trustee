@@ -566,12 +566,12 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0#7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=42b7c96#42b7c9687ecd0907ef70da31cf290a60ee8432cd"
 dependencies = [
  "anyhow",
  "async-trait",
- "az-snp-vtpm",
- "az-tdx-vtpm",
+ "az-snp-vtpm 0.5.0",
+ "az-tdx-vtpm 0.5.0",
  "base64 0.21.6",
  "codicon",
  "csv-rs",
@@ -673,15 +673,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "az-cvm-vtpm"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eeac6951cedbd3185174f1dc20ad8832ae61f7412d1a76021932b78b2d13e81"
+dependencies = [
+ "bincode",
+ "jsonwebkey",
+ "memoffset 0.9.0",
+ "openssl",
+ "rsa 0.9.6",
+ "serde",
+ "serde-big-array",
+ "serde_json",
+ "sev",
+ "sha2",
+ "thiserror",
+ "tss-esapi",
+ "zerocopy",
+]
+
+[[package]]
 name = "az-snp-vtpm"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0703ff4c71faae6f5ab21ac8590104e771d17ff117f6941a48deb3db6f75769"
 dependencies = [
- "az-cvm-vtpm",
+ "az-cvm-vtpm 0.4.1",
  "bincode",
  "clap 4.4.14",
  "openssl",
+ "serde",
+ "sev",
+ "thiserror",
+ "ureq",
+]
+
+[[package]]
+name = "az-snp-vtpm"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4e7ac600f726394c4174145c5d65a0cc8052b35a383e9d2be0a0d9209b545b1"
+dependencies = [
+ "az-cvm-vtpm 0.5.0",
+ "bincode",
+ "clap 4.4.14",
  "serde",
  "sev",
  "thiserror",
@@ -694,7 +730,23 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42775a99133b9c0edff34fb463713bb197f744b96d74dee5c1f953434721001"
 dependencies = [
- "az-cvm-vtpm",
+ "az-cvm-vtpm 0.4.1",
+ "base64-url",
+ "bincode",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "ureq",
+ "zerocopy",
+]
+
+[[package]]
+name = "az-tdx-vtpm"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f74c823342c57ca6b79195beea11a458485456aaa1fdf9263160e7bc4ade3b1b"
+dependencies = [
+ "az-cvm-vtpm 0.5.0",
  "base64-url",
  "bincode",
  "serde",
@@ -1261,7 +1313,7 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0#7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=42b7c96#42b7c9687ecd0907ef70da31cf290a60ee8432cd"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1303,10 +1355,12 @@ dependencies = [
 [[package]]
 name = "csv-rs"
 version = "0.1.0"
-source = "git+https://gitee.com/anolis/csv-rs?rev=9d8882e#9d8882e005ab0f64f4e3802a37aebfc61bc4fe32"
+source = "git+https://github.com/openanolis/csv-rs?rev=b74aa8c#b74aa8c8ada293fb7edd6db0a770789368fdef71"
 dependencies = [
  "bitfield 0.13.2",
+ "bitflags 1.3.2",
  "codicon",
+ "dirs",
  "hyper",
  "hyper-tls",
  "iocuddle",
@@ -2429,7 +2483,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0#7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=42b7c96#42b7c9687ecd0907ef70da31cf290a60ee8432cd"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3091,6 +3145,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pbkdf2"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
+dependencies = [
+ "digest",
+ "hmac",
+]
+
+[[package]]
 name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3327,10 +3391,25 @@ dependencies = [
  "cbc",
  "der 0.6.1",
  "hmac",
- "pbkdf2",
- "scrypt",
+ "pbkdf2 0.11.0",
+ "scrypt 0.10.0",
  "sha2",
  "spki 0.6.0",
+]
+
+[[package]]
+name = "pkcs5"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e847e2c91a18bfa887dd028ec33f2fe6f25db77db3619024764914affe8b69a6"
+dependencies = [
+ "aes",
+ "cbc",
+ "der 0.7.8",
+ "pbkdf2 0.12.2",
+ "scrypt 0.11.0",
+ "sha2",
+ "spki 0.7.3",
 ]
 
 [[package]]
@@ -3340,7 +3419,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eca2c590a5f85da82668fa685c09ce2888b9430e83299debf1f34b65fd4a4ba"
 dependencies = [
  "der 0.6.1",
- "pkcs5",
+ "pkcs5 0.5.0",
  "rand_core",
  "spki 0.6.0",
 ]
@@ -3352,6 +3431,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der 0.7.8",
+ "pkcs5 0.7.1",
+ "rand_core",
  "spki 0.7.3",
 ]
 
@@ -3688,7 +3769,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0#7ddecc780c1ec03b0ef3ca9e161eea0f75fcaac0"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=42b7c96#42b7c9687ecd0907ef70da31cf290a60ee8432cd"
 dependencies = [
  "anyhow",
  "serde",
@@ -4021,7 +4102,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f9e24d2b632954ded8ab2ef9fea0a0c769ea56ea98bddbafbad22caeeadf45d"
 dependencies = [
  "hmac",
- "pbkdf2",
+ "pbkdf2 0.11.0",
+ "salsa20",
+ "sha2",
+]
+
+[[package]]
+name = "scrypt"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0516a385866c09368f0b5bcd1caff3366aace790fcd46e2bb032697bb172fd1f"
+dependencies = [
+ "pbkdf2 0.12.2",
  "salsa20",
  "sha2",
 ]
@@ -5221,8 +5313,8 @@ dependencies = [
  "asn1-rs",
  "assert-json-diff",
  "async-trait",
- "az-snp-vtpm",
- "az-tdx-vtpm",
+ "az-snp-vtpm 0.4.1",
+ "az-tdx-vtpm 0.4.1",
  "base64 0.21.6",
  "bincode",
  "byteorder",
