@@ -133,10 +133,10 @@ fn verify_snp_report(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use az_snp_vtpm::vtpm::VerifyError;
 
-    const REPORT: &[u8; 2048] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
-    const SIGNATURE: &[u8; 256] = include_bytes!("../../test_data/az-snp-vtpm/tpm-quote.sig");
-    const MESSAGE: &[u8; 122] = include_bytes!("../../test_data/az-snp-vtpm/tpm-quote.msg");
+    const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
+    const QUOTE: &[u8; 1362] = include_bytes!("../../test_data/az-snp-vtpm/quote.bin");
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
 
     #[test]
@@ -152,12 +152,18 @@ mod tests {
     fn test_verify_snp_report_failure() {
         let mut wrong_report = REPORT.clone();
         // messing with snp report
-        wrong_report[0x00b0] = 0;
+        wrong_report[0x01a6] = 0;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_snp_report(&snp_report, &vcek, vendor_certs).unwrap_err();
+        assert_eq!(
+            verify_snp_report(&snp_report, &vcek, vendor_certs)
+                .err()
+                .unwrap()
+                .to_string(),
+            "SNP version mismatch",
+        );
     }
 
     #[test]
@@ -175,59 +181,62 @@ mod tests {
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let var_data_hash = hcl_report.var_data_sha256();
         let snp_report = hcl_report.try_into().unwrap();
-        verify_report_data(&var_data_hash, &snp_report).unwrap_err();
+        assert_eq!(
+            verify_report_data(&var_data_hash, &snp_report)
+                .unwrap_err()
+                .to_string(),
+            "SNP report report_data mismatch"
+        );
     }
 
     #[test]
     fn test_verify_signature() {
-        let quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         verify_signature(&quote, &hcl_report).unwrap();
     }
 
     #[test]
     fn test_verify_quote_signature_failure() {
-        let mut wrong_message = MESSAGE.clone();
-        wrong_message.reverse();
-        let wrong_quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: wrong_message.to_vec(),
-        };
+        let mut quote = QUOTE.clone();
+        quote[0x030] = 0;
+        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        verify_signature(&wrong_quote, &hcl_report).unwrap_err();
+        assert_eq!(
+            verify_signature(&wrong_quote, &hcl_report)
+                .unwrap_err()
+                .downcast_ref::<VerifyError>()
+                .unwrap()
+                .to_string(),
+            VerifyError::SignatureMismatch.to_string()
+        );
     }
 
     #[test]
     fn test_verify_akpub_failure() {
-        let quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let mut wrong_report = REPORT.clone();
         // messing with AKpub in var data
         wrong_report[0x0540] = 0;
         let wrong_hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
-        verify_signature(&quote, &wrong_hcl_report).unwrap_err();
+        assert_eq!(
+            verify_signature(&quote, &wrong_hcl_report)
+                .unwrap_err()
+                .to_string(),
+            "Failed to get AKpub",
+        );
     }
 
     #[test]
     fn test_verify_quote_nonce() {
-        let quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         verify_nonce(&quote, &REPORT_DATA).unwrap();
     }
 
     #[test]
     fn test_verify_quote_nonce_failure() {
-        let quote = Quote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let mut wrong_report_data = REPORT_DATA.to_vec();
         wrong_report_data.reverse();
         verify_nonce(&quote, &wrong_report_data).unwrap_err();
