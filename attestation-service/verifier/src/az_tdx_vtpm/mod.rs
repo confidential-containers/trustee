@@ -96,10 +96,11 @@ fn verify_tpm_nonce(quote: &TpmQuote, report_data: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use az_tdx_vtpm::vtpm::Quote;
+    use az_tdx_vtpm::vtpm::VerifyError;
 
     const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-tdx-vtpm/hcl-report.bin");
-    const SIGNATURE: &[u8; 256] = include_bytes!("../../test_data/az-tdx-vtpm/tpm-quote.sig");
-    const MESSAGE: &[u8; 126] = include_bytes!("../../test_data/az-tdx-vtpm/tpm-quote.msg");
+    const QUOTE: &[u8; 1362] = include_bytes!("../../test_data/az-tdx-vtpm/quote.bin");
     const TD_QUOTE: &[u8; 5006] = include_bytes!("../../test_data/az-tdx-vtpm/td-quote.bin");
 
     #[test]
@@ -115,47 +116,48 @@ mod tests {
         wrong_report[0x0880] += 1;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
-        verify_hcl_var_data(&hcl_report, &td_quote).unwrap_err();
+        assert_eq!(
+            verify_hcl_var_data(&hcl_report, &td_quote)
+                .unwrap_err()
+                .to_string(),
+            "TDX Quote report data mismatch"
+        );
     }
 
     #[test]
     fn test_verify_tpm_signature() {
-        let quote = TpmQuote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         verify_tpm_signature(&quote, &hcl_report).unwrap();
     }
 
     #[test]
     fn test_verify_tpm_signature_failure() {
-        let mut wrong_message = MESSAGE.clone();
-        wrong_message.reverse();
-        let wrong_quote = TpmQuote {
-            signature: SIGNATURE.to_vec(),
-            message: wrong_message.to_vec(),
-        };
+        let mut quote = QUOTE.clone();
+        quote[0x020] = 0;
+        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        verify_tpm_signature(&wrong_quote, &hcl_report).unwrap_err();
+        assert_eq!(
+            verify_tpm_signature(&wrong_quote, &hcl_report)
+                .unwrap_err()
+                .downcast_ref::<VerifyError>()
+                .unwrap()
+                .to_string(),
+            VerifyError::SignatureMismatch.to_string()
+        );
     }
 
     #[test]
     fn test_verify_tpm_nonce() {
-        let quote = TpmQuote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
-        let nonce = "tdx challenge".as_bytes();
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
+        let nonce = "challenge".as_bytes();
         verify_tpm_nonce(&quote, nonce).unwrap();
     }
 
     #[test]
     fn test_verify_tpm_nonce_failure() {
-        let quote = TpmQuote {
-            signature: SIGNATURE.to_vec(),
-            message: MESSAGE.to_vec(),
-        };
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let wrong_nonce = "wrong".as_bytes();
         verify_tpm_nonce(&quote, wrong_nonce).unwrap_err();
     }
