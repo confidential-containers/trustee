@@ -173,19 +173,19 @@ pub(crate) fn verify_report_signature(
     // tcb version
     // these integer extensions are 3 bytes with the last byte as the data
     if get_oid_int(&parsed_vcek, UCODE_SPL_OID)? != report.reported_tcb.microcode {
-        return Err(anyhow!("Microcode verion mismatch"));
+        return Err(anyhow!("Microcode version mismatch"));
     }
 
     if get_oid_int(&parsed_vcek, SNP_SPL_OID)? != report.reported_tcb.snp {
-        return Err(anyhow!("SNP verion mismatch"));
+        return Err(anyhow!("SNP version mismatch"));
     }
 
     if get_oid_int(&parsed_vcek, TEE_SPL_OID)? != report.reported_tcb.tee {
-        return Err(anyhow!("TEE verion mismatch"));
+        return Err(anyhow!("TEE version mismatch"));
     }
 
     if get_oid_int(&parsed_vcek, LOADER_SPL_OID)? != report.reported_tcb.bootloader {
-        return Err(anyhow!("Boot loader verion mismatch"));
+        return Err(anyhow!("Boot loader version mismatch"));
     }
 
     // verify report signature
