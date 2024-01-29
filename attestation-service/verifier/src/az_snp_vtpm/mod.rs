@@ -4,12 +4,13 @@
 //
 
 use crate::{regularize_data, InitDataHash, ReportData};
+use thiserror::Error;
 
 use super::{TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
-    load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
+     SnpError, load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use az_snp_vtpm::certs::Vcek;
 use az_snp_vtpm::hcl::HclReport;
@@ -21,6 +22,38 @@ use serde::{Deserialize, Serialize};
 use sev::firmware::host::{CertTableEntry, CertType};
 
 const HCL_VMPL_VALUE: u32 = 0;
+
+#[derive(Error, Debug)]
+pub enum AzSnpVtpmError {
+    #[error("SnpError: {0}")]
+    Snp(#[from] SnpError),
+    #[error("unexpected empty report data")]
+    EmptyReportData,
+    #[error("SNP report report_data mismatch")]
+    ReportDataMismatch,
+    #[error("VMPL of SNP report is not {0}")]
+    VPMLNotCorrect(String),
+    #[error("Hcl error")]
+    Hcl(#[from]  az_snp_vtpm::hcl::HclError),
+    #[error("Failed to deserialize Azure vTPM SEV-SNP evidence: {0}")]
+    FailedtoDeserializeEvidence(String),
+    #[error("Failed to get AKpub: {0}")]
+    FailedtoGetAkpub(String),
+    #[error("Failed to parse AKpub: {0}")]
+    FailedtoParseAkpub(String),
+    #[error("Failed to verify vTPM quoteb: {0}")]
+    FailedtoVerifyvTPMQuote(String),
+    #[error("Failed to get raw VCEK data: {0}")]
+    FailedtoGetVCEKRaw(String),
+    #[error("Vcek error")]
+    Vcek(#[from]  az_snp_vtpm::certs::ParseError),
+    #[error("Openssl errorstack")]
+    Openssl(#[from]  openssl::error::ErrorStack),
+    #[error("quote verify error")]
+    QuoteVerify(#[from]  az_snp_vtpm::vtpm::VerifyError),
+    #[error("jsonwebkey conversion error")]
+    JsonWebKey(#[from]  jsonwebkey::ConversionError),
+}
 
 #[derive(Serialize, Deserialize)]
 struct Evidence {
@@ -34,11 +67,11 @@ pub struct AzSnpVtpm {
 }
 
 impl AzSnpVtpm {
-    pub fn new() -> Result<Self> {
-        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            bail!("Failed to load Milan cert chain");
+    pub fn new() -> Result<Self, AzSnpVtpmError> {
+        let vendor_certs = match load_milan_cert_chain() {
+            Ok(vendor_certs) => vendor_certs.clone(),
+            Err(err) => return Err(AzSnpVtpmError::LoadMilanCertChain(*err)),
         };
-        let vendor_certs = vendor_certs.clone();
         Ok(Self { vendor_certs })
     }
 }
@@ -56,9 +89,9 @@ impl Verifier for AzSnpVtpm {
         evidence: &[u8],
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
+    ) -> Result<TeeEvidenceParsedClaim, AzSnpVtpmError> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
-            bail!("unexpected empty report data");
+            return Err(AzSnpVtpmError::EmptyReportData);
         };
 
         let expected_report_data =
@@ -69,7 +102,7 @@ impl Verifier for AzSnpVtpm {
         }
 
         let evidence = serde_json::from_slice::<Evidence>(evidence)
-            .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
+            .map_err(|err| AzSnpVtpmError::FailedtoDeserializeEvidence(err.to_string()))?;
 
         let hcl_report = HclReport::new(evidence.report)?;
         verify_quote(&evidence.quote, &hcl_report, &expected_report_data)?;
@@ -86,20 +119,22 @@ impl Verifier for AzSnpVtpm {
     }
 }
 
-fn verify_quote(quote: &Quote, hcl_report: &HclReport, report_data: &[u8]) -> Result<()> {
-    let ak_pub = hcl_report.ak_pub().context("Failed to get AKpub")?;
+fn verify_quote(quote: &Quote, hcl_report: &HclReport, report_data: &[u8]) -> Result<(), AzSnpVtpmError> {
+    let ak_pub = hcl_report.ak_pub()
+                .map_err(|err| AzSnpVtpmError::FailedtoGetAkpub(err.to_string()))?;
     let der = ak_pub.key.try_to_der()?;
-    let ak_pub = PKey::public_key_from_der(&der).context("Failed to parse AKpub")?;
+    let ak_pub = PKey::public_key_from_der(&der)
+                .map_err(|err| AzSnpVtpmError::FailedtoParseAkpub(err.to_string()))?;
 
     quote
         .verify(&ak_pub, report_data)
-        .context("Failed to verify vTPM quote")?;
+        .map_err(|err| AzSnpVtpmError::FailedtoVerifyvTPMQuote(err.to_string()))?;
     Ok(())
 }
 
-fn verify_report_data(var_data_hash: &[u8; 32], snp_report: &AttestationReport) -> Result<()> {
+fn verify_report_data(var_data_hash: &[u8; 32], snp_report: &AttestationReport) -> Result<(), AzSnpVtpmError> {
     if *var_data_hash != snp_report.report_data[..32] {
-        bail!("SNP report report_data mismatch");
+        return Err(AzSnpVtpmError::ReportDataMismatch);
     }
     debug!("Report data verification completed successfully.");
     Ok(())
@@ -109,13 +144,14 @@ fn verify_snp_report(
     snp_report: &AttestationReport,
     vcek: &Vcek,
     vendor_certs: &VendorCertificates,
-) -> Result<()> {
-    let vcek_data = vcek.0.to_der().context("Failed to get raw VCEK data")?;
+) -> Result<(), AzSnpVtpmError> {
+    let vcek_data = vcek.0.to_der()
+                    .map_err(|err| AzSnpVtpmError::FailedtoGetVCEKRaw(err.to_string()))?;
     let cert_chain = [CertTableEntry::new(CertType::VCEK, vcek_data)];
     verify_report_signature(snp_report, &cert_chain, vendor_certs)?;
 
     if snp_report.vmpl != HCL_VMPL_VALUE {
-        bail!("VMPL of SNP report is not {HCL_VMPL_VALUE}");
+        return Err(AzSnpVtpmError::VPMLNotCorrect(HCL_VMPL_VALUE.to_string()));
     }
 
     Ok(())
