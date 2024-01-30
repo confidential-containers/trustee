@@ -10,10 +10,10 @@ pub(crate) async fn attestation_policy(
     request: HttpRequest,
     input: web::Bytes,
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
-    insecure: web::Data<bool>,
+    insecure_api: web::Data<bool>,
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> Result<HttpResponse> {
-    if !insecure.get_ref() {
+    if !insecure_api.get_ref() {
         let user_pub_key = user_pub_key
             .as_ref()
             .as_ref()
@@ -38,10 +38,10 @@ pub(crate) async fn resource_policy(
     request: HttpRequest,
     input: web::Json<serde_json::Value>,
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
-    insecure: web::Data<bool>,
+    insecure_api: web::Data<bool>,
     policy_engine: web::Data<PolicyEngine>,
 ) -> Result<HttpResponse> {
-    if !insecure.get_ref() {
+    if !insecure_api.get_ref() {
         let user_pub_key = user_pub_key
             .as_ref()
             .as_ref()
@@ -85,10 +85,10 @@ pub(crate) async fn set_resource(
     request: HttpRequest,
     data: web::Bytes,
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
-    insecure: web::Data<bool>,
+    insecure_api: web::Data<bool>,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
 ) -> Result<HttpResponse> {
-    if !insecure.get_ref() {
+    if !insecure_api.get_ref() {
         let user_pub_key = user_pub_key
             .as_ref()
             .as_ref()
