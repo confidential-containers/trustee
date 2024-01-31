@@ -27,6 +27,7 @@ install-dependencies:
 		clang \
 		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify-dev \
+		libssl-dev \
 		libtdx-attest-dev \
 		libtss2-dev \
 		openssl \
