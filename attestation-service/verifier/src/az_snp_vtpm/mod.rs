@@ -48,9 +48,10 @@ impl Verifier for AzSnpVtpm {
     /// The following verification steps are performed:
     /// 1. TPM Quote has been signed by AK included in the HCL variable data
     /// 2. Attestation report_data matches TPM Quote nonce
-    /// 3. SNP report's report_data field matches hashed HCL variable data
-    /// 4. SNP Report is genuine
-    /// 5. SNP Report has been issued in VMPL 0
+    /// 3. TPM PCRs' digest matches the digest in the Quote
+    /// 4. SNP report's report_data field matches hashed HCL variable data
+    /// 5. SNP Report is genuine
+    /// 6. SNP Report has been issued in VMPL 0
     async fn evaluate(
         &self,
         evidence: &[u8],
@@ -72,6 +73,8 @@ impl Verifier for AzSnpVtpm {
         verify_signature(&evidence.quote, &hcl_report)?;
 
         verify_nonce(&evidence.quote, expected_report_data)?;
+
+        verify_pcrs(&evidence.quote)?;
 
         let var_data_hash = hcl_report.var_data_sha256();
         let snp_report = hcl_report.try_into()?;
@@ -103,6 +106,14 @@ fn verify_signature(quote: &Quote, hcl_report: &HclReport) -> Result<()> {
         .verify_signature(&ak_pub)
         .context("vTPM quote is not signed by AKpub")?;
     debug!("Signature verification completed successfully");
+    Ok(())
+}
+
+fn verify_pcrs(quote: &Quote) -> Result<()> {
+    quote
+        .verify_pcrs()
+        .context("Digest of PCRs does not match digest in Quote")?;
+    debug!("PCR verification completed successfully");
     Ok(())
 }
 
@@ -239,5 +250,27 @@ mod tests {
         let mut wrong_report_data = REPORT_DATA.to_vec();
         wrong_report_data.reverse();
         verify_nonce(&quote, &wrong_report_data).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_pcrs() {
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
+        verify_pcrs(&quote).unwrap();
+    }
+
+    #[test]
+    fn test_verify_pcrs_failure() {
+        let mut quote = QUOTE.clone();
+        quote[0x0169] = 0;
+        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+
+        assert_eq!(
+            verify_pcrs(&wrong_quote)
+                .unwrap_err()
+                .downcast_ref::<VerifyError>()
+                .unwrap()
+                .to_string(),
+            VerifyError::PcrMismatch.to_string()
+        );
     }
 }
