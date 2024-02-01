@@ -30,8 +30,9 @@ impl Verifier for AzTdxVtpm {
     /// The following verification steps are performed:
     /// 1. TPM Quote has been signed by AK included in the HCL variable data
     /// 2. Attestation nonce matches TPM Quote nonce
-    /// 3. TD Quote is genuine
-    /// 4. TD Report's report_data field matches hashed HCL variable data
+    /// 3. TPM PCRs' digest matches the digest in the Quote
+    /// 4. TD Quote is genuine
+    /// 5. TD Report's report_data field matches hashed HCL variable data
     async fn evaluate(
         &self,
         evidence: &[u8],
@@ -53,6 +54,8 @@ impl Verifier for AzTdxVtpm {
         verify_tpm_signature(&evidence.tpm_quote, &hcl_report)?;
 
         verify_tpm_nonce(&evidence.tpm_quote, expected_report_data)?;
+
+        verify_pcrs(&evidence.tpm_quote)?;
 
         ecdsa_quote_verification(&evidence.td_quote).await?;
         let td_quote = parse_tdx_quote(&evidence.td_quote)?;
@@ -81,6 +84,14 @@ fn verify_tpm_signature(quote: &TpmQuote, hcl_report: &HclReport) -> Result<()> 
     quote
         .verify_signature(&ak_pub)
         .context("Failed to verify vTPM quote")?;
+    Ok(())
+}
+
+fn verify_pcrs(quote: &TpmQuote) -> Result<()> {
+    quote
+        .verify_pcrs()
+        .context("Digest of PCRs does not match digest in Quote")?;
+    debug!("PCR verification completed successfully");
     Ok(())
 }
 
@@ -160,5 +171,27 @@ mod tests {
         let quote: Quote = bincode::deserialize(QUOTE).unwrap();
         let wrong_nonce = "wrong".as_bytes();
         verify_tpm_nonce(&quote, wrong_nonce).unwrap_err();
+    }
+
+    #[test]
+    fn test_verify_pcrs() {
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
+        verify_pcrs(&quote).unwrap();
+    }
+
+    #[test]
+    fn test_verify_pcrs_failure() {
+        let mut quote = QUOTE.clone();
+        quote[0x0169] = 0;
+        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+
+        assert_eq!(
+            verify_pcrs(&wrong_quote)
+                .unwrap_err()
+                .downcast_ref::<VerifyError>()
+                .unwrap()
+                .to_string(),
+            VerifyError::PcrMismatch.to_string()
+        );
     }
 }
