@@ -41,6 +41,7 @@ jobs:
 
     - name: Rebase the source
       if: github.event_name != 'push'
+      run: |
         git config --global user.name "GH Actions Workflow"
         git config --global user.email "<rebase@gh-actions-workflow>"
         ./kbs/hack/ci-helper.sh rebase-atop-of-the-latest-target-branch
