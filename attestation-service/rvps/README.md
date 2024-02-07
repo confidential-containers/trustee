@@ -44,6 +44,10 @@ It is the reference values really requested and used by Attestation Service to c
 
 ## Run RVPS
 
+### Pre-requisite
+
+Install the protocol buffer compiler package `protobuf-compiler`.
+
 ### Directly Build
 
 In this way, the RVPS can run as a single service. The [gRPC protos](../protos/reference.proto) are defined.
@@ -53,7 +57,7 @@ We can run using the following command
 ```bash
 git clone https://github.com/confidential-containers/kbs
 cd kbs/attestation-service/rvps
-make build && make install
+make build && sudo make install
 ```
 
 To by default listen to `localhost:50003` to wait for requests
