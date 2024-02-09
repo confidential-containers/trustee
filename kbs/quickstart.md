@@ -56,7 +56,7 @@ and pass it to the KBS server through startup parameters.
 Build KBS in Background Check mode:
 ```shell
 make background-check-kbs POLICY_ENGINE=opa
-make install-kbs
+sudo make install-kbs
 ```
 
 Start KBS with HTTP server:
