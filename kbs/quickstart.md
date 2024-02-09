@@ -67,7 +67,7 @@ sudo make install-cli
 
 Start KBS with HTTP server:
 ```shell
-kbs --config-file config/kbs-config.toml
+sudo kbs --config-file config/kbs-config.toml &
 ```
 
 If you want start KBS with HTTPS server, use `--private-key` and `--certificate`
