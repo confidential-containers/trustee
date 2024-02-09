@@ -2,6 +2,8 @@ AS_TYPE ?= coco-as
 HTTPS_CRYPTO ?= rustls
 POLICY_ENGINE ?=
 
+CLI_FEATURES ?= default
+
 COCO_AS_INTEGRATION_TYPE ?= builtin
 
 INSTALL_DESTDIR ?= /usr/local/bin
@@ -28,9 +30,12 @@ passport-resource-kbs:
 	cargo build -p kbs --locked --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
 	mv ../target/release/kbs ../target/release/resource-kbs
 
+.PHONY: cli
+cli:
+	cargo build -p kbs-client --locked --release --no-default-features --features $(CLI_FEATURES)
+
 install-kbs:
 	install -D -m0755 ../target/release/kbs $(INSTALL_DESTDIR)
-	install -D -m0755 ../target/release/kbs-client $(INSTALL_DESTDIR)
 
 install-issuer-kbs:
 	install -D -m0755 ../target/release/issuer-kbs $(INSTALL_DESTDIR)
@@ -38,6 +43,8 @@ install-issuer-kbs:
 
 install-resource-kbs:
 	install -D -m0755 ../target/release/resource-kbs $(INSTALL_DESTDIR)
+
+install-cli:
 	install -D -m0755 ../target/release/kbs-client $(INSTALL_DESTDIR)
 
 uninstall:

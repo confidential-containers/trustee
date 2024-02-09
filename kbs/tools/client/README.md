@@ -13,7 +13,30 @@ For more sophisticated attestation clients, please refer to [guest components](h
 For help:
 
 ```shell
-./client -h
+kbs-client -h
+```
+
+## Building and installing the client
+
+Build the client binary with support to the default features as:
+
+```shell
+make -C ../../ cli
+```
+
+By default the client is built with support to the sample attester, apart from the
+TEE specific ones. If you want to build it with that sample attester only (this will
+require fewer dependencies and so usually handy for CI) then you can pass the
+`sample_only` feature as:
+
+```shell
+make -C ../../ cli CLI_FEATURES=sample_only
+```
+
+Find the built binary at `../../../target/release/kbs-client`. You can get it
+installed into the system as:
+```shell
+sudo make -C ../../ install-cli
 ```
 
 ## Examples
