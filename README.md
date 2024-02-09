@@ -63,8 +63,10 @@ This cluster could be run inside a VM or as part of a managed service.
 
 ### Kubernetes
 
-The [KBS Operator](https://github.com/confidential-containers/kbs-operator) supports deploying the KBS components
-in a Kubernetes cluster.
+There are two supported ways of deploying KBS on Kubernetes.
+One is via the [KBS Operator](https://github.com/confidential-containers/kbs-operator),
+which deploys the KBS components. The second option is to use the KBS'
+provided Kubernetes tooling [here](kbs/config/kubernetes).
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs?ref=badge_large)
