@@ -59,6 +59,12 @@ make background-check-kbs POLICY_ENGINE=opa
 sudo make install-kbs
 ```
 
+Build and install the kbs-client:
+```shell
+make cli
+sudo make install-cli
+```
+
 Start KBS with HTTP server:
 ```shell
 kbs --config-file config/kbs-config.toml
