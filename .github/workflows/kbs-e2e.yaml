@@ -49,6 +49,12 @@ jobs:
           target/
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
+    - name: Set up SGX/TDX certificates cache
+      uses: actions/cache@v4
+      with:
+        path: /root/.dcap-qcnl
+        key: ${{ runner.os }}-dcap-qcnl
+
     - name: Install dependencies
       working-directory: kbs/test
       run: |
