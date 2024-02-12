@@ -103,7 +103,7 @@ To test the KBS with sample evidence, you'll need to update the resource policy
 to something more permissive.
 This can be done with a command such as
 ```shell
-./kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key  set-resource-policy --policy-file allow_all.rego
+kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key  set-resource-policy --policy-file sample_policies/allow_all.rego
 ```
 
 ## Passport Mode
