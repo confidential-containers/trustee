@@ -1,4 +1,4 @@
-name: KBS e2e with az-snp-vtpm TEE
+name: KBS e2e with az-tdx-vtpm TEE
 
 on:
   push:
@@ -60,5 +60,5 @@ jobs:
     - checkout-and-rebase
     uses: ./.github/workflows/kbs-e2e.yaml
     with:
-      runs-on: '["self-hosted","azure-cvm"]'
+      runs-on: '["self-hosted","azure-cvm-tdx"]'
       tarball: kbs.tar.gz
