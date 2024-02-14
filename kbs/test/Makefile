@@ -52,16 +52,25 @@ client:
 .PHONY: bins
 bins: kbs resource-kbs client
 
+ca-key.pem:
+	openssl genrsa -traditional -out ca-key.pem 2048
+
+ca-cert.pem: ca-key.pem
+	openssl req -new -key ca-key.pem -out ca-req.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-test-root" && \
+	openssl req -x509 -days 3650 -key ca-key.pem -in ca-req.csr -out ca-cert.pem
+
+token-key.pem:
+	openssl genrsa -traditional -out token-key.pem 2048
+
+token-cert.pem: token-key.pem ca-cert.pem ca-key.pem
+	openssl req -new -key token-key.pem -out token-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS" && \
+	openssl x509 -req -in token-req.csr -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out token-cert.pem -extensions req_ext
+
+token-cert-chain.pem: token-cert.pem ca-cert.pem
+	cat token-cert.pem ca-cert.pem > token-cert-chain.pem
+
 .PHONY: generate-attestation-token-signer
-generate-attestation-token-signer:
-	mkdir $(CURDIR)/token-signer/
-	openssl genrsa -traditional -out ./token-signer/cakey.pem 2048
-	openssl req -new -key ./token-signer/cakey.pem -out ./token-signer/careq.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-test-root"
-	openssl req -x509 -days 3650 -key ./token-signer/cakey.pem -in ./token-signer/careq.csr -out ./token-signer/cacert.pem
-	openssl genrsa -traditional -out ./token-signer/token-key.pem 2048
-	openssl req -new -key ./token-signer/token-key.pem -out ./token-signer/token-cert-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS"
-	openssl x509 -req -in ./token-signer/token-cert-req.csr -CA ./token-signer/cacert.pem -CAkey ./token-signer/cakey.pem -CAcreateserial -out ./token-signer/token-cert.pem -extensions req_ext
-	cat ./token-signer/token-cert.pem ./token-signer/cacert.pem > ./token-signer/token-cert-chain.pem
+generate-attestation-token-signer: token-cert-chain.pem
 
 kbs.key:
 	openssl genpkey -algorithm ed25519 > kbs.key
@@ -82,7 +91,7 @@ start-kbs: kbs.PID
 .PHONY: start-resource-kbs
 start-resource-kbs: resource-kbs.PID
 
-kbs.PID: kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
+kbs.PID: kbs kbs.pem token-key.pem token-cert-chain.pem $(KBS_REPO_PATH)/one/two/three
 	@printf "${BOLD}start kbs${SGR0}\n"
 	{ \
 		RUST_LOG=actix-server=warn \
@@ -91,7 +100,7 @@ kbs.PID: kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
 	} && \
 	sleep 1
 
-resource-kbs.PID: resource-kbs kbs.pem $(KBS_REPO_PATH)/one/two/three
+resource-kbs.PID: resource-kbs kbs.pem ca-cert.pem $(KBS_REPO_PATH)/one/two/three
 	@printf "${BOLD}start resource-kbs${SGR0}\n"
 	{ \
 		RUST_LOG=actix-server=debug \
