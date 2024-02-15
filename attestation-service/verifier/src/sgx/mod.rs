@@ -24,6 +24,7 @@ use crate::{regularize_data, InitDataHash, ReportData};
 use self::types::sgx_quote3_t;
 
 use super::{TeeEvidenceParsedClaim, Verifier};
+use thiserror::Error;
 
 #[allow(non_camel_case_types)]
 mod types;
@@ -41,6 +42,36 @@ struct SgxEvidence {
 #[derive(Debug, Default)]
 pub struct SgxVerifier {}
 
+#[derive(Error, Debug)]
+pub enum SgxError {
+    #[error("Deserialize Quote failed: {0}")]
+    FailedtoDeserializeQuote(String),
+    #[error("Sgx verifier error: {0}")]
+    SgxVerifierErr(String),
+    #[error("Parse SGX quote failed: {0}")]
+    ParseSgxQuote(String),
+    #[error("Evidence's identity verification error: {0}")]
+    EvidenceIdentityVerification(String),
+    #[error("REPORT_DATA is different from that in SGX Quote")]
+    ReportDataMismatch,
+    #[error("CONFIGID is different from that in SGX Quote")]
+    ConfigIdMismatch,
+    #[error(transparent)]
+    Base64Err(#[from] base64::DecodeError),
+    #[error(transparent)]
+    TryfromSlice(#[from] std::array::TryFromSliceError),
+    #[error("tee_get_quote_supplemental_data_size failed: {0}")]
+    TeeGetQuoteSupplemtalData(String),
+    #[error("Verification completed with Terminal result: {0}")]
+    QuoteVerificationResult(String),
+    #[error("generate_parsed_claims failed: {0}")]
+    GenerateParsedClaims(String),
+    #[error("ecdsa quote verification failed: {0}")]
+    ECDSAQuoteVerification(String),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+}
+
 #[async_trait]
 impl Verifier for SgxVerifier {
     async fn evaluate(
@@ -49,41 +80,41 @@ impl Verifier for SgxVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence =
-            serde_json::from_slice::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
+        let tee_evidence = serde_json::from_slice::<SgxEvidence>(evidence)
+            .map_err(|err| SgxError::FailedtoDeserializeQuote(err.to_string()))?;
 
         debug!("TEE-Evidence<Sgx>: {:?}", &tee_evidence);
 
         verify_evidence(expected_report_data, expected_init_data_hash, tee_evidence)
             .await
-            .map_err(|e| anyhow!("SGX Verifier: {:?}", e))
+            .map_err(|e| SgxError::SgxVerifierErr(e.to_string()).into())
     }
 }
 
-pub fn parse_sgx_quote(quote: &[u8]) -> Result<sgx_quote3_t> {
+pub fn parse_sgx_quote(quote: &[u8]) -> Result<sgx_quote3_t, SgxError> {
     let quote_body = &quote[..QUOTE_SIZE];
     quote_body
         .pread::<sgx_quote3_t>(0)
-        .map_err(|e| anyhow!("Parse SGX quote failed: {:?}", e))
+        .map_err(|e| SgxError::ParseSgxQuote(e.to_string()))
 }
 
 async fn verify_evidence(
     expected_report_data: &ReportData<'_>,
     expected_init_data_hash: &InitDataHash<'_>,
     evidence: SgxEvidence,
-) -> Result<TeeEvidenceParsedClaim> {
+) -> Result<TeeEvidenceParsedClaim, SgxError> {
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
 
     ecdsa_quote_verification(&quote_bin)
         .await
-        .context("Evidence's identity verification error.")?;
+        .map_err(|e| SgxError::EvidenceIdentityVerification(e.to_string()))?;
 
     let quote = parse_sgx_quote(&quote_bin)?;
     if let ReportData::Value(expected_report_data) = expected_report_data {
         debug!("Check the binding of REPORT_DATA.");
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "SGX");
         if expected_report_data != quote.report_body.report_data {
-            bail!("REPORT_DATA is different from that in SGX Quote");
+            return Err(SgxError::ReportDataMismatch);
         }
     }
 
@@ -92,14 +123,15 @@ async fn verify_evidence(
         let expected_init_data_hash =
             regularize_data(expected_init_data_hash, 64, "CONFIGID", "SGX");
         if expected_init_data_hash != quote.report_body.config_id {
-            bail!("CONFIGID is different from that in SGX Quote");
+            return Err(SgxError::ConfigIdMismatch);
         }
     }
 
     claims::generate_parsed_claims(quote)
+        .map_err(|err| SgxError::GenerateParsedClaims(err.to_string()))
 }
 
-async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
+async fn ecdsa_quote_verification(quote: &[u8]) -> Result<(), SgxError> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
     let mut supp_data_desc = tee_supp_data_descriptor_t {
         major_version: 0,
@@ -122,10 +154,7 @@ async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
                 warn!("Quote supplemental data size is different between DCAP QVL and QvE, please make sure you installed DCAP QVL and QvE from same release.")
             }
         }
-        Err(e) => bail!(
-            "tee_get_quote_supplemental_data_size failed: {:#04x}",
-            e as u32
-        ),
+        Err(e) => return Err(SgxError::TeeGetQuoteSupplemtalData(format!("{:?}", e))),
     }
 
     // get collateral
@@ -183,14 +212,14 @@ async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
             );
         }
         _ => {
-            bail!(
-                "Verification completed with Terminal result: {:x}",
+            return Err(SgxError::QuoteVerificationResult(format!(
+                "{:?}",
                 quote_verification_result as u32
-            );
+            )))
         }
     }
 
-    Ok(())
+    Ok(()).map_err(|err| SgxError::ECDSAQuoteVerification(err.to_string()))
 }
 
 #[cfg(test)]
