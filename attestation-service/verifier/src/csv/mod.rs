@@ -4,6 +4,7 @@
 //
 
 use log::{debug, warn};
+use thiserror::Error;
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -30,6 +31,32 @@ struct CsvEvidence {
     serial_number: Vec<u8>,
 }
 
+#[derive(Error, Debug)]
+pub enum CsvError {
+    #[error("REPORT_DATA is different from that in CSV Quote")]
+    ReportDataMismatch,
+    #[error("Deserialize Quote failed")]
+    DesearizeQuoteFailed(#[source] serde_json::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("IO error")]
+    IO(#[from] std::io::Error),
+    #[error("HRK cert Signature verification failed: {0}")]
+    HRKSignatureVerification(String),
+    #[error("HSK cert Signature validation failed: {0}")]
+    HSKSignatureValidation(String),
+    #[error("CEK cert Signature validation failed: {0}")]
+    CEKSignatureValidation(String),
+    #[error("PEK cert Signature validation failed: {0}")]
+    PEKSignatureValidation(String),
+    #[error("Attestation Report Signature validation failed: {0}")]
+    AttestationReportSignatureValidation(String),
+    #[error("Parse TEE evidence failed: {0}")]
+    ParseTeeEvidence(String),
+    #[error("Verify report signature failed: {0}")]
+    VerifyReportSignature(String),
+}
+
 pub const HRK: &[u8] = include_bytes!("hrk.cert");
 
 #[derive(Debug, Default)]
@@ -43,8 +70,7 @@ impl Verifier for CsvVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence =
-            serde_json::from_slice::<CsvEvidence>(evidence).context("Deserialize Quote failed.")?;
+        let tee_evidence = serde_json::from_slice::<CsvEvidence>(evidence)?;
 
         verify_report_signature(&tee_evidence.attestation_report, &tee_evidence.cert_chain)?;
 
@@ -55,7 +81,7 @@ impl Verifier for CsvVerifier {
             let expected_report_data =
                 regularize_data(expected_report_data, 64, "REPORT_DATA", "CSV");
             if expected_report_data != report_raw.body.report_data {
-                bail!("REPORT_DATA is different from that in CSV Quote");
+                return Err(CsvError::ReportDataMismatch.into());
             }
         }
 
@@ -70,29 +96,29 @@ impl Verifier for CsvVerifier {
 fn verify_report_signature(
     attestation_report: &AttestationReport,
     cert_chain: &CertificateChain,
-) -> Result<()> {
+) -> Result<(), CsvError> {
     // Verify certificate chain
     let hrk = ca::Certificate::decode(&mut &HRK[..], ())?;
     (&hrk, &hrk)
         .verify()
-        .context("HRK cert Signature validation failed.")?;
+        .map_err(|err| CsvError::HRKSignatureVerification(err.to_string()))?;
     (&hrk, &cert_chain.hsk)
         .verify()
-        .context("HSK cert Signature validation failed.")?;
+        .map_err(|err| CsvError::HSKSignatureValidation(err.to_string()))?;
     (&cert_chain.hsk, &cert_chain.cek)
         .verify()
-        .context("CEK cert Signature validation failed.")?;
+        .map_err(|err| CsvError::CEKSignatureValidation(err.to_string()))?;
     (&cert_chain.cek, &cert_chain.pek)
         .verify()
-        .context("PEK cert Signature validation failed.")?;
+        .map_err(|err| CsvError::PEKSignatureValidation(err.to_string()))?;
 
     // Verify the TEE Hardware signature.
 
     (&cert_chain.pek, attestation_report)
         .verify()
-        .context("Attestation Report Signature validation failed.")?;
+        .map_err(|err| CsvError::AttestationReportSignatureValidation(err.to_string()))?;
 
-    Ok(())
+    Ok(()).map_err(|err| CsvError::VerifyReportSignature(err.to_string()))
 }
 
 fn xor_with_anonce(data: &mut [u8], anonce: &u32) {
