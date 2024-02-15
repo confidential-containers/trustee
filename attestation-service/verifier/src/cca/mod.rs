@@ -4,7 +4,8 @@
 //
 
 use super::*;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
+use thiserror::Error;
 use async_trait::async_trait;
 use base64::Engine;
 use core::result::Result::Ok;
@@ -60,6 +61,44 @@ struct CcaEvidence {
     token: Vec<u8>,
 }
 
+#[derive(Error, Debug)]
+pub enum CCAError {
+    #[error("CCA verifier must provide report data field!")]
+    ReportDataMissing,
+    #[error("Deserialize CCA Evidence failed: {0}")]
+    FailedtoDeserializeCCAEvidence(String),
+    #[error("CCA Attestation failed with error: {0}")]
+    CCAAttestationFailed(String),
+    #[error("get the decoding key from the pem public key: {0}")]
+    GetDecodingKey(String),
+    #[error("decrypt the ear with the decoding key: {0}")]
+    DecryptDecodingKey(String),
+    #[error("decode nonce byte from ear: {0}")]
+    DecodeNonceByte(String),
+    #[error("report data is different from that in ear's session nonce")]
+    ReportDataMismatch,
+    #[error("no entry found for CCA_SSD_PLATFORM")]
+    NoEntryFound,
+    #[error("init data hash is different from that in CCA token")]
+    InitDataHashMismatch,
+    #[error("Failed to decode base64: {0}")]
+    FailedtoDecodeBase64(String),
+    #[error("get platform evidence from the cca evidence map")]
+    GetPlatformEvidence,
+    #[error("Serde Json Error")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("get realm evidence from the cca evidence map")]
+    GetRealmEvidence,
+    #[error("CAA Verifier error: {0}")]
+    CAAVerifier(String),
+    #[error("verification error")]
+    Verification(#[from] veraison_apiclient::Error),
+    #[error("Failed to discover the verification endpoint details")]
+    VerificationEndpoint(),
+    #[error("anyhow error: {0}")]
+    Anyhow(#[from] anyhow::Error),
+}
+
 fn my_evidence_builder(
     nonce: &[u8],
     accept: &[String],
@@ -80,13 +119,13 @@ impl Verifier for CCA {
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
-            bail!("CCA verifier must provide report data field!");
+            return Err(CCAError::ReportDataMissing.into());
         };
 
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "CCA");
 
         let evidence = serde_json::from_slice::<CcaEvidence>(evidence)
-            .context("Deserialize CCA Evidence failed.")?;
+            .map_err(|err| CCAError::FailedtoDeserializeCCAEvidence(err.to_string()))?;
 
         let host_url =
             std::env::var(VERAISON_ADDR).unwrap_or_else(|_| DEFAULT_VERAISON_ADDR.to_string());
@@ -110,8 +149,7 @@ impl Verifier for CCA {
         let n = Nonce::Value(expected_report_data.clone());
         let result = match cr.run(n, my_evidence_builder, token.clone()).await {
             Err(e) => {
-                error!("Error: {}", e);
-                bail!("CCA Attestation failed with error: {:?}", e);
+                return Err(CCAError::CCAAttestationFailed(e.to_string()).into());
             }
             Ok(attestation_result) => attestation_result,
         };
@@ -119,22 +157,22 @@ impl Verifier for CCA {
         // Get back the pub key to decrypt the ear which holds raw evidence and the session nonce
         let public_key_pem = verification_api.ear_verification_key_as_pem()?;
         let dk = jwt::DecodingKey::from_ec_pem(public_key_pem.as_bytes())
-            .context("get the decoding key from the pem public key")?;
+            .map_err(|err| CCAError::GetDecodingKey(err.to_string()))?;
         let plain_ear = Ear::from_jwt(result.as_str(), jwt::Algorithm::ES256, &dk)
-            .context("decrypt the ear with the decoding key")?;
+            .map_err(|err| CCAError::DecryptDecodingKey(err.to_string()))?;
 
         let ear_nonce = plain_ear.nonce.context("get nonce from ear")?;
         let nonce_byte = base64::engine::general_purpose::STANDARD
             .decode(ear_nonce.to_string())
-            .context("decode nonce byte from ear")?;
+            .map_err(|err| CCAError::DecodeNonceByte(err.to_string()))?;
 
         if expected_report_data != nonce_byte {
-            bail!("report data is different from that in ear's session nonce");
+            return Err(CCAError::ReportDataMismatch.into());
         }
 
         let cca_mod = match plain_ear.submods.get("CCA_SSD_PLATFORM") {
             Some(value) => value,
-            None => bail!("no entry found for CCA_SSD_PLATFORM"),
+            None => return Err(CCAError::NoEntryFound.into()),
         };
         let evidence = &cca_mod.annotated_evidence;
 
@@ -147,15 +185,15 @@ impl Verifier for CCA {
             if *expected_init_data_hash
                 != base64::engine::general_purpose::STANDARD
                     .decode(&tcb.realm.cca_realm_personalization_value)
-                    .context("Failed to decode base64")?
+                    .map_err(|err| CCAError::FailedtoDecodeBase64(err.to_string()))?
                     .as_slice()
             {
-                bail!("init data hash is different from that in CCA token");
+                return Err(CCAError::InitDataHashMismatch.into());
             }
         }
 
         // Return Evidence parsed claim
-        cca_generate_parsed_claim(tcb).map_err(|e| anyhow!("error from CCA Verifier: {:?}", e))
+        cca_generate_parsed_claim(tcb).map_err(|e| CCAError::CAAVerifier(e.to_string()).into())
     }
 }
 
@@ -227,11 +265,12 @@ impl Verifier for CCA {
 ///    }
 /// }
 /// NOTE: each of the value are base64 encoded hex value.
-fn parse_cca_evidence(evidence_map: &BTreeMap<String, RawValue>) -> Result<Evidence> {
+fn parse_cca_evidence(evidence_map: &BTreeMap<String, RawValue>) -> Result<Evidence, CCAError> {
     let mut evidence = Evidence::default();
     let platfrom = evidence_map
         .get("platform")
         .context("get platform evidence from the cca evidence map")?;
+
     let output = serde_json::to_string(platfrom)?;
     let p: CcaPlatformClaims = serde_json::from_str(output.as_str())?;
     evidence.platform = p;
@@ -247,7 +286,7 @@ fn parse_cca_evidence(evidence_map: &BTreeMap<String, RawValue>) -> Result<Evide
 }
 
 fn cca_generate_parsed_claim(tcb: Evidence) -> Result<TeeEvidenceParsedClaim> {
-    let v = serde_json::to_value(tcb).context("build json value from the cca evidence")?;
+    let v = serde_json::to_value(tcb)?;
     Ok(v as TeeEvidenceParsedClaim)
 }
 
