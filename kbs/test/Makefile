@@ -1,6 +1,8 @@
 OS := $(shell lsb_release -si)
 RELEASE := $(shell lsb_release -sr)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
+SGX_COLLATERAL_URL := https://api.trustedservices.intel.com/sgx/certification/v4/
+SGX_QCNL_CONFIG := /etc/sgx_default_qcnl.conf
 KBS_REPO_PATH := ./data/repository
 KBS_CONFIG_PATH := ./data/e2e
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -26,13 +28,17 @@ install-dependencies:
 		build-essential \
 		clang \
 		libsgx-dcap-default-qpl \
+		libsgx-dcap-quote-verify \
 		libsgx-dcap-quote-verify-dev \
+		libsgx-urts \
 		libssl-dev \
+		libtdx-attest \
 		libtdx-attest-dev \
 		libtss2-dev \
 		openssl \
 		pkg-config \
-		protobuf-compiler
+		protobuf-compiler && \
+	echo '{"collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG)
 
 kbs:
 	cd $(PROJECT_DIR) && \
