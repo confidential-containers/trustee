@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{Context, Result};
 use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::anyhow;
 use log::{debug, warn};
 
 use crate::tdx::claims::generate_parsed_claim;
@@ -105,7 +105,6 @@ async fn verify_evidence(
 
 #[cfg(test)]
 mod tests {
-    use crate::tdx::claims::generate_parsed_claim;
 
     use super::*;
     use std::fs;

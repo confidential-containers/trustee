@@ -1,4 +1,3 @@
-use anyhow::{Context, Result};
 use log::debug;
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
