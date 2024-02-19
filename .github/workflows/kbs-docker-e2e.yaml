@@ -12,6 +12,8 @@ env:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
+    env:
+      RUSTC_VERSION: 1.76.0
     steps:
     - name: Checkout KBS
       uses: actions/checkout@v4
@@ -20,7 +22,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: stable
+        toolchain: ${{ env.RUSTC_VERSION }}
 
     - name: Build client
       uses: actions-rs/cargo@v1
