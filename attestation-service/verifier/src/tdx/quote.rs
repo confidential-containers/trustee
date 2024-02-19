@@ -6,7 +6,6 @@ use qvl::{
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
 };
 use scroll::Pread;
-use std::convert::TryInto;
 use std::mem;
 use std::time::{Duration, SystemTime};
 

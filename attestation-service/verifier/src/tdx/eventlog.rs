@@ -2,8 +2,6 @@ use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::mem::size_of;
 use eventlog_rs::Eventlog;
-use std::convert::{TryFrom, TryInto};
-use std::string::ToString;
 use strum::{Display, EnumString};
 
 #[derive(Debug, Clone, EnumString, Display)]
