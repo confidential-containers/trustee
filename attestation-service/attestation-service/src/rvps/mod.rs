@@ -32,6 +32,7 @@ pub struct RvpsConfig {
     /// Specify the underlying storage type of RVPS, e.g.
     ///
     /// - `localfs`: store inside local filesystem.
+    /// - `localjson`: store inside local json file.
     ///
     /// Only used when feature `rvps-builtin` is enabled
     #[serde(default = "String::default")]
