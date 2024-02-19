@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::anyhow;
 use base64::Engine;
 use log::debug;
 extern crate serde;
@@ -255,7 +255,6 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
 mod tests {
     use super::*;
     use openssl::nid::Nid;
-    use sev::firmware::host::CertTableEntry;
 
     #[test]
     fn check_milan_certificates() {
