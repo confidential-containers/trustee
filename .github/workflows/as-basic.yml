@@ -19,11 +19,8 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     name: Check
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        rust:
-          - stable
+    env:
+      RUSTC_VERSION: 1.76.0
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
@@ -56,11 +53,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libsgx-dcap-quote-verify-dev
 
-      - name: Install Rust toolchain (${{ matrix.rust }})
+      - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ env.RUSTC_VERSION }}
           override: true
           components: rustfmt, clippy
 
