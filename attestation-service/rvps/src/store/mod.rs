@@ -10,20 +10,24 @@ use serde::Deserialize;
 use strum::EnumString;
 
 use self::local_fs::LocalFs;
+use self::local_json::LocalJson;
 
 use super::ReferenceValue;
 
 pub mod local_fs;
+pub mod local_json;
 
 #[derive(Deserialize, Debug, Clone, EnumString)]
 pub enum StoreType {
     LocalFs,
+    LocalJson,
 }
 
 impl StoreType {
     pub fn to_store(&self) -> Result<Box<dyn Store + Send + Sync>> {
         match self {
             StoreType::LocalFs => Ok(Box::<LocalFs>::default() as Box<dyn Store + Send + Sync>),
+            StoreType::LocalJson => Ok(Box::<LocalJson>::default() as Box<dyn Store + Send + Sync>),
         }
     }
 }

@@ -174,6 +174,7 @@ impl AttestationService {
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
         let flattened_claims = flatten_claims(tee, &claims_from_tee_evidence)?;
+        debug!("flattened_claims: {:#?}", flattened_claims);
 
         let tcb_json = serde_json::to_string(&flattened_claims)?;
 
@@ -181,6 +182,7 @@ impl AttestationService {
             .get_reference_data(flattened_claims.keys())
             .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
+        debug!("reference_data_map: {:#?}", reference_data_map);
 
         let evaluation_report = self
             .policy_engine
