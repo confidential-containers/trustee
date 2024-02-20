@@ -108,7 +108,7 @@ pub(crate) async fn get_resource(
             resource_description.resource_type,
             resource_description.resource_tag
         );
-        let (resource_allowed, _extra_policy_output) = policy_engine
+        let resource_allowed = policy_engine
             .0
             .lock()
             .await
