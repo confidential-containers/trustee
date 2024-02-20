@@ -16,6 +16,7 @@ cca-verifier = [ "ear", "veraison-apiclient" ]
 
 [dependencies]
 anyhow.workspace = true
+thiserror.workspace = true
 asn1-rs = { version = "0.5.1", optional = true }
 async-trait.workspace = true
 az-snp-vtpm = { version = "0.5.1", default-features = false, features = ["verifier"], optional = true }
@@ -30,6 +31,7 @@ csv-rs = { git = "https://github.com/openanolis/csv-rs", rev = "b74aa8c", option
 eventlog-rs = { version = "0.1.3", optional = true }
 hex.workspace = true
 jsonwebtoken = "8"
+jsonwebkey = "0.3.5"
 kbs-types.workspace = true
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
