@@ -3,7 +3,7 @@ FROM rust:latest as builder
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt install -y wget
+RUN apt-get update && apt install -y wget git
 
 RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
