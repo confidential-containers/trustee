@@ -34,6 +34,7 @@ kbs-types = "0.5.3"
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 prost = "0.11.0"
+regorus = { version = "0.1.2", default-features = false, features = ["regex", "base64", "time"] }
 rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.89"
