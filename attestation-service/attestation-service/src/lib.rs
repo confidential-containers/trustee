@@ -97,9 +97,7 @@ impl AttestationService {
             .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
             .to_policy_engine(config.work_dir.as_path())?;
 
-        let rvps = config
-            .rvps_config
-            .to_rvps()
+        let rvps = rvps::initialize_rvps_client(&config.rvps_config)
             .await
             .context("create rvps failed.")?;
 

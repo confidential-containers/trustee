@@ -7,6 +7,7 @@
 
 use anyhow::Result;
 use serde::Deserialize;
+use serde_json::Value;
 use strum::EnumString;
 
 use self::local_fs::LocalFs;
@@ -24,10 +25,14 @@ pub enum StoreType {
 }
 
 impl StoreType {
-    pub fn to_store(&self) -> Result<Box<dyn Store + Send + Sync>> {
+    pub fn to_store(&self, config: Value) -> Result<Box<dyn Store + Send + Sync>> {
         match self {
-            StoreType::LocalFs => Ok(Box::<LocalFs>::default() as Box<dyn Store + Send + Sync>),
-            StoreType::LocalJson => Ok(Box::<LocalJson>::default() as Box<dyn Store + Send + Sync>),
+            StoreType::LocalFs => {
+                Ok(Box::new(LocalFs::new(config)?) as Box<dyn Store + Send + Sync>)
+            }
+            StoreType::LocalJson => {
+                Ok(Box::new(LocalJson::new(config)?) as Box<dyn Store + Send + Sync>)
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = [ "bin" ]
 # Used to build rvps binary
-bin = [ "clap", "env_logger", "prost", "shadow-rs", "tokio", "tonic" ]
+bin = [ "clap", "config", "env_logger", "prost", "shadow-rs", "tokio", "tonic" ]
 
 # Support in-toto provenance (not ready)
 in-toto =[ "path-clean", "sha2" ]
@@ -26,6 +26,7 @@ base64.workspace = true
 cfg-if.workspace = true
 chrono = { workspace = true, features = [ "serde" ] }
 clap = { workspace = true, optional = true }
+config = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 log.workspace = true
 path-clean = { version = "1.0.1", optional = true }

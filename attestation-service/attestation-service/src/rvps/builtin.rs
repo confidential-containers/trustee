@@ -1,6 +1,6 @@
 use anyhow::*;
 use async_trait::async_trait;
-use reference_value_provider_service::Core;
+use reference_value_provider_service::{Config, Core};
 
 use super::RvpsApi;
 
@@ -9,8 +9,8 @@ pub struct Rvps {
 }
 
 impl Rvps {
-    pub fn new(store_type: &str) -> Result<Self> {
-        let core = Core::new(store_type)?;
+    pub fn new(config: Config) -> Result<Self> {
+        let core = Core::new(config)?;
         Ok(Self { core })
     }
 }

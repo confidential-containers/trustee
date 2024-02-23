@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use log::{info, warn};
 use std::time::SystemTime;
 
-use crate::store::StoreType;
+use crate::{store::StoreType, Config};
 
 use super::{
     extractors::{Extractors, ExtractorsImpl},
@@ -25,13 +25,13 @@ pub struct Core {
 
 impl Core {
     /// Instantiate  a new RVPS Core
-    pub fn new(store_type: &str) -> Result<Self> {
+    pub fn new(config: Config) -> Result<Self> {
         let pre_processor = PreProcessor::default();
 
         let extractors = ExtractorsImpl::default();
 
-        let store_type = StoreType::try_from(store_type)?;
-        let store = store_type.to_store()?;
+        let store_type = StoreType::try_from(&config.store_type[..])?;
+        let store = store_type.to_store(config.store_config)?;
 
         Ok(Core {
             pre_processor,
