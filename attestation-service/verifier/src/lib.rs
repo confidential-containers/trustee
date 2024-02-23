@@ -145,7 +145,7 @@ pub trait Verifier {
     /// There will be two claims by default regardless of architectures:
     /// - `init_data_hash`: init data hash of the evidence
     /// - `report_data`: report data of the evidence
-    /// TODO: See https://github.com/confidential-containers/kbs/issues/228
+    /// TODO: See https://github.com/confidential-containers/trustee/issues/228
     async fn evaluate(
         &self,
         evidence: &[u8],

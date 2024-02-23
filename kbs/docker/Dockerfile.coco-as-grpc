@@ -15,6 +15,6 @@ RUN cargo install --path kbs/src/kbs --no-default-features --features coco-as-gr
 
 FROM ubuntu:22.04
 
-LABEL org.opencontainers.image.source="https://github.com/confidential-containers/kbs"
+LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/kbs"
 
 COPY --from=builder /usr/local/cargo/bin/kbs /usr/local/bin/kbs

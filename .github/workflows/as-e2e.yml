@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
          # TODO: Add real HW-TEE test
-         # See https://github.com/confidential-containers/kbs/issues/223
+         # See https://github.com/confidential-containers/trustee/issues/223
           # - runner: self-hosted
           #   generate_evidence: true
           #   grpc_tee_enum: 3

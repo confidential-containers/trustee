@@ -14,7 +14,7 @@ RUN cargo install --bin rvps --path attestation-service/rvps
 
 FROM debian
 
-LABEL org.opencontainers.image.source="https://github.com/confidential-containers/kbs"
+LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/attestation-service"
 
 COPY --from=builder /usr/local/cargo/bin/rvps /usr/local/bin/rvps
 
