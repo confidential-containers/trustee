@@ -1,7 +1,5 @@
-use crate::{
-    rvps::RvpsConfig,
-    token::{AttestationTokenBrokerType, AttestationTokenConfig},
-};
+use crate::rvps::RvpsConfig;
+use crate::token::{AttestationTokenBrokerType, AttestationTokenConfig};
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -57,6 +55,7 @@ impl TryFrom<&Path> for Config {
     ///        "policy_engine": "opa",
     ///        "rvps_config": {
     ///            "store_type": "LocalFs",
+    ///            "store_config": {},
     ///            "remote_addr": ""
     ///        },
     ///        "attestation_token_broker": "Simple",

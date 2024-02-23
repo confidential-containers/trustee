@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+pub mod config;
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
 pub mod store;
+
+pub use config::Config;
 
 pub mod native;
 pub use native::Core;

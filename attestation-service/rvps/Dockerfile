@@ -18,7 +18,7 @@ LABEL org.opencontainers.image.source="https://github.com/confidential-container
 
 COPY --from=builder /usr/local/cargo/bin/rvps /usr/local/bin/rvps
 
-CMD ["rvps", "--socket", "0.0.0.0:50003"]
+CMD ["rvps"]
 
 VOLUME /opt/confidential-containers/attestation-service/reference_values/
 

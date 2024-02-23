@@ -1,0 +1,7 @@
+{
+    "address": "0.0.0.0:50003",
+    "store_type": "LocalFs",
+    "store_config": {
+        "file_path": "/opt/confidential-containers/attestation-service/reference_values"
+    }
+}

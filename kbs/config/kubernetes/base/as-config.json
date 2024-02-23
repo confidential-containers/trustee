@@ -1,7 +1,6 @@
 {
     "work_dir": "/opt/confidential-containers/attestation-service",
     "policy_engine": "opa",
-    "rvps_store_type": "LocalFs",
     "attestation_token_broker": "Simple",
     "attestation_token_config": {
         "duration_min": 5
