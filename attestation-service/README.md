@@ -54,7 +54,7 @@ The AS can be built and imported as a Rust crate into any project providing atte
 As the AS API is not yet fully stable, the AS crate needs to be imported from GitHub directly:
 
 ```toml
-attestation-service = { git = "https://github.com/confidential-containers/kbs" }
+attestation-service = { git = "https://github.com/confidential-containers/trustee" }
 ```
 
 ## Server
@@ -67,8 +67,8 @@ This project provides the Attestation Service binary program that can be run as 
 Build and install AS as a standalone server
 
 ```shell
-git clone https://github.com/confidential-containers/kbs
-cd kbs/attestation-service
+git clone https://github.com/confidential-containers/trustee
+cd trustee/attestation-service
 make && make install
 ```
 
@@ -86,7 +86,7 @@ The AS should be queried with a request containing
 - `init_data_hash_algorithm` - the hasing algorithm used with the other above field
 - `policy_ids` - a list of policies which the AS will use to evaluate the evidence claims
 
-For more details see [gRPC proto](https://github.com/confidential-containers/kbs/blob/main/attestation-service/protos/attestation.proto)
+For more details see [gRPC proto](https://github.com/confidential-containers/trustee/blob/main/attestation-service/protos/attestation.proto)
 
 ### Evidence format:
 

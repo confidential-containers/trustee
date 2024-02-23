@@ -14,16 +14,16 @@ Here are the steps of building and running gRPC Attestation Service:
 
 Build and install binary
 ```shell
-git clone https://github.com/confidential-containers/kbs
-cd kbs/attestation-service
+git clone https://github.com/confidential-containers/trustee
+cd trustee/attestation-service
 WORKDIR=$(pwd)
 make && make install
 ```
 
 Build and run container image
 ```shell
-git clone https://github.com/confidential-containers/kbs
-cd kbs
+git clone https://github.com/confidential-containers/trustee
+cd trustee
 docker build -t coco-as:grpc -f attestation-service/Dockerfile.as-grpc .
 ```
 
