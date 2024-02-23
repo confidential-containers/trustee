@@ -55,8 +55,8 @@ In this way, the RVPS can run as a single service. The [gRPC protos](../protos/r
 We can run using the following command
 
 ```bash
-git clone https://github.com/confidential-containers/kbs
-cd kbs/attestation-service/rvps
+git clone https://github.com/confidential-containers/trustee
+cd trustee/attestation-service/rvps
 make build && sudo make install
 ```
 

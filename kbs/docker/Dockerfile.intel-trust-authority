@@ -14,7 +14,7 @@ RUN cargo install --path kbs/src/kbs --no-default-features --features intel-trus
 
 FROM ubuntu:22.04
 
-LABEL org.opencontainers.image.source="https://github.com/confidential-containers/kbs"
+LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/kbs"
 
 RUN apt update && apt install -y ca-certificates
 
