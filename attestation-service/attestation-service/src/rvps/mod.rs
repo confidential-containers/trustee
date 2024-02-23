@@ -5,7 +5,9 @@
 
 use anyhow::*;
 use log::{info, warn};
+use reference_value_provider_service::config::{Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE};
 use serde::Deserialize;
+use serde_json::{json, Value};
 
 /// The interfaces of Reference Value Provider Service
 /// * `verify_and_extract` is responsible for verify a message and
@@ -27,60 +29,71 @@ pub mod grpc;
 #[cfg(feature = "rvps-builtin")]
 pub mod builtin;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct RvpsConfig {
-    /// Specify the underlying storage type of RVPS, e.g.
-    ///
-    /// - `localfs`: store inside local filesystem.
-    /// - `localjson`: store inside local json file.
-    ///
-    /// Only used when feature `rvps-builtin` is enabled
-    #[serde(default = "String::default")]
-    pub store_type: String,
+fn default_store_type() -> String {
+    DEFAULT_STORAGE_TYPE.into()
+}
 
-    /// The address of the remote RVPS server, e.g.
-    ///
-    /// - `http://127.0.0.1:50002`
-    ///
-    /// Only used when feature `rvps-rpc` is enabled
+fn default_store_config() -> Value {
+    json!({})
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct RvpsConfig {
+    /// Address of remote RVPS. If this field is given, a remote RVPS will be connected to.
+    /// If this field is not given, a built-in RVPS will be used.
     #[serde(default = "String::default")]
     pub remote_addr: String,
+
+    /// This field will be used only if `remote_addr` is not given.
+    #[serde(default = "default_store_type")]
+    pub store_type: String,
+
+    /// This field will be used only if `remote_addr` is not given.
+    #[serde(default = "default_store_config")]
+    pub store_config: Value,
+}
+
+impl From<RvpsConfig> for RvpsCrateConfig {
+    fn from(val: RvpsConfig) -> RvpsCrateConfig {
+        RvpsCrateConfig {
+            store_type: val.store_type,
+            store_config: val.store_config,
+        }
+    }
 }
 
 impl Default for RvpsConfig {
     fn default() -> Self {
         Self {
-            store_type: "LocalFs".into(),
-            remote_addr: Default::default(),
+            remote_addr: String::new(),
+            store_type: default_store_type(),
+            store_config: default_store_config(),
         }
     }
 }
 
-impl RvpsConfig {
-    /// If remote addr is specified and the feature `rvps-grpc` is enabled when
-    /// built, will try to connect the remote rvps. Or, will use a built-in rvps.
-    pub async fn to_rvps(&self) -> Result<Box<dyn RvpsApi + Send + Sync>> {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "rvps-grpc")] {
-                if !self.remote_addr.is_empty() {
-                    info!("connect to remote RVPS: {}", self.remote_addr);
-                    Ok(Box::new(grpc::Agent::new(&self.remote_addr).await?) as Box<dyn RvpsApi + Send + Sync>)
-                } else {
-                    cfg_if::cfg_if! {
-                        if #[cfg(feature = "rvps-builtin")] {
-                            warn!("No RVPS address provided and will launch a built-in rvps");
-                            Ok(Box::new(builtin::Rvps::new(&self.store_type)?) as Box<dyn RvpsApi + Send + Sync>)
-                        } else {
-                            Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
-                        }
+pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "rvps-grpc")] {
+            if !config.remote_addr.is_empty() {
+                let remote_addr = &config.remote_addr;
+                info!("connect to remote RVPS: {remote_addr}");
+                Ok(Box::new(grpc::Agent::new(remote_addr).await?) as Box<dyn RvpsApi + Send + Sync>)
+            } else {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "rvps-builtin")] {
+                        warn!("No RVPS address provided and will launch a built-in rvps");
+                        Ok(Box::new(builtin::Rvps::new(config.clone().into())?) as Box<dyn RvpsApi + Send + Sync>)
+                    } else {
+                        Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
                     }
                 }
-            } else if #[cfg(feature = "rvps-builtin")] {
-                info!("launch a built-in RVPS.");
-                Ok(Box::new(builtin::Rvps::new(&self.store_type)) as Box<dyn RvpsApi + Send + Sync>)
-            } else {
-                Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
             }
+        } else if #[cfg(feature = "rvps-builtin")] {
+            info!("launch a built-in RVPS.");
+            Ok(Box::new(builtin::Rvps::new(config.clone().into())) as Box<dyn RvpsApi + Send + Sync>)
+        } else {
+            Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
         }
     }
 }

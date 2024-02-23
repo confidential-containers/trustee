@@ -52,6 +52,7 @@ services:
       - "50003:50003"
     volumes:
       - ./kbs/data/reference-values:/opt/confidential-containers/attestation-service/reference_values:rw
+      - ./kbs/config/rvps.json:/etc/rvps.json:rw
 
   keyprovider:
     image: ghcr.io/confidential-containers/coco-keyprovider:latest

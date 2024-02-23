@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use log::{debug, info};
-use reference_value_provider_service::Core;
+use reference_value_provider_service::{Config, Core};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,6 +14,8 @@ use crate::rvps_api::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
     ReferenceValueRegisterResponse,
 };
+
+pub mod config;
 
 pub struct RVPSServer {
     rvps: Arc<Mutex<Core>>,
@@ -74,8 +76,8 @@ impl ReferenceValueProviderService for RVPSServer {
     }
 }
 
-pub async fn start(socket: SocketAddr, storage: &str) -> Result<()> {
-    let service = Core::new(storage)?;
+pub async fn start(socket: SocketAddr, config: Config) -> Result<()> {
+    let service = Core::new(config)?;
     let inner = Arc::new(Mutex::new(service));
     let rvps_server = RVPSServer::new(inner.clone());
 

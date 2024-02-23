@@ -26,6 +26,7 @@ base64 = "0.21"
 cfg-if = "1.0.0"
 chrono = "0.4.19"
 clap = { version = "4", features = ["derive"] }
+config = "0.13.3"
 env_logger = "0.10.0"
 hex = "0.4.3"
 kbs-types = "0.5.3"

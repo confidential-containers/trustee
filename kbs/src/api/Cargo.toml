@@ -30,7 +30,7 @@ attestation-service = { path = "../../../attestation-service/attestation-service
 base64.workspace = true
 cfg-if.workspace = true
 clap = { version = "4.3.21", features = ["derive", "env"] }
-config = "0.13.3"
+config.workspace = true
 env_logger.workspace = true
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 jwt-simple = "0.11.6"
