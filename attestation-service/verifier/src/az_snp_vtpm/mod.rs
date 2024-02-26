@@ -3,23 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{InitDataHash, ReportData};
-
 use super::{TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
     load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
 };
+use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::Vcek;
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
+use az_snp_vtpm::vtpm::QuoteError;
 use log::{debug, warn};
 use openssl::pkey::PKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sev::firmware::host::{CertTableEntry, CertType};
+use thiserror::Error;
 
 const HCL_VMPL_VALUE: u32 = 0;
 
@@ -34,10 +35,28 @@ pub struct AzSnpVtpm {
     vendor_certs: VendorCertificates,
 }
 
+#[derive(Error, Debug)]
+pub enum CertError {
+    #[error("Failed to load Milan cert chain")]
+    LoadMilanCert,
+    #[error("TPM quote nonce doesn't match expected report_data")]
+    NonceMismatch,
+    #[error("SNP report report_data mismatch")]
+    SnpReportMismatch,
+    #[error("VMPL of SNP report is not {0}")]
+    VmplIncorrect(u32),
+    #[error(transparent)]
+    Quote(#[from] QuoteError),
+    #[error(transparent)]
+    JsonWebkey(#[from] jsonwebkey::ConversionError),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+}
+
 impl AzSnpVtpm {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, CertError> {
         let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            bail!("Failed to load Milan cert chain");
+            return Err(CertError::LoadMilanCert);
         };
         let vendor_certs = vendor_certs.clone();
         Ok(Self { vendor_certs })
@@ -109,10 +128,10 @@ impl Verifier for AzSnpVtpm {
     }
 }
 
-fn verify_nonce(quote: &Quote, report_data: &[u8]) -> Result<()> {
+fn verify_nonce(quote: &Quote, report_data: &[u8]) -> Result<(), CertError> {
     let nonce = quote.nonce()?;
     if nonce != report_data[..] {
-        bail!("TPM quote nonce doesn't match expected report_data");
+        return Err(CertError::NonceMismatch);
     }
     debug!("TPM report_data verification completed successfully");
     Ok(())
@@ -138,9 +157,12 @@ fn verify_pcrs(quote: &Quote) -> Result<()> {
     Ok(())
 }
 
-fn verify_report_data(var_data_hash: &[u8; 32], snp_report: &AttestationReport) -> Result<()> {
+fn verify_report_data(
+    var_data_hash: &[u8; 32],
+    snp_report: &AttestationReport,
+) -> Result<(), CertError> {
     if *var_data_hash != snp_report.report_data[..32] {
-        bail!("SNP report report_data mismatch");
+        return Err(CertError::SnpReportMismatch);
     }
     debug!("SNP report_data verification completed successfully");
     Ok(())
@@ -150,13 +172,13 @@ fn verify_snp_report(
     snp_report: &AttestationReport,
     vcek: &Vcek,
     vendor_certs: &VendorCertificates,
-) -> Result<()> {
+) -> Result<(), CertError> {
     let vcek_data = vcek.0.to_der().context("Failed to get raw VCEK data")?;
     let cert_chain = [CertTableEntry::new(CertType::VCEK, vcek_data)];
     verify_report_signature(snp_report, &cert_chain, vendor_certs)?;
 
     if snp_report.vmpl != HCL_VMPL_VALUE {
-        bail!("VMPL of SNP report is not {HCL_VMPL_VALUE}");
+        return Err(CertError::VmplIncorrect(HCL_VMPL_VALUE));
     }
 
     Ok(())
