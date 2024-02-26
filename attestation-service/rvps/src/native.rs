@@ -62,7 +62,7 @@ impl Core {
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
-            let old = self.store.set(v.name().to_string(), v.clone())?;
+            let old = self.store.set(v.name().to_string(), v.clone()).await?;
             if let Some(old) = old {
                 info!("Old Reference value of {} is replaced.", old.name());
             }
@@ -72,7 +72,7 @@ impl Core {
     }
 
     pub async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
-        let rv = self.store.get(name)?;
+        let rv = self.store.get(name).await?;
         match rv {
             None => Ok(None),
             Some(rv) => {

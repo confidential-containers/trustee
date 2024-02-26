@@ -6,6 +6,7 @@
 //! This Store stores RV information inside a local file
 
 use anyhow::*;
+use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -42,8 +43,9 @@ impl LocalFs {
     }
 }
 
+#[async_trait]
 impl Store for LocalFs {
-    fn set(&mut self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
+    async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
         let rv_serde = serde_json::to_vec(&rv)?;
         let res = match self
             .engine
@@ -61,7 +63,7 @@ impl Store for LocalFs {
         res
     }
 
-    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+    async fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
         match self.engine.get(name).context("read from sled")? {
             Some(v) => {
                 let v = serde_json::from_slice(&v)?;
@@ -85,13 +87,13 @@ mod tests {
 
     /// This test will test the `set` and `get` interface
     /// for [`LocalFs`].
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn set_and_get() {
+    async fn set_and_get() {
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let mut store = LocalFs::new(json!({
+            let store = LocalFs::new(json!({
                 "file_path": dir_str
             }))
             .expect("create local fs store failed.");
@@ -99,6 +101,7 @@ mod tests {
             assert!(
                 store
                     .set(KEY.to_owned(), rv.clone())
+                    .await
                     .expect("set rv failed.")
                     .is_none(),
                 "the storage has previous key of {}",
@@ -106,6 +109,7 @@ mod tests {
             );
             let got = store
                 .get(KEY)
+                .await
                 .expect("get rv failed.")
                 .expect("get None from LocalFs Store");
             assert_eq!(got, rv);
@@ -114,13 +118,13 @@ mod tests {
 
     /// This test will test the `set` interface with the
     /// duplicated key for [`LocalFs`].
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn set_duplicated() {
+    async fn set_duplicated() {
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let mut store = LocalFs::new(json!({
+            let store = LocalFs::new(json!({
                 "file_path": dir_str
             }))
             .expect("create local fs store failed.");
@@ -135,6 +139,7 @@ mod tests {
             assert!(
                 store
                     .set(KEY.to_owned(), rv_old.clone())
+                    .await
                     .expect("set rv failed.")
                     .is_none(),
                 "the storage has previous key of {}",
@@ -143,6 +148,7 @@ mod tests {
 
             let got = store
                 .set(KEY.to_owned(), rv_new)
+                .await
                 .expect("get rv failed.")
                 .expect("get None from LocalFs Store");
 
@@ -152,19 +158,20 @@ mod tests {
 
     /// This test will simulate a restart operation
     /// for [`LocalFs`].
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn restart() {
+    async fn restart() {
         let rv = ReferenceValue::new().expect("create ReferenceValue failed.");
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let mut store = LocalFs::new(json!({
+            let store = LocalFs::new(json!({
                 "file_path": dir_str
             }))
             .expect("create local fs store failed.");
             store
                 .set(KEY.to_owned(), rv.clone())
+                .await
                 .expect("set rv failed.");
         }
         {
@@ -174,6 +181,7 @@ mod tests {
             .expect("create local fs store failed.");
             let got = store
                 .get(KEY)
+                .await
                 .expect("get rv failed.")
                 .expect("get None from LocalFs Store");
             assert_eq!(got, rv);
