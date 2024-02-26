@@ -111,6 +111,8 @@ The KBS can use HTTPS. This requires a crypto backend.
 `HTTPS_CRYPTO` determines which backend will be used.
 The options are `rustls` and `openssl`. The default is `rustls`.
 
+If you want a self-signed cert for test cases, please refer to [the document](docs/self-signed-https.md).
+
 ### Policy Engine
 
 The KBS has a policy engine to determine when a resource should be released.
