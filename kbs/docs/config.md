@@ -79,11 +79,12 @@ This section is **optional**. When omitted, a default configuration is used.
 |----------------------------|-----------------------------|-----------------------------------------------------|----------|---------|
 | `work_dir`                 | String                      | The location for Attestation Service to store data. | Yes      | -       |
 | `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             | Yes      | -       |
-| `rvps_store_type`          | String                      | RVPS store type. Valid values: `LocalFs`            | Yes      | -       |
+| `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  | Yes      | -       |
 | `attestation_token_broker` | String                      | Type of the attestation result token broker.        | Yes      | -       |
 | `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             | Yes      | -       |
 
 [1]: #attestationtokenconfig
+[2]: #rvps-configuration
 
 #### AttestationTokenConfig
 
@@ -104,6 +105,17 @@ This section is **optional**. When omitted, a new RSA key pair is generated and 
 | `key_path`     | String  | RSA Key Pair file (PEM format) path.                     | Yes      | -       |
 | `cert_url`     | String  | RSA Public Key certificate chain (PEM format) URL.       | No       | -       |
 | `cert_path`    | String  | RSA Public Key certificate chain (PEM format) file path. | No       | -       |
+
+#### RVPS Configuration
+
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `remote_addr`  | String                  | Remote RVPS' address. If this is specified, will use a remote RVPS. Or a local RVPS will be configured with `store_type` and `store_config`| Conditional       | -       |
+| `store_type`   | String                  | Used if `remote_addr` is not set. The underlying storage type of RVPS.                                                                     | Conditional       | -       |
+| `store_config` | JSON Map                | Used if `remote_addr` is not set. The optional configurations to the underlying storage.                                                   | Conditional       | -       |
+
+Different `store_type` will have different `store_config` items.
+See the details of `store_config` in [concrete implementations of storages](../../attestation-service/rvps/src/store/).
 
 ### gRPC Attestation
 
