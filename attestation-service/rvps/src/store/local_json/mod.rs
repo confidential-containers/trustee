@@ -3,14 +3,17 @@ use std::{fs, path::PathBuf};
 use super::Store;
 use crate::ReferenceValue;
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use log::debug;
 use serde::Deserialize;
 use serde_json::Value;
+use tokio::sync::RwLock;
 
 const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values.json";
 
 pub struct LocalJson {
     file_path: String,
+    lock: RwLock<i32>,
 }
 
 fn default_file_path() -> String {
@@ -37,13 +40,16 @@ impl LocalJson {
         fs::create_dir_all(parent_dir)?;
         Ok(Self {
             file_path: config.file_path,
+            lock: RwLock::new(0),
         })
     }
 }
 
+#[async_trait]
 impl Store for LocalJson {
-    fn set(&mut self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
-        let file = fs::read(&self.file_path)?;
+    async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
+        let _ = self.lock.write().await;
+        let file = tokio::fs::read(&self.file_path).await?;
         let mut rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
         let mut res = None;
         if let Some(item) = rvs.iter_mut().find(|it| it.name == name) {
@@ -54,12 +60,13 @@ impl Store for LocalJson {
         }
 
         let contents = serde_json::to_vec(&rvs)?;
-        fs::write(&self.file_path, contents)?;
+        tokio::fs::write(&self.file_path, contents).await?;
         Ok(res)
     }
 
-    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
-        let file = fs::read(&self.file_path)?;
+    async fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+        let _ = self.lock.read().await;
+        let file = tokio::fs::read(&self.file_path).await?;
         let rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
         let rv = rvs.into_iter().find(|rv| rv.name == name);
         Ok(rv)
