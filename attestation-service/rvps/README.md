@@ -60,7 +60,12 @@ cd kbs/attestation-service/rvps
 make build && sudo make install
 ```
 
-To by default listen to `localhost:50003` to wait for requests
+Run RVPS
+```shell
+rvps
+```
+
+By default listen to `localhost:50003` to wait for requests
 
 ### Container Image
 
@@ -74,6 +79,22 @@ Run
 ```bash
 docker run -d -p 50003:50003 rvps
 ```
+
+### Configuration file
+
+RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks lile
+```json
+{
+    "address": "0.0.0.0:50003",
+    "store_type": "LocalFs",
+    "store_config": {
+        "file_path": "/opt/confidential-containers/attestation-service/reference_values"
+    }
+}
+```
+- `address`: socket listening to requests.
+- `store_type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
+- `store_config`: optional extra parameters for different kinds of `store_type`. This is also a JSON map object. The concrete content is different due to different `store_type`.
 
 ## Integrate RVPS into AS
 
