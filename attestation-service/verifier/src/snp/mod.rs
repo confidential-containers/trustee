@@ -112,7 +112,9 @@ impl Verifier for Snp {
             }
         }
 
-        Ok(parse_tee_evidence(&report))
+        let claims_map = parse_tee_evidence(&report);
+        let json = json!(claims_map);
+        Ok(json)
     }
 }
 
