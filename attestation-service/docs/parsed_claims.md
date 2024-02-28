@@ -72,3 +72,19 @@ The following fields always exist.
 - `sgx.body.reserved4`: Reserved.
 - `sgx.body.isv_family_id`: ISV assigned Family ID.
 - `sgx.body.report_data`: Data provided by the user.
+
+## Azure TDX Confidential VM (az-tdx-vtpm)
+
+The claim inherit the fields from the TDX claim with and additional `tpm` hierarchy in which the TEE's PCR values are stored:
+
+- `tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
+
+Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
+
+## Azure SEV-SNP Confidential VM (az-snp-vtpm)
+
+The claim inherit the fields from the SEV-SNP claim with and additional `tpm` hierarchy in which the TEE's PCR values are stored:
+
+- `tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
+
+Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.

@@ -18,6 +18,7 @@ use az_snp_vtpm::vtpm::Quote;
 use log::{debug, warn};
 use openssl::pkey::PKey;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sev::firmware::host::{CertTableEntry, CertType};
 
 const HCL_VMPL_VALUE: u32 = 0;
@@ -41,6 +42,24 @@ impl AzSnpVtpm {
         let vendor_certs = vendor_certs.clone();
         Ok(Self { vendor_certs })
     }
+}
+
+pub(crate) fn extend_claim_with_tpm_quote(
+    claim: &mut TeeEvidenceParsedClaim,
+    quote: &Quote,
+) -> Result<()> {
+    let Value::Object(ref mut map) = claim else {
+        bail!("failed to extend the claim, not an object");
+    };
+
+    let mut tpm_values = serde_json::Map::new();
+    for (i, pcr) in quote.pcrs_sha256().enumerate() {
+        tpm_values.insert(format!("pcr{:02}", i), Value::String(hex::encode(pcr)));
+    }
+    debug!("extending claim with TPM quote: {:#?}", tpm_values);
+    map.insert("tpm".to_string(), Value::Object(tpm_values));
+
+    Ok(())
 }
 
 #[async_trait]
@@ -83,7 +102,9 @@ impl Verifier for AzSnpVtpm {
         let vcek = Vcek::from_pem(&evidence.vcek)?;
         verify_snp_report(&snp_report, &vcek, &self.vendor_certs)?;
 
-        let claim = parse_tee_evidence(&snp_report);
+        let mut claim = parse_tee_evidence(&snp_report);
+        extend_claim_with_tpm_quote(&mut claim, &evidence.quote)?;
+
         Ok(claim)
     }
 }
@@ -145,9 +166,10 @@ fn verify_snp_report(
 mod tests {
     use super::*;
     use az_snp_vtpm::vtpm::VerifyError;
+    use serde_json::json;
 
     const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
-    const QUOTE: &[u8; 1362] = include_bytes!("../../test_data/az-snp-vtpm/quote.bin");
+    const QUOTE: &[u8; 1170] = include_bytes!("../../test_data/az-snp-vtpm/quote.bin");
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
 
     #[test]
@@ -272,5 +294,23 @@ mod tests {
                 .to_string(),
             VerifyError::PcrMismatch.to_string()
         );
+    }
+
+    #[test]
+    fn test_extend_claim_with_tpm_quote() {
+        let mut claim = json!({"some": "thing"});
+        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
+        extend_claim_with_tpm_quote(&mut claim, &quote).unwrap();
+
+        let map = claim.as_object().unwrap();
+        assert_eq!(map.len(), 2);
+        let tpm_map = map.get("tpm").unwrap().as_object().unwrap();
+        assert_eq!(tpm_map.len(), 24);
+
+        for (i, pcr) in quote.pcrs_sha256().enumerate() {
+            let key = format!("pcr{:02}", i);
+            let value = tpm_map.get(&key).unwrap().as_str().unwrap();
+            assert_eq!(value, hex::encode(pcr));
+        }
     }
 }
