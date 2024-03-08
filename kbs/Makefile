@@ -34,6 +34,17 @@ passport-resource-kbs:
 cli:
 	cargo build -p kbs-client --locked --release --no-default-features --features $(CLI_FEATURES)
 
+.PHONY: cli-static-x86_64-linux
+cli-static-x86_64-linux:
+	cargo build \
+      -p kbs-client \
+      --target=x86_64-unknown-linux-gnu \
+      --config "target.x86_64-unknown-linux-gnu.rustflags = '-C target-feature=+crt-static'" \
+      --locked \
+      --release \
+      --no-default-features \
+      --features sample_only
+
 install-kbs:
 	install -D -m0755 ../target/release/kbs $(INSTALL_DESTDIR)
 
