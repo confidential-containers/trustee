@@ -42,6 +42,9 @@ pub enum Error {
     #[error("The request is invalid: {0}")]
     InvalidRequest(String),
 
+    #[error("Cannot return plain resource data without HTTPS")]
+    InsecureResponse,
+
     #[error("Json Web Encryption failed: {0}")]
     JWEFailed(String),
 

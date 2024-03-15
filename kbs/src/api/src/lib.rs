@@ -278,6 +278,9 @@ impl ApiServer {
         };
 
         let insecure_api = self.insecure_api;
+        let https_enabled = HttpsFlag {
+            enabled: !self.insecure,
+        };
 
         let http_server = HttpServer::new(move || {
             #[allow(unused_mut)]
@@ -285,7 +288,8 @@ impl ApiServer {
                 .wrap(middleware::Logger::default())
                 .app_data(web::Data::new(http_timeout))
                 .app_data(web::Data::new(user_public_key.clone()))
-                .app_data(web::Data::new(insecure_api));
+                .app_data(web::Data::new(insecure_api))
+                .app_data(web::Data::new(https_enabled));
 
             cfg_if::cfg_if! {
                 if #[cfg(feature = "as")] {
@@ -342,4 +346,9 @@ impl ApiServer {
                 .map_err(anyhow::Error::from)
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct HttpsFlag {
+    enabled: bool,
 }

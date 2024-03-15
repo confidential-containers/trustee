@@ -28,6 +28,7 @@ pub(crate) async fn get_resource(
     #[cfg(feature = "as")] map: web::Data<SessionMap>,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
     #[cfg(feature = "policy")] policy_engine: web::Data<PolicyEngine>,
+    https_enabled: web::Data<crate::HttpsFlag>,
 ) -> Result<HttpResponse> {
     #[allow(unused_mut)]
     let mut claims_option = None;
@@ -43,31 +44,6 @@ pub(crate) async fn get_resource(
         get_attest_claims_from_header(&request, token_verifier).await?
     };
     let claims: Value = serde_json::from_str(&claims_str).map_err(|e| {
-        Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
-    })?;
-
-    let pkey_value = claims
-        .get("customized_claims")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `customized_claims` in the attestation claims thus no `tee-pubkey`",
-        )))?
-        .as_object()
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "`customized_claims` should be a JSON map",
-        )))?
-        .get("runtime_data")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `runtime_data` in the attestation claims thus no `tee-pubkey`",
-        )))?
-        .as_object()
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "`runtime_data` should be a JSON map",
-        )))?
-        .get("tee-pubkey")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `tee-pubkey` in the attestation claims",
-        )))?;
-    let pubkey = TeePubKey::deserialize(pkey_value).map_err(|e| {
         Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
     })?;
 
@@ -123,13 +99,24 @@ pub(crate) async fn get_resource(
         .await
         .map_err(|e| Error::ReadSecretFailed(e.to_string()))?;
 
-    let jwe = jwe(pubkey, resource_byte)?;
-
-    let res = serde_json::to_string(&jwe).map_err(|e| Error::JWEFailed(e.to_string()))?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(res))
+    // If public key is included in claims, use JWE to wrap resource byte,
+    // else check if HTTPS is enabled.
+    match get_pkey(claims) {
+        Ok(pubkey) => {
+            let jwe = jwe(pubkey, resource_byte)?;
+            let res = serde_json::to_string(&jwe).map_err(|e| Error::JWEFailed(e.to_string()))?;
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(res))
+        }
+        Err(_) => {
+            if !https_enabled.enabled {
+                return Err(Error::InsecureResponse);
+            }
+            let res = URL_SAFE_NO_PAD.encode(resource_byte);
+            Ok(HttpResponse::Ok().body(res))
+        }
+    }
 }
 
 #[cfg(feature = "as")]
@@ -242,4 +229,33 @@ pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Respo
         ciphertext: URL_SAFE_NO_PAD.encode(encrypted_payload_data),
         tag: "".to_string(),
     })
+}
+
+pub(crate) fn get_pkey(claims: Value) -> Result<TeePubKey> {
+    let pkey_value = claims
+        .get("customized_claims")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `customized_claims` in the attestation claims thus no `tee-pubkey`",
+        )))?
+        .as_object()
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "`customized_claims` should be a JSON map",
+        )))?
+        .get("runtime_data")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `runtime_data` in the attestation claims thus no `tee-pubkey`",
+        )))?
+        .as_object()
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "`runtime_data` should be a JSON map",
+        )))?
+        .get("tee-pubkey")
+        .ok_or(Error::AttestationClaimsParseFailed(String::from(
+            "No `tee-pubkey` in the attestation claims",
+        )))?;
+    let pubkey = TeePubKey::deserialize(pkey_value).map_err(|e| {
+        Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
+    })?;
+
+    Ok(pubkey)
 }
