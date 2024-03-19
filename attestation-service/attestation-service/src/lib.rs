@@ -95,7 +95,7 @@ impl AttestationService {
 
         let policy_engine = PolicyEngineType::from_str(&config.policy_engine)
             .map_err(|_| anyhow!("Policy Engine {} is not supported", &config.policy_engine))?
-            .to_policy_engine(config.work_dir.as_path())?;
+            .to_policy_engine()?;
 
         let rvps = rvps::initialize_rvps_client(&config.rvps_config)
             .await
@@ -119,6 +119,22 @@ impl AttestationService {
             .set_policy(input)
             .await
             .map_err(|e| anyhow!("Cannot Set Policy: {:?}", e))
+    }
+
+    /// Remove Attestation Verification Policy.
+    pub async fn remove_policies(&mut self, policy_id: String) -> Result<()> {
+        self.policy_engine
+            .remove_policies(policy_id)
+            .await
+            .map_err(|e| anyhow!("Cannot Remove Policy: {:?}", e))
+    }
+
+    /// Get all Attestation Verification Policy.
+    pub async fn list_policies(&self) -> Result<Vec<crate::policy_engine::PolicyListEntry>> {
+        self.policy_engine
+            .list_policies()
+            .await
+            .map_err(|e| anyhow!("Cannot List Policy: {:?}", e))
     }
 
     /// Evaluate Attestation Evidence.
