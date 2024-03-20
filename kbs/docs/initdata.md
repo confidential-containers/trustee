@@ -197,6 +197,15 @@ Other platforms, such as (v)TPM based platforms, can record the initdata digest
 by extending the PCR before using it. This way will also accomplish the integrity binding
 to the TEE evidence.
 
+If a calculated initdata digest is longer or shorter than the byte length of TEE initdata
+field, truncation and padding rules can be applied to make the initdata digest the same
+length of the TEE initdata field.
+- If `len(calculated initdata digest) > len(TEE initdata)`, truncate
+`len(calculated initdata digest) - len(TEE initdata)` bytes at the end of initdata digest.
+- If `len(calculated initdata digest) < len(TEE initdata)`, pad
+`len(calculated initdata digest) - len(TEE initdata)` bytes of `\0 `at the end of initdata
+digest.
+
 ### Data Canonicalization Algorithm
 
 When we use JSON or Toml to represent an initdata, control characters like
