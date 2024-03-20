@@ -96,7 +96,7 @@ impl PolicyEngineInterface for Opa {
     }
 
     async fn set_policy(&mut self, policy: String) -> Result<()> {
-        let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        let policy_bytes = base64::engine::general_purpose::STANDARD
             .decode(policy)
             .map_err(|e| anyhow!("Base64 decode OPA policy string failed: {:?}", e))?;
 
@@ -109,7 +109,7 @@ impl PolicyEngineInterface for Opa {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::engine::general_purpose::STANDARD;
     use serde_json::json;
 
     fn dummy_input(product_id: &str, svn: u64) -> String {
@@ -148,7 +148,7 @@ mod tests {
         let policy_bytes = b"package policy
 default allow = true";
 
-        let policy = URL_SAFE_NO_PAD.encode(policy_bytes);
+        let policy = STANDARD.encode(policy_bytes);
 
         assert!(opa.set_policy(policy).await.is_ok());
     }
