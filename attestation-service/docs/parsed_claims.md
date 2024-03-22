@@ -24,7 +24,7 @@ The following fields are optional. Whether they appear depends on whether there 
 - `tdx.ccel.kernel_parameters.*`: different kernel parameter items. For example `console=hvc0` will be parsed into a claim `"tdx.ccel.kernel_parameters.console": "hvc0"`. `rw` will be parsed into a claim `"tdx.ccel.kernel_parameters.rw": null`.
 
 The following fields always exist.
-- `tdx.quote.header.version`: for TDX this field is always 4.
+- `tdx.quote.header.version`: The quote format version. Now supports 4 and 5.
 - `tdx.quote.header.att_key_type`: enum of the algorithm used in signature.
 - `tdx.quote.header.tee_type`: TDX is always 0x81.
 - `tdx.quote.header.reserved`: reserved.
@@ -45,6 +45,10 @@ The following fields always exist.
 - `tdx.quote.body.rtmr_1`: Runtime measurement register 1.
 - `tdx.quote.body.rtmr_2`: Runtime measurement register 2.
 - `tdx.quote.body.rtmr_3`: Runtime measurement register 3.
+- `tdx.quote.type`: Indicating quote v5 type. 2 means TDX 1.0 quote and 3 means TDX 1.5 quote. Only quote format V5 contains this field.
+- `tdx.quote.size`: Quote body length. Only quote format V5 contains this field.
+- `tdx.quote.body.tee_tcb_svn2`: Array of TEE TCB SVNs (for TD preserving).
+- `tdx.quote.body.mr_servicetd`: If there is one or more bound or pre-bound service TDs, this field is the SHA384 hash of the `TDINFO`s of those service TDs bound. Else, this field is 0.
 
 ## Intel SGX
 
