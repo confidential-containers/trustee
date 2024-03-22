@@ -72,7 +72,7 @@ impl Verifier for AzTdxVtpm {
 
 fn verify_hcl_var_data(hcl_report: &HclReport, td_quote: &TdQuote) -> Result<()> {
     let var_data_hash = hcl_report.var_data_sha256();
-    if var_data_hash != td_quote.report_body.report_data[..32] {
+    if var_data_hash != td_quote.report_data()[..32] {
         bail!("TDX Quote report data mismatch");
     }
     debug!("Report data verification completed successfully.");

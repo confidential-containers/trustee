@@ -11,7 +11,7 @@ use std::time::{Duration, SystemTime};
 
 use sgx_dcap_quoteverify_rs as qvl;
 
-pub const QUOTE_PAYLOAD_SIZE: usize = 632;
+pub const QUOTE_HEADER_SIZE: usize = 48;
 
 /// The quote header. It is designed to compatible with earlier versions of the quote.
 #[repr(C)]
@@ -56,7 +56,7 @@ impl fmt::Display for QuoteHeader {
 /// SGX Report2 body
 #[repr(C)]
 #[derive(Debug, Pread)]
-pub struct ReportBody {
+pub struct ReportBody2 {
     ///<  0:  TEE_TCB_SVN Array
     pub tcb_svn: [u8; 16],
     ///< 16:  Measurement of the SEAM module
@@ -87,7 +87,7 @@ pub struct ReportBody {
     pub report_data: [u8; 64],
 }
 
-impl fmt::Display for ReportBody {
+impl fmt::Display for ReportBody2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -126,29 +126,271 @@ impl fmt::Display for ReportBody {
     }
 }
 
-/// TD Quote Payload(Version 4)
-/// First 632 bytes of TD Quote
-/// Excluding the signature data attached at the end of the Quote.
-///
-/// Refer to: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_4.h#L141
+/// SGX Report2 body for quote v5
 #[repr(C)]
 #[derive(Debug, Pread)]
-pub struct Quote {
-    pub header: QuoteHeader,
-    pub report_body: ReportBody,
+pub struct ReportBody2v15 {
+    ///<  0:  TEE_TCB_SVN Array
+    pub tcb_svn: [u8; 16],
+    ///< 16:  Measurement of the SEAM module
+    pub mr_seam: [u8; 48],
+    ///< 64:  Measurement of a 3rd party SEAM module’s signer (SHA384 hash).
+    ///       The value is 0’ed for Intel SEAM module
+    pub mrsigner_seam: [u8; 48],
+    ///< 112: MBZ: TDX 1.0
+    pub seam_attributes: [u8; 8],
+    ///< 120: TD's attributes
+    pub td_attributes: [u8; 8],
+    ///< 128: TD's XFAM
+    pub xfam: [u8; 8],
+    ///< 136: Measurement of the initial contents of the TD
+    pub mr_td: [u8; 48],
+    ///< 184: Software defined ID for non-owner-defined configuration on
+    /// the guest TD. e.g., runtime or OS configuration
+    pub mr_config_id: [u8; 48],
+    ///< 232: Software defined ID for the guest TD's owner
+    pub mr_owner: [u8; 48],
+    ///< 280: Software defined ID for owner-defined configuration of the
+    /// guest TD, e.g., specific to the workload rather than the runtime or OS
+    pub mr_owner_config: [u8; 48],
+    ///< 328: Array of 4(TDX1: NUM_RTMRS is 4) runtime extendable
+    /// measurement registers
+    pub rtmr_0: [u8; 48],
+    pub rtmr_1: [u8; 48],
+    pub rtmr_2: [u8; 48],
+    pub rtmr_3: [u8; 48],
+    ///< 520: Additional report data
+    pub report_data: [u8; 64],
+    ///< 584: Array of TEE TCB SVNs (for TD preserving).
+    pub tee_tcb_svn2: [u8; 16],
+    ///< 600: If is one or more bound or pre-bound service TDs, SERVTD_HASH is
+    /// the SHA384 hash of the TDINFO_STRUCTs of those service TDs bound.
+    /// Else, SERVTD_HASH is 0.
+    pub mr_servicetd: [u8; 48],
+}
+
+impl fmt::Display for ReportBody2v15 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Report Body:
+            \n\tTCB SVN:\n\t{:X?}
+            \n\tMRSEAM:\n\t{:X?}
+            \n\tMRSIGNER_SEAM:\n\t{:X?}
+            \n\tSEAM Attributes:\n\t{:X?}
+            \n\tTD Attributes:\n\t{:X?}
+            \n\tTD XFAM:\n\t{:X?}
+            \n\tMRTD:\n\t{:X?}
+            \n\tMRCONFIG ID:\n\t{:X?}
+            \n\tMROWNER:\n\t{:X?}
+            \n\tMROWNER_CONFIG:\n\t{:X?}
+            \n\tRTMR[0]:\n\t{:X?}
+            \n\tRTMR[1]:\n\t{:X?}
+            \n\tRTMR[2]:\n\t{:X?}
+            \n\tRTMR[3]:\n\t{:X?}
+            \n\tReport Data:\n\t{:X?}
+            \n\tTEE TCB SVN2:\n\t{:X?}
+            \n\tMR SERVICETD:\n\t{:X?}",
+            hex::encode(self.tcb_svn),
+            hex::encode(self.mr_seam),
+            hex::encode(self.mrsigner_seam),
+            hex::encode(self.seam_attributes),
+            hex::encode(self.td_attributes),
+            hex::encode(self.xfam),
+            hex::encode(self.mr_td),
+            hex::encode(self.mr_config_id),
+            hex::encode(self.mr_owner),
+            hex::encode(self.mr_owner_config),
+            hex::encode(self.rtmr_0),
+            hex::encode(self.rtmr_1),
+            hex::encode(self.rtmr_2),
+            hex::encode(self.rtmr_3),
+            hex::encode(self.report_data),
+            hex::encode(self.tee_tcb_svn2),
+            hex::encode(self.mr_servicetd)
+        )
+    }
+}
+
+#[repr(u16)]
+#[derive(Debug)]
+pub enum QuoteV5Type {
+    TDX10 = 2,
+    TDX15 = 3,
+}
+
+impl fmt::Display for QuoteV5Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            QuoteV5Type::TDX10 => writeln!(f, "Quote v5 Type: TDX 1.0"),
+            QuoteV5Type::TDX15 => writeln!(f, "Quote v5 Type: TDX 1.5"),
+        }
+    }
+}
+
+impl QuoteV5Type {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() < 2 {
+            bail!("parse QuoteV5 Type failed. Bytes length < 2 bytes");
+        }
+        let mut r#type: [u8; 2] = [0; 2];
+        r#type.copy_from_slice(&bytes[0..2]);
+        let r#type = u16::from_le_bytes(r#type);
+        let r#type = match r#type {
+            2 => QuoteV5Type::TDX10,
+            3 => QuoteV5Type::TDX15,
+            others => bail!("parse QuoteV5 Type failed. {others} not defined."),
+        };
+
+        Ok(r#type)
+    }
+
+    pub fn as_bytes(&self) -> [u8; 2] {
+        // The unsafe here is ok as it is marked as repr(u16)
+        unsafe {
+            let raw_value: u16 = *(self as *const QuoteV5Type as *const u16);
+            raw_value.to_ne_bytes()
+        }
+    }
+}
+
+pub enum QuoteV5Body {
+    Tdx10(ReportBody2),
+    Tdx15(ReportBody2v15),
+}
+
+impl fmt::Display for QuoteV5Body {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            QuoteV5Body::Tdx10(body) => write!(f, "{}", body),
+            QuoteV5Body::Tdx15(body) => write!(f, "{}", body),
+        }
+    }
+}
+
+pub enum Quote {
+    /// TD Quote Payload(Version 4)
+    /// First 632 bytes of TD Quote
+    /// Excluding the signature data attached at the end of the Quote.
+    ///
+    /// Refer to: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_4.h#L141
+    V4 {
+        header: QuoteHeader,
+        body: ReportBody2,
+    },
+
+    /// TD Quote Payload(Version 5)
+    /// First 638 bytes of TD Quote
+    /// Excluding the signature data attached at the end of the Quote.
+    ///
+    /// Refer to: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_5.h#L106
+    V5 {
+        header: QuoteHeader,
+        r#type: QuoteV5Type,
+        size: [u8; 4],
+        body: QuoteV5Body,
+    },
+}
+
+macro_rules! body_field {
+    ($r: ident) => {
+        pub fn $r(&self) -> &[u8] {
+            match self {
+                Quote::V4 { body, .. } => &body.$r,
+                Quote::V5 { body, .. } => match body {
+                    QuoteV5Body::Tdx10(body) => &body.$r,
+                    QuoteV5Body::Tdx15(body) => &body.$r,
+                },
+            }
+        }
+    };
+}
+
+impl Quote {
+    body_field!(report_data);
+    body_field!(mr_config_id);
+    body_field!(rtmr_0);
+    body_field!(rtmr_1);
+    body_field!(rtmr_2);
+    body_field!(rtmr_3);
 }
 
 impl fmt::Display for Quote {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TD Quote:\n{}\n{}\n", self.header, self.report_body)
+        match self {
+            Quote::V4 { header, body } => write!(f, "TD Quote (V4):\n{header}\n{body}\n"),
+            Quote::V5 {
+                header,
+                r#type,
+                size,
+                body,
+            } => write!(
+                f,
+                "TD Quote (V5):\n{header}\n{type}\n{}\n{body}\n",
+                hex::encode(size)
+            ),
+        }
     }
 }
 
 pub fn parse_tdx_quote(quote_bin: &[u8]) -> Result<Quote> {
-    let quote_body = &quote_bin[..QUOTE_PAYLOAD_SIZE];
-    quote_body
-        .pread::<Quote>(0)
-        .map_err(|e| anyhow!("Parse TD quote failed: {:?}", e))
+    let quote_header = &quote_bin[..QUOTE_HEADER_SIZE];
+    let header = quote_header
+        .pread::<QuoteHeader>(0)
+        .map_err(|e| anyhow!("Parse TD quote header failed: {:?}", e))?;
+
+    match header.version {
+        [4, 0] => {
+            let body: ReportBody2 = quote_bin
+                .pread::<ReportBody2>(QUOTE_HEADER_SIZE)
+                .map_err(|e| anyhow!("Parse TD quote v4 body failed: {:?}", e))?;
+            Ok(Quote::V4 { header, body })
+        }
+        [5, 0] => {
+            let r#type = QuoteV5Type::from_bytes(
+                &quote_bin
+                    [QUOTE_HEADER_SIZE..QUOTE_HEADER_SIZE + std::mem::size_of::<QuoteV5Type>()],
+            )?;
+            let mut size: [u8; 4] = [0; 4];
+            size.copy_from_slice(
+                &quote_bin[QUOTE_HEADER_SIZE + std::mem::size_of::<QuoteV5Type>()
+                    ..QUOTE_HEADER_SIZE
+                        + std::mem::size_of::<QuoteV5Type>()
+                        + std::mem::size_of::<[u8; 4]>()],
+            );
+            match r#type {
+                QuoteV5Type::TDX10 => {
+                    let offset = QUOTE_HEADER_SIZE
+                        + std::mem::size_of::<QuoteV5Type>()
+                        + std::mem::size_of::<[u8; 4]>();
+                    let body: ReportBody2 = quote_bin
+                        .pread::<ReportBody2>(offset)
+                        .map_err(|e| anyhow!("Parse TD quote v5 TDX1.0 body failed: {:?}", e))?;
+                    Ok(Quote::V5 {
+                        header,
+                        r#type,
+                        size,
+                        body: QuoteV5Body::Tdx10(body),
+                    })
+                }
+                QuoteV5Type::TDX15 => {
+                    let offset = QUOTE_HEADER_SIZE
+                        + std::mem::size_of::<QuoteV5Type>()
+                        + std::mem::size_of::<[u8; 4]>();
+                    let body: ReportBody2v15 = quote_bin
+                        .pread::<ReportBody2v15>(offset)
+                        .map_err(|e| anyhow!("Parse TD quote v5 TDX1.5 body failed: {:?}", e))?;
+                    Ok(Quote::V5 {
+                        header,
+                        r#type,
+                        size,
+                        body: QuoteV5Body::Tdx15(body),
+                    })
+                }
+            }
+        }
+        _ => Err(anyhow!("Quote version not defined.")),
+    }
 }
 
 pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
@@ -247,25 +489,34 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use std::fs;
 
-    #[test]
-    fn test_parse_tdx_quote() {
-        let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
+    #[rstest]
+    #[case("./test_data/tdx_quote_4.dat")]
+    #[case("./test_data/tdx_quote_5.dat")]
+    fn test_parse_tdx_quote(#[case] quote_path: &str) {
+        let quote_bin = fs::read(quote_path).unwrap();
         let quote = parse_tdx_quote(&quote_bin);
 
         assert!(quote.is_ok());
         let parsed_quote = format!("{}", quote.unwrap());
 
-        let _ = fs::write("test_data/parse_tdx_quote_output.txt", parsed_quote);
+        let _ = fs::write(format!("{quote_path}.txt"), parsed_quote);
     }
 
+    #[rstest]
     #[ignore]
     #[tokio::test]
-    async fn test_verify_tdx_quote() {
-        let quote_bin = fs::read("./test_data/quote.dat").unwrap();
+    #[case("./test_data/tdx_quote_4.dat")]
+    #[ignore]
+    #[tokio::test]
+    #[case("./test_data/tdx_quote_5.dat")]
+    async fn test_verify_tdx_quote(#[case] quote: &str) {
+        let quote_bin = fs::read(quote).unwrap();
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
-        assert!(res.is_ok(), "error");
+        assert!(res.is_ok(), "{res:?}");
     }
 }
