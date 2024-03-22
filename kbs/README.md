@@ -33,7 +33,7 @@ flowchart LR
     subgraph Guest
         AA <.-> CDH
     end
-    subgraph KBS Cluster
+    subgraph Trustee
         AS -- validates evidence--> KBS
     end
 ```
@@ -65,10 +65,10 @@ flowchart LR
     subgraph Guest
         CDH <.-> AA
     end
-    subgraph KBS Cluster 1
+    subgraph Trustee 1
         AS -- validates evidence--> KBS1
     end
-    subgraph KBS Cluster 2
+    subgraph Trustee 2
         KBS2
     end
 ```
