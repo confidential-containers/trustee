@@ -1,4 +1,5 @@
-use anyhow::*;
+use crate::rvps::RvpsError;
+use anyhow::{Context, Result};
 use tokio::sync::Mutex;
 
 use self::rvps_api::{
@@ -17,7 +18,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub async fn new(addr: &str) -> Result<Self> {
+    pub async fn new(addr: &str) -> Result<Self, RvpsError> {
         Ok(Self {
             client: Mutex::new(
                 ReferenceValueProviderServiceClient::connect(addr.to_string()).await?,
@@ -25,7 +26,6 @@ impl Agent {
         })
     }
 }
-
 #[async_trait::async_trait]
 impl RvpsApi for Agent {
     async fn verify_and_extract(&mut self, message: &str) -> Result<()> {

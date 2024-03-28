@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::*;
+use anyhow::Result;
 use log::{info, warn};
 use reference_value_provider_service::config::{Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use thiserror::Error;
 
 /// The interfaces of Reference Value Provider Service
 /// * `verify_and_extract` is responsible for verify a message and
@@ -72,7 +73,23 @@ impl Default for RvpsConfig {
     }
 }
 
-pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+#[derive(Error, Debug)]
+pub enum RvpsError {
+    #[error("feature `rvps-grpc` or `rvps-builtin` should be enabled")]
+    FeatureNotEnabled,
+    #[error("Serde Json Error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("Returned status: {0}")]
+    Status(#[from] tonic::Status),
+    #[error("tonic transport error: {0}")]
+    TonicTransport(#[from] tonic::transport::Error),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+}
+
+pub async fn initialize_rvps_client(
+    config: &RvpsConfig,
+) -> Result<Box<dyn RvpsApi + Send + Sync>, RvpsError> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "rvps-grpc")] {
             if !config.remote_addr.is_empty() {
@@ -85,7 +102,7 @@ pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsA
                         warn!("No RVPS address provided and will launch a built-in rvps");
                         Ok(Box::new(builtin::Rvps::new(config.clone().into())?) as Box<dyn RvpsApi + Send + Sync>)
                     } else {
-                        Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
+                        return RvpsError::FeatureNotEnabled;
                     }
                 }
             }
@@ -93,7 +110,7 @@ pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsA
             info!("launch a built-in RVPS.");
             Ok(Box::new(builtin::Rvps::new(config.clone().into())) as Box<dyn RvpsApi + Send + Sync>)
         } else {
-            Err(anyhow!("either feature `rvps-grpc` or `rvps-builtin` should be enabled."))
+            return RvpsError::FeatureNotEnabled;
         }
     }
 }

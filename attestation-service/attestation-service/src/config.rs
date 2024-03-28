@@ -1,10 +1,10 @@
 use crate::rvps::RvpsConfig;
 use crate::token::{AttestationTokenBrokerType, AttestationTokenConfig};
 
-use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 /// Environment macro for Attestation Service work dir.
 const AS_WORK_DIR: &str = "AS_WORK_DIR";
@@ -29,6 +29,18 @@ pub struct Config {
 
     /// The Attestation Result Token Broker Config
     pub attestation_token_config: AttestationTokenConfig,
+}
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("failed to parse AS config file: {0}")]
+    FileParse(#[source] std::io::Error),
+    #[error("failed to parse AS config file: {0}")]
+    JsonFileParse(#[source] serde_json::Error),
+    #[error("Illegal format of the content of the configuration file: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl Default for Config {
@@ -63,12 +75,9 @@ impl TryFrom<&Path> for Config {
     ///            "duration_min": 5
     ///        }
     ///    }
-    type Error = anyhow::Error;
-    fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
-        let file = File::open(config_path)
-            .map_err(|e| anyhow!("failed to open AS config file {}", e.to_string()))?;
-
-        serde_json::from_reader::<File, Config>(file)
-            .map_err(|e| anyhow!("failed to parse AS config file {}", e.to_string()))
+    type Error = ConfigError;
+    fn try_from(config_path: &Path) -> Result<Self, ConfigError> {
+        let file = File::open(config_path)?;
+        serde_json::from_reader::<File, Config>(file).map_err(ConfigError::JsonFileParse)
     }
 }
