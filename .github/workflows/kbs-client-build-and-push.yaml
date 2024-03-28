@@ -1,0 +1,39 @@
+name: Build and push kbs-client
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_push:
+    env:
+      RUSTC_VERSION: 1.76.0
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.RUSTC_VERSION }}
+        override: true
+        profile: minimal
+    - name: Log in to ghcr.io
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build a statically linked kbs-client for x86_64 linux
+      working-directory: kbs
+      run: |
+        make cli-static-x86_64-linux
+    - name: Push to ghcr.io
+      working-directory: target/x86_64-unknown-linux-gnu/release
+      run: |
+        commit_sha=${{ github.sha }}
+        oras push \
+          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-x86_64-linux-gnu-${commit_sha},latest \
+          kbs-client
