@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = [ "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier" ]
+all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier", "se-verifier" ]
 tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
 sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
 az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
@@ -13,6 +13,7 @@ az-tdx-vtpm-verifier = [ "az-tdx-vtpm", "openssl", "tdx-verifier" ]
 snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
 csv-verifier = [ "openssl", "csv-rs", "codicon" ]
 cca-verifier = [ "ear", "jsonwebtoken", "veraison-apiclient" ]
+se-verifier = [ "openssl" ]
 
 [dependencies]
 anyhow.workspace = true

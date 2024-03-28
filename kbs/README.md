@@ -13,6 +13,7 @@ In conjunction with the AS or Intel Trust Authority (ITA), the KBS supports the 
 - Intel SGX
 - ARM CCA
 - Hygon CSV
+- IBM Secure Execution (SE)
 
 # Deployment Configurations
 

@@ -92,3 +92,6 @@ The claim inherit the fields from the SEV-SNP claim with and additional `tpm` hi
 - `tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
+
+## IBM Secure Execution (SE)
+TBD

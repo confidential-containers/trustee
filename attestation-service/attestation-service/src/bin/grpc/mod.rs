@@ -37,6 +37,7 @@ fn to_kbs_tee(tee: GrpcTee) -> Tee {
         GrpcTee::AzSnpVtpm => Tee::AzSnpVtpm,
         GrpcTee::Cca => Tee::Cca,
         GrpcTee::AzTdxVtpm => Tee::AzTdxVtpm,
+        GrpcTee::Se => Tee::Se,
     }
 }
 

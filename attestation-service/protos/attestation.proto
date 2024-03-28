@@ -12,6 +12,7 @@ enum Tee {
     CSV = 6;
     CCA = 7;
     AzTdxVtpm = 8;
+    Se = 9;
 }
 
 message AttestationRequest {

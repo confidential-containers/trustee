@@ -45,6 +45,14 @@ impl Attest for BuiltInCoCoAs {
             )
             .await
     }
+
+    async fn generate_challenge_extra_params(&self, tee: Tee) -> Result<String> {
+        self.inner
+            .read()
+            .await
+            .generate_challenge_extra_params(tee)
+            .await
+    }
 }
 
 impl BuiltInCoCoAs {

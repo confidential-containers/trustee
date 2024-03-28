@@ -122,6 +122,10 @@ impl Attest for IntelTrustAuthority {
 
         Ok(resp_data.token.clone())
     }
+
+    async fn generate_challenge_extra_params(&self, _tee: Tee) -> Result<String> {
+        Ok(String::new())
+    }
 }
 
 impl IntelTrustAuthority {

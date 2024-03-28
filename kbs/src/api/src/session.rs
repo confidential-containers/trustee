@@ -63,7 +63,7 @@ macro_rules! impl_member {
 }
 
 impl SessionStatus {
-    pub fn auth(request: Request, timeout: i64) -> Result<Self> {
+    pub fn auth(request: Request, timeout: i64, extra_params: String) -> Result<Self> {
         let version = Version::parse(&request.version).map_err(anyhow::Error::from)?;
         if !crate::VERSION_REQ.matches(&version) {
             bail!("Invalid Request version {}", request.version);
@@ -76,7 +76,7 @@ impl SessionStatus {
             request,
             challenge: Challenge {
                 nonce: nonce()?,
-                extra_params: String::new(),
+                extra_params,
             },
             id,
             timeout,
