@@ -172,3 +172,48 @@ pub async fn set_policy(
 
     Ok(HttpResponse::Ok().body(""))
 }
+
+pub async fn list_policies(
+    cocoas: web::Data<Arc<RwLock<AttestationService>>>,
+) -> Result<HttpResponse> {
+    info!("get policy.");
+
+    let policy_list = cocoas
+        .read()
+        .await
+        .list_policies()
+        .await
+        .context("get policies")?;
+
+    let body = serde_json::to_string(&serde_json::json!({
+        "policies": policy_list,
+    }))
+    .context("serialize response body")?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(body))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RemovePolicyRequest {
+    pub policy_ids: Vec<String>,
+}
+
+pub async fn remove_policies(
+    input: web::Json<RemovePolicyRequest>,
+    cocoas: web::Data<Arc<RwLock<AttestationService>>>,
+) -> Result<HttpResponse> {
+    info!("remove policy.");
+
+    for id in input.into_inner().policy_ids {
+        cocoas
+            .write()
+            .await
+            .remove_policies(id)
+            .await
+            .context("remove policy")?;
+    }
+
+    Ok(HttpResponse::Ok().body(""))
+}
