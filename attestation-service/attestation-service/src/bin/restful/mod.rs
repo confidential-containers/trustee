@@ -87,7 +87,7 @@ pub async fn attestation(
     request: web::Json<AttestationRequest>,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
-    info!("new attestation request.");
+    info!("Attestation API called.");
 
     let request = request.into_inner();
     debug!("attestation: {request:#?}");
@@ -159,7 +159,7 @@ pub async fn set_policy(
     input: web::Json<SetPolicyInput>,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
-    info!("set policy.");
+    info!("Set Policy API called.");
     let input = input.into_inner();
 
     debug!("set policy: {input:#?}");

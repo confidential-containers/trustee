@@ -109,7 +109,7 @@ impl PolicyEngine for OPA {
                 unsafe { evaluateGo(policy_go, reference_go, input_go) };
             let decision_str: &CStr = unsafe { CStr::from_ptr(decision_buf) };
             let policy_res = decision_str.to_str()?.to_string();
-            debug!("Evaluated: {}", policy_res);
+            debug!("OPA Evaluated: {}", policy_res);
             if policy_res.starts_with("Error::") {
                 bail!("OPA verification failed: {policy_res}");
             }

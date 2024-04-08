@@ -68,6 +68,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
     ) -> Result<Response<SetPolicyResponse>, Status> {
         let request: SetPolicyRequest = request.into_inner();
 
+        info!("SetPolicy API called.");
         debug!("SetPolicyInput: {}", &request.input);
 
         let set_policy_input: SetPolicyInput = serde_json::from_str(&request.input)
@@ -89,6 +90,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
     ) -> Result<Response<AttestationResponse>, Status> {
         let request: AttestationRequest = request.into_inner();
 
+        info!("AttestationEvaluate API called.");
         debug!("Evidence: {}", &request.evidence);
 
         let tee = to_kbs_tee(
@@ -206,7 +208,8 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     ) -> Result<Response<ReferenceValueRegisterResponse>, Status> {
         let request = request.into_inner();
 
-        info!("registry reference value: {}", request.message);
+        info!("RegisterReferenceValue API called.");
+        debug!("registry reference value: {}", request.message);
 
         let message = serde_json::from_str(&request.message)
             .map_err(|e| Status::aborted(format!("Parse message: {e}")))?;

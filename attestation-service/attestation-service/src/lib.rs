@@ -15,7 +15,7 @@ use crate::token::AttestationTokenBroker;
 use anyhow::{anyhow, Context, Result};
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
-use log::debug;
+use log::{debug, info};
 use policy_engine::{PolicyEngine, PolicyEngineType, SetPolicyInput};
 use rvps::RvpsApi;
 use serde_json::{json, Value};
@@ -170,6 +170,7 @@ impl AttestationService {
             .evaluate(&evidence, &report_data, &init_data_hash)
             .await
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+        info!("{:?} Verifier/endorsement check passed.", tee);
 
         let flattened_claims = flatten_claims(tee, &claims_from_tee_evidence)?;
         debug!("flattened_claims: {:#?}", flattened_claims);
@@ -188,6 +189,7 @@ impl AttestationService {
             .await
             .map_err(|e| anyhow!("Policy Engine evaluation failed: {e}"))?;
 
+        info!("Policy check passed.");
         let policies: Vec<_> = evaluation_report
             .into_iter()
             .map(|(k, v)| {
@@ -216,6 +218,10 @@ impl AttestationService {
         });
 
         let attestation_results_token = self.token_broker.issue(token_claims)?;
+        info!(
+            "Attestation Token ({}) generated.",
+            self._config.attestation_token_broker
+        );
 
         Ok(attestation_results_token)
     }

@@ -169,8 +169,6 @@ pub fn generate_parsed_claim(
     let mut ccel_map = Map::new();
     if let Some(ccel) = cc_eventlog {
         parse_ccel(ccel, &mut ccel_map)?;
-    } else {
-        warn!("parse CC EventLog: CCEL is null");
     }
 
     let mut claims = Map::new();
@@ -180,7 +178,8 @@ pub fn generate_parsed_claim(
     parse_claim!(claims, "report_data", quote.report_data());
     parse_claim!(claims, "init_data", quote.mr_config_id());
 
-    log::info!("\nParsed Evidence claims map: \n{:?}\n", &claims);
+    let claims_str = serde_json::to_string_pretty(&claims)?;
+    debug!("Parsed Evidence claims map: \n{claims_str}\n");
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
 }
