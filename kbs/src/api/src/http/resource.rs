@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use kbs_types::{Response, TeePubKey};
-use log::{error, info};
+use log::{debug, error, info};
 use rand::{rngs::OsRng, Rng};
 use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use serde::Deserialize;
@@ -36,10 +36,10 @@ pub(crate) async fn get_resource(
         claims_option = get_attest_claims_from_session(&request, map).await.ok();
     }
     let claims_str = if let Some(c) = claims_option {
-        info!("Get pkey from session.");
+        debug!("Get pkey from session.");
         c
     } else {
-        info!("Get pkey from auth header");
+        debug!("Get pkey from auth header");
         get_attest_claims_from_header(&request, token_verifier).await?
     };
     let claims: Value = serde_json::from_str(&claims_str).map_err(|e| {
@@ -93,7 +93,12 @@ pub(crate) async fn get_resource(
         return Err(Error::InvalidRequest("Invalid resource path".to_string()));
     }
 
-    info!("Resource description: {:?}", &resource_description);
+    info!(
+        "Get resource from kbs:///{}/{}/{}",
+        resource_description.repository_name,
+        resource_description.resource_type,
+        resource_description.resource_tag
+    );
 
     #[cfg(feature = "policy")]
     {
@@ -114,6 +119,8 @@ pub(crate) async fn get_resource(
         if !resource_allowed {
             raise_error!(Error::PolicyReject);
         }
+
+        info!("Resource access request passes policy check.");
     }
 
     let resource_byte = repository

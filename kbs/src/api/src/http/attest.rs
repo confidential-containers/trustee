@@ -9,7 +9,7 @@ use super::*;
 use anyhow::anyhow;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use log::{error, info};
+use log::{debug, error, info};
 use serde_json::json;
 
 /// POST /auth
@@ -18,7 +18,8 @@ pub(crate) async fn auth(
     map: web::Data<SessionMap>,
     timeout: web::Data<i64>,
 ) -> Result<HttpResponse> {
-    info!("request: {:?}", &request);
+    info!("Auth API called.");
+    debug!("Auth Request: {:?}", &request);
 
     let session = SessionStatus::auth(request.0, **timeout)
         .map_err(|e| Error::FailedAuthentication(format!("Session: {e}")))?;
@@ -39,6 +40,7 @@ pub(crate) async fn attest(
     map: web::Data<SessionMap>,
     attestation_service: web::Data<Arc<AttestationService>>,
 ) -> Result<HttpResponse> {
+    info!("Attest API called.");
     let cookie = request.cookie(KBS_SESSION_ID).ok_or(Error::MissingCookie)?;
 
     let (tee, nonce) = {
@@ -49,7 +51,10 @@ pub(crate) async fn attest(
             .ok_or(Error::InvalidCookie)?;
         let session = session.get();
 
-        info!("Cookie {} attestation {:?}", session.id(), attestation);
+        debug!("Session ID {}", session.id());
+        let attestation_str = serde_json::to_string_pretty(&attestation.0)
+            .map_err(|_| Error::AttestationFailed("Failed to serialize Attestation".into()))?;
+        debug!("Attestation: {attestation_str}");
 
         if session.is_expired() {
             raise_error!(Error::ExpiredCookie);
