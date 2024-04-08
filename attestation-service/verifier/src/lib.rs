@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
-use log::warn;
+use log::debug;
 
 pub mod sample;
 
@@ -159,14 +159,14 @@ fn regularize_data(data: &[u8], len: usize, data_name: &str, arch: &str) -> Vec<
     let data_len = data.len();
     match data_len.cmp(&len) {
         Ordering::Less => {
-            warn!("The input {data_name} of {arch} is shorter than {len} bytes, will be padded with '\\0'.");
+            debug!("The input {data_name} of {arch} is shorter than {len} bytes, will be padded with '\\0'.");
             let mut data = data.to_vec();
             data.resize(len, b'\0');
             data
         }
         Ordering::Equal => data.to_vec(),
         Ordering::Greater => {
-            warn!("The input {data_name} of {arch} is longer than {len} bytes, will be truncated to {len} bytes.");
+            debug!("The input {data_name} of {arch} is longer than {len} bytes, will be truncated to {len} bytes.");
             data[..len].to_vec()
         }
     }

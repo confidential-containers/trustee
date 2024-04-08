@@ -7,7 +7,7 @@ use anyhow::*;
 use serde::Deserialize;
 use serde_json::Value;
 use simple::COCO_AS_ISSUER_NAME;
-use strum::EnumString;
+use strum::{Display, EnumString};
 
 mod simple;
 
@@ -23,7 +23,7 @@ pub trait AttestationTokenBroker {
     fn pubkey_jwks(&self) -> Result<String>;
 }
 
-#[derive(Deserialize, Debug, Clone, EnumString)]
+#[derive(Deserialize, Debug, Clone, EnumString, Display)]
 pub enum AttestationTokenBrokerType {
     Simple,
 }
