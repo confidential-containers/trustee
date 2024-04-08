@@ -13,6 +13,7 @@ use actix_web::{
     HttpResponse, Responder, ResponseError,
 };
 use kbs_types::ErrorInformation;
+use log::error;
 use serde::Serialize;
 use strum_macros::AsRefStr;
 use thiserror::Error;
@@ -115,6 +116,8 @@ impl ResponseError for Error {
             Error::ReadSecretFailed(_) => HttpResponse::NotFound(),
             _ => HttpResponse::Unauthorized(),
         };
+
+        error!("{self}");
 
         res.body(BoxBody::new(body))
     }

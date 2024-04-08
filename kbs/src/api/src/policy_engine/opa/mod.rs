@@ -82,7 +82,7 @@ impl PolicyEngineInterface for Opa {
             unsafe { evaluateGo(policy_go, resource_path_go, input_go) };
         let decision_str: &CStr = unsafe { CStr::from_ptr(decision_buf) };
         let res = decision_str.to_str()?.to_string();
-        log::debug!("Evaluated: {}", res);
+        log::debug!("OPA Evaluated: {}", res);
         if res.starts_with("Error::") {
             return Err(anyhow!(res));
         }
