@@ -40,13 +40,22 @@ from the Attestation Agent inside the guest.
 
 The AS has a two-step verification process.
 
-1. Verify the format and provenance of evidence itself (i.e. check the signature of the evidence).
-2. Evaluate the claims presented by the evidence (i.e. check that measurements are what the client expects).
+1. Verify the format and provenance of evidence itself (i.e. check the signature of the evidence). This is done by [verifier drivers](#verifier-drivers).
+2. Evaluate the claims presented by the evidence (i.e. check that measurements are what the client expects). This is done by [policy engine](#policy-engine) and [RVPS](#reference-value-provider-service).
 
 The first step is accomplished by one of the platform-specific [Verifier Drivers](#verifier-drivers).
 The second step is driven by the [Policy Engine](#policy-engine) with help from the [RVPS](#reference-value-provider-service).
 
-# Usage
+# Quick Start
+
+Please refer to
+- [Restful CoCo AS](docs/restful-as.md#quick-start)
+- [gRPC CoCo AS](docs/grpc-as.md#quick-start)
+
+# Advanced Topics 
+
+Advanced topics for developers.
+
 ## Library
 
 The AS can be built and imported as a Rust crate into any project providing attestation services.
@@ -57,38 +66,7 @@ As the AS API is not yet fully stable, the AS crate needs to be imported from Gi
 attestation-service = { git = "https://github.com/confidential-containers/trustee" }
 ```
 
-## Server
-
-This project provides the Attestation Service binary program that can be run as an independent server:
-
-- [`grpc-as`](docs/grpc-as.md): Provide AS APIs based on gRPC protocol.
-- [`restful-as`](docs/restful-as.md): Provide AS APIs based on RESTful.
-
-Build and install AS as a standalone server
-
-```shell
-git clone https://github.com/confidential-containers/trustee
-cd trustee/attestation-service
-make && make install
-```
-
-`grpc-as` will be installed into `/usr/local/bin`.
-
-# APIs
-## Input
-
-The AS should be queried with a request containing
-- `tee` - The type of platform being attested
-- `evidence` - The serialized hardware evidence (see next section)
-- either `raw_runtime_data` or `structured_runtime_data` - the data expected to have been added to the evidence by the guest at runtime
-- either `raw_init_data` or `structured_init_data` - the data expected to have been added to the evidence by the host at boot
-- `runtime_data_hash_algorithm` - the hashing algorithm used with the above field
-- `init_data_hash_algorithm` - the hasing algorithm used with the other above field
-- `policy_ids` - a list of policies which the AS will use to evaluate the evidence claims
-
-For more details see [gRPC proto](https://github.com/confidential-containers/trustee/blob/main/attestation-service/protos/attestation.proto)
-
-### Evidence format:
+## Evidence format:
 
 The attestation request must include attestation evidence.
 The format of the attestation evidence depends on the platform
@@ -135,9 +113,9 @@ The format of the attestation results token is:
 * `reference-data`: Reference values in a map used to enforce the OPA policy.
 * `customized_claims`: Customized claims whose integrity is protected by binding its digest into the evidence. It will be a JSON map.
 
-# Components
+## Architecture
 
-## Verifier Drivers
+### Verifier Drivers
 
 A verifier driver parses the HW-TEE specific attestation evidence, and performs the following tasks:
 
@@ -155,7 +133,7 @@ Supported Verifier Drivers:
 - `cca`: Verifier Driver for Confidential Compute Architecture (Arm CCA).
 - `csv`: Verifier Driver for China Security Virtualization (Hygon CSV).
 
-## Policy Engine
+### Policy Engine
 
 [OPA](https://www.openpolicyagent.org/docs/latest/) is a flexible policy engine.
 The AS allows users to define and upload their own OPA policy when performing evidence verification.
@@ -166,7 +144,7 @@ The results of every policy that is evaluated are included in the attestation to
 
 If the policy is not updated, the AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
 
-## Reference Value Provider Service
+### Reference Value Provider Service
 
 The [Reference Value Provider Service](rvps/README.md) (RVPS) is a module integrated into the AS to verify,
 store and provide reference values. RVPS receives and verifies the provenance input from the software supply chain,
