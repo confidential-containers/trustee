@@ -16,6 +16,8 @@ For help:
 kbs-client -h
 ```
 
+We have a community version of kbs-client on [Github ORAS](https://github.com/confidential-containers/trustee/pkgs/container/staged-images%2Fkbs-client).
+
 ## Building and installing the client
 
 Build the client binary with support to the default features as:
