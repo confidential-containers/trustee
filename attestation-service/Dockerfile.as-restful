@@ -49,4 +49,4 @@ VOLUME /opt/confidential-containers/attestation-service
 
 CMD ["restful-as", "--socket", "0.0.0.0:8080", "--config-file", "/etc/config.json"]
 
-EXPOSE 50004
+EXPOSE 8080
