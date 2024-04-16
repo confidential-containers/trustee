@@ -13,7 +13,7 @@ use strum::{AsRefStr, EnumString};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::restful::{attestation, set_policy};
+use crate::restful::{attestation, get_policies, set_policy};
 
 mod restful;
 
@@ -95,7 +95,11 @@ async fn main() -> Result<(), RestfulError> {
     let server = HttpServer::new(move || {
         App::new()
             .service(web::resource(WebApi::Attestation.as_ref()).route(web::post().to(attestation)))
-            .service(web::resource(WebApi::Policy.as_ref()).route(web::post().to(set_policy)))
+            .service(
+                web::resource(WebApi::Policy.as_ref())
+                    .route(web::post().to(set_policy))
+                    .route(web::get().to(get_policies)),
+            )
             .app_data(web::Data::clone(&attestation_service))
     });
 

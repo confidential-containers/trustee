@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{body::BoxBody, web, HttpResponse, ResponseError};
+use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::{bail, Context};
 use attestation_service::{policy_engine::SetPolicyInput, AttestationService, HashAlgorithm};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -171,4 +171,44 @@ pub async fn set_policy(
         .context("set policy")?;
 
     Ok(HttpResponse::Ok().body(""))
+}
+
+/// GET /policy
+/// GET /policy/{policy_id}
+pub async fn get_policies(
+    request: HttpRequest,
+    cocoas: web::Data<Arc<RwLock<AttestationService>>>,
+) -> Result<HttpResponse> {
+    info!("get policy.");
+
+    match request.match_info().get("policy_id") {
+        Some(policy_id) => {
+            let policy = cocoas
+                .read()
+                .await
+                .get_policy(policy_id.to_string())
+                .await
+                .context("get policy")?;
+
+            Ok(HttpResponse::Ok().body(policy))
+        }
+        None => {
+            let policy_list = cocoas
+                .read()
+                .await
+                .list_policies()
+                .await
+                .context("get policies")?;
+
+            let policy_list =
+                serde_json::to_string(&policy_list).context("serialize response body")?;
+
+            Ok(HttpResponse::Ok().body(policy_list))
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RemovePolicyRequest {
+    pub policy_ids: Vec<String>,
 }
