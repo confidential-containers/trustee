@@ -134,6 +134,22 @@ impl AttestationService {
         Ok(())
     }
 
+    /// Get Attestation Verification Policy List.
+    pub async fn list_policies(&self) -> Result<Vec<crate::policy_engine::PolicyListEntry>> {
+        self.policy_engine
+            .list_policies()
+            .await
+            .context("Cannot List Policy")
+    }
+
+    /// Get a single Policy content.
+    pub async fn get_policy(&self, policy_id: String) -> Result<String> {
+        self.policy_engine
+            .get_policy(policy_id)
+            .await
+            .context("Cannot Get Policy")
+    }
+
     /// Evaluate Attestation Evidence.
     /// Issue an attestation results token which contain TCB status and TEE public key. Input parameters:
     /// - `evidence`: TEE evidence bytes. This might not be the raw hardware evidence bytes. Definitions

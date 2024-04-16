@@ -1,9 +1,10 @@
-use crate::policy_engine::{PolicyEngine, PolicyType};
+use crate::policy_engine::{PolicyDigestEntry, PolicyEngine, PolicyListEntry, PolicyType};
 use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use log::debug;
 use serde_json::Value;
+use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::fs;
@@ -161,6 +162,52 @@ impl PolicyEngine for OPA {
             .await
             .map_err(|e| anyhow!("Write OPA policy to file failed: {:?}", e))
     }
+
+    async fn list_policies(&self) -> Result<Vec<PolicyListEntry>> {
+        let mut policy_ids = Vec::new();
+        let mut entries = tokio::fs::read_dir(&self.policy_dir_path).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.extension().and_then(std::ffi::OsStr::to_str) == Some("rego") {
+                if let Some(filename) = path.file_stem() {
+                    if let Some(filename_str) = filename.to_str() {
+                        policy_ids.push(filename_str.to_owned());
+                    }
+                }
+            }
+        }
+
+        let mut policy_list = Vec::new();
+
+        for id in policy_ids.iter() {
+            let policy_file_path = self.policy_dir_path.join(format!("{id}.rego"));
+            let policy = tokio::fs::read(policy_file_path)
+                .await
+                .context("Read OPA policy file failed")?;
+
+            let mut hasher = Sha384::new();
+            hasher.update(policy);
+            let digest = hasher.finalize().to_vec();
+            policy_list.push(PolicyListEntry {
+                id: id.to_string(),
+                digest: PolicyDigestEntry {
+                    algorithm: "sha384".to_string(),
+                    value: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest),
+                },
+            });
+        }
+
+        Ok(policy_list)
+    }
+
+    async fn get_policy(&self, policy_id: String) -> Result<String> {
+        let policy_file_path = self.policy_dir_path.join(format!("{policy_id}.rego"));
+        let policy = tokio::fs::read(policy_file_path)
+            .await
+            .context("Read OPA policy file failed")?;
+        let base64_policy = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy);
+        Ok(base64_policy)
+    }
 }
 
 #[cfg(test)]
@@ -216,11 +263,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_set_policy() {
-        let mut opa = OPA::new(PathBuf::from("../test_data")).unwrap();
+    async fn test_policy_management() {
+        let mut opa = OPA::new(PathBuf::from("../tests/tmp")).unwrap();
         let policy = "package policy
 default allow = true"
             .to_string();
+
+        let get_policy_output = "cGFja2FnZSBwb2xpY3kKZGVmYXVsdCBhbGxvdyA9IHRydWU".to_string();
 
         let input = SetPolicyInput {
             r#type: "rego".to_string(),
@@ -229,5 +278,10 @@ default allow = true"
         };
 
         assert!(opa.set_policy(input).await.is_ok());
+        let policy_list = opa.list_policies().await.unwrap();
+        assert_eq!(policy_list.len(), 2);
+        let test_policy = opa.get_policy("test".to_string()).await.unwrap();
+        assert_eq!(test_policy, get_policy_output);
+        assert!(opa.list_policies().await.is_ok());
     }
 }

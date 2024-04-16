@@ -35,6 +35,18 @@ impl PolicyEngineType {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct PolicyListEntry {
+    pub id: String,
+    pub digest: PolicyDigestEntry,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct PolicyDigestEntry {
+    pub algorithm: String,
+    pub value: String,
+}
+
 type PolicyDigest = String;
 type EvaluationResult = serde_json::Value;
 
@@ -53,4 +65,8 @@ pub trait PolicyEngine {
     ) -> Result<HashMap<String, (PolicyDigest, EvaluationResult)>>;
 
     async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()>;
+
+    async fn list_policies(&self) -> Result<Vec<PolicyListEntry>>;
+
+    async fn get_policy(&self, policy_id: String) -> Result<String>;
 }
