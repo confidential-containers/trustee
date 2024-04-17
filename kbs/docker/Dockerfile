@@ -40,7 +40,7 @@ COPY . .
 ARG KBS_FEATURES=coco-as-builtin,rustls,resource,opa
 RUN cargo install --locked --path kbs/src/kbs --no-default-features --features ${KBS_FEATURES}
 
-FROM debian:stable-slim
+FROM ubuntu:22.04
 
 RUN apt-get update && \
     apt-get install -y \
@@ -51,12 +51,11 @@ RUN apt-get update && \
 # Install TDX Runtime Dependencies
 RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
-RUN echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | tee /etc/apt/sources.list.d/intel-sgx.list
+RUN echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
     libsgx-dcap-default-qpl \
     libsgx-dcap-quote-verify \
-    libtdx-attest \
     tpm2-tools
 
 # Intel PCCS URL Configurations
