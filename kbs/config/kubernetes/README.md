@@ -44,6 +44,20 @@ kustomize edit add resource ingress.yaml
 popd
 ```
 
+## Optional: Expose KBS using Nodeport
+
+If you would like to expose KBS service using Nodeport then export the following environment variable:
+
+```bash
+export DEPLOYMENT_DIR=nodeport
+```
+
+Once you deploy the KBS, you can use the services' nodeport and the Kubernetes node's IP to reach out to the KBS. You can generate the KBS URL by running the following command:
+
+```bash
+echo $(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}'):$(kubectl get svc kbs -n coco-tenant -o jsonpath='{.spec.ports[0].nodePort}')
+```
+
 ## Deploy KBS
 
 Deploy KBS by running the following command:
