@@ -1,6 +1,8 @@
 # KBS Release Guide
 
-The follow steps are a guide for releasing kbs:
+The following steps are a guide for releasing kbs. Note that a
+[helper script](hack/release-helper.sh)
+can be used to automate steps 2 and 3.
 
 1. Identify a valid release candidate. This is partly a sanity-checking step.
 For example, assuming you want the most recent commit, start by checking the
