@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kbs
+spec:
+  template:
+    spec:
+      containers:
+      - name: kbs
+        volumeMounts:
+        - name: qplconf
+          mountPath: /etc/sgx_default_qcnl.conf
+          subPath: sgx_default_qcnl.conf
+      volumes:
+      - name: qplconf
+        configMap:
+          name: dcap-attestation-conf
+          items:
+          - key: sgx_default_qcnl.conf
+            path: sgx_default_qcnl.conf

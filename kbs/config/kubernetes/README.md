@@ -58,6 +58,16 @@ Once you deploy the KBS, you can use the services' nodeport and the Kubernetes n
 echo $(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}'):$(kubectl get svc kbs -n coco-tenant -o jsonpath='{.spec.ports[0].nodePort}')
 ```
 
+## Optional: Use custom Intel DCAP configuration
+
+If you would like to override the default `sgx_default_qcnl.conf` in the KBS/AS images, copy/configure one into `custom_pccs/` directory and deploy using:
+
+```bash
+export DEPLOYMENT_DIR=custom_pccs
+```
+
+NB: this currently builds on `nodeport` kustomization.
+
 ## Deploy KBS
 
 Deploy KBS by running the following command:
