@@ -52,13 +52,31 @@ pub(crate) async fn attest(
         let session = session.get();
 
         debug!("Session ID {}", session.id());
-        let attestation_str = serde_json::to_string_pretty(&attestation.0)
-            .map_err(|_| Error::AttestationFailed("Failed to serialize Attestation".into()))?;
-        debug!("Attestation: {attestation_str}");
 
         if session.is_expired() {
             raise_error!(Error::ExpiredCookie);
         }
+
+        if let SessionStatus::Attested { token, .. } = session {
+            debug!(
+                "Session {} is already attested. Skip attestation and return the old token",
+                session.id()
+            );
+            let body = serde_json::to_string(&json!({
+                "token": token,
+            }))
+            .map_err(|e| Error::TokenIssueFailed(format!("Serialize token failed {e}")))?;
+
+            return Ok(HttpResponse::Ok()
+                .cookie(session.cookie())
+                .content_type("application/json")
+                .body(body));
+        }
+
+        let attestation_str = serde_json::to_string_pretty(&attestation.0)
+            .map_err(|_| Error::AttestationFailed("Failed to serialize Attestation".into()))?;
+        debug!("Attestation: {attestation_str}");
+
         (session.request().tee, session.challenge().nonce.to_string())
     };
 
@@ -86,12 +104,13 @@ pub(crate) async fn attest(
         .await
         .ok_or(Error::InvalidCookie)?;
     let session = session.get_mut();
-    session.attest(claims);
 
     let body = serde_json::to_string(&json!({
         "token": token,
     }))
     .map_err(|e| Error::TokenIssueFailed(format!("Serialize token failed {e}")))?;
+
+    session.attest(claims, token);
 
     Ok(HttpResponse::Ok()
         .cookie(session.cookie())
