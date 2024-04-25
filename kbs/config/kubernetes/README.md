@@ -44,6 +44,19 @@ kustomize edit add resource ingress.yaml
 popd
 ```
 
+## Optional: Use non-release images
+
+Sometimes it may be desirable to deploy KBS with an image that is not what is set in the repo (typically
+the latest release image). To change the deployment to use a staging build, set the image using `kustomize`:
+
+```bash
+pushd base
+kustomize edit set image kbs-container-image=ghcr.io/confidential-containers/staged-images/kbs:65ee7e1acccd13dcb515058e71c5f8bfb4281e35
+popd
+```
+
+The available image tags can be found in the [CoCo packages listing](https://github.com/orgs/confidential-containers/packages?repo_name=trustee).
+
 ## Optional: Expose KBS using Nodeport
 
 If you would like to expose KBS service using Nodeport then export the following environment variable:
