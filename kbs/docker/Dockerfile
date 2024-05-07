@@ -1,4 +1,6 @@
 FROM rust:slim as builder
+ARG ARCH=x86_64
+ARG HTTPS_CRYPTO=rustls
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -9,10 +11,10 @@ RUN apt-get update && \
     gnupg-agent \
     git
 
-RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | \
-    tee /etc/apt/sources.list.d/intel-sgx.list && \
+    tee /etc/apt/sources.list.d/intel-sgx.list; fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     libclang-dev \
@@ -25,18 +27,19 @@ RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.k
     wget \
     clang \
     cmake \
-    libtss2-dev \
+    libtss2-dev && \
+    if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
     libsgx-dcap-quote-verify-dev \
-    libtdx-attest-dev
+    libtdx-attest-dev; fi
 
 # Build and Install KBS
 WORKDIR /usr/src/kbs
 COPY . .
 
-ARG KBS_FEATURES=coco-as-builtin,rustls,resource,opa
-RUN cargo install --locked --path kbs/src/kbs --no-default-features --features ${KBS_FEATURES}
+RUN cargo install --locked --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa,${HTTPS_CRYPTO}
 
 FROM ubuntu:22.04
+ARG ARCH=x86_64
 
 RUN apt-get update && \
     apt-get install -y \
@@ -45,14 +48,14 @@ RUN apt-get update && \
     gnupg-agent
 
 # Install TDX Runtime Dependencies
-RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
-    gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
-RUN echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list
+RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+    gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg; fi
+RUN if [ "${ARCH}" = "x86_64" ]; then echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list; fi
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
     libsgx-dcap-default-qpl \
     libsgx-dcap-quote-verify \
-    tpm2-tools
+    tpm2-tools; fi
 
 # Intel PCCS URL Configurations
 # If you want the AS in KBS to connect to your customized PCCS for Intel TDX/SGX evidence verification,
@@ -62,7 +65,7 @@ ENV INTEL_PCCS_URL "https://localhost:8081/sgx/certification/v4/"
 ENV INTEL_PCCS_USE_SECURE_CERT false
 
 # Setup Intel PCCS URL
-RUN sed -i "s|\"pccs_url\":.*$|\"pccs_url\":$INTEL_PCCS_URL,|" /etc/sgx_default_qcnl.conf; \
-    sed -i "s/\"use_secure_cert\":.*$/\"use_secure_cert\":$INTEL_PCCS_USE_SECURE_CERT,/" /etc/sgx_default_qcnl.conf
+RUN if [ "${ARCH}" = "x86_64" ]; then sed -i "s|\"pccs_url\":.*$|\"pccs_url\":$INTEL_PCCS_URL,|" /etc/sgx_default_qcnl.conf; \
+    sed -i "s/\"use_secure_cert\":.*$/\"use_secure_cert\":$INTEL_PCCS_USE_SECURE_CERT,/" /etc/sgx_default_qcnl.conf; fi
 
 COPY --from=builder /usr/local/cargo/bin/kbs /usr/local/bin/kbs
