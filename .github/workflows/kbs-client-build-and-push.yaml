@@ -7,14 +7,28 @@ on:
 
 jobs:
   build_and_push:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+          - s390x
     env:
       RUSTC_VERSION: 1.76.0
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.arch == 'x86_64' && 'ubuntu-22.04' || 's390x' }}
     permissions:
       contents: read
       packages: write
 
     steps:
+    - name: Take a pre-action for self-hosted runner
+      run: |
+        # NOTE: Use file checking instead triggering a step based on a runner type
+        # to avoid updating the step for each new self-hosted runner.
+        if [ -f "${HOME}/script/pre_action.sh" ]; then
+          "${HOME}/script/pre_action.sh" cc-trustee
+        fi
+
     - name: Check out code
       uses: actions/checkout@v4
     - name: Install rust toolchain
@@ -29,14 +43,23 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build a statically linked kbs-client for x86_64 linux
+    - name: Build a statically linked kbs-client for ${{ matrix.arch }} linux
       working-directory: kbs
       run: |
-        make cli-static-x86_64-linux
+        make cli-static-linux
     - name: Push to ghcr.io
-      working-directory: target/x86_64-unknown-linux-gnu/release
+      working-directory: target/${{ matrix.arch }}-unknown-linux-gnu/release
       run: |
         commit_sha=${{ github.sha }}
         oras push \
-          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-x86_64-linux-gnu-${commit_sha},latest \
+          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${{ matrix.arch }}-linux-gnu-${commit_sha},latest-${{ matrix.arch }} \
           kbs-client
+        [ "$(uname -m)" = "x86_64" ] && oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client || true
+
+    - name: Take a post-action for self-hosted runner
+      if: always()
+      run: |
+        # Please check out the note in the pre-action step for the reason of using file checking
+        if [ -f "${HOME}/script/post_action.sh" ]; then
+          "${HOME}/script/post_action.sh" cc-trustee
+        fi
