@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use openssl::{
     ec::EcKey,
     ecdsa,
+    nid::Nid,
     pkey::{PKey, Public},
     sha::sha384,
     x509::{self, X509},
@@ -16,7 +17,7 @@ use openssl::{
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
-use std::sync::OnceLock;
+use std::{os::linux::raw, sync::OnceLock};
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
@@ -40,14 +41,14 @@ pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
     static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
     MILAN_CERT_CHAIN.get_or_init(|| {
         let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark.pem"))?;
-        if certs.len() != 2 {
+        if certs.len() < 2 {
             bail!("Malformed Milan ASK/ARK");
         }
 
-        // ask, ark
         let vendor_certs = VendorCertificates {
             ask: certs[0].clone(),
             ark: certs[1].clone(),
+            asvk: certs[2].clone(),
         };
         Ok(vendor_certs)
     })
@@ -67,6 +68,7 @@ impl Snp {
 pub(crate) struct VendorCertificates {
     ask: X509,
     ark: X509,
+    asvk: X509,
 }
 
 #[async_trait]
@@ -158,18 +160,27 @@ pub(crate) fn verify_report_signature(
     vendor_certs: &VendorCertificates,
 ) -> Result<()> {
     // check cert chain
-    let VendorCertificates { ask, ark } = vendor_certs;
-    let vcek = verify_cert_chain(cert_chain, ask, ark)?;
+    let VendorCertificates { ask, ark, asvk } = vendor_certs;
+    let vcek = verify_cert_chain(cert_chain, ask, ark, asvk)?;
 
     // OpenSSL bindings do not expose custom extensions
     // Parse the vcek using x509_parser
     let vcek_der = &vcek.to_der()?;
     let parsed_vcek = X509Certificate::from_der(vcek_der)?.1.tbs_certificate;
 
-    // verify vcek fields
-    // chip id
-    if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != report.chip_id {
-        return Err(anyhow!("Chip ID mismatch"));
+    let subject = vcek.subject_name();
+    let common_name = subject
+        .entries_by_nid(Nid::COMMONNAME)
+        .next()
+        .and_then(|entry| entry.data().as_utf8().ok())
+        .map(|asn1| asn1.to_string());
+
+    if let Some(cn) = common_name {
+        if cn == "VCEK" {
+            if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != report.chip_id {
+                return Err(anyhow!("Chip ID mismatch"));
+            }
+        }
     }
 
     // tcb version
@@ -209,21 +220,33 @@ fn verify_signature(cert: &X509, issuer: &X509, name: &str) -> Result<()> {
         .ok_or_else(|| anyhow!("Invalid {name} signature"))
 }
 
-fn verify_cert_chain(cert_chain: &[CertTableEntry], ask: &X509, ark: &X509) -> Result<X509> {
-    let raw_vcek = cert_chain
+fn verify_cert_chain(
+    cert_chain: &[CertTableEntry],
+    ask: &X509,
+    ark: &X509,
+    asvk: &X509,
+) -> Result<X509> {
+    let raw_vek = cert_chain
         .iter()
-        .find(|c| c.cert_type == CertType::VCEK)
-        .ok_or_else(|| anyhow!("VCEK not found."))?;
-    let vcek = x509::X509::from_der(raw_vcek.data()).context("Failed to load VCEK")?;
+        .find(|c| c.cert_type == CertType::VCEK || c.cert_type == CertType::VLEK)
+        .ok_or_else(|| anyhow!("VEK not found."))?;
+    let vek = x509::X509::from_der(raw_vek.data()).context("Failed to load VEK")?;
 
-    // ARK -> ARK
-    verify_signature(ark, ark, "ARK")?;
-    // ARK -> ASK
-    verify_signature(ask, ark, "ASK")?;
-    // ASK -> VCEK
-    verify_signature(&vcek, ask, "VCEK")?;
+    if raw_vek.cert_type == CertType::VCEK {
+        // Chain: ARK -> ARK -> ASK -> VCEK
+        verify_signature(ark, ark, "ARK")?;
+        verify_signature(ask, ark, "ASK")?;
+        verify_signature(&vek, ask, "VCEK")?;
+    } else if raw_vek.cert_type == CertType::VLEK {
+        // Chain: ARK -> ARK -> ASVK -> VLEK
+        verify_signature(ark, ark, "ARK")?;
+        verify_signature(asvk, ark, "ASVK")?;
+        verify_signature(&vek, asvk, "VLEK")?;
+    } else {
+        return Err(anyhow!("VEK not found."));
+    }
 
-    Ok(vcek)
+    Ok(vek)
 }
 
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
@@ -260,7 +283,7 @@ mod tests {
 
     #[test]
     fn check_milan_certificates() {
-        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
+        let VendorCertificates { ask, ark, .. } = load_milan_cert_chain().as_ref().unwrap();
         assert_eq!(get_common_name(ark).unwrap(), "ARK-Milan");
         assert_eq!(get_common_name(ask).unwrap(), "SEV-Milan");
 
@@ -334,8 +357,8 @@ mod tests {
     fn check_vcek_signature_verification() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark).unwrap();
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
     }
 
     #[test]
@@ -347,17 +370,17 @@ mod tests {
         X509::from_der(&vcek).expect("failed to parse der");
 
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark).unwrap_err();
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
     }
 
     #[test]
     fn check_milan_chain_signature_failure() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
-        let VendorCertificates { ask, ark } = load_milan_cert_chain().as_ref().unwrap();
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
         // toggle ark <=> ask
-        verify_cert_chain(&cert_table, ark, ask).unwrap_err();
+        verify_cert_chain(&cert_table, ark, ask, asvk).unwrap_err();
     }
 
     #[test]
