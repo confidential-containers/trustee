@@ -175,10 +175,8 @@ pub(crate) fn verify_report_signature(
 
     // if the common name is "VCEK", then the VEK is a VCEK
     // so lets check the chip id
-    if common_name == "VCEK" {
-        if get_oid_octets::<64>(&parsed_vek, HW_ID_OID)? != report.chip_id {
-            bail!("Chip ID mismatch");
-        }
+    if common_name == "VCEK" && get_oid_octets::<64>(&parsed_vek, HW_ID_OID)? != report.chip_id {
+        bail!("Chip ID mismatch");
     }
 
     // tcb version
@@ -414,7 +412,6 @@ mod tests {
         verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
     }
 
-
     #[test]
     fn check_milan_chain_signature_failure() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
@@ -443,7 +440,6 @@ mod tests {
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
     }
-
 
     #[test]
     fn check_report_signature_failure() {

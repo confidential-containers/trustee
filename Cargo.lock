@@ -570,8 +570,8 @@ source = "git+https://github.com/sylabs/guest-components?branch=snp-updates#482a
 dependencies = [
  "anyhow",
  "async-trait",
- "az-snp-vtpm 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "az-tdx-vtpm 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "az-snp-vtpm",
+ "az-tdx-vtpm",
  "base64 0.21.7",
  "codicon",
  "csv-rs",
@@ -584,7 +584,7 @@ dependencies = [
  "scroll 0.12.0",
  "serde",
  "serde_json",
- "sev 3.1.1",
+ "sev",
  "sha2",
  "strum",
  "tdx-attest-rs",
@@ -657,9 +657,9 @@ dependencies = [
 
 [[package]]
 name = "az-cvm-vtpm"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53f5fa6fe32f6409dca8202ddd267027ac1f1de4cd91b9e21d92062c14d63cae"
+checksum = "1e2d89967f683d16dafdaacb578a2841daff9f43c856c6a6dc9939cc11272712"
 dependencies = [
  "bincode",
  "jsonwebkey",
@@ -669,27 +669,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev 1.2.1",
- "sha2",
- "thiserror",
- "tss-esapi",
- "zerocopy",
-]
-
-[[package]]
-name = "az-cvm-vtpm"
-version = "0.5.2"
-source = "git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev#1b8efce1572d15f6621c7818d36c13c449324384"
-dependencies = [
- "bincode",
- "jsonwebkey",
- "memoffset",
- "openssl",
- "rsa 0.9.6",
- "serde",
- "serde-big-array",
- "serde_json",
- "sev 3.1.1",
+ "sev",
  "sha2",
  "thiserror",
  "tss-esapi",
@@ -698,56 +678,27 @@ dependencies = [
 
 [[package]]
 name = "az-snp-vtpm"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b394dfe2307a0ee74bf22a7ebbb2563a03739927ad44e216803300260426b5d"
+checksum = "d9da68a854978d9d32cc03ba6cd4a24b1f43fafad91eb7e15578cdf9a9cbdfe7"
 dependencies = [
- "az-cvm-vtpm 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "bincode",
- "clap 4.5.4",
- "serde",
- "sev 1.2.1",
- "thiserror",
- "ureq",
-]
-
-[[package]]
-name = "az-snp-vtpm"
-version = "0.5.2"
-source = "git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev#1b8efce1572d15f6621c7818d36c13c449324384"
-dependencies = [
- "az-cvm-vtpm 0.5.2 (git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev)",
+ "az-cvm-vtpm",
  "bincode",
  "clap 4.5.4",
  "openssl",
  "serde",
- "sev 3.1.1",
+ "sev",
  "thiserror",
  "ureq",
 ]
 
 [[package]]
 name = "az-tdx-vtpm"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "199c3d801575d0e6779aa66876ef88703324892f2fc0b1daf56c2ee09a51ec98"
+checksum = "8575eeaefa72d9591355597f5acf9b4ddee8cc19d8b03d947173ae8fcf1e8c2e"
 dependencies = [
- "az-cvm-vtpm 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "base64-url",
- "bincode",
- "serde",
- "serde_json",
- "thiserror",
- "ureq",
- "zerocopy",
-]
-
-[[package]]
-name = "az-tdx-vtpm"
-version = "0.5.2"
-source = "git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev#1b8efce1572d15f6621c7818d36c13c449324384"
-dependencies = [
- "az-cvm-vtpm 0.5.2 (git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev)",
+ "az-cvm-vtpm",
  "base64-url",
  "bincode",
  "serde",
@@ -2569,27 +2520,6 @@ dependencies = [
  "tokio",
  "url",
  "zeroize",
-]
-
-[[package]]
-name = "kvm-bindings"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a82e7e8725a39a0015e511a46cc1f7d90cecc180db1610c4d0d4339a9e48bd21"
-dependencies = [
- "vmm-sys-util",
-]
-
-[[package]]
-name = "kvm-ioctls"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bedae2ca4a531bebe311abaf9691f5cc14eaa21475243caa2e39c43bb872947d"
-dependencies = [
- "bitflags 2.5.0",
- "kvm-bindings",
- "libc",
- "vmm-sys-util",
 ]
 
 [[package]]
@@ -4431,28 +4361,6 @@ dependencies = [
 
 [[package]]
 name = "sev"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fd749a01c88a51ac718b59fe571177b31e478dfe059267977042477a0531224"
-dependencies = [
- "bincode",
- "bitfield 0.13.2",
- "bitflags 1.3.2",
- "codicon",
- "dirs",
- "hex",
- "iocuddle",
- "kvm-ioctls",
- "openssl",
- "serde",
- "serde-big-array",
- "serde_bytes",
- "static_assertions",
- "uuid",
-]
-
-[[package]]
-name = "sev"
 version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2890179f8ef689340f441ba05f0b268bc14f672ae4b36d629cc2266d0d747ab"
@@ -5467,8 +5375,8 @@ dependencies = [
  "asn1-rs",
  "assert-json-diff",
  "async-trait",
- "az-snp-vtpm 0.5.2 (git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev)",
- "az-tdx-vtpm 0.5.2 (git+https://github.com/wobito/azure-cvm-tooling.git?branch=bump-sev)",
+ "az-snp-vtpm",
+ "az-tdx-vtpm",
  "base64 0.21.7",
  "bincode",
  "byteorder",
@@ -5488,7 +5396,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "sev 3.1.1",
+ "sev",
  "sgx-dcap-quoteverify-rs",
  "shadow-rs",
  "strum",
@@ -5504,16 +5412,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vmm-sys-util"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d1435039746e20da4f8d507a72ee1b916f7b4b05af7a91c093d2c6561934ede"
-dependencies = [
- "bitflags 1.3.2",
- "libc",
-]
 
 [[package]]
 name = "walkdir"
