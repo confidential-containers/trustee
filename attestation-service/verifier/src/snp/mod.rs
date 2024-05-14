@@ -17,7 +17,7 @@ use openssl::{
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
-use std::{os::linux::raw, sync::OnceLock};
+use std::sync::OnceLock;
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
@@ -40,9 +40,9 @@ pub struct Snp {
 pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
     static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
     MILAN_CERT_CHAIN.get_or_init(|| {
-        let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark.pem"))?;
-        if certs.len() < 2 {
-            bail!("Malformed Milan ASK/ARK");
+        let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark_asvk.pem"))?;
+        if certs.len() != 3 {
+            bail!("Malformed Milan ASK/ARK/ASVK");
         }
 
         let vendor_certs = VendorCertificates {
@@ -161,43 +161,41 @@ pub(crate) fn verify_report_signature(
 ) -> Result<()> {
     // check cert chain
     let VendorCertificates { ask, ark, asvk } = vendor_certs;
-    let vcek = verify_cert_chain(cert_chain, ask, ark, asvk)?;
+
+    // verify VCEK or VLEK cert chain
+    // the VEK can be either VCEK or VLEK
+    let vek = verify_cert_chain(cert_chain, ask, ark, asvk)?;
 
     // OpenSSL bindings do not expose custom extensions
-    // Parse the vcek using x509_parser
-    let vcek_der = &vcek.to_der()?;
-    let parsed_vcek = X509Certificate::from_der(vcek_der)?.1.tbs_certificate;
+    // Parse the vek using x509_parser
+    let vek_der = &vek.to_der()?;
+    let parsed_vek = X509Certificate::from_der(vek_der)?.1.tbs_certificate;
 
-    let subject = vcek.subject_name();
-    let common_name = subject
-        .entries_by_nid(Nid::COMMONNAME)
-        .next()
-        .and_then(|entry| entry.data().as_utf8().ok())
-        .map(|asn1| asn1.to_string());
+    let common_name = get_common_name(&vek).context("No common name found in certificate")?;
 
-    if let Some(cn) = common_name {
-        if cn == "VCEK" {
-            if get_oid_octets::<64>(&parsed_vcek, HW_ID_OID)? != report.chip_id {
-                return Err(anyhow!("Chip ID mismatch"));
-            }
+    // if the common name is "VCEK", then the VEK is a VCEK
+    // so lets check the chip id
+    if common_name == "VCEK" {
+        if get_oid_octets::<64>(&parsed_vek, HW_ID_OID)? != report.chip_id {
+            bail!("Chip ID mismatch");
         }
     }
 
     // tcb version
     // these integer extensions are 3 bytes with the last byte as the data
-    if get_oid_int(&parsed_vcek, UCODE_SPL_OID)? != report.reported_tcb.microcode {
+    if get_oid_int(&parsed_vek, UCODE_SPL_OID)? != report.reported_tcb.microcode {
         return Err(anyhow!("Microcode version mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, SNP_SPL_OID)? != report.reported_tcb.snp {
+    if get_oid_int(&parsed_vek, SNP_SPL_OID)? != report.reported_tcb.snp {
         return Err(anyhow!("SNP version mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, TEE_SPL_OID)? != report.reported_tcb.tee {
+    if get_oid_int(&parsed_vek, TEE_SPL_OID)? != report.reported_tcb.tee {
         return Err(anyhow!("TEE version mismatch"));
     }
 
-    if get_oid_int(&parsed_vcek, LOADER_SPL_OID)? != report.reported_tcb.bootloader {
+    if get_oid_int(&parsed_vek, LOADER_SPL_OID)? != report.reported_tcb.bootloader {
         return Err(anyhow!("Boot loader version mismatch"));
     }
 
@@ -205,7 +203,7 @@ pub(crate) fn verify_report_signature(
     let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
     let data = &bincode::serialize(&report)?[..=0x29f];
 
-    let pub_key = EcKey::try_from(vcek.public_key()?)?;
+    let pub_key = EcKey::try_from(vek.public_key()?)?;
     let signed = sig.verify(&sha384(data), &pub_key)?;
     if !signed {
         return Err(anyhow!("Signature validation failed."));
@@ -226,24 +224,28 @@ fn verify_cert_chain(
     ark: &X509,
     asvk: &X509,
 ) -> Result<X509> {
+    // raw versioned endorsement key (VLEK or VCEK)
     let raw_vek = cert_chain
         .iter()
         .find(|c| c.cert_type == CertType::VCEK || c.cert_type == CertType::VLEK)
         .ok_or_else(|| anyhow!("VEK not found."))?;
-    let vek = x509::X509::from_der(raw_vek.data()).context("Failed to load VEK")?;
+    let vek = x509::X509::from_der(raw_vek.data())
+        .context("Failed to load versioned endorsement key (VLEK or VCEK)")?;
 
-    if raw_vek.cert_type == CertType::VCEK {
-        // Chain: ARK -> ARK -> ASK -> VCEK
-        verify_signature(ark, ark, "ARK")?;
-        verify_signature(ask, ark, "ASK")?;
-        verify_signature(&vek, ask, "VCEK")?;
-    } else if raw_vek.cert_type == CertType::VLEK {
-        // Chain: ARK -> ARK -> ASVK -> VLEK
-        verify_signature(ark, ark, "ARK")?;
-        verify_signature(asvk, ark, "ASVK")?;
-        verify_signature(&vek, asvk, "VLEK")?;
-    } else {
-        return Err(anyhow!("VEK not found."));
+    match raw_vek.cert_type {
+        CertType::VCEK => {
+            // Chain: ARK -> ARK -> ASK -> VCEK
+            verify_signature(ark, ark, "ARK")?;
+            verify_signature(ask, ark, "ASK")?;
+            verify_signature(&vek, ask, "VCEK")?;
+        }
+        CertType::VLEK => {
+            // Chain: ARK -> ARK -> ASVK -> VLEK
+            verify_signature(ark, ark, "ARK")?;
+            verify_signature(asvk, ark, "ASVK")?;
+            verify_signature(&vek, asvk, "VLEK")?;
+        }
+        _ => bail!("Certificate not of type versioned endorsement key (VLEK or VCEK)"),
     }
 
     Ok(vek)
@@ -276,10 +278,19 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
     claims_map as TeeEvidenceParsedClaim
 }
 
+fn get_common_name(cert: &x509::X509) -> Result<String> {
+    let mut entries = cert.subject_name().entries_by_nid(Nid::COMMONNAME);
+
+    if let Some(e) = entries.next() {
+        assert_eq!(entries.count(), 0);
+        return Ok(e.data().as_utf8()?.to_string());
+    }
+    Err(anyhow!("No CN found"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use openssl::nid::Nid;
 
     #[test]
     fn check_milan_certificates() {
@@ -296,16 +307,6 @@ mod tests {
             .verify(&(ark.public_key().unwrap() as PKey<Public>))
             .context("Invalid ASK Signature")
             .unwrap());
-    }
-
-    fn get_common_name(cert: &x509::X509) -> Result<String> {
-        let mut entries = cert.subject_name().entries_by_nid(Nid::COMMONNAME);
-
-        if let Some(e) = entries.next() {
-            assert_eq!(entries.count(), 0);
-            return Ok(e.data().as_utf8()?.to_string());
-        }
-        Err(anyhow!("No CN found"))
     }
 
     #[test]
