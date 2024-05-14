@@ -294,9 +294,10 @@ mod tests {
 
     #[test]
     fn check_milan_certificates() {
-        let VendorCertificates { ask, ark, .. } = load_milan_cert_chain().as_ref().unwrap();
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
         assert_eq!(get_common_name(ark).unwrap(), "ARK-Milan");
         assert_eq!(get_common_name(ask).unwrap(), "SEV-Milan");
+        assert_eq!(get_common_name(asvk).unwrap(), "SEV-VLEK-Milan");
 
         assert!(ark
             .verify(&(ark.public_key().unwrap() as PKey<Public>))
@@ -306,6 +307,11 @@ mod tests {
         assert!(ask
             .verify(&(ark.public_key().unwrap() as PKey<Public>))
             .context("Invalid ASK Signature")
+            .unwrap());
+
+        assert!(asvk
+            .verify(&(ark.public_key().unwrap() as PKey<Public>))
+            .context("Invalid ASVK Signature")
             .unwrap());
     }
 
