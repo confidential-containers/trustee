@@ -315,6 +315,24 @@ mod tests {
             .unwrap());
     }
 
+    fn check_oid_ints(vek: &TbsCertificate) {
+        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
+        for oid in oids {
+            get_oid_int(&vek, oid).unwrap();
+        }
+    }
+
+    #[test]
+    fn check_vlek_parsing() {
+        let vlek_der = include_bytes!("test-vlek.der");
+        let parsed_vlek = X509Certificate::from_der(vlek_der)
+            .unwrap()
+            .1
+            .tbs_certificate;
+
+        check_oid_ints(&parsed_vlek);
+    }
+
     #[test]
     fn check_vcek_parsing() {
         let vcek_der = include_bytes!("test-vcek.der");
@@ -324,10 +342,8 @@ mod tests {
             .tbs_certificate;
 
         get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
-        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
-        for oid in oids {
-            get_oid_int(&parsed_vcek, oid).unwrap();
-        }
+
+        check_oid_ints(&parsed_vcek);
     }
 
     #[test]
@@ -339,10 +355,8 @@ mod tests {
             .tbs_certificate;
 
         get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
-        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
-        for oid in oids {
-            get_oid_int(&parsed_vcek, oid).unwrap();
-        }
+
+        check_oid_ints(&parsed_vcek);
     }
 
     #[test]
@@ -354,10 +368,8 @@ mod tests {
             .tbs_certificate;
 
         get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
-        let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
-        for oid in oids {
-            get_oid_int(&parsed_vcek, oid).unwrap();
-        }
+
+        check_oid_ints(&parsed_vcek);
     }
 
     #[test]
@@ -382,6 +394,28 @@ mod tests {
     }
 
     #[test]
+    fn check_vlek_signature_verification() {
+        let vlek = include_bytes!("test-vlek.der").to_vec();
+        let cert_table = vec![CertTableEntry::new(CertType::VLEK, vlek)];
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
+    }
+
+    #[test]
+    fn check_vlek_signature_failure() {
+        let mut vlek = include_bytes!("test-vlek.der").to_vec();
+
+        // corrupt some byte, while it should remain a valid cert
+        vlek[42] += 1;
+        X509::from_der(&vlek).expect("failed to parse der");
+
+        let cert_table = vec![CertTableEntry::new(CertType::VLEK, vlek)];
+        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
+    }
+
+
+    #[test]
     fn check_milan_chain_signature_failure() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek)];
@@ -401,6 +435,17 @@ mod tests {
     }
 
     #[test]
+    fn check_vlek_report_signature() {
+        let vlek = include_bytes!("test-vlek.der").to_vec();
+        let bytes = include_bytes!("test-vlek-report.bin");
+        let attestation_report = bincode::deserialize::<AttestationReport>(bytes).unwrap();
+        let cert_chain = vec![CertTableEntry::new(CertType::VLEK, vlek)];
+        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
+    }
+
+
+    #[test]
     fn check_report_signature_failure() {
         let vcek = include_bytes!("test-vcek.der").to_vec();
         let mut bytes = include_bytes!("test-report.bin").to_vec();
@@ -410,6 +455,20 @@ mod tests {
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, vcek)];
+        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
+    }
+
+    #[test]
+    fn check_vlek_report_signature_failure() {
+        let vlek = include_bytes!("test-vlek.der").to_vec();
+        let mut bytes = include_bytes!("test-vlek-report.bin").to_vec();
+
+        // corrupt some byte
+        bytes[42] += 1;
+
+        let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
+        let cert_chain = vec![CertTableEntry::new(CertType::VLEK, vlek)];
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
     }
