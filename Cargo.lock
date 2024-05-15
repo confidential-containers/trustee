@@ -566,7 +566,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/sylabs/guest-components?branch=snp-updates#482a762be2ffcb97bb2da29b6671dffb92251de6"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5ae8d8ed136aef6303dc9802df04d19b86e1e70d#5ae8d8ed136aef6303dc9802df04d19b86e1e70d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1316,7 +1316,7 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/sylabs/guest-components?branch=snp-updates#482a762be2ffcb97bb2da29b6671dffb92251de6"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5ae8d8ed136aef6303dc9802df04d19b86e1e70d#5ae8d8ed136aef6303dc9802df04d19b86e1e70d"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2501,7 +2501,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/sylabs/guest-components?branch=snp-updates#482a762be2ffcb97bb2da29b6671dffb92251de6"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5ae8d8ed136aef6303dc9802df04d19b86e1e70d#5ae8d8ed136aef6303dc9802df04d19b86e1e70d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3798,7 +3798,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/sylabs/guest-components?branch=snp-updates#482a762be2ffcb97bb2da29b6671dffb92251de6"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5ae8d8ed136aef6303dc9802df04d19b86e1e70d#5ae8d8ed136aef6303dc9802df04d19b86e1e70d"
 dependencies = [
  "anyhow",
  "serde",
