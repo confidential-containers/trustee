@@ -144,8 +144,8 @@ fn get_oid_octets<const N: usize>(
         .context("Unexpected data size")
 }
 
-fn get_oid_int(vcek: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
-    let val = vcek
+fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
+    let val = cert
         .get_extension_unique(&oid)?
         .ok_or_else(|| anyhow!("Oid not found"))?
         .value;
@@ -164,17 +164,17 @@ pub(crate) fn verify_report_signature(
 
     // verify VCEK or VLEK cert chain
     // the key can be either VCEK or VLEK
-    let endorsment_key = verify_cert_chain(cert_chain, ask, ark, asvk)?;
+    let endorsement_key = verify_cert_chain(cert_chain, ask, ark, asvk)?;
 
     // OpenSSL bindings do not expose custom extensions
     // Parse the key using x509_parser
-    let endorsement_key_der = &endorsment_key.to_der()?;
+    let endorsement_key_der = &endorsement_key.to_der()?;
     let parsed_endorsement_key = X509Certificate::from_der(endorsement_key_der)?
         .1
         .tbs_certificate;
 
     let common_name =
-        get_common_name(&endorsment_key).context("No common name found in certificate")?;
+        get_common_name(&endorsement_key).context("No common name found in certificate")?;
 
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
@@ -206,7 +206,7 @@ pub(crate) fn verify_report_signature(
     let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
     let data = &bincode::serialize(&report)?[..=0x29f];
 
-    let pub_key = EcKey::try_from(endorsment_key.public_key()?)?;
+    let pub_key = EcKey::try_from(endorsement_key.public_key()?)?;
     let signed = sig.verify(&sha384(data), &pub_key)?;
     if !signed {
         return Err(anyhow!("Signature validation failed."));
@@ -228,12 +228,12 @@ fn verify_cert_chain(
     asvk: &X509,
 ) -> Result<X509> {
     // get endorsement keys (VLEK or VCEK)
-    let endorsment_keys: Vec<&CertTableEntry> = cert_chain
+    let endorsement_keys: Vec<&CertTableEntry> = cert_chain
         .iter()
         .filter(|e| e.cert_type == CertType::VCEK || e.cert_type == CertType::VLEK)
         .collect();
 
-    let &[key] = endorsment_keys.as_slice() else {
+    let &[key] = endorsement_keys.as_slice() else {
         bail!("Could not find either VCEK or VLEK in cert chain")
     };
 
@@ -322,10 +322,10 @@ mod tests {
             .unwrap());
     }
 
-    fn check_oid_ints(vek: &TbsCertificate) {
+    fn check_oid_ints(cert: &TbsCertificate) {
         let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
         for oid in oids {
-            get_oid_int(&vek, oid).unwrap();
+            get_oid_int(&cert, oid).unwrap();
         }
     }
 
