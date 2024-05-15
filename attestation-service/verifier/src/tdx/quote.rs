@@ -463,7 +463,7 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
         0 => None,
         _ => Some(&mut supp_data_desc),
     };
-    
+
     // call DCAP quote verify library for quote verification
     let (collateral_expiration_status, quote_verification_result) =
         tee_verify_quote(quote, collateral.as_deref(), current_time, None, p_supplemental_data)
