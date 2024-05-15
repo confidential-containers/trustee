@@ -441,7 +441,7 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
     }
 
     // get collateral
-    let _collateral = match tee_qv_get_collateral(quote) {
+    let collateral = match tee_qv_get_collateral(quote) {
         Ok(c) => {
             debug!("tee_qv_get_collateral successfully returned.");
             Some(c)
@@ -451,8 +451,6 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
             None
         }
     };
-
-    let p_collateral: Option<&[u8]> = None;
 
     // set current time. This is only for sample purposes, in production mode a trusted time should be used.
     //
@@ -465,10 +463,10 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
         0 => None,
         _ => Some(&mut supp_data_desc),
     };
-
+    
     // call DCAP quote verify library for quote verification
     let (collateral_expiration_status, quote_verification_result) =
-        tee_verify_quote(quote, p_collateral, current_time, None, p_supplemental_data)
+        tee_verify_quote(quote, collateral.as_deref(), current_time, None, p_supplemental_data)
             .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
 
     debug!("tee_verify_quote successfully returned.");
