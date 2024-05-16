@@ -292,6 +292,10 @@ fn get_common_name(cert: &x509::X509) -> Result<String> {
         bail!("No CN found");
     };
 
+    if entries.count() != 0 {
+        bail!("No CN found");
+    }
+
     Ok(e.data().as_utf8()?.to_string())
 }
 
