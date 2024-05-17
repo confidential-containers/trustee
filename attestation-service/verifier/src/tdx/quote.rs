@@ -465,9 +465,14 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
     };
 
     // call DCAP quote verify library for quote verification
-    let (collateral_expiration_status, quote_verification_result) =
-        tee_verify_quote(quote, collateral.as_deref(), current_time, None, p_supplemental_data)
-            .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
+    let (collateral_expiration_status, quote_verification_result) = tee_verify_quote(
+        quote,
+        collateral.as_deref(),
+        current_time,
+        None,
+        p_supplemental_data,
+    )
+    .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
 
     debug!("tee_verify_quote successfully returned.");
 
