@@ -5,10 +5,7 @@
 use crate::attestation::Attest;
 use anyhow::*;
 use async_trait::async_trait;
-use attestation_service::{
-    config::Config as AsConfig, policy_engine::SetPolicyInput, AttestationService, Data,
-    HashAlgorithm,
-};
+use attestation_service::{config::Config as AsConfig, AttestationService, Data, HashAlgorithm};
 use kbs_types::{Attestation, Tee};
 use serde_json::json;
 use tokio::sync::RwLock;
@@ -19,10 +16,12 @@ pub struct BuiltInCoCoAs {
 
 #[async_trait]
 impl Attest for BuiltInCoCoAs {
-    async fn set_policy(&self, input: &[u8]) -> Result<()> {
-        let request: SetPolicyInput =
-            serde_json::from_slice(input).context("parse SetPolicyInput")?;
-        self.inner.write().await.set_policy(request).await
+    async fn set_policy(&self, policy_id: &str, policy: &str) -> Result<()> {
+        self.inner
+            .write()
+            .await
+            .set_policy(policy_id.to_string(), policy.to_string())
+            .await
     }
 
     async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {

@@ -84,7 +84,8 @@ message AttestationResponse {
 }
 
 message SetPolicyRequest {
-    string input = 1;
+    string policy_id = 1;
+    string policy = 2;
 }
 message SetPolicyResponse {}
 

@@ -6,13 +6,11 @@ use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use sha2::{Digest, Sha384};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::{collections::HashMap, str::FromStr};
 
-use super::{
-    PolicyDigest, PolicyDigestEntry, PolicyEngine, PolicyListEntry, PolicyType, SetPolicyInput,
-};
+use super::{PolicyDigest, PolicyEngine};
 
 #[derive(Debug, Clone)]
 pub struct OPA {
@@ -42,6 +40,12 @@ impl OPA {
 
         Ok(Self { policy_dir_path })
     }
+
+    fn is_valid_policy_id(policy_id: &str) -> bool {
+        policy_id
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    }
 }
 
 #[async_trait]
@@ -59,7 +63,7 @@ impl PolicyEngine for OPA {
             .to_str()
             .ok_or_else(|| anyhow!("Miss Policy DirPath"))?;
 
-        for policy_id in policy_ids {
+        for policy_id in &policy_ids {
             let input = input.clone();
             let policy_file_path = format!("{policy_dir_path}/{policy_id}.rego");
 
@@ -79,7 +83,7 @@ impl PolicyEngine for OPA {
 
             // Add policy as data
             engine
-                .add_policy_from_file(policy_file_path)
+                .add_policy(policy_id.clone(), policy)
                 .context("load policy")?;
 
             let reference_data_map = serde_json::to_string(&reference_data_map)?;
@@ -103,30 +107,30 @@ impl PolicyEngine for OPA {
         Ok(res)
     }
 
-    async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
-        let policy_type = PolicyType::from_str(&input.r#type)
-            .map_err(|_| anyhow!("{} is not support by AS", &input.r#type))?;
-        if policy_type != PolicyType::Rego {
-            bail!("OPA Policy Engine only support .rego policy");
+    async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()> {
+        let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(policy)
+            .context("Base64 decode OPA policy string")?;
+
+        if !Self::is_valid_policy_id(&policy_id) {
+            bail!("illegal policy id. Only support alphabet, numeric, `-` or `_` ");
         }
 
-        let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .decode(input.policy)
-            .map_err(|e| anyhow!("Base64 decode OPA policy string failed: {:?}", e))?;
         let mut policy_file_path = PathBuf::from(
             &self
                 .policy_dir_path
                 .to_str()
                 .ok_or_else(|| anyhow!("Policy DirPath to string failed"))?,
         );
-        policy_file_path.push(format!("{}.rego", input.policy_id));
+
+        policy_file_path.push(format!("{}.rego", policy_id));
 
         tokio::fs::write(&policy_file_path, policy_bytes)
             .await
             .map_err(|e| anyhow!("Write OPA policy to file failed: {:?}", e))
     }
 
-    async fn list_policies(&self) -> Result<Vec<PolicyListEntry>> {
+    async fn list_policies(&self) -> Result<HashMap<String, PolicyDigest>> {
         let mut policy_ids = Vec::new();
         let mut entries = tokio::fs::read_dir(&self.policy_dir_path).await?;
         while let Some(entry) = entries.next_entry().await? {
@@ -140,7 +144,7 @@ impl PolicyEngine for OPA {
             }
         }
 
-        let mut policy_list = Vec::new();
+        let mut policy_list = HashMap::new();
 
         for id in policy_ids.iter() {
             let policy_file_path = self.policy_dir_path.join(format!("{id}.rego"));
@@ -151,13 +155,10 @@ impl PolicyEngine for OPA {
             let mut hasher = Sha384::new();
             hasher.update(policy);
             let digest = hasher.finalize().to_vec();
-            policy_list.push(PolicyListEntry {
-                id: id.to_string(),
-                digest: PolicyDigestEntry {
-                    algorithm: "sha384".to_string(),
-                    value: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest),
-                },
-            });
+            policy_list.insert(
+                id.to_string(),
+                base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest),
+            );
         }
 
         Ok(policy_list)
@@ -232,13 +233,13 @@ default allow = true"
 
         let get_policy_output = "cGFja2FnZSBwb2xpY3kKZGVmYXVsdCBhbGxvdyA9IHRydWU".to_string();
 
-        let input = SetPolicyInput {
-            r#type: "rego".to_string(),
-            policy_id: "test".to_string(),
-            policy: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy),
-        };
-
-        assert!(opa.set_policy(input).await.is_ok());
+        assert!(opa
+            .set_policy(
+                "test".to_string(),
+                base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy)
+            )
+            .await
+            .is_ok());
         let policy_list = opa.list_policies().await.unwrap();
         assert_eq!(policy_list.len(), 2);
         let test_policy = opa.get_policy("test".to_string()).await.unwrap();

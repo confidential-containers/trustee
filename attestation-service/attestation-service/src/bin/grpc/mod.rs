@@ -1,4 +1,3 @@
-use attestation_service::policy_engine::SetPolicyInput;
 use attestation_service::HashAlgorithm;
 use attestation_service::{
     config::Config, config::ConfigError, AttestationService as Service, ServiceError, Tee,
@@ -80,15 +79,12 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let request: SetPolicyRequest = request.into_inner();
 
         info!("SetPolicy API called.");
-        debug!("SetPolicyInput: {}", &request.input);
-
-        let set_policy_input: SetPolicyInput = serde_json::from_str(&request.input)
-            .map_err(|_| Status::aborted("Bad SetPolicyInput"))?;
+        debug!("SetPolicyInput: {request:#?}");
 
         self.write()
             .await
             .attestation_service
-            .set_policy(set_policy_input)
+            .set_policy(request.policy_id, request.policy)
             .await
             .map_err(|e| Status::aborted(format!("Set Attestation Policy Failed: {e}")))?;
 
