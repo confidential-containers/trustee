@@ -1,29 +1,16 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 use strum::EnumString;
 
 pub mod opa;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SetPolicyInput {
-    pub r#type: String,
-    pub policy_id: String,
-    pub policy: String,
-}
-
 #[derive(Debug, EnumString, Deserialize)]
 #[strum(ascii_case_insensitive)]
 pub enum PolicyEngineType {
     OPA,
-}
-
-#[derive(Debug, EnumString, Deserialize, PartialEq)]
-#[strum(ascii_case_insensitive)]
-pub enum PolicyType {
-    Rego,
 }
 
 impl PolicyEngineType {
@@ -35,22 +22,13 @@ impl PolicyEngineType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct PolicyListEntry {
-    pub id: String,
-    pub digest: PolicyDigestEntry,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct PolicyDigestEntry {
-    pub algorithm: String,
-    pub value: String,
-}
-
 type PolicyDigest = String;
 
 #[async_trait]
 pub trait PolicyEngine {
+    /// Verify an input body against a set of ref values and a list of policies
+    /// return a list of policy ids with their sha384 at eval time
+    /// abort early on first failed validation and any errors.
     /// The result is a key-value map.
     /// - `key`: the policy id
     /// - `value`: the digest of the policy (using **Sha384**).
@@ -61,9 +39,11 @@ pub trait PolicyEngine {
         policy_ids: Vec<String>,
     ) -> Result<HashMap<String, PolicyDigest>>;
 
-    async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()>;
+    async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()>;
 
-    async fn list_policies(&self) -> Result<Vec<PolicyListEntry>>;
+    /// The result is a map. The key is the policy id, and the
+    /// value is the digest of the policy (using **Sha384**).
+    async fn list_policies(&self) -> Result<HashMap<String, PolicyDigest>>;
 
     async fn get_policy(&self, policy_id: String) -> Result<String>;
 }

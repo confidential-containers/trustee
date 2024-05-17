@@ -25,7 +25,7 @@ pub mod intel_trust_authority;
 #[async_trait]
 pub trait Attest: Send + Sync {
     /// Set Attestation Policy
-    async fn set_policy(&self, _input: &[u8]) -> Result<()> {
+    async fn set_policy(&self, _policy_id: &str, _policy: &str) -> Result<()> {
         Err(anyhow!("Set Policy API is unimplemented"))
     }
 
@@ -79,14 +79,14 @@ impl AttestationService {
         }
     }
 
-    pub async fn set_policy(&self, input: &[u8]) -> Result<()> {
+    pub async fn set_policy(&self, policy_id: &str, policy: &str) -> Result<()> {
         match self {
             #[cfg(feature = "coco-as-grpc")]
-            AttestationService::CoCoASgRPC(inner) => inner.set_policy(input).await,
+            AttestationService::CoCoASgRPC(inner) => inner.set_policy(policy_id, policy).await,
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
-            AttestationService::CoCoASBuiltIn(inner) => inner.set_policy(input).await,
+            AttestationService::CoCoASBuiltIn(inner) => inner.set_policy(policy_id, policy).await,
             #[cfg(feature = "intel-trust-authority-as")]
-            AttestationService::IntelTA(inner) => inner.set_policy(input).await,
+            AttestationService::IntelTA(inner) => inner.set_policy(policy_id, policy).await,
         }
     }
 }

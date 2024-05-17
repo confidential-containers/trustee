@@ -83,9 +83,11 @@ impl GrpcClientPool {
 
 #[async_trait]
 impl Attest for GrpcClientPool {
-    async fn set_policy(&self, input: &[u8]) -> Result<()> {
-        let input = String::from_utf8(input.to_vec()).context("parse SetPolicyInput")?;
-        let req = tonic::Request::new(SetPolicyRequest { input });
+    async fn set_policy(&self, policy_id: &str, policy: &str) -> Result<()> {
+        let req = tonic::Request::new(SetPolicyRequest {
+            policy_id: policy_id.to_string(),
+            policy: policy.to_string(),
+        });
 
         let mut client = { self.pool.lock().await.get().await? };
 
