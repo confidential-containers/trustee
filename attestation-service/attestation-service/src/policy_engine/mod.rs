@@ -48,21 +48,18 @@ pub struct PolicyDigestEntry {
 }
 
 type PolicyDigest = String;
-type EvaluationResult = serde_json::Value;
 
 #[async_trait]
 pub trait PolicyEngine {
     /// The result is a key-value map.
     /// - `key`: the policy id
-    /// - `value`: It will be a tuple. The first element is the digest of
-    /// the policy (using **Sha384**). The second element is the evaluation
-    /// output of the policy.
+    /// - `value`: the digest of the policy (using **Sha384**).
     async fn evaluate(
         &self,
         reference_data_map: HashMap<String, Vec<String>>,
         input: String,
         policy_ids: Vec<String>,
-    ) -> Result<HashMap<String, (PolicyDigest, EvaluationResult)>>;
+    ) -> Result<HashMap<String, PolicyDigest>>;
 
     async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()>;
 
