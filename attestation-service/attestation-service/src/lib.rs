@@ -224,8 +224,7 @@ impl AttestationService {
             .map(|(k, v)| {
                 json!({
                     "policy-id": k,
-                    "policy-hash": v.0,
-                    "evaluation-result": v.1,
+                    "policy-hash": v,
                 })
             })
             .collect();
