@@ -33,10 +33,10 @@ $REQ
 EOF
 ```
 
-Then, we can use the policy to check against an evidence. We use the [request](../tests/coco-as/policy/grpc-check.json) to do this.
+Then, we can use the policy to check against an evidence. We use the [request](../tests/coco-as/policy/check.json) to do this.
 
 ```shell
-REQ=$(cat ../../tests/coco-as/policy/grpc-check.json)
+REQ=$(cat ../../tests/coco-as/policy/check.json)
 grpcurl \
   -plaintext \
   -import-path ../../protos \
@@ -64,13 +64,13 @@ curl -k -X POST http://127.0.0.1:8080/policy \
      -d @../../tests/coco-as/policy/restful-set-policy.json
 ```
 
-Then, we can use the policy to check against an evidence. We use the [request](../tests/coco-as/policy/grpc-check.json) to do this.
+Then, we can use the policy to check against an evidence. We use the [request](../tests/coco-as/policy/check.json) to do this.
 
 ```shell
 curl -k -X POST http://127.0.0.1:8080/attestation \
      -i \
      -H 'Content-Type: application/json' \
-     -d @../../tests/coco-as/policy/restful-check.json
+     -d @../../tests/coco-as/policy/check.json
 ```
 
 ## How to Write a Policy (Experimental)
