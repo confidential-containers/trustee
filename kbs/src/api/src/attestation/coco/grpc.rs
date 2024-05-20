@@ -16,7 +16,7 @@ use tonic::transport::Channel;
 
 use self::attestation::{
     attestation_request::RuntimeData, attestation_service_client::AttestationServiceClient,
-    AttestationRequest, SetPolicyRequest, Tee as GrpcTee,
+    AttestationRequest, SetPolicyRequest,
 };
 
 mod attestation {
@@ -27,20 +27,6 @@ pub const DEFAULT_AS_ADDR: &str = "http://127.0.0.1:50004";
 pub const DEFAULT_POOL_SIZE: u64 = 100;
 
 pub const COCO_AS_HASH_ALGORITHM: &str = "sha384";
-
-fn to_grpc_tee(tee: Tee) -> GrpcTee {
-    match tee {
-        Tee::AzSnpVtpm => GrpcTee::AzSnpVtpm,
-        Tee::AzTdxVtpm => GrpcTee::AzTdxVtpm,
-        Tee::Cca => GrpcTee::Cca,
-        Tee::Csv => GrpcTee::Csv,
-        Tee::Sample => GrpcTee::Sample,
-        Tee::Sev => GrpcTee::Sev,
-        Tee::Sgx => GrpcTee::Sgx,
-        Tee::Snp => GrpcTee::Snp,
-        Tee::Tdx => GrpcTee::Tdx,
-    }
-}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct GrpcConfig {
@@ -107,8 +93,13 @@ impl Attest for GrpcClientPool {
         let runtime_data_plaintext = serde_json::to_string(&runtime_data_plaintext)
             .context("CoCo AS client: serialize runtime data failed")?;
 
+        let tee = serde_json::to_string(&tee)
+            .context("CoCo AS client: serialize tee type failed.")?
+            .trim_end_matches('"')
+            .trim_start_matches('"')
+            .to_string();
         let req = tonic::Request::new(AttestationRequest {
-            tee: to_grpc_tee(tee).into(),
+            tee,
             evidence: URL_SAFE_NO_PAD.encode(attestation.tee_evidence),
             runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
             init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),

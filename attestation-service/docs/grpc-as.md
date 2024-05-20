@@ -33,7 +33,7 @@ PCCS are usually supported by cloud providers, you can find the steps to configu
 - IBM Cloud: [Attestation with Intel SGX and Data Center Attestation Primitives (DCAP) for Virtual Servers for VPC](https://cloud.ibm.com/docs/vpc?topic=vpc-about-attestation-sgx-dcap-vpc)
 Or you can [set-up a PCCS yourself](https://download.01.org/intel-sgx/sgx-dcap/1.9/windows/docs/Intel_SGX_DCAP_Windows_SW_Installation_Guide.pdf).
 
-Then an attestation request can be used to request the server. We provide an [example request of validating a SGX quote](../tests/coco-as/grpc-request.json).
+Then an attestation request can be used to request the server. We provide an [example request of validating a SGX quote](../tests/coco-as/request.json).
 
 You can use the [tool](https://github.com/confidential-containers/guest-components/tree/main/attestation-agent/attester#evidence-getter-tool) to generate a report on
 any supported platform.
@@ -44,7 +44,7 @@ any supported platform.
 
 cd <path-to-attestation-service>
 
-REQ=$(cat tests/coco-as/grpc-request.json)
+REQ=$(cat tests/coco-as/request.json)
 grpcurl \
   -plaintext \
   -import-path protos \
