@@ -16,7 +16,7 @@ use anyhow::{anyhow, Context, Result};
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
-use policy_engine::{PolicyEngine, PolicyEngineType, SetPolicyInput};
+use policy_engine::{PolicyEngine, PolicyEngineType};
 use rvps::{RvpsApi, RvpsError};
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
@@ -129,13 +129,14 @@ impl AttestationService {
     }
 
     /// Set Attestation Verification Policy.
-    pub async fn set_policy(&mut self, input: SetPolicyInput) -> Result<()> {
-        self.policy_engine.set_policy(input).await?;
+    pub async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()> {
+        self.policy_engine.set_policy(policy_id, policy).await?;
         Ok(())
     }
 
     /// Get Attestation Verification Policy List.
-    pub async fn list_policies(&self) -> Result<Vec<crate::policy_engine::PolicyListEntry>> {
+    /// The result is a `policy-id` -> `policy hash` map.
+    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
         self.policy_engine
             .list_policies()
             .await
@@ -224,8 +225,7 @@ impl AttestationService {
             .map(|(k, v)| {
                 json!({
                     "policy-id": k,
-                    "policy-hash": v.0,
-                    "evaluation-result": v.1,
+                    "policy-hash": v,
                 })
             })
             .collect();

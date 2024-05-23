@@ -1,4 +1,4 @@
-use attestation_service::policy_engine::SetPolicyInput;
+use anyhow::bail;
 use attestation_service::HashAlgorithm;
 use attestation_service::{
     config::Config, config::ConfigError, AttestationService as Service, ServiceError, Tee,
@@ -15,9 +15,7 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
-use crate::as_api::{
-    AttestationRequest, AttestationResponse, SetPolicyRequest, SetPolicyResponse, Tee as GrpcTee,
-};
+use crate::as_api::{AttestationRequest, AttestationResponse, SetPolicyRequest, SetPolicyResponse};
 
 use crate::rvps_api::reference_value_provider_service_server::{
     ReferenceValueProviderService, ReferenceValueProviderServiceServer,
@@ -28,18 +26,21 @@ use crate::rvps_api::{
     ReferenceValueRegisterResponse,
 };
 
-fn to_kbs_tee(tee: GrpcTee) -> Tee {
-    match tee {
-        GrpcTee::Sev => Tee::Sev,
-        GrpcTee::Sgx => Tee::Sgx,
-        GrpcTee::Snp => Tee::Snp,
-        GrpcTee::Tdx => Tee::Tdx,
-        GrpcTee::Csv => Tee::Csv,
-        GrpcTee::Sample => Tee::Sample,
-        GrpcTee::AzSnpVtpm => Tee::AzSnpVtpm,
-        GrpcTee::Cca => Tee::Cca,
-        GrpcTee::AzTdxVtpm => Tee::AzTdxVtpm,
-    }
+fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
+    let tee = match tee {
+        "sev" => Tee::Sev,
+        "sgx" => Tee::Sgx,
+        "snp" => Tee::Snp,
+        "tdx" => Tee::Tdx,
+        "csv" => Tee::Csv,
+        "sample" => Tee::Sample,
+        "azsnpvtpm" => Tee::AzSnpVtpm,
+        "cca" => Tee::Cca,
+        "aztdxvtpm" => Tee::AzTdxVtpm,
+        other => bail!("Unsupported TEE type: {other}"),
+    };
+
+    Ok(tee)
 }
 
 #[derive(Error, Debug)]
@@ -80,15 +81,12 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let request: SetPolicyRequest = request.into_inner();
 
         info!("SetPolicy API called.");
-        debug!("SetPolicyInput: {}", &request.input);
-
-        let set_policy_input: SetPolicyInput = serde_json::from_str(&request.input)
-            .map_err(|_| Status::aborted("Bad SetPolicyInput"))?;
+        debug!("SetPolicyInput: {request:#?}");
 
         self.write()
             .await
             .attestation_service
-            .set_policy(set_policy_input)
+            .set_policy(request.policy_id, request.policy)
             .await
             .map_err(|e| Status::aborted(format!("Set Attestation Policy Failed: {e}")))?;
 
@@ -104,10 +102,8 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         info!("AttestationEvaluate API called.");
         debug!("Evidence: {}", &request.evidence);
 
-        let tee = to_kbs_tee(
-            GrpcTee::from_i32(request.tee)
-                .ok_or_else(|| Status::aborted(format!("Invalid TEE {}", request.tee)))?,
-        );
+        let tee = to_kbs_tee(&request.tee)
+            .map_err(|e| Status::aborted(format!("parse TEE type: {e}")))?;
         let evidence = URL_SAFE_NO_PAD
             .decode(request.evidence)
             .map_err(|e| Status::aborted(format!("Illegal input Evidence: {e}")))?;

@@ -144,6 +144,8 @@ The results of every policy that is evaluated are included in the attestation to
 
 If the policy is not updated, the AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
 
+Concrete policy usages please refer to [this guide](docs/policy.md).
+
 ### Reference Value Provider Service
 
 The [Reference Value Provider Service](rvps/README.md) (RVPS) is a module integrated into the AS to verify,

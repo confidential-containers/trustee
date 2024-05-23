@@ -2,21 +2,9 @@ syntax = "proto3";
 
 package attestation;
 
-enum Tee {
-    SEV = 0;
-    SGX = 1;
-    SNP = 2;
-    TDX = 3;
-    Sample = 4;
-    AzSnpVtpm = 5;
-    CSV = 6;
-    CCA = 7;
-    AzTdxVtpm = 8;
-}
-
 message AttestationRequest {
     // TEE enum. Specify the evidence type
-    Tee tee = 1;
+    string tee = 1;
 
     // Base64 encoded evidence. The alphabet is URL_SAFE_NO_PAD.
     // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
@@ -84,7 +72,8 @@ message AttestationResponse {
 }
 
 message SetPolicyRequest {
-    string input = 1;
+    string policy_id = 1;
+    string policy = 2;
 }
 message SetPolicyResponse {}
 
