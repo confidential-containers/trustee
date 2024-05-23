@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::{bail, Context};
-use attestation_service::{policy_engine::SetPolicyInput, AttestationService, HashAlgorithm};
+use attestation_service::{AttestationService, HashAlgorithm};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::Tee;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use strum::AsRefStr;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -154,6 +154,12 @@ pub async fn attestation(
     Ok(HttpResponse::Ok().body(token))
 }
 
+#[derive(Deserialize, Debug)]
+pub struct SetPolicyInput {
+    policy_id: String,
+    policy: String,
+}
+
 /// This handler uses json extractor with limit
 pub async fn set_policy(
     input: web::Json<SetPolicyInput>,
@@ -166,7 +172,7 @@ pub async fn set_policy(
     cocoas
         .write()
         .await
-        .set_policy(input)
+        .set_policy(input.policy_id, input.policy)
         .await
         .context("set policy")?;
 
@@ -175,6 +181,15 @@ pub async fn set_policy(
 
 /// GET /policy
 /// GET /policy/{policy_id}
+///
+/// The returned body would look like
+/// ```json
+/// [
+///     {"policy-id": <id-1>, "policy-hash": <hash-1>},
+///     {"policy-id": <id-2>, "policy-hash": <hash-2>},
+///     ...
+/// ]
+/// ```
 pub async fn get_policies(
     request: HttpRequest,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
@@ -198,7 +213,10 @@ pub async fn get_policies(
                 .await
                 .list_policies()
                 .await
-                .context("get policies")?;
+                .context("get policies")?
+                .into_iter()
+                .map(|(id, digest)| json!({"policy-id": id, "policy-hash": digest}))
+                .collect::<Vec<_>>();
 
             let policy_list =
                 serde_json::to_string(&policy_list).context("serialize response body")?;

@@ -14,11 +14,8 @@ RAW_RUNTIME_DATA_FILE ?= $(MAKEFILE_DIR)/raw-runtime-data
 RAW_RUNTIME_DATA := $(shell cat $(RAW_RUNTIME_DATA_FILE) | base64 -w0 | tr -d '=' | sed -e "s/+/-/g" -e "s/\//_/g")
 EVIDENCE := $(shell cat $(EVIDENCE_FILE) | base64 -w0 | tr -d '=' | sed -e "s/+/-/g" -e "s/\//_/g")
 
-GRPC_TEE_ENUM ?= 2
-GRPC_REQUEST := $(MAKEFILE_DIR)/grpc-request.json
-
-RESTFUL_TEE_ENUM ?= snp
-RESTFUL_REQUEST := $(MAKEFILE_DIR)/restful-request.json
+TEE_NAME ?= snp
+REQUEST := $(MAKEFILE_DIR)/request.json
 
 .PHONY: install-dependencies
 install-dependencies:
@@ -55,28 +52,21 @@ grpc.pid: $(GRPC_BIN)
 	} && \
 	sleep 2
 
-$(RESTFUL_REQUEST): $(RESTFUL_REQUEST).template
-	sed -e "s/%RESTFUL_TEE_ENUM%/$(RESTFUL_TEE_ENUM)/g" \
-		-e "s/%RUNTIME_DATA%/$(RAW_RUNTIME_DATA)/g" \
+$(REQUEST): $(REQUEST).template
+	sed -e "s/%TEE_NAME%/$(TEE_NAME)/g" \
 		-e "s/%EVIDENCE%/$(EVIDENCE)/g" \
-		$(RESTFUL_REQUEST).template > $(RESTFUL_REQUEST)
+		$(REQUEST).template > $(REQUEST)
 
 .PHONY: restful-test
-restful-test: restful.pid $(RESTFUL_REQUEST)
+restful-test: restful.pid $(REQUEST)
 	curl -k -X POST http://127.0.0.1:8080/attestation \
      -i \
      -H 'Content-Type: application/json' \
-     -d @$(RESTFUL_REQUEST)
-
-$(GRPC_REQUEST): $(GRPC_REQUEST).template
-	sed -e "s/%GRPC_TEE_ENUM%/$(GRPC_TEE_ENUM)/g" \
-		-e "s/%RUNTIME_DATA%/$(RAW_RUNTIME_DATA)/g" \
-		-e "s/%EVIDENCE%/$(EVIDENCE)/g" \
-		$(GRPC_REQUEST).template > $(GRPC_REQUEST)
+     -d @$(REQUEST)
 
 .PHONY: grpc-test
-grpc-test: grpc.pid $(GRPC_REQUEST)
-	echo $$(cat $(GRPC_REQUEST)) \
+grpc-test: grpc.pid $(REQUEST)
+	echo $$(cat $(REQUEST)) \
 	| grpcurl -plaintext -import-path ../../protos -proto ../../protos/attestation.proto -d @ 127.0.0.1:50004 attestation.AttestationService/AttestationEvaluate
 
 .PHONY: stop-restful-as
@@ -104,5 +94,4 @@ clean:
 		$(GRPC_BIN) \
 		grpc.pid \
 		restful.pid \
-		$(RESTFUL_REQUEST) \
-		$(GRPC_REQUEST)
+		$(REQUEST)

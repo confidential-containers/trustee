@@ -5,10 +5,17 @@
 use super::*;
 
 #[cfg(feature = "as")]
+#[derive(serde::Deserialize, Debug)]
+pub struct SetPolicyInput {
+    policy_id: String,
+    policy: String,
+}
+
+#[cfg(feature = "as")]
 /// POST /attestation-policy
 pub(crate) async fn attestation_policy(
     request: HttpRequest,
-    input: web::Bytes,
+    input: web::Json<SetPolicyInput>,
     user_pub_key: web::Data<Option<Ed25519PublicKey>>,
     insecure: web::Data<bool>,
     attestation_service: web::Data<Arc<AttestationService>>,
@@ -25,7 +32,7 @@ pub(crate) async fn attestation_policy(
     }
 
     attestation_service
-        .set_policy(&input)
+        .set_policy(&input.policy_id, &input.policy)
         .await
         .map_err(|e| Error::PolicyEndpoint(format!("Set policy error {e}")))?;
 

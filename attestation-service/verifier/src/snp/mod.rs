@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use base64::Engine;
-use log::debug;
+use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -98,16 +98,20 @@ impl Verifier for Snp {
             return Err(anyhow!("VMPL Check Failed"));
         }
 
-        let ReportData::Value(expected_report_data) = expected_report_data else {
-            bail!("Report Data unset");
+        if let ReportData::Value(expected_report_data) = expected_report_data {
+            debug!("Check the binding of REPORT_DATA.");
+            let expected_report_data =
+                regularize_data(expected_report_data, 64, "REPORT_DATA", "SNP");
+
+            if expected_report_data != report.report_data {
+                warn!(
+                    "Report data mismatch. Given: {}, Expected: {}",
+                    hex::encode(report.report_data),
+                    hex::encode(expected_report_data)
+                );
+                bail!("Report Data Mismatch");
+            }
         };
-
-        debug!("Check the binding of REPORT_DATA.");
-        let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "SNP");
-
-        if expected_report_data != report.report_data {
-            bail!("Report Data Mismatch");
-        }
 
         if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
             debug!("Check the binding of HOST_DATA.");
