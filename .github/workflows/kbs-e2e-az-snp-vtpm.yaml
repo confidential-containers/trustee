@@ -61,4 +61,5 @@ jobs:
     uses: ./.github/workflows/kbs-e2e.yaml
     with:
       runs-on: '["self-hosted","azure-cvm"]'
+      tee: azsnpvtpm
       tarball: kbs.tar.gz
