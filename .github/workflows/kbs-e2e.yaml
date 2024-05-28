@@ -3,9 +3,9 @@ name: KBS e2e
 on:
   workflow_call:
     inputs:
-      sample:
-        type: boolean
-        default: false
+      tee:
+        type: string
+        required: true
       runs-on:
         type: string
         default: '["ubuntu-22.04"]'
@@ -66,11 +66,14 @@ jobs:
     - name: Build bins
       working-directory: kbs/test
       run: make bins
-    
-    - name: Set cc_kbc sample attester env
-      if: inputs.sample == true
-      run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
 
+    - name: Set cc_kbc sample attester env
+      if: inputs.tee == 'sample'
+      run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
+    
     - name: Run e2e test
       working-directory: kbs/test
+      env:
+        TEE: ${{ inputs.tee }}
+        RUST_LOG: warn
       run: sudo -E make e2e-test
