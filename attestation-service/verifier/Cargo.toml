@@ -6,8 +6,8 @@ edition = "2021"
 [features]
 default = [ "all-verifier" ]
 all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier" ]
-tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
-sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
+tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
+sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
 az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
 az-tdx-vtpm-verifier = [ "az-tdx-vtpm", "openssl", "tdx-verifier" ]
 snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
@@ -39,7 +39,7 @@ scroll = { version = "0.11.0", default-features = false, features = ["derive"], 
 serde.workspace = true
 serde_json.workspace = true
 sev = { version = "3.1.1", features = ["openssl", "snp"], optional = true }
-sgx-dcap-quoteverify-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.16", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.21", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
 ear = { git = "https://github.com/veraison/rust-ear", rev = "43f7f480d09ea2ebc03137af8fbcd70fe3df3468", optional = true }
