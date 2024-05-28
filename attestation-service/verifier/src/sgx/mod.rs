@@ -14,9 +14,9 @@ use base64::Engine;
 use log::{debug, warn};
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
-use sgx_dcap_quoteverify_rs::{
+use intel_tee_quote_verification_rs::{
     sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
-    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
+    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote, QuoteCollateral,
 };
 
 use crate::{regularize_data, InitDataHash, ReportData};
@@ -140,7 +140,7 @@ async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
         }
     };
 
-    let p_collateral: Option<&[u8]> = None;
+    let p_collateral: Option<&QuoteCollateral> = None;
 
     // set current time. This is only for sample purposes, in production mode a trusted time should be used.
     //
