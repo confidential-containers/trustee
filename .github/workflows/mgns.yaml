@@ -1,0 +1,31 @@
+name: KBS e2e mgns
+
+on:
+  push:
+    branches:
+    - mkulke/e2e-test
+
+jobs:
+  checkout-and-archive:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        ref: mkulke/e2e-test
+
+    - name: Archive source
+      run: git archive -o kbs.tar.gz HEAD
+
+    - uses: actions/upload-artifact@v4
+      with:
+        path: ./kbs.tar.gz
+
+  e2e-test:
+    needs:
+    - checkout-and-archive
+    uses: ./.github/workflows/kbs-e2e.yaml
+    with:
+      runs-on: '["self-hosted","azure-cvm-tdx"]'
+      tee: aztdxvtpm
+      tarball: kbs.tar.gz
