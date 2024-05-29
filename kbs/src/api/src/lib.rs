@@ -290,7 +290,8 @@ impl ApiServer {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "as")] {
                     server_app = server_app.app_data(web::Data::clone(&sessions))
-                    .app_data(web::Data::clone(&attestation_service)).service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
+                    .app_data(web::Data::clone(&attestation_service))
+                    .service(web::resource(kbs_path!("auth")).route(web::post().to(http::auth)))
                     .service(web::resource(kbs_path!("attest")).route(web::post().to(http::attest)))
                     .service(
                         web::resource(kbs_path!("attestation-policy"))
