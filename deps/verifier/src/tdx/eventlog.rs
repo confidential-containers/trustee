@@ -46,11 +46,8 @@ impl CcEventLog {
         if rtmr_from_quote.rtmr0 != rtmr_eventlog.rtmr0
             || rtmr_from_quote.rtmr1 != rtmr_eventlog.rtmr1
             || rtmr_from_quote.rtmr2 != rtmr_eventlog.rtmr2
-            || rtmr_from_quote.rtmr3 != rtmr_eventlog.rtmr3
         {
-            return Err(anyhow!(
-                "RTMR values from TD quote is not equal with the values from EventLog\n"
-            ));
+            bail!("RTMR 0, 1, 2 values from TD quote is not equal with the values from EventLog");
         }
 
         Ok(())
