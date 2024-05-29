@@ -5,7 +5,7 @@
 //! KBS client SDK.
 
 use anyhow::{anyhow, bail, Result};
-use base64::engine::general_purpose::STANDARD;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair, EdDSAKeyPairLike};
 use kbs_protocol::evidence_provider::NativeEvidenceProvider;
@@ -136,7 +136,7 @@ pub async fn set_attestation_policy(
     let post_input = SetPolicyInput {
         r#type: policy_type.unwrap_or("rego".to_string()),
         policy_id: policy_id.unwrap_or("default".to_string()),
-        policy: STANDARD.encode(policy_bytes.clone()),
+        policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
 
     let res = http_client
@@ -180,7 +180,7 @@ pub async fn set_resource_policy(
 
     let set_policy_url = format!("{}/{KBS_URL_PREFIX}/resource-policy", url);
     let post_input = ResourcePolicyData {
-        policy: STANDARD.encode(policy_bytes.clone()),
+        policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
 
     let res = http_client
