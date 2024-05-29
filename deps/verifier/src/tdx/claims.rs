@@ -50,7 +50,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use log::{debug, warn};
 use serde_json::{Map, Value};
 
-use crate::{tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
+use crate::{eventlog::AAEventlog, tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
 
 use super::{
     eventlog::{CcEventLog, MeasuredEntity},
@@ -72,6 +72,7 @@ macro_rules! parse_claim {
 pub fn generate_parsed_claim(
     quote: Quote,
     cc_eventlog: Option<CcEventLog>,
+    aa_eventlog: Option<AAEventlog>,
 ) -> Result<TeeEvidenceParsedClaim> {
     let mut quote_map = Map::new();
     let mut quote_body = Map::new();
@@ -172,6 +173,13 @@ pub fn generate_parsed_claim(
     }
 
     let mut claims = Map::new();
+
+    // Claims from AA eventlog
+    if let Some(aael) = aa_eventlog {
+        let aael_map = aael.to_parsed_claims();
+        parse_claim!(claims, "aael", aael_map);
+    }
+
     parse_claim!(claims, "quote", quote_map);
     parse_claim!(claims, "ccel", ccel_map);
 
@@ -329,7 +337,7 @@ mod tests {
         let ccel_bin = std::fs::read("./test_data/CCEL_data").expect("read ccel failed");
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
-        let claims = generate_parsed_claim(quote, Some(ccel)).expect("parse claim failed");
+        let claims = generate_parsed_claim(quote, Some(ccel), None).expect("parse claim failed");
         let expected = json!({
             "ccel": {
                 "kernel": "5b7aa6572f649714ff00b6a2b9170516a068fd1a0ba72aa8de27574131d454e6396d3bfa1727d9baf421618a942977fa",
