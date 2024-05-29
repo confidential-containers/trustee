@@ -9,7 +9,9 @@ MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(MAKEFILE_DIR)/..
 BOLD := $(shell tput bold)
 SGR0 := $(shell tput sgr0)
+TEE ?= sample
 
+SHELL := bash
 ifeq ($(OS),Ubuntu)
     ifneq ($(RELEASE),22.04)
         $(error "This Makefile requires Ubuntu 22.04")
@@ -17,6 +19,17 @@ ifeq ($(OS),Ubuntu)
 else
     $(error "This Makefile requires Ubuntu")
 endif
+
+define TEE_POLICY_REGO
+package policy
+
+default allow = false
+
+allow {
+        input["tee"] == "$(TEE)"
+}
+endef
+export TEE_POLICY_REGO
 
 .PHONY: install-dependencies
 install-dependencies:
@@ -100,7 +113,6 @@ start-resource-kbs: resource-kbs.PID
 kbs.PID: kbs kbs.pem token-key.pem token-cert-chain.pem $(KBS_REPO_PATH)/one/two/three
 	@printf "${BOLD}start kbs${SGR0}\n"
 	{ \
-		RUST_LOG=actix-server=warn \
 		$(CURDIR)/kbs --config-file $(KBS_CONFIG_PATH)/kbs.toml \
 		& echo $$! > kbs.PID; \
 	} && \
@@ -109,7 +121,6 @@ kbs.PID: kbs kbs.pem token-key.pem token-cert-chain.pem $(KBS_REPO_PATH)/one/two
 resource-kbs.PID: resource-kbs kbs.pem ca-cert.pem $(KBS_REPO_PATH)/one/two/three
 	@printf "${BOLD}start resource-kbs${SGR0}\n"
 	{ \
-		RUST_LOG=actix-server=debug \
 		./resource-kbs --config-file $(KBS_CONFIG_PATH)/resource-kbs.toml \
 		& echo $$! > resource-kbs.PID; \
 	} && \
@@ -126,10 +137,10 @@ stop-resource-kbs: resource-kbs.PID
 	kill $$(cat $<) && rm $<
 
 test-bgcheck: client start-kbs
-	RUST_LOG=kbs_protocol=warn ./client \
+	./client \
 		config --auth-private-key kbs.key \
-		set-resource-policy --policy-file $(MAKEFILE_DIR)/data/policy_2.rego && \
-	RUST_LOG=kbs_protocol=error ./client get-resource \
+		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
+	./client get-resource \
 		 --path one/two/three \
 		 | base64 -d > roundtrip_secret && \
 	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
@@ -137,15 +148,15 @@ test-bgcheck: client start-kbs
 
 .PHONY: attestation_token
 attestation_token: client tee.key start-kbs
-	RUST_LOG=kbs_protocol=warn ./client attest \
+	./client attest \
 		--tee-key-file tee.key \
 		> attestation_token
 
 test-passport: client attestation_token start-resource-kbs
-	RUST_LOG=kbs_protocol=warn ./client --url http://127.0.0.1:50002 \
+	./client --url http://127.0.0.1:50002 \
 		config --auth-private-key kbs.key \
-		set-resource-policy --policy-file $(MAKEFILE_DIR)/data/policy_2.rego && \
-	RUST_LOG=kbs_protocol=warn ./client --url http://127.0.0.1:50002 get-resource \
+		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
+	./client --url http://127.0.0.1:50002 get-resource \
 		--attestation-token attestation_token \
 		--tee-key-file tee.key \
 		--path one/two/three \

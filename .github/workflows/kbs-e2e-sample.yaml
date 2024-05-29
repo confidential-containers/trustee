@@ -21,5 +21,5 @@ jobs:
     needs: checkout
     uses: ./.github/workflows/kbs-e2e.yaml
     with:
-      sample: true
+      tee: sample
       tarball: kbs.tar.gz
