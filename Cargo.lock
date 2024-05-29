@@ -5709,6 +5709,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sev",
+ "sha2",
  "shadow-rs",
  "strum",
  "thiserror",
