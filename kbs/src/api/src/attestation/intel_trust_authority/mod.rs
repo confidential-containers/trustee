@@ -116,7 +116,7 @@ impl Attest for IntelTrustAuthority {
 
         // check unmatched policy
         let allow = self.config.allow_unmatched_policy.unwrap_or(false);
-        if allow == false && token.claims.policy_ids_unmatched.is_some() {
+        if !allow && token.claims.policy_ids_unmatched.is_some() {
             bail!("Evidence doesn't match policy");
         }
 
