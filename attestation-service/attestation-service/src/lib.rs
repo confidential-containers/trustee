@@ -274,6 +274,17 @@ impl AttestationService {
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
         self.rvps.verify_and_extract(message).await
     }
+
+    pub async fn generate_supplemental_challenge(
+        &self,
+        tee: Tee,
+        tee_parameters: String,
+    ) -> Result<String> {
+        let verifier = verifier::to_verifier(&tee)?;
+        verifier
+            .generate_supplemental_challenge(tee_parameters)
+            .await
+    }
 }
 
 /// Get the expected init/runtime data and potential claims due to the given input

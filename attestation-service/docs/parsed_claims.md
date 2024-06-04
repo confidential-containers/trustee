@@ -93,6 +93,14 @@ The claim inherit the fields from the SEV-SNP claim with and additional `tpm` hi
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
+## IBM Secure Execution (SE)
+- `se.version`: The version this quote structure.
+- `se.cuid`: The config uid.
+- `se.hdr.tag`: SE header tag (seht)
+- `se.image.phkh`: SE image public host key hash
+- `se.attestation.phkh`: SE attestation public host key hash
+- `se.user_data`: Custom attestation key owner data.
+
 ## AMD SEV-SNP
 
 - `snp.measurement` Launch Digest covering initial guest memory

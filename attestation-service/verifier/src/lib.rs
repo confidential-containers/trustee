@@ -28,6 +28,9 @@ pub mod csv;
 #[cfg(feature = "cca-verifier")]
 pub mod cca;
 
+#[cfg(feature = "se-verifier")]
+pub mod se;
+
 pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
@@ -99,6 +102,16 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
                 }
             }
         }
+
+        Tee::Se => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "se-verifier")] {
+                    Ok(Box::<se::SeVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `se-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
     }
 }
 
@@ -152,6 +165,17 @@ pub trait Verifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim>;
+
+    /// Generate the supplemental challenge
+    ///
+    /// Some TEE like IBM SE need a `challenge` generated on verifier side
+    /// and pass it to attester side. This challenge is used by attester to
+    /// generate the evidence
+    ///
+    /// A optional `tee_parameters` comes from the attester side as the input.
+    async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+        Ok(String::new())
+    }
 }
 
 /// Padding or truncate the given data slice to the given `len` bytes.
