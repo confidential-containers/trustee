@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = [ "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier" ]
+all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier", "se-verifier" ]
 tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
 sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
 az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
@@ -13,6 +13,7 @@ az-tdx-vtpm-verifier = [ "az-tdx-vtpm", "openssl", "tdx-verifier" ]
 snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
 csv-verifier = [ "openssl", "csv-rs", "codicon" ]
 cca-verifier = [ "ear", "jsonwebtoken", "veraison-apiclient" ]
+se-verifier = [ "openssl", "pv", "serde_with", "tokio/sync" ]
 
 [dependencies]
 anyhow.workspace = true
@@ -35,10 +36,13 @@ jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 log.workspace = true
 openssl = { version = "0.10.55", optional = true }
+pv = { version = "0.10.0", package = "s390_pv", optional = true }
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
 serde.workspace = true
 serde_json.workspace = true
+serde_with = { workspace = true, optional = true }
 sev = { version = "3.1.1", features = ["openssl", "snp"], optional = true }
+tokio = { workspace = true, optional = true, default-features = false }
 intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.21", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
@@ -54,3 +58,4 @@ assert-json-diff.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
 tokio.workspace = true
+

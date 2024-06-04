@@ -13,6 +13,7 @@ Today, the AS can validate evidence from the following TEEs:
 - Hygon CSV
 - Intel TDX with vTPM on Azure
 - AMD SEV-SNP with vTPM on Azure
+- IBM Secure Execution (SE)
 
 # Overview
 ```
@@ -80,6 +81,7 @@ Please refer to the individual verifiers for the specific format of the evidence
 - Azure TDX vTPM: [Evidence](./verifier/src/az_tdx_vtpm/mod.rs)
 - Arm CCA: [CcaEvidence](./verifier/src/cca/mod.rs)
 - Hygon CSV: [CsvEvidence](./verifier/src/csv/mod.rs)
+- IBM Secure Execution (SE) [(SeEvidence)](./verifier/src/se/mod.rs)
 
 ## Output
 
@@ -132,6 +134,7 @@ Supported Verifier Drivers:
 - `azsnpvtpm`: Verifier Driver for Azure vTPM based on SNP (Azure SNP vTPM)
 - `cca`: Verifier Driver for Confidential Compute Architecture (Arm CCA).
 - `csv`: Verifier Driver for China Security Virtualization (Hygon CSV).
+- `se`: Verifier Driver for IBM Secure Execution (SE).
 
 ### Policy Engine
 

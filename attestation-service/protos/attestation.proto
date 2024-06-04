@@ -77,8 +77,18 @@ message SetPolicyRequest {
 }
 message SetPolicyResponse {}
 
+message ChallengeRequest {
+    // ChallengeRequest uses HashMap to pass variables like:
+    // tee, tee_params etc
+    map<string, string> inner = 1;
+}
+message ChallengeResponse {
+    string attestation_challenge = 1;
+}
+
 service AttestationService {
     rpc AttestationEvaluate(AttestationRequest) returns (AttestationResponse) {};
     rpc SetAttestationPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
+    rpc GetAttestationChallenge(ChallengeRequest) returns (ChallengeResponse) {};
     // Get the GetPolicyRequest.user and GetPolicyRequest.tee specified Policy(.rego)
 }

@@ -6,7 +6,9 @@ use crate::attestation::Attest;
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{config::Config as AsConfig, AttestationService, Data, HashAlgorithm};
-use kbs_types::{Attestation, Tee};
+use base64::{engine::general_purpose::STANDARD, Engine};
+use kbs_types::{Attestation, Challenge, Tee};
+use rand::{thread_rng, Rng};
 use serde_json::json;
 use tokio::sync::RwLock;
 
@@ -43,6 +45,34 @@ impl Attest for BuiltInCoCoAs {
                 vec!["default".into()],
             )
             .await
+    }
+
+    async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
+        let nonce = match tee {
+            Tee::Se => {
+                self.inner
+                    .read()
+                    .await
+                    .generate_supplemental_challenge(tee, tee_parameters)
+                    .await?
+            }
+            _ => {
+                let mut nonce: Vec<u8> = vec![0; 32];
+
+                thread_rng()
+                    .try_fill(&mut nonce[..])
+                    .map_err(anyhow::Error::from)?;
+
+                STANDARD.encode(&nonce)
+            }
+        };
+
+        let challenge = Challenge {
+            nonce,
+            extra_params: String::new(),
+        };
+
+        Ok(challenge)
     }
 }
 

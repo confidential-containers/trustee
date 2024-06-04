@@ -15,7 +15,10 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
-use crate::as_api::{AttestationRequest, AttestationResponse, SetPolicyRequest, SetPolicyResponse};
+use crate::as_api::{
+    AttestationRequest, AttestationResponse, ChallengeRequest, ChallengeResponse, SetPolicyRequest,
+    SetPolicyResponse,
+};
 
 use crate::rvps_api::reference_value_provider_service_server::{
     ReferenceValueProviderService, ReferenceValueProviderServiceServer,
@@ -37,6 +40,7 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
         "azsnpvtpm" => Tee::AzSnpVtpm,
         "cca" => Tee::Cca,
         "aztdxvtpm" => Tee::AzTdxVtpm,
+        "se" => Tee::Se,
         other => bail!("Unsupported TEE type: {other}"),
     };
 
@@ -193,6 +197,39 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         debug!("Attestation Token: {}", &attestation_token);
 
         let res = AttestationResponse { attestation_token };
+        Ok(Response::new(res))
+    }
+
+    async fn get_attestation_challenge(
+        &self,
+        request: Request<ChallengeRequest>,
+    ) -> Result<Response<ChallengeResponse>, Status> {
+        let request: ChallengeRequest = request.into_inner();
+        info!("get_attestation_challenge API called.");
+        debug!("get_attestation_challenge: {request:#?}");
+
+        let inner_tee = request
+            .inner
+            .get("tee")
+            .ok_or(Status::aborted("Error parse inner_tee tee"))?;
+        let tee_params = request
+            .inner
+            .get("tee_params")
+            .map_or(Err(Status::aborted("Error parse inner_tee tee_params")), Ok)?;
+        let tee = to_kbs_tee(&inner_tee)
+            .map_err(|e| Status::aborted(format!("Error parse TEE type: {e}")))?;
+
+        let attestation_challenge = self
+            .read()
+            .await
+            .attestation_service
+            .generate_supplemental_challenge(tee, tee_params.clone())
+            .await
+            .map_err(|e| Status::aborted(format!("Challenge: {e:?}")))?;
+
+        let res = ChallengeResponse {
+            attestation_challenge,
+        };
         Ok(Response::new(res))
     }
 }
