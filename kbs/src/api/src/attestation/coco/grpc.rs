@@ -5,18 +5,23 @@
 use crate::attestation::Attest;
 use anyhow::*;
 use async_trait::async_trait;
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use kbs_types::{Attestation, Tee};
+use base64::{
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+    Engine,
+};
+use kbs_types::{Attestation, Challenge, Tee};
 use log::info;
 use mobc::{Manager, Pool};
+use rand::{thread_rng, Rng};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
 
 use self::attestation::{
     attestation_request::RuntimeData, attestation_service_client::AttestationServiceClient,
-    AttestationRequest, SetPolicyRequest,
+    AttestationRequest, ChallengeRequest, SetPolicyRequest,
 };
 
 mod attestation {
@@ -117,6 +122,46 @@ impl Attest for GrpcClientPool {
             .attestation_token;
 
         Ok(token)
+    }
+
+    async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
+        let nonce = match tee {
+            Tee::Se => {
+                let tee = serde_json::to_string(&tee)
+                    .context("CoCo AS client: serialize tee type failed.")?
+                    .trim_end_matches('"')
+                    .trim_start_matches('"')
+                    .to_string();
+                let mut inner = HashMap::new();
+                inner.insert(String::from("tee"), tee);
+                inner.insert(String::from("tee_params"), tee_parameters);
+                let req = tonic::Request::new(ChallengeRequest { inner });
+
+                let mut client = { self.pool.lock().await.get().await? };
+
+                client
+                    .get_attestation_challenge(req)
+                    .await?
+                    .into_inner()
+                    .attestation_challenge
+            }
+            _ => {
+                let mut nonce: Vec<u8> = vec![0; 32];
+
+                thread_rng()
+                    .try_fill(&mut nonce[..])
+                    .map_err(anyhow::Error::from)?;
+
+                STANDARD.encode(&nonce)
+            }
+        };
+
+        let challenge = Challenge {
+            nonce,
+            extra_params: String::new(),
+        };
+
+        Ok(challenge)
     }
 }
 

@@ -7,8 +7,9 @@ use crate::{raise_error, session::SessionStatus};
 use super::*;
 
 use anyhow::anyhow;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
+use kbs_types::Challenge;
 use log::{debug, error, info};
 use serde_json::json;
 
@@ -17,11 +18,17 @@ pub(crate) async fn auth(
     request: web::Json<Request>,
     map: web::Data<SessionMap>,
     timeout: web::Data<i64>,
+    attestation_service: web::Data<Arc<AttestationService>>,
 ) -> Result<HttpResponse> {
     info!("Auth API called.");
     debug!("Auth Request: {:?}", &request);
 
-    let session = SessionStatus::auth(request.0, **timeout)
+    let challenge = attestation_service
+        .generate_challenge(request.tee, request.extra_params.clone())
+        .await
+        .map_err(|e| Error::FailedAuthentication(format!("generate challenge: {e:?}")))?;
+
+    let session = SessionStatus::auth(request.0, **timeout, challenge)
         .map_err(|e| Error::FailedAuthentication(format!("Session: {e}")))?;
 
     let response = HttpResponse::Ok()

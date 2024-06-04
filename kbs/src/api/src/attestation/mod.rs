@@ -6,11 +6,13 @@ use anyhow::*;
 use async_trait::async_trait;
 #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
 use attestation_service::config::Config as AsConfig;
+use base64::{engine::general_purpose::STANDARD, Engine};
 #[cfg(feature = "coco-as-grpc")]
 use coco::grpc::*;
 #[cfg(feature = "intel-trust-authority-as")]
 use intel_trust_authority::*;
-use kbs_types::Tee;
+use kbs_types::{Challenge, Tee};
+use rand::{thread_rng, Rng};
 
 #[cfg(feature = "coco-as")]
 #[allow(missing_docs)]
@@ -32,6 +34,21 @@ pub trait Attest: Send + Sync {
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
     async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String>;
+
+    /// generate the Challenge to pass to attester based on Tee and nonce
+    async fn generate_challenge(&self, _tee: Tee, _tee_parameters: String) -> Result<Challenge> {
+        let mut nonce: Vec<u8> = vec![0; 32];
+
+        thread_rng()
+            .try_fill(&mut nonce[..])
+            .map_err(anyhow::Error::from)?;
+
+        let nonce = STANDARD.encode(&nonce);
+        Ok(Challenge {
+            nonce,
+            extra_params: String::new(),
+        })
+    }
 }
 
 /// Attestation Service
@@ -87,6 +104,23 @@ impl AttestationService {
             AttestationService::CoCoASBuiltIn(inner) => inner.set_policy(policy_id, policy).await,
             #[cfg(feature = "intel-trust-authority-as")]
             AttestationService::IntelTA(inner) => inner.set_policy(policy_id, policy).await,
+        }
+    }
+
+    pub async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
+        match self {
+            #[cfg(feature = "coco-as-grpc")]
+            AttestationService::CoCoASgRPC(inner) => {
+                inner.generate_challenge(tee, tee_parameters).await
+            }
+            #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
+            AttestationService::CoCoASBuiltIn(inner) => {
+                inner.generate_challenge(tee, tee_parameters).await
+            }
+            #[cfg(feature = "intel-trust-authority-as")]
+            AttestationService::IntelTA(inner) => {
+                inner.generate_challenge(tee, tee_parameters).await
+            }
         }
     }
 }
