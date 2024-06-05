@@ -81,7 +81,7 @@ Please refer to the individual verifiers for the specific format of the evidence
 - Azure TDX vTPM: [Evidence](./verifier/src/az_tdx_vtpm/mod.rs)
 - Arm CCA: [CcaEvidence](./verifier/src/cca/mod.rs)
 - Hygon CSV: [CsvEvidence](./verifier/src/csv/mod.rs)
-- IBM Secure Execution (SE) [(SeEvidence)](./verifier/src/se/mod.rs)
+- IBM Secure Execution (SE): [SeEvidence](./verifier/src/se/mod.rs)
 
 ## Output
 

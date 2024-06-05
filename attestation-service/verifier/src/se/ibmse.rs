@@ -18,7 +18,7 @@ use pv::misc::{open_file, read_certs};
 use pv::request::{BootHdrTags, CertVerifier, HkdVerifier, ReqEncrCtx, Request, SymKeyType};
 use pv::uv::ConfigUid;
 use serde::{Deserialize, Serialize};
-use serde_with::{base64::Base64, serde_as};
+use serde_with::{base64::Base64, hex::Hex, serde_as};
 use std::{env, fs};
 
 const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/ibmse/hkds";
@@ -87,16 +87,16 @@ pub struct SeAttestationResponse {
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SeAttestationClaims {
-    #[serde_as(as = "Base64")]
+    #[serde_as(as = "Hex")]
     cuid: ConfigUid,
-    #[serde_as(as = "Base64")]
+    #[serde_as(as = "Hex")]
     user_data: Vec<u8>,
     version: u32,
-    #[serde_as(as = "Base64")]
+    #[serde_as(as = "Hex")]
     image_phkh: Vec<u8>,
-    #[serde_as(as = "Base64")]
+    #[serde_as(as = "Hex")]
     attestation_phkh: Vec<u8>,
-    #[serde_as(as = "Base64")]
+    #[serde_as(as = "Hex")]
     tag: [u8; 16],
 }
 
