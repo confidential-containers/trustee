@@ -11,13 +11,14 @@ use std::{
 use anyhow::*;
 use async_trait::async_trait;
 use base64::Engine;
+use intel_tee_quote_verification_rs::{
+    quote3_error_t, sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, sgx_ql_request_policy_t,
+    sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
+    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
+};
 use log::{debug, warn};
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
-use intel_tee_quote_verification_rs::{
-    sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, tee_get_supplemental_data_version_and_size,
-    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote, QuoteCollateral,
-};
 
 use crate::{regularize_data, InitDataHash, ReportData};
 

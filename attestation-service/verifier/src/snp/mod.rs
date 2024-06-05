@@ -312,7 +312,8 @@ mod tests {
     use super::*;
 
     const VCEK: &[u8; 1360] = include_bytes!("../../test_data/snp/test-vcek.der");
-    const VCEK_LEGACY: &[u8; 1361] = include_bytes!("../../test_data/snp/test-vcek-invalid-legacy.der");
+    const VCEK_LEGACY: &[u8; 1361] =
+        include_bytes!("../../test_data/snp/test-vcek-invalid-legacy.der");
     const VCEK_NEW: &[u8; 1362] = include_bytes!("../../test_data/snp/test-vcek-invalid-new.der");
     const VCEK_REPORT: &[u8; 1184] = include_bytes!("../../test_data/snp/test-report.bin");
 
@@ -351,20 +352,14 @@ mod tests {
 
     #[test]
     fn check_vlek_parsing() {
-        let parsed_vlek = X509Certificate::from_der(VLEK)
-            .unwrap()
-            .1
-            .tbs_certificate;
+        let parsed_vlek = X509Certificate::from_der(VLEK).unwrap().1.tbs_certificate;
 
         check_oid_ints(&parsed_vlek);
     }
 
     #[test]
     fn check_vcek_parsing() {
-        let parsed_vcek = X509Certificate::from_der(VCEK)
-            .unwrap()
-            .1
-            .tbs_certificate;
+        let parsed_vcek = X509Certificate::from_der(VCEK).unwrap().1.tbs_certificate;
 
         get_oid_octets::<64>(&parsed_vcek, HW_ID_OID).unwrap();
 
@@ -446,7 +441,8 @@ mod tests {
 
     #[test]
     fn check_report_signature() {
-        let attestation_report = bincode::deserialize::<AttestationReport>(VCEK_REPORT.as_slice()).unwrap();
+        let attestation_report =
+            bincode::deserialize::<AttestationReport>(VCEK_REPORT.as_slice()).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
@@ -454,7 +450,8 @@ mod tests {
 
     #[test]
     fn check_vlek_report_signature() {
-        let attestation_report = bincode::deserialize::<AttestationReport>(VLEK_REPORT.as_slice()).unwrap();
+        let attestation_report =
+            bincode::deserialize::<AttestationReport>(VLEK_REPORT.as_slice()).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
         let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
@@ -475,7 +472,7 @@ mod tests {
 
     #[test]
     fn check_vlek_report_signature_failure() {
-        let mut bytes = VLEK_REPORT.clone(); 
+        let mut bytes = VLEK_REPORT.clone();
 
         // corrupt some byte
         bytes[42] += 1;
