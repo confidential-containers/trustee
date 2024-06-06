@@ -127,13 +127,8 @@ impl Attest for GrpcClientPool {
     async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
         let nonce = match tee {
             Tee::Se => {
-                let tee = serde_json::to_string(&tee)
-                    .context("CoCo AS client: serialize tee type failed.")?
-                    .trim_end_matches('"')
-                    .trim_start_matches('"')
-                    .to_string();
                 let mut inner = HashMap::new();
-                inner.insert(String::from("tee"), tee);
+                inner.insert(String::from("tee"), String::from("se"));
                 inner.insert(String::from("tee_params"), tee_parameters);
                 let req = tonic::Request::new(ChallengeRequest { inner });
 
