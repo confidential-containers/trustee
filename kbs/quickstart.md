@@ -13,13 +13,6 @@ curl https://sh.rustup.rs -sSf | sh
 source "$HOME/.cargo/env"
 ```
 
-In order to compile some Go components (e.g. the OPA policy engine), install
-the Go compiler (>= 1.20):
-```shell
-sudo apt-get install -y golang-1.20
-export PATH=/usr/lib/go-1.20/bin:$PATH
-```
-
 Install dependencies:
 ```shell
 curl -L "https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key" | sudo apt-key add -

@@ -27,7 +27,6 @@ install-dependencies:
 		protobuf-compiler \
 		clang \
 		libtss2-dev \
-		libtdx-attest-dev \
 		libsgx-dcap-quote-verify-dev \
 		libsgx-dcap-default-qpl
 

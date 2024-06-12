@@ -11,7 +11,7 @@ RUN apt-get update && \
 
 RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | \
     tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -28,10 +28,6 @@ RUN curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.k
     libtss2-dev \
     libsgx-dcap-quote-verify-dev \
     libtdx-attest-dev
-
-RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
-ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Build and Install KBS
 WORKDIR /usr/src/kbs
