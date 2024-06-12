@@ -14,6 +14,4 @@ LABEL org.opencontainers.image.source="https://github.com/confidential-container
 
 RUN apt update && apt install -y ca-certificates
 
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so.1.1
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
 COPY --from=builder /usr/local/cargo/bin/kbs /usr/local/bin/kbs
