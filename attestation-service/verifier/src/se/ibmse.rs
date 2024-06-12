@@ -7,10 +7,10 @@ use crate::TeeEvidenceParsedClaim;
 use anyhow::{anyhow, bail, Context, Result};
 use core::result::Result::Ok;
 use log::{debug, info, warn};
-use openssl::ec::EcKey;
 use openssl::encrypt::{Decrypter, Encrypter};
 use openssl::pkey::{PKey, Private, Public};
 use openssl::rsa::Padding;
+use openssl::rsa::Rsa;
 use pv::attest::{
     AdditionalData, AttestationFlags, AttestationItems, AttestationMeasAlg, AttestationMeasurement,
     AttestationRequest, AttestationVersion,
@@ -26,7 +26,7 @@ const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/i
 
 const DEFAULT_SE_CERTIFICATES_ROOT: &str = "/run/confidential-containers/ibmse/certs";
 
-const DEFAULT_SE_CERTIFICATE_ROOT_CA: &str = "/run/confidential-containers/ibmse/certs/ca";
+const DEFAULT_SE_CERTIFICATE_ROOT_CA: &str = "/run/confidential-containers/ibmse/DigiCertCA.crt";
 
 const DEFAULT_SE_CERTIFICATE_REVOCATION_LISTS_ROOT: &str =
     "/run/confidential-containers/ibmse/crls";
@@ -34,10 +34,12 @@ const DEFAULT_SE_CERTIFICATE_REVOCATION_LISTS_ROOT: &str =
 const DEFAULT_SE_IMAGE_HEADER_FILE: &str = "/run/confidential-containers/ibmse/hdr/hdr.bin";
 
 const DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE: &str =
-    "/run/confidential-containers/ibmse/ec/encrypt_key.pem";
+    "/run/confidential-containers/ibmse/rsa/encrypt_key.pem";
 
 const DEFAULT_SE_MEASUREMENT_ENCR_KEY_PUBLIC: &str =
-    "/run/confidential-containers/ibmse/ec/encrypt_key.pub";
+    "/run/confidential-containers/ibmse/rsa/encrypt_key.pub";
+
+const DEFAULT_SE_SKIP_CERTS_VERIFICATION: &str = "false";
 
 macro_rules! env_or_default {
     ($env:literal, $default:ident) => {
@@ -129,16 +131,16 @@ impl SeVerifierImpl {
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE
         );
         let priv_contents = fs::read(pri_key_file)?;
-        let private_key = EcKey::private_key_from_pem(&priv_contents)?;
-        let private_key = PKey::from_ec_key(private_key)?;
+        let private_key = Rsa::private_key_from_pem(&priv_contents)?;
+        let private_key = PKey::from_rsa(private_key)?;
 
         let pub_key_file = env_or_default!(
             "SE_MEASUREMENT_ENCR_KEY_PUBLIC",
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PUBLIC
         );
         let pub_contents = fs::read(pub_key_file)?;
-        let rsa = EcKey::public_key_from_pem(&pub_contents)?;
-        let public_key = PKey::from_ec_key(rsa)?;
+        let rsa = Rsa::public_key_from_pem(&pub_contents)?;
+        let public_key = PKey::from_rsa(rsa)?;
 
         Ok(Self {
             private_key,
@@ -232,7 +234,7 @@ impl SeVerifierImpl {
     pub async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
         let se_certificate_root =
             env_or_default!("SE_CERTIFICATES_ROOT", DEFAULT_SE_CERTIFICATES_ROOT);
-        let certs = list_files_in_folder(&se_certificate_root)?;
+        let ca_certs = list_files_in_folder(&se_certificate_root)?;
 
         let crl_root = env_or_default!(
             "SE_CERTIFICATE_REVOCATION_LISTS_ROOT",
@@ -242,9 +244,6 @@ impl SeVerifierImpl {
 
         let root_ca_path =
             env_or_default!("SE_CERTIFICATE_ROOT_CA", DEFAULT_SE_CERTIFICATE_ROOT_CA);
-        let verifier =
-            CertVerifier::new(certs.as_slice(), crls.as_slice(), Some(root_ca_path), false)?;
-
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
@@ -259,6 +258,11 @@ impl SeVerifierImpl {
             DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT
         );
         let hkds = list_files_in_folder(&hkds_root)?;
+        let skip_certs_env = env_or_default!(
+            "SE_SKIP_CERTS_VERIFICATION",
+            DEFAULT_SE_SKIP_CERTS_VERIFICATION
+        );
+        let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
         for hkd in &hkds {
             let hk = std::fs::read(hkd).context("read host-key document")?;
             let certs = read_certs(&hk)?;
@@ -271,7 +275,12 @@ impl SeVerifierImpl {
             let c = certs
                 .first()
                 .ok_or(anyhow!("File does not contain a X509 certificate"))?;
-            verifier.verify(c)?;
+            if skip_certs {
+                warn!("SE_SKIP_CERTS_VERIFICATION set '{skip_certs}' never use it in production!")
+            } else {
+                let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), Some(root_ca_path.clone()), false)?;
+                verifier.verify(c)?;
+            }
             arcb.add_hostkey(c.public_key()?);
         }
 
