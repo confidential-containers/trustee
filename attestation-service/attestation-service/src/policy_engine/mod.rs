@@ -1,3 +1,4 @@
+use crate::policy_engine::opa::RegoError;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -37,13 +38,13 @@ pub trait PolicyEngine {
         reference_data_map: HashMap<String, Vec<String>>,
         input: String,
         policy_ids: Vec<String>,
-    ) -> Result<HashMap<String, PolicyDigest>>;
+    ) -> Result<HashMap<String, PolicyDigest>, RegoError>;
 
-    async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()>;
+    async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<(), RegoError>;
 
     /// The result is a map. The key is the policy id, and the
     /// value is the digest of the policy (using **Sha384**).
-    async fn list_policies(&self) -> Result<HashMap<String, PolicyDigest>>;
+    async fn list_policies(&self) -> Result<HashMap<String, PolicyDigest>, RegoError>;
 
-    async fn get_policy(&self, policy_id: String) -> Result<String>;
+    async fn get_policy(&self, policy_id: String) -> Result<String, RegoError>;
 }
