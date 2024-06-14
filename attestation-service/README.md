@@ -13,7 +13,7 @@ Today, the AS can validate evidence from the following TEEs:
 - Hygon CSV
 - Intel TDX with vTPM on Azure
 - AMD SEV-SNP with vTPM on Azure
-- IBM Secure Execution (SE)
+- IBM Secure Execution (SE): [Attestation Service with IBM SE](./verifier/src/se/README.md)
 
 # Overview
 ```
