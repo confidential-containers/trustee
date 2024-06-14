@@ -19,6 +19,9 @@ use crate::raise_error;
 
 use super::*;
 
+#[cfg(feature = "as")]
+const TOKEN_TEE_PUBKEY_PATH: &str = AS_TOKEN_TEE_PUBKEY_PATH;
+#[cfg(not(feature = "as"))]
 const TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
 
 #[allow(unused_assignments)]
