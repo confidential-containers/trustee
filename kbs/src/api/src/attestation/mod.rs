@@ -14,6 +14,11 @@ use intel_trust_authority::*;
 use kbs_types::{Challenge, Tee};
 use rand::{thread_rng, Rng};
 
+#[cfg(not(feature = "intel-trust-authority-as"))]
+pub const AS_TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
+#[cfg(feature = "intel-trust-authority-as")]
+pub const AS_TOKEN_TEE_PUBKEY_PATH: &str = "/attester_runtime_data/tee-pubkey";
+
 #[cfg(feature = "coco-as")]
 #[allow(missing_docs)]
 pub mod coco;

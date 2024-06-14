@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[cfg(feature = "as")]
-use crate::attestation::AttestationService;
+use crate::attestation::{AttestationService, AS_TOKEN_TEE_PUBKEY_PATH};
 use crate::auth::validate_auth;
 #[cfg(feature = "policy")]
 use crate::policy_engine::PolicyEngine;
