@@ -10,7 +10,6 @@ use log::{debug, info, warn};
 use openssl::encrypt::{Decrypter, Encrypter};
 use openssl::pkey::{PKey, Private, Public};
 use openssl::rsa::Padding;
-use openssl::rsa::Rsa;
 use pv::attest::{
     AdditionalData, AttestationFlags, AttestationItems, AttestationMeasAlg, AttestationMeasurement,
     AttestationRequest, AttestationVersion,
@@ -131,16 +130,14 @@ impl SeVerifierImpl {
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE
         );
         let priv_contents = fs::read(pri_key_file)?;
-        let private_key = Rsa::private_key_from_pem(&priv_contents)?;
-        let private_key = PKey::from_rsa(private_key)?;
+        let private_key = PKey::private_key_from_pem(&priv_contents)?;
 
         let pub_key_file = env_or_default!(
             "SE_MEASUREMENT_ENCR_KEY_PUBLIC",
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PUBLIC
         );
         let pub_contents = fs::read(pub_key_file)?;
-        let rsa = Rsa::public_key_from_pem(&pub_contents)?;
-        let public_key = PKey::from_rsa(rsa)?;
+        let public_key = PKey::public_key_from_pem(&pub_contents)?;
 
         Ok(Self {
             private_key,
