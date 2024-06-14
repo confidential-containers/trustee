@@ -19,6 +19,8 @@ use crate::raise_error;
 
 use super::*;
 
+const TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
+
 #[allow(unused_assignments)]
 /// GET /resource/{repository}/{type}/{tag}
 /// GET /resource/{type}/{tag}
@@ -46,27 +48,12 @@ pub(crate) async fn get_resource(
         Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
     })?;
 
-    let pkey_value = claims
-        .get("customized_claims")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `customized_claims` in the attestation claims thus no `tee-pubkey`",
-        )))?
-        .as_object()
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "`customized_claims` should be a JSON map",
-        )))?
-        .get("runtime_data")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `runtime_data` in the attestation claims thus no `tee-pubkey`",
-        )))?
-        .as_object()
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "`runtime_data` should be a JSON map",
-        )))?
-        .get("tee-pubkey")
-        .ok_or(Error::AttestationClaimsParseFailed(String::from(
-            "No `tee-pubkey` in the attestation claims",
-        )))?;
+    let pkey_value =
+        claims
+            .pointer(TOKEN_TEE_PUBKEY_PATH)
+            .ok_or(Error::AttestationClaimsParseFailed(String::from(
+                "Failed to find `tee-pubkey` in the attestation claims",
+            )))?;
     let pubkey = TeePubKey::deserialize(pkey_value).map_err(|e| {
         Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
     })?;
