@@ -44,7 +44,7 @@ openssl pkey -in kbs.key -pubout -out kbs.pem
 
 ## Build KBS
 ```
-cargo install --locked --path kbs/src/kbs --no-default-features --features coco-as-builtin,openssl,resource,opa 
+cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,openssl,resource,opa 
 ```
 
 ## (Option 1) Launch KBS as a program
@@ -107,6 +107,7 @@ export SE_SKIP_CERTS_VERIFICATION=true
 ```
 DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/kbs:latest --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile
 ```
+>Note: Please add `--debug` in statement like `cargo install` in file `kbs/docker/Dockerfile` if you're using a development host key document to skip HKD's signature verification.
 
 - Prepare a docker compose file, similar as:
 ```

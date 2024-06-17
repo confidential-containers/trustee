@@ -38,8 +38,6 @@ const DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE: &str =
 const DEFAULT_SE_MEASUREMENT_ENCR_KEY_PUBLIC: &str =
     "/run/confidential-containers/ibmse/rsa/encrypt_key.pub";
 
-const DEFAULT_SE_SKIP_CERTS_VERIFICATION: &str = "false";
-
 macro_rules! env_or_default {
     ($env:literal, $default:ident) => {
         match env::var($env) {
@@ -255,11 +253,6 @@ impl SeVerifierImpl {
             DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT
         );
         let hkds = list_files_in_folder(&hkds_root)?;
-        let skip_certs_env = env_or_default!(
-            "SE_SKIP_CERTS_VERIFICATION",
-            DEFAULT_SE_SKIP_CERTS_VERIFICATION
-        );
-        let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
         for hkd in &hkds {
             let hk = std::fs::read(hkd).context("read host-key document")?;
             let certs = read_certs(&hk)?;
@@ -272,9 +265,21 @@ impl SeVerifierImpl {
             let c = certs
                 .first()
                 .ok_or(anyhow!("File does not contain a X509 certificate"))?;
-            if skip_certs {
-                warn!("SE_SKIP_CERTS_VERIFICATION set '{skip_certs}' never use it in production!")
-            } else {
+            #[cfg(debug_assertions)]
+            {
+                const DEFAULT_SE_SKIP_CERTS_VERIFICATION: &str = "false";
+                let skip_certs_env = env_or_default!(
+                    "SE_SKIP_CERTS_VERIFICATION",
+                    DEFAULT_SE_SKIP_CERTS_VERIFICATION
+                );
+                let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
+                if !skip_certs {
+                    let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), Some(root_ca_path.clone()), false)?;
+                    verifier.verify(c)?;
+                }
+            }
+            #[cfg(not(debug_assertions))]
+            {
                 let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), Some(root_ca_path.clone()), false)?;
                 verifier.verify(c)?;
             }
