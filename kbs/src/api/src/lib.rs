@@ -25,8 +25,9 @@ use jwt_simple::prelude::Ed25519PublicKey;
 #[cfg(feature = "resource")]
 use resource::RepositoryConfig;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use std::path::PathBuf;
-use std::{net::SocketAddr, sync::Arc};
+#[cfg(feature = "as")]
+use std::sync::Arc;
+use std::{net::SocketAddr, path::PathBuf};
 #[cfg(feature = "resource")]
 use token::AttestationTokenVerifierConfig;
 
