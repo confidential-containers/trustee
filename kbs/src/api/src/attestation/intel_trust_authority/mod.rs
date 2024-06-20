@@ -38,6 +38,11 @@ struct Claims {
     policy_ids_unmatched: Option<Vec<serde_json::Value>>,
 }
 
+#[derive(Deserialize, Debug)]
+struct ErrorResponse {
+    error: String,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct IntelTrustAuthorityConfig {
     pub base_url: String,
@@ -92,10 +97,16 @@ impl Attest for IntelTrustAuthority {
             .await
             .map_err(|e| anyhow!("Post attestation request failed: {:?}", e))?;
 
-        if resp.status() != reqwest::StatusCode::OK {
+        let status = resp.status();
+        if status != reqwest::StatusCode::OK {
+            let body = resp
+                .json::<ErrorResponse>()
+                .await
+                .map_err(|e| anyhow!("Deserialize error response failed: {:?}", e))?;
             bail!(
-                "Attestation request failed: respone status={}",
-                resp.status()
+                "Attestation request failed: response status={}, message={}",
+                status,
+                body.error
             );
         }
 
@@ -103,7 +114,7 @@ impl Attest for IntelTrustAuthority {
         let resp_data = resp
             .json::<AttestRespData>()
             .await
-            .map_err(|e| anyhow!("Deserialize attestation respone failed: {:?}", e))?;
+            .map_err(|e| anyhow!("Deserialize attestation response failed: {:?}", e))?;
         let header = decode_header(&resp_data.token)
             .map_err(|e| anyhow!("Decode token header failed: {:?}", e))?;
         let kid = header.kid.ok_or(anyhow!("Token missing kid"))?;
