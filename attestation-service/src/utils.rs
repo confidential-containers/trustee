@@ -73,10 +73,7 @@ fn flatten_helper(parent: &mut Map<String, Value>, child: &serde_json::Value, pr
             let _ = parent.insert(prefix, Value::String(str.clone()));
         }
         Value::Array(arr) => {
-            for (i, v) in arr.iter().enumerate() {
-                let sub_prefix = format!("{prefix}.{i}");
-                flatten_helper(parent, v, sub_prefix);
-            }
+            let _ = parent.insert(prefix, Value::Array(arr.clone()));
         }
         Value::Object(obj) => {
             for (k, v) in obj {
