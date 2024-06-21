@@ -528,6 +528,29 @@ mod tests {
         let _ = fs::write(format!("{quote_path}.txt"), parsed_quote);
     }
 
+    /// Test to verify the TDX quote, both in v4 and v5 format.
+    ///
+    /// This unit test requires two packages, s.t. `libsgx-dcap-quote-verify-dev` and `libsgx-dcap-default-qpl`
+    /// On ubuntu 22.04, you need to run the following scripts to install.
+    /// ```shell
+    /// curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
+    /// echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    /// apt-get update && \
+    /// apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify
+    /// ```
+    ///
+    /// Also, you need to configure DCAP to work with alibaba cloud's PCCS.
+    /// edit `/etc/sgx_default_qcnl.conf` and replace the whole content with
+    /// ```json
+    /// {"pccs_url" :"https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/"}
+    /// ```
+    ///
+    /// The manual modification upon `sgx_default_qcnl.conf` could be promoted after
+    /// https://github.com/intel/SGXDataCenterAttestationPrimitives/issues/409 is resolved.
+    ///
+    /// Finally, DCAP only provides packages on x86-64 platform, thus we only test this on x86-64
+    /// platforms.
+    #[cfg(target_arch = "x86_64")]
     #[rstest]
     #[ignore]
     #[tokio::test]
