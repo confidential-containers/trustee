@@ -72,7 +72,7 @@ By default listen to `localhost:50003` to wait for requests
 We can build RVPS docker image
 
 ```bash
-cd ../.. && docker build -t rvps -f attestation-service/rvps/Dockerfile .
+cd ../.. && docker build -t rvps -f attestation-service/docker/rvps/Dockerfile .
 ```
 
 Run
