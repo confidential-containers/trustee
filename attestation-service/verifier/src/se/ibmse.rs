@@ -25,7 +25,7 @@ const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/i
 
 const DEFAULT_SE_CERTIFICATES_ROOT: &str = "/run/confidential-containers/ibmse/certs";
 
-const DEFAULT_SE_CERTIFICATE_ROOT_CA: &str = "/run/confidential-containers/ibmse/DigiCertCA.crt";
+const DEFAULT_SE_CERTIFICATE_ROOT_CA: &str = "/run/confidential-containers/ibmse/root_ca.crt";
 
 const DEFAULT_SE_CERTIFICATE_REVOCATION_LISTS_ROOT: &str =
     "/run/confidential-containers/ibmse/crls";
@@ -239,6 +239,11 @@ impl SeVerifierImpl {
 
         let root_ca_path =
             env_or_default!("SE_CERTIFICATE_ROOT_CA", DEFAULT_SE_CERTIFICATE_ROOT_CA);
+        let ca_option: Option<String> = if std::path::Path::new(&root_ca_path).exists() {
+            Some(root_ca_path)
+        } else {
+            None::<String>
+        };
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
@@ -274,13 +279,13 @@ impl SeVerifierImpl {
                 );
                 let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
                 if !skip_certs {
-                    let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), Some(root_ca_path.clone()), false)?;
+                    let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), true)?;
                     verifier.verify(c)?;
                 }
             }
             #[cfg(not(debug_assertions))]
             {
-                let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), Some(root_ca_path.clone()), false)?;
+                let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), true)?;
                 verifier.verify(c)?;
             }
             arcb.add_hostkey(c.public_key()?);
