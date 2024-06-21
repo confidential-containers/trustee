@@ -11,18 +11,16 @@ openssl rsa -in encrypt_key-psw.pem -out encrypt_key.pem
 ```
 
 
-## Download Certs, CRLs, Root CA
+## Download Certs, CRLs
 Donwload these materials from: https://www.ibm.com/support/resourcelink/api/content/public/secure-execution-gen2.html
 Which includes:
 
 ### Certs
 ibm-z-host-key-signing-gen2.crt
+DigiCertCA.crt 
 
 ### CRL
 ibm-z-host-key-gen2.crl
-
-### Root CA
-DigiCertCA.crt 
 
 ## Download HKD
 Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-z?topic=execution-verify-host-key-document
@@ -42,26 +40,26 @@ openssl genpkey -algorithm ed25519 > kbs.key
 openssl pkey -in kbs.key -pubout -out kbs.pem
 ```
 
-## Build KBS
+## (Option 1) Launch KBS as a program
+
+- Build KBS
 ```
 cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,openssl,resource,opa 
 ```
-
-## (Option 1) Launch KBS as a program
 
 - Prepare the material retrieved above, similar as:
 ```
 /run/confidential-containers/ibmse#
 .
-├── DigiCertCA.crt
 ├── certs
-│   └── ibm-z-host-key-signing-gen2.crt
+│   ├── ibm-z-host-key-signing-gen2.crt
+|   └── DigiCertCA.crt
 ├── crls
-│   └── ibm-z-host-key-gen2.crl
+│   └── ibm-z-host-key-gen2.crl
 ├── hdr
-│   └── hdr.bin
+│   └── hdr.bin
 ├── hkds
-│   └── HKD-3931-0275D38.crt
+│   └── HKD-3931-0275D38.crt
 └── rsa
     ├── encrypt_key.pem
     └── encrypt_key.pub
