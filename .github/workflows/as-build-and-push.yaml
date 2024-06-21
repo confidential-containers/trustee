@@ -57,9 +57,9 @@ jobs:
       run: |
         commit_sha=${{ github.sha }}
         arch=$(uname -m)
-        DOCKER_BUILDKIT=1 docker build -f ${{ matrix.docker_file }} --push --build-arg ARCH=${arch} \
-          -t ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch} \
-          -t ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch} .
+        DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" --push --build-arg ARCH="${arch}" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" .
 
     - name: Take a post-action for self-hosted runner
       if: always()
@@ -102,11 +102,11 @@ jobs:
     - name: Publish Multi-arch Image for ${{ matrix.name }}
       run: |
         commit_sha=${{ github.sha }}
-        docker manifest create ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha} \
-          --amend ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-s390x \
-          --amend ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-x86_64
-        docker manifest push ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}
-        docker manifest create ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest \
-          --amend ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-s390x \
-          --amend ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-x86_64
-        docker manifest push ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest
+        docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-s390x" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-x86_64"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}"
+        docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-s390x" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-x86_64"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest"
