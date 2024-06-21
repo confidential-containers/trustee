@@ -1,4 +1,5 @@
 FROM rust:latest as builder
+ARG HTTPS_CRYPTO=rustls
 
 WORKDIR /usr/src/kbs
 COPY . .
@@ -6,7 +7,7 @@ COPY . .
 RUN apt-get update && apt install -y git
 
 # Build and Install KBS
-RUN cargo install --path kbs/src/kbs --no-default-features --features intel-trust-authority-as,rustls,resource,opa
+RUN cargo install --path kbs/src/kbs --no-default-features --features intel-trust-authority-as,${HTTPS_CRYPTO},resource,opa
 
 FROM ubuntu:22.04
 
