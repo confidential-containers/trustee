@@ -21,6 +21,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, hex::Hex, serde_as};
 use std::{env, fs};
 
+const DEFAULT_CERTS_OFFLINE_VERIFICATION: &str = "false";
+
 const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/ibmse/hkds";
 
 const DEFAULT_SE_CERTIFICATES_ROOT: &str = "/run/confidential-containers/ibmse/certs";
@@ -244,6 +246,11 @@ impl SeVerifierImpl {
         } else {
             None::<String>
         };
+        let offline_certs_verify = env_or_default!(
+            "CERTS_OFFLINE_VERIFICATION",
+            DEFAULT_CERTS_OFFLINE_VERIFICATION
+        );
+        let offline_certs_verify: bool = offline_certs_verify.parse::<bool>().unwrap_or(false);
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
@@ -279,13 +286,13 @@ impl SeVerifierImpl {
                 );
                 let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
                 if !skip_certs {
-                    let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), true)?;
+                    let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), offline_certs_verify)?;
                     verifier.verify(c)?;
                 }
             }
             #[cfg(not(debug_assertions))]
             {
-                let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), true)?;
+                let verifier = CertVerifier::new(ca_certs.as_slice(), crls.as_slice(), ca_option.clone(), offline_certs_verify)?;
                 verifier.verify(c)?;
             }
             arcb.add_hostkey(c.public_key()?);
