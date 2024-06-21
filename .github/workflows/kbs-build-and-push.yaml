@@ -18,6 +18,10 @@ jobs:
         tag:
           - kbs
           - kbs-grpc-as
+          - kbs-ita-as
+        exclude:
+          - instance: s390x
+            tag: kbs-ita-as
         include:
           - tag: kbs
             docker_file: kbs/docker/Dockerfile
@@ -27,6 +31,11 @@ jobs:
             docker_file: kbs/docker/Dockerfile.coco-as-grpc
             https_crypto: rustls
             name: gRPC AS
+          - tag: kbs-ita-as
+            docker_file: kbs/docker/Dockerfile.intel-trust-authority
+            https_crypto: rustls
+            name: Intel Trust Authority AS
+
     runs-on: ${{ matrix.instance }}
 
     steps:
