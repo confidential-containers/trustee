@@ -24,7 +24,7 @@ jobs:
             https_crypto: openssl
             name: build-in AS
           - tag: kbs-grpc-as
-            docker_file: kbs/docker/Dockerfile.coco-as-grpc
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
             https_crypto: rustls
             name: gRPC AS
     runs-on: ${{ matrix.instance }}
@@ -122,6 +122,6 @@ jobs:
       - name: Build Container Image KBS (Intel Trust Authority AS)
         run: |
           commit_sha=${{ github.sha }}
-          DOCKER_BUILDKIT=1 docker build -f "kbs/docker/Dockerfile.intel-trust-authority" --push \
+          DOCKER_BUILDKIT=1 docker build -f "kbs/docker/intel-trust-authority/Dockerfile" --push \
           -t "ghcr.io/confidential-containers/staged-images/kbs-ita-as:${commit_sha}" \
           -t "ghcr.io/confidential-containers/staged-images/kbs-ita-as:latest" .
