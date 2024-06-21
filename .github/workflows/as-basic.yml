@@ -54,12 +54,10 @@ jobs:
           sudo apt-get install -y libsgx-dcap-quote-verify-dev
 
       - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ env.RUSTC_VERSION }}
-          override: true
-          components: rustfmt, clippy
+        run: |
+          rustup update --no-self-update ${{ env.RUSTC_VERSION }}
+          rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustfmt rustc clippy
+          rustup default ${{ env.RUSTC_VERSION }}
 
       - name: Build
         working-directory: attestation-service
@@ -67,20 +65,13 @@ jobs:
           make
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p attestation-service -p reference-value-provider-service -p verifier
+        run: |
+          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier
 
       - name: Run cargo fmt check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -p attestation-service -p reference-value-provider-service --check
+        run: |
+          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service --check
 
       - name: Run rust lint check
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          # We are getting error in generated code due to derive_partial_eq_without_eq check, so ignore it for now
-          args: -p attestation-service -p reference-value-provider-service -- -D warnings -A clippy::derive_partial_eq_without_eq
+        run: |
+          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -- -D warnings -A clippy::derive_partial_eq_without_eq
