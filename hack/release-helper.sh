@@ -6,15 +6,19 @@ declare -g gh_username
 declare -g gh_token
 declare -g release_candidate_sha
 declare -g release_tag
+
+# Output naming convention along with release guide can be found in release-guide.md
 declare -A staged_to_release=(
     ["staged-images/kbs"]="key-broker-service"
     ["staged-images/kbs-grpc-as"]="key-broker-service"
+    ["staged-images/kbs-ita-as"]="key-broker-service"
     ["staged-images/rvps"]="reference-value-provider-service"
     ["staged-images/coco-as-grpc"]="attestation-service"
     ["staged-images/coco-as-restful"]="attestation-service"
 )
 declare -A staged_to_release_tag_prefix=(
     ["staged-images/kbs"]="built-in-as-"
+    ["staged-images/kbs-ita-as"]="ita-as-"
     ["staged-images/coco-as-restful"]="rest-"
 )
 

@@ -17,4 +17,5 @@ jobs:
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f kbs/docker/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-openssl --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-grpc . -f kbs/docker/Dockerfile.coco-as-grpc; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-rhel-ubi . -f kbs/docker/Dockerfile.rhel-ubi
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-rhel-ubi . -f kbs/docker/Dockerfile.rhel-ubi; \
+        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-ita . -f kbs/docker/Dockerfile.intel-trust-authority
