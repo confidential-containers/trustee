@@ -130,7 +130,6 @@ services:
       - ./kbs-config.toml:/etc/kbs-config.toml
       - ./data/hkds:/run/confidential-containers/ibmse/hkds
       - ./data/certs:/run/confidential-containers/ibmse/certs
-      - ./data/DigiCertCA.crt:/run/confidential-containers/ibmse/DigiCertCA.crt
       - ./data/crls:/run/confidential-containers/ibmse/crls
       - ./data/hdr.bin:/run/confidential-containers/ibmse/hdr/hdr.bin
       - ./data/rsa/encrypt_key.pem:/run/confidential-containers/ibmse/rsa/encrypt_key.pem
@@ -142,12 +141,12 @@ services:
 ```
 .
 ├── data
-│   ├── DigiCertCA.crt
 │   ├── attestation-service
 │   │   ├── opa
 │   │   │   └── default.rego
 │   ├── certs
-│   │   └── ibm-z-host-key-signing-gen2.crt
+│   │   ├── ibm-z-host-key-signing-gen2.crt
+│   │   └── DigiCertCA.crt
 │   ├── crls
 │   │   └── ibm-z-host-key-gen2.crl
 │   ├── hdr.bin
