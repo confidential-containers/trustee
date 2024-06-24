@@ -13,7 +13,7 @@ Today, the AS can validate evidence from the following TEEs:
 - Hygon CSV
 - Intel TDX with vTPM on Azure
 - AMD SEV-SNP with vTPM on Azure
-- IBM Secure Execution (SE): [Attestation Service with IBM SE](./verifier/src/se/README.md)
+- IBM Secure Execution (SE): [Attestation Service with IBM SE](../deps/verifier/src/se/README.md)
 
 # Overview
 ```
@@ -74,14 +74,14 @@ The format of the attestation evidence depends on the platform
 and the implementation of the verifier.
 
 Please refer to the individual verifiers for the specific format of the evidence.
-- Intel TDX: [TdxEvidence](./verifier/src/tdx/mod.rs)
-- Intel SGX: [SgxEvidence](./verifier/src/sgx/mod.rs)
-- AMD SNP: [SnpEvidence](./verifier/src/snp/mod.rs)
-- Azure SNP vTPM: [Evidence](./verifier/src/az_snp_vtpm/mod.rs)
-- Azure TDX vTPM: [Evidence](./verifier/src/az_tdx_vtpm/mod.rs)
-- Arm CCA: [CcaEvidence](./verifier/src/cca/mod.rs)
-- Hygon CSV: [CsvEvidence](./verifier/src/csv/mod.rs)
-- IBM Secure Execution (SE): [SeEvidence](./verifier/src/se/mod.rs)
+- Intel TDX: [TdxEvidence](../deps/verifier/src/tdx/mod.rs)
+- Intel SGX: [SgxEvidence](../deps/verifier/src/sgx/mod.rs)
+- AMD SNP: [SnpEvidence](../deps/verifier/src/snp/mod.rs)
+- Azure SNP vTPM: [Evidence](../deps/verifier/src/az_snp_vtpm/mod.rs)
+- Azure TDX vTPM: [Evidence](../deps/verifier/src/az_tdx_vtpm/mod.rs)
+- Arm CCA: [CcaEvidence](../deps/verifier/src/cca/mod.rs)
+- Hygon CSV: [CsvEvidence](../deps/verifier/src/csv/mod.rs)
+- IBM Secure Execution (SE): [SeEvidence](../deps/verifier/src/se/mod.rs)
 
 ## Output
 
@@ -145,15 +145,15 @@ The results of every policy that is evaluated are included in the attestation to
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about Rego.
 
-If the policy is not updated, the AS will use the [default policy](./attestation-service/src/policy_engine/opa/default_policy.rego).
+If the policy is not updated, the AS will use the [default policy](src/policy_engine/opa/default_policy.rego).
 
 Concrete policy usages please refer to [this guide](docs/policy.md).
 
 ### Reference Value Provider Service
 
-The [Reference Value Provider Service](rvps/README.md) (RVPS) is a module integrated into the AS to verify,
+The [Reference Value Provider Service](../rvps/README.md) (RVPS) is a module integrated into the AS to verify,
 store and provide reference values. RVPS receives and verifies the provenance input from the software supply chain,
 stores the measurement values, and generates reference value claims for the AS according to the evidence content when the AS verifies the evidence.
 
 The Reference Value Provider Service supports different deployment modes,
-please refer to [the doc](./rvps/README.md#run-mode) for more details.
+please refer to [the doc](../rvps/README.md#run-mode) for more details.
