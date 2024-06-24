@@ -46,7 +46,7 @@ services:
     #image: ghcr.io/confidential-containers/reference-value-provider-service:latest
     build:
       context: .
-      dockerfile: ./attestation-service/rvps/Dockerfile
+      dockerfile: ./rvps/Dockerfile
     restart: always # keep the server running
     ports:
       - "50003:50003"
