@@ -17,7 +17,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/
     apt-get update && apt-get install -y libsgx-dcap-quote-verify-dev; fi
 
 # Build and Install RESTful attestation-service
-RUN cargo install --path attestation-service/attestation-service --bin restful-as --features restful-bin --locked
+RUN cargo install --path attestation-service --bin restful-as --features restful-bin --locked
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64

@@ -1,6 +1,6 @@
 # KBS Cluster
 
-KBS provides a simple cluster defined by `docker-compose`, include itself, [Attestation Service](https://github.com/confidential-containers/trustee/tree/main/attestation-service), [Reference Value Provider Service](https://github.com/confidential-containers/trustee/tree/main/attestation-service/rvps) and [CoCo Keyprovider](https://github.com/confidential-containers/guest-components/tree/main/attestation-agent/coco_keyprovider)
+KBS provides a simple cluster defined by `docker-compose`, include itself, [Attestation Service](../../attestation-service/), [Reference Value Provider Service](../../rvps/) and [CoCo Keyprovider](https://github.com/confidential-containers/guest-components/tree/main/attestation-agent/coco_keyprovider)
 
 Users can use very simple command to:
 - launch KBS service.

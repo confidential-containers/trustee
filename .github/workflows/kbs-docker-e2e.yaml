@@ -28,7 +28,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --manifest-path kbs/tools/client/Cargo.toml --no-default-features --features sample_only --release
+        args: --manifest-path kbs/client/Cargo.toml --no-default-features --features sample_only --release
 
     - name: Setup Keys
       run: | 
