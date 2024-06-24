@@ -21,12 +21,12 @@ in the RATS model.
 The AS verifies TEE evidence.
 In the RATS model this is a [Verifier](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#name-verifier)
 
-- [Reference Value Provider Service](attestation-service/rvps)
+- [Reference Value Provider Service](rvps)
 The RVPS manages reference values used to verify TEE evidence.
 This is related to the discussion in [section 7.5](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html#name-endorser-reference-value-pr)
 of the RATS document.
 
-- [Client Tool](kbs/tools/client)
+- [KBS Client Tool](tools/kbs-client/)
 This is a simple tool which can be used to test or configure the KBS and AS.
 
 For further information, see documentation of individual components.

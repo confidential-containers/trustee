@@ -36,7 +36,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN cargo install --locked --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa,${HTTPS_CRYPTO}
+RUN cargo install --locked --path kbs --bin kbs --no-default-features --features coco-as-builtin,resource,opa,${HTTPS_CRYPTO}
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64
