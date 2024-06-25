@@ -1,16 +1,20 @@
-name: attestation-service basic build and unit tests
+name: CoCo-AS Rust Suites
 on:
   push:
     branches:
       - "main"
     paths:
       - 'attestation-service/**'
-      - '.github/workflows/as_basic.yml'
+      - 'rvps'
+      - 'deps/verifier'
+      - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   pull_request:
     paths:
       - 'attestation-service/**'
-      - '.github/workflows/as_basic.yml'
+      - 'rvps'
+      - 'deps/verifier'
+      - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   create:
 
@@ -34,8 +38,8 @@ jobs:
 
       - name: OPA policy.rego fmt and check
         run: |
-          opa fmt -d ./attestation-service/attestation-service/src/policy_engine/opa/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
-          opa check ./attestation-service/attestation-service/src/policy_engine/opa/default_policy.rego
+          opa fmt -d attestation-service/src/policy_engine/opa/default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check attestation-service/src/policy_engine/opa/default_policy.rego
 
       - name: Install protoc
         run: |

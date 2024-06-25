@@ -1,16 +1,16 @@
-name: AS & RVPS Container image build test
+name: AS & RVPS Container Image Build
 on:
   push:
     branches:
       - "main"
     paths:
       - 'attestation-service/**'
-      - '.github/workflows/as-dockerbuild.yml'
+      - '.github/workflows/as-docker-build.yml'
       - 'Cargo.toml'
   pull_request:
     paths:
       - 'attestation-service/**'
-      - '.github/workflows/as-dockerbuild.yml'
+      - '.github/workflows/as-docker-build.yml'
       - 'Cargo.toml'
   create:
 
@@ -36,4 +36,4 @@ jobs:
 
     - name: Build RVPS Container Image
       run: |
-        Docker_BUILDKIT=1 docker build -t rvps:latest . -f attestation-service/rvps/Dockerfile
+        Docker_BUILDKIT=1 docker build -t rvps:latest . -f rvps/Dockerfile

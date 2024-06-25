@@ -1,4 +1,4 @@
-name: Build and push kbs-client
+name: Build and Push kbs-client
 
 on:
   push:
@@ -31,22 +31,25 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v4
-    - name: Install rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.RUSTC_VERSION }}
-        override: true
-        profile: minimal
+
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      run: |
+        rustup update --no-self-update ${{ env.RUSTC_VERSION }}
+        rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustc
+        rustup default ${{ env.RUSTC_VERSION }}
+
     - name: Log in to ghcr.io
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build a statically linked kbs-client for ${{ matrix.arch }} linux
       working-directory: kbs
       run: |
         make cli-static-linux
+
     - name: Push to ghcr.io
       working-directory: target/${{ matrix.arch }}-unknown-linux-gnu/release
       run: |
