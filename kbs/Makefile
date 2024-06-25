@@ -8,7 +8,8 @@ ifeq ($(filter $(ARCH),x86_64 s390x),)
 	$(error "Unsupported architecture: $(ARCH)")
 endif
 
-CLI_FEATURES ?= default
+CLI_FEATURES ?=
+ATTESTER ?=
 
 COCO_AS_INTEGRATION_TYPE ?= builtin
 
@@ -18,6 +19,14 @@ ifeq ($(AS_TYPE), coco-as)
   AS_FEATURE = $(AS_TYPE)-$(COCO_AS_INTEGRATION_TYPE)
 else
   AS_FEATURE = $(AS_TYPE)
+endif
+
+ifndef CLI_FEATURES
+  ifdef ATTESTER
+    CLI_FEATURES = "sample_only,$(ATTESTER)"
+  else
+    CLI_FEATURES += "sample_only,all-attesters"
+  endif
 endif
 
 build: background-check-kbs
