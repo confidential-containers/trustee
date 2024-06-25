@@ -1,4 +1,4 @@
-name: KBS e2e with az-snp-vtpm TEE
+name: KBS e2e (Azure vTPM TEE)
 
 on:
   push:
@@ -54,11 +54,21 @@ jobs:
       with:
         path: ./kbs.tar.gz
 
-  e2e-test:
+  tdx-e2e-test:
     needs:
     - authorize
     - checkout-and-rebase
-    uses: ./.github/workflows/kbs-e2e.yaml
+    uses: ./.github/workflows/kbs-e2e.yml
+    with:
+      runs-on: '["self-hosted","azure-cvm-tdx"]'
+      tee: aztdxvtpm
+      tarball: kbs.tar.gz
+
+  snp-e2e-test:
+    needs:
+    - authorize
+    - checkout-and-rebase
+    uses: ./.github/workflows/kbs-e2e.yml
     with:
       runs-on: '["self-hosted","azure-cvm"]'
       tee: azsnpvtpm

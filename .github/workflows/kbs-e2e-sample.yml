@@ -1,4 +1,4 @@
-name: KBS e2e with sample TEE
+name: KBS e2e (Sample TEE)
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ jobs:
 
   e2e-test:
     needs: checkout
-    uses: ./.github/workflows/kbs-e2e.yaml
+    uses: ./.github/workflows/kbs-e2e.yml
     with:
       tee: sample
       tarball: kbs.tar.gz
