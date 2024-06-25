@@ -28,3 +28,13 @@ tokio.workspace = true
 [features]
 default = ["kbs_protocol/default"]
 sample_only = ["kbs_protocol/background_check", "kbs_protocol/passport", "kbs_protocol/rust-crypto"]
+
+all-attesters = ["kbs_protocol/all-attesters"]
+tdx-attester = ["kbs_protocol/tdx-attester"]
+sgx-attester = ["kbs_protocol/sgx-attester"]
+az-snp-vtpm-attester = ["kbs_protocol/az-snp-vtpm-attester"]
+az-tdx-vtpm-attester = ["kbs_protocol/az-tdx-vtpm-attester"]
+snp-attester = ["kbs_protocol/snp-attester"]
+csv-attester = ["kbs_protocol/csv-attester"]
+cca-attester = ["kbs_protocol/cca-attester"]
+se-attester  = ["kbs_protocol/se-attester"]
