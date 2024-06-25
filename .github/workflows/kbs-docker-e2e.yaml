@@ -18,17 +18,15 @@ jobs:
     - name: Checkout KBS
       uses: actions/checkout@v4
 
-    - name: Install Rust (for client)
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ env.RUSTC_VERSION }}
+    - name: Install Rust ${{ env.RUSTC_VERSION }} (for client)
+      run: |
+        rustup update --no-self-update ${{ env.RUSTC_VERSION }}
+        rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustc
+        rustup default ${{ env.RUSTC_VERSION }}
 
     - name: Build client
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --manifest-path kbs/client/Cargo.toml --no-default-features --features sample_only --release
+      run: |
+        cargo build --manifest-path kbs/client/Cargo.toml --no-default-features --features sample_only --release
 
     - name: Setup Keys
       run: | 
