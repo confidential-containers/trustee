@@ -26,7 +26,7 @@ jobs:
           - docker_file: attestation-service/Dockerfile.as-restful
             tag: coco-as-restful
             name: RESTful CoCo-AS
-          - docker_file: attestation-service/rvps/Dockerfile
+          - docker_file: rvps/Dockerfile
             tag: rvps
             name: RVPS
     runs-on: ${{ matrix.instance }}

@@ -1,4 +1,4 @@
-name: KBS End-to-End test with Docker Compose and Sample Attester
+name: KBS e2e (Docker Compose and Sample TEE)
 
 on:
   pull_request:
@@ -26,7 +26,7 @@ jobs:
 
     - name: Build client
       run: |
-        cargo build --manifest-path kbs/client/Cargo.toml --no-default-features --features sample_only --release
+        cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --features sample_only --release
 
     - name: Setup Keys
       run: | 

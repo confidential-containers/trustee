@@ -31,10 +31,11 @@ jobs:
     - name: Extract tarball
       run: tar xzf ./artifact/${{ inputs.tarball }}
 
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ env.RUSTC_VERSION }}
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      run: |
+        rustup update --no-self-update ${{ env.RUSTC_VERSION }}
+        rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustc
+        rustup default ${{ env.RUSTC_VERSION }}
 
     - name: Set up rust build cache
       uses: actions/cache@v4
