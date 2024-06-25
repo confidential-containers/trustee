@@ -2,6 +2,8 @@
 
 We will see how to deploy KBS (with builtin Attestation Service) on a Kubernetes cluster.
 
+> :warning: **Be aware that the manifests and instructions below do not account for all stateful resources in a KBS deployment.** Changes to a deployment may be lost if the pod is restarted or rescheduled and service replication might yield inconsistent behaviour. For a production deployment, consider using a persistent volume.
+
 ## The secrets
 
 Create a secret that you want to be served using this instance of KBS:
@@ -18,7 +20,7 @@ If you have more than one secret, copy them over to the `config/kubernetes/overl
   files:
   - key.bin
   - secret.key
-  - passowrd.txt
+  - password.txt
   ...
 ```
 

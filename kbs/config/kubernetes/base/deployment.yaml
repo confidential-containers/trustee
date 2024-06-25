@@ -27,8 +27,6 @@ spec:
           mountPath: /kbs/
         - name: kbs-config
           mountPath: /etc/kbs/
-        - name: policy-volume
-          mountPath: /opa/confidential-containers/kbs/
       volumes:
       - name: kbs-auth-public-key
         secret:
@@ -36,6 +34,3 @@ spec:
       - name: kbs-config
         configMap:
           name: kbs-config
-      - name: policy-volume
-        configMap:
-          name: policy-config
