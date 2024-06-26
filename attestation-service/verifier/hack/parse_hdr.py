@@ -55,9 +55,6 @@ def bytes_to_hex_string(byte_data):
     return ''.join(f'{b:02x}' for b in byte_data)
 
 def parse_img_phkh_from_hkd(filename):
-    # Certificate path
-    # cert_path = '/root/workdir/HKD-3931-0275D38.crt'
-
     # Parse certificate and extract public key
     public_key = parse_certificate(filename)
 
