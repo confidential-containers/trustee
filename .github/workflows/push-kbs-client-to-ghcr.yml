@@ -57,7 +57,9 @@ jobs:
         oras push \
           ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${{ matrix.arch }}-linux-gnu-${commit_sha},latest-${{ matrix.arch }} \
           kbs-client
-        [ "$(uname -m)" = "x86_64" ] && oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client || true
+        if [ "$(uname -m)" = "x86_64" ]; then
+          oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client
+        fi
 
     - name: Take a post-action for self-hosted runner
       if: always()
