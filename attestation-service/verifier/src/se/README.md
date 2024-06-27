@@ -192,10 +192,10 @@ This section is about setting attestation policy.
 
 ### Retrive the attestation policy fields for IBM SE
 
-Using [parse_hdr.py](../../hack/parse_hdr.py) on a s390x instance to retrieve the IBM SE fields for attestation policy.
+Using [se_parse_hdr.py](../../hack/se_parse_hdr.py) on a s390x instance to retrieve the IBM SE fields for attestation policy.
 
 ```bash
-python3 parse_hdr.py hdr.bin HKD-3931.crt 
+python3 se_parse_hdr.py hdr.bin HKD-3931.crt 
 
 ...
   ================================================ 
