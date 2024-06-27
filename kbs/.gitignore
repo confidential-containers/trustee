@@ -6,11 +6,8 @@
 data
 
 # test
-test/*
-!test/Makefile
-!test/data/
-test/data/attestation-service
-test/data/repository
+test/work
+!test/work/.gitkeep
 
 config/private.key
 config/public.pub
