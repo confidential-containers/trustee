@@ -3,13 +3,33 @@ RELEASE := $(shell lsb_release -sr)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
 SGX_COLLATERAL_URL := https://api.trustedservices.intel.com/sgx/certification/v4/
 SGX_QCNL_CONFIG := /etc/sgx_default_qcnl.conf
-KBS_REPO_PATH := ./data/repository
-KBS_CONFIG_PATH := ./data/e2e
+KBS_CONFIG_PATH := ./config
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(MAKEFILE_DIR)/..
 BOLD := $(shell tput bold)
 SGR0 := $(shell tput sgr0)
 TEE ?= sample
+WORK_DIR := $(MAKEFILE_DIR)/work
+KBS_REPO_PATH := $(WORK_DIR)/repository
+ATTESTATION_TOKEN := $(WORK_DIR)/attestation_token
+ROUNDTRIP_FILE := $(WORK_DIR)/secret
+REPOSITORY_SECRET := one/two/three
+SECRET_FILE := $(KBS_REPO_PATH)/$(REPOSITORY_SECRET)
+
+# match those with the entries in the config/*.toml files
+CA_KEY := $(WORK_DIR)/ca.key
+CA_CSR := $(WORK_DIR)/ca-req.csr
+CA_CERT := $(WORK_DIR)/ca-cert.pem
+TOKEN_KEY := $(WORK_DIR)/token.key
+TOKEN_CSR := $(WORK_DIR)/token-req.csr
+TOKEN_CERT := $(WORK_DIR)/token-cert.pem
+TOKEN_CERT_CHAIN := $(WORK_DIR)/token-cert-chain.pem
+KBS_KEY := $(WORK_DIR)/kbs.key
+KBS_PEM := $(WORK_DIR)/kbs.pem
+TEE_KEY := $(WORK_DIR)/tee.key
+HTTPS_KEY := $(WORK_DIR)/https.key
+HTTPS_CERT := $(WORK_DIR)/https.crt
+KBS_POLICY := $(WORK_DIR)/kbs-policy.rego
 
 SHELL := bash
 ifeq ($(OS),Ubuntu)
@@ -71,38 +91,48 @@ client:
 .PHONY: bins
 bins: kbs resource-kbs client
 
-ca-key.pem:
-	openssl genrsa -traditional -out ca-key.pem 2048
+$(CA_KEY):
+	openssl genrsa -traditional -out $(CA_KEY) 2048
 
-ca-cert.pem: ca-key.pem
-	openssl req -new -key ca-key.pem -out ca-req.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-test-root" && \
-	openssl req -x509 -days 3650 -key ca-key.pem -in ca-req.csr -out ca-cert.pem
+$(CA_CERT): $(CA_KEY)
+	openssl req -new -key "$(CA_KEY)" -out "$(CA_CSR)" \
+		-subj "/O=CNCF/OU=CoCo/CN=KBS-test-root" && \
+	openssl req -x509 -days 3650 -key "$(CA_KEY)" -in "$(CA_CSR)" -out "$(CA_CERT)"
 
-token-key.pem:
-	openssl genrsa -traditional -out token-key.pem 2048
+$(TOKEN_KEY):
+	openssl genrsa -traditional -out "$(TOKEN_KEY)" 2048
 
-token-cert.pem: token-key.pem ca-cert.pem ca-key.pem
-	openssl req -new -key token-key.pem -out token-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS" && \
-	openssl x509 -req -in token-req.csr -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out token-cert.pem -extensions req_ext
+$(TOKEN_CERT): $(TOKEN_KEY) $(CA_CERT) $(CA_KEY)
+	openssl req -new -key "$(TOKEN_KEY)" -out "$(TOKEN_CSR)" \
+		-subj "/O=CNCF/OU=CoCo/CN=CoCo-AS" && \
+	openssl x509 -req -in "$(TOKEN_CSR)" -CA "$(CA_CERT)" -CAkey "$(CA_KEY)" \
+		-CAcreateserial -out $(TOKEN_CERT) -extensions req_ext
 
-token-cert-chain.pem: token-cert.pem ca-cert.pem
-	cat token-cert.pem ca-cert.pem > token-cert-chain.pem
+$(TOKEN_CERT_CHAIN): $(TOKEN_CERT) $(CA_CERT)
+	cat "$(TOKEN_CERT)" "$(CA_CERT)" > "$(TOKEN_CERT_CHAIN)"
 
 .PHONY: generate-attestation-token-signer
-generate-attestation-token-signer: token-cert-chain.pem
+generate-attestation-token-signer: $(TOKEN_CERT_CHAIN)
 
-kbs.key:
-	openssl genpkey -algorithm ed25519 > kbs.key
+$(HTTPS_KEY) $(HTTPS_CERT):
+	openssl req -x509 -out "$(HTTPS_CERT)" -keyout "$(HTTPS_KEY)" \
+		-newkey rsa:2048 -nodes -sha256 \
+		-subj '/CN=kbs.coco' \
+		--addext "subjectAltName=IP:127.0.0.1" \
+		--addext "basicConstraints=CA:FALSE"
 
-kbs.pem: kbs.key
-	openssl pkey -in kbs.key -pubout -out kbs.pem
+$(KBS_KEY):
+	openssl genpkey -algorithm ed25519 > "$(KBS_KEY)"
 
-tee.key:
-	openssl genrsa -traditional -out tee.key 2048
+$(KBS_PEM): $(KBS_KEY)
+	openssl pkey -in "$(KBS_KEY)" -pubout -out "$(KBS_PEM)"
 
-$(KBS_REPO_PATH)/one/two/three:
-	mkdir -p $(KBS_REPO_PATH)/one/two && \
-	openssl rand 16 > $(KBS_REPO_PATH)/one/two/three
+$(TEE_KEY):
+	openssl genrsa -traditional -out "$(TEE_KEY)" 2048
+
+$(SECRET_FILE):
+	mkdir -p $$(dirname "$(SECRET_FILE)") && \
+	openssl rand 16 > "$(SECRET_FILE)"
 
 .PHONY: start-kbs
 start-kbs: kbs.PID
@@ -110,18 +140,22 @@ start-kbs: kbs.PID
 .PHONY: start-resource-kbs
 start-resource-kbs: resource-kbs.PID
 
-kbs.PID: kbs kbs.pem token-key.pem token-cert-chain.pem $(KBS_REPO_PATH)/one/two/three
+kbs-keys: $(KBS_KEY) $(TOKEN_KEY) $(HTTPS_KEY)
+
+kbs-certs: $(KBS_PEM) $(TOKEN_CERT_CHAIN) $(HTTPS_CERT)
+
+kbs.PID: kbs kbs-keys kbs-certs $(SECRET_FILE)
 	@printf "${BOLD}start kbs${SGR0}\n"
 	{ \
-		$(CURDIR)/kbs --config-file $(KBS_CONFIG_PATH)/kbs.toml \
+		"$(CURDIR)/kbs" --config-file "$(KBS_CONFIG_PATH)/kbs.toml" \
 		& echo $$! > kbs.PID; \
 	} && \
 	sleep 1
 
-resource-kbs.PID: resource-kbs kbs.pem ca-cert.pem $(KBS_REPO_PATH)/one/two/three
+resource-kbs.PID: resource-kbs $(KBS_PEM) $(CA_CERT) $(SECRET_FILE)
 	@printf "${BOLD}start resource-kbs${SGR0}\n"
 	{ \
-		./resource-kbs --config-file $(KBS_CONFIG_PATH)/resource-kbs.toml \
+		./resource-kbs --config-file "$(KBS_CONFIG_PATH)/resource-kbs.toml" \
 		& echo $$! > resource-kbs.PID; \
 	} && \
 	sleep 1
@@ -138,30 +172,40 @@ stop-resource-kbs: resource-kbs.PID
 
 test-bgcheck: client start-kbs
 	./client \
-		config --auth-private-key kbs.key \
-		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
-	./client get-resource \
-		 --path one/two/three \
-		 | base64 -d > roundtrip_secret && \
-	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		config \
+		--auth-private-key "$(KBS_KEY)" \
+		set-resource-policy \
+		--policy-file <(echo "$$TEE_POLICY_REGO") && \
+	./client \
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		get-resource \
+		--path "$(REPOSITORY_SECRET)" \
+		| base64 -d > "$(ROUNDTRIP_FILE)" && \
+	diff "$(ROUNDTRIP_FILE)" "$(SECRET_FILE)"
 	@printf "${BOLD}background-check e2e test passed${SGR0}\n"
 
-.PHONY: attestation_token
-attestation_token: client tee.key start-kbs
-	./client attest \
-		--tee-key-file tee.key \
-		> attestation_token
+.PHONY: $(ATTESTATION_TOKEN)
+$(ATTESTATION_TOKEN): client $(TEE_KEY) start-kbs
+	./client \
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		attest \
+		--tee-key-file "$(TEE_KEY)" \
+		> "$(ATTESTATION_TOKEN)"
 
-test-passport: client attestation_token start-resource-kbs
+test-passport: client $(ATTESTATION_TOKEN) start-resource-kbs
 	./client --url http://127.0.0.1:50002 \
-		config --auth-private-key kbs.key \
+		config --auth-private-key "$(KBS_KEY)" \
 		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
 	./client --url http://127.0.0.1:50002 get-resource \
-		--attestation-token attestation_token \
-		--tee-key-file tee.key \
-		--path one/two/three \
-		| base64 -d > roundtrip_secret && \
-	diff $(KBS_REPO_PATH)/one/two/three roundtrip_secret
+		--attestation-token "$(ATTESTATION_TOKEN)" \
+		--tee-key-file "$(TEE_KEY)" \
+		--path $(REPOSITORY_SECRET) \
+		| base64 -d > "$(ROUNDTRIP_FILE)" && \
+	diff "$(SECRET_FILE)" "$(ROUNDTRIP_FILE)"
 	@printf "${BOLD}passport e2e test passed${SGR0}\n"
 
 .PHONY: stop
@@ -174,12 +218,6 @@ e2e-test: test-bgcheck test-passport stop
 clean:
 	rm -rf \
 		kbs \
-		resource-kbs \
-		kbs.key \
-		kbs.pem \
-		tee.key \
-		tee.pem \
 		client \
-		token-signer \
-		roundtrip_secret \
-		$(KBS_REPO_PATH)/one/two/three
+		resource-kbs \
+		work/*
