@@ -1,0 +1,30 @@
+# Use CentOS Stream to build.
+FROM quay.io/centos/centos:stream9 as builder
+
+# Install build dependencies from CentOS repos.
+RUN dnf -y --setopt=install_weak_deps=0 --enablerepo=crb install \
+cargo pkg-config perl-FindBin openssl-devel perl-lib perl-IPC-Cmd perl-File-Compare perl-File-Copy tpm2-tss-devel clang-devel protobuf-compiler \
+tar gzip meson
+
+WORKDIR /usr/src/kbs
+COPY . .
+
+# Build sgx_dcap_quoteverify stub
+RUN \
+pushd sgx_dcap_quoteverify_stubs && \
+meson setup build --prefix=/usr && \
+meson compile -C build && \
+meson install -C build 
+
+# Build KBS
+ARG KBS_FEATURES=coco-as-builtin,rustls,resource,opa
+RUN \
+cargo install --locked --root /usr/local/ --path kbs/src/kbs --no-default-features --features ${KBS_FEATURES} && \
+# Collect linked files necessary for the binary to run.
+mkdir -p /root/trustee/lib64 && \
+ldd /usr/local/bin/kbs | sed 's@.*\s/@/@' | sed 's/\s.*//' | xargs -I {} cp {} /root/trustee/lib64
+
+# Package UBI image.
+FROM registry.access.redhat.com/ubi9
+
+COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs
