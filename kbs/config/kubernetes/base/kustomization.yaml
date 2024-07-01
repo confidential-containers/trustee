@@ -17,6 +17,9 @@ configMapGenerator:
 - files:
   - kbs-config.toml
   name: kbs-config
+- files:
+  - policy.rego
+  name: policy-config
 
 # KBS auth public key.
 secretGenerator:
