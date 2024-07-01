@@ -12,6 +12,19 @@ spec:
       labels:
         app: kbs
     spec:
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - cp -r /config/$(dirname $(readlink /config/policy.rego))/* /opa/confidential-containers/kbs/
+        image: busybox
+        imagePullPolicy: Always
+        name: copy-config
+        volumeMounts:
+        - mountPath: /config
+          name: config-volume
+        - mountPath: /opa/confidential-containers/kbs
+          name: policy-volume
       containers:
       - name: kbs
         image: kbs-container-image
@@ -27,6 +40,8 @@ spec:
           mountPath: /kbs/
         - name: kbs-config
           mountPath: /etc/kbs/
+        - name: policy-volume
+          mountPath: /opa/confidential-containers/kbs/
       volumes:
       - name: kbs-auth-public-key
         secret:
@@ -34,3 +49,8 @@ spec:
       - name: kbs-config
         configMap:
           name: kbs-config
+      - name: policy-volume
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: policy-config
