@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kbs
+spec:
+  template:
+    spec:
+      containers:
+      - name: kbs
+        env:
+        - name: SE_SKIP_CERTS_VERIFICATION
+          value: "false"
+        volumeMounts:
+        - name: test-local-volume
+          mountPath: /run/confidential-containers/ibmse/
+      volumes:
+      - name: test-local-volume
+        persistentVolumeClaim:
+          claimName: test-local-pvc
