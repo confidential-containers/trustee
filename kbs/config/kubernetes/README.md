@@ -9,7 +9,7 @@ We will see how to deploy KBS (with builtin Attestation Service) on a Kubernetes
 Create a secret that you want to be served using this instance of KBS:
 
 ```bash
-echo "This is my super secert" > overlays/key.bin
+echo "This is my super secret" > overlays/$(uname -m)/key.bin
 ```
 
 If you have more than one secret, copy them over to the `config/kubernetes/overlays` directory and add those to the `overlays/kustomization.yaml` file after as shown below:
@@ -91,6 +91,29 @@ Deploy KBS by running the following command:
 ./deploy-kbs.sh
 ```
 
+For IBM Secure Execution (s390x), an environment variable `IBM_SE_CREDS_DIR` should be exported as follows:
+
+```
+$ export IBM_SE_CREDS_DIR=/path/to/your/directory
+$ tree $IBM_SE_CREDS_DIR
+/path/to/your/directory
+├── certs
+│   ├── DigiCertCA.crt
+│   └── ibm-z-host-key-signing-gen2.crt
+├── crls
+│   └── ibm-z-host-key-gen2.crl
+├── hdr
+│   └── hdr.bin
+├── hkds
+│   └── HKD-3931-0275D38.crt
+└── rsa
+    ├── encrypt_key.pem
+    └── encrypt_key.pub
+5 directories, 7 files
+```
+
+Please check out the [documentation](https://github.com/confidential-containers/trustee/tree/main/attestation-service/verifier/src/se) for details.
+
 ## Check deployment
 
 Run the following command to check if the KBS is deployed successfully:
@@ -113,4 +136,10 @@ A Kuberentes service is also deployed as a part of this deployment, you can reac
 $ kubectl -n coco-tenant get service
 NAME   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
 kbs    ClusterIP   10.0.210.190   <none>        8080/TCP   4s
+```
+
+## Delete KBS
+
+```
+$ kubectl delete -k ${DEPLOYMENT_DIR}/$(uname -m)
 ```
