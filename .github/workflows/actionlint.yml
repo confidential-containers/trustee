@@ -1,8 +1,8 @@
-name: actionlint
+name: Actionlint
 on: [pull_request]
 jobs:
   actionlint:
-    name: lint workflow files
+    name: Workflow Files
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

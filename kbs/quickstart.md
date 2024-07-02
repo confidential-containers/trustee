@@ -199,7 +199,7 @@ Where `/path/to/policy` should be replaced by the real path to your policy file.
 
 Resource policy also needs to be the `rego` syntax defined by [Open Policy Agent](https://www.openpolicyagent.org/).
 
-You can read the notes of [default resource policy file](./src/api/src/policy_engine/opa/default_policy.rego) for more details of resource policy.
+You can read the notes of [default resource policy file](src/policy_engine/opa/default_policy.rego) for more details of resource policy.
 
 ## Attestation Token Certificate
 

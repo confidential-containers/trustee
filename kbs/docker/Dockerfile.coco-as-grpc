@@ -8,7 +8,7 @@ COPY . .
 RUN apt-get update && apt install -y protobuf-compiler git
 
 # Build and Install KBS
-RUN cargo install --path kbs/src/kbs --no-default-features --features coco-as-grpc,resource,opa,${HTTPS_CRYPTO}
+RUN cargo install --path kbs --bin kbs --no-default-features --features coco-as-grpc,resource,opa,${HTTPS_CRYPTO}
 
 FROM ubuntu:22.04
 

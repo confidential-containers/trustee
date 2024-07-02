@@ -34,10 +34,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ env.RUSTC_VERSION }}
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      run: |
+        rustup update --no-self-update ${{ env.RUSTC_VERSION }}
+        rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustc
+        rustup default ${{ env.RUSTC_VERSION }}
 
     - uses: actions/setup-go@v5
       with:

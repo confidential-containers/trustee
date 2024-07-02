@@ -1,11 +1,10 @@
 [workspace]
 members = [
-    "kbs/src/kbs",
-    "kbs/src/api",
-    "kbs/tools/client",
-    "attestation-service/attestation-service",
-    "attestation-service/verifier",
-    "attestation-service/rvps",
+    "kbs",
+    "attestation-service",
+    "rvps",
+    "tools/kbs-client",
+    "deps/verifier",
 ]
 resolver = "2"
 
@@ -20,7 +19,6 @@ edition = "2021"
 actix-web = "4"
 actix-web-httpauth = "0.8.0"
 anyhow = "1.0"
-api-server = { path = "kbs/src/api", default-features = false }
 assert-json-diff = "2.0.2"
 async-trait = "0.1.31"
 base64 = "0.21"
@@ -30,11 +28,13 @@ clap = { version = "4", features = ["derive"] }
 config = "0.13.3"
 env_logger = "0.10.0"
 hex = "0.4.3"
+jwt-simple = "0.11"
 kbs-types = "0.6.0"
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
-prost = "0.11.0"
+prost = "0.12"
 regorus = { version = "0.1.5", default-features = false, features = ["regex", "base64", "time"] }
+reqwest = "0.12"
 rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.89"
@@ -46,5 +46,5 @@ strum = { version = "0.25", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.23.0", features = ["full"] }
 tempfile = "3.4.0"
-tonic = "0.8.1"
-tonic-build = "0.8.0"
+tonic = "0.11"
+tonic-build = "0.11"

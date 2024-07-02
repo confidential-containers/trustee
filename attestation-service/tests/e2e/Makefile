@@ -66,7 +66,7 @@ restful-test: restful.pid $(REQUEST)
 .PHONY: grpc-test
 grpc-test: grpc.pid $(REQUEST)
 	echo $$(cat $(REQUEST)) \
-	| grpcurl -plaintext -import-path ../../protos -proto ../../protos/attestation.proto -d @ 127.0.0.1:50004 attestation.AttestationService/AttestationEvaluate
+	| grpcurl -plaintext -import-path ../../../protos -proto ../../../protos/attestation.proto -d @ 127.0.0.1:50004 attestation.AttestationService/AttestationEvaluate
 
 .PHONY: stop-restful-as
 stop-restful-as: restful.pid

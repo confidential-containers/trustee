@@ -115,7 +115,7 @@ This section is **optional**. When omitted, a new RSA key pair is generated and 
 | `store_config` | JSON Map                | Used if `remote_addr` is not set. The optional configurations to the underlying storage.                                                   | Conditional       | -       |
 
 Different `store_type` will have different `store_config` items.
-See the details of `store_config` in [concrete implementations of storages](../../attestation-service/rvps/src/store/).
+See the details of `store_config` in [concrete implementations of storages](../../rvps/src/store/).
 
 ### gRPC Attestation
 

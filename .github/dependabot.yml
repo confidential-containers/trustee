@@ -15,13 +15,7 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
-    directory: "/attestation-service/attestation-service/src/cgo" # Location of go.mod
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 1
-
-  - package-ecosystem: "gomod"
-    directory: "/attestation-service/rvps/cgo" # Location of go.mod
+    directory: "/rvps/cgo" # Location of go.mod
     schedule:
       interval: "daily"
     open-pull-requests-limit: 1

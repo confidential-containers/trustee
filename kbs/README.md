@@ -4,7 +4,7 @@ The Confidential Containers Key Broker Service (KBS) facilitates remote attestat
 The KBS is an implementation of a [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html).
 The KBS itself does not validate attestation evidence. Instead, it supports different external components to verify TEE evidence in the form of plug-ins, including
 - [CoCo Attestation-Service (CoCo AS)](../attestation-service/) ([All plugins](../attestation-service/README.md#attestation-service) supported)
-- [Intel Trust Authority (ITA)](src/api/src/attestation/intel_trust_authority/) (Only supports SGX/TDX)
+- [Intel Trust Authority (ITA)](src/attestation/intel_trust_authority/) (Only supports SGX/TDX)
 
 # Quick Start
 
@@ -127,4 +127,4 @@ A custom, [JSON-formatted configuration file](./docs/config.md) can be provided 
 ## Related Tools
 
 ### KBS Client
-We provide a [KBS client](./tools/client/README.md) rust SDK and binary cmdline tool.
+We provide a [KBS client](../tools/kbs-client//README.md) rust SDK and binary cmdline tool.

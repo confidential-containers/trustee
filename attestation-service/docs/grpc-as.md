@@ -111,4 +111,4 @@ docker build -t coco-as:grpc -f attestation-service/Dockerfile.as-grpc .
 
 ### API
 
-The API of gRPC CoCo-AS is defined in the [proto](../protos/attestation.proto).
+The API of gRPC CoCo-AS is defined in the [proto](../../protos/attestation.proto).

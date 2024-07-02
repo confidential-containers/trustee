@@ -7,7 +7,7 @@ COPY . .
 RUN apt-get update && apt install -y git
 
 # Build and Install KBS
-RUN cargo install --path kbs/src/kbs --no-default-features --features intel-trust-authority-as,${HTTPS_CRYPTO},resource,opa
+RUN cargo install --path kbs --bin kbs --no-default-features --features intel-trust-authority-as,${HTTPS_CRYPTO},resource,opa
 
 FROM ubuntu:22.04
 
