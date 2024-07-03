@@ -112,7 +112,7 @@ $ tree $IBM_SE_CREDS_DIR
 5 directories, 7 files
 ```
 
-Please check out the [documentation](https://github.com/confidential-containers/trustee/tree/main/attestation-service/verifier/src/se) for details.
+Please check out the [documentation](https://github.com/confidential-containers/trustee/tree/main/deps/verifier/src/se) for details.
 
 ## Check deployment
 
