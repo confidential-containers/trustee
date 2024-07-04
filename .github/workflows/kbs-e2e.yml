@@ -21,12 +21,13 @@ defaults:
     shell: bash
 
 jobs:
-  e2e-test:
-    runs-on: ${{ fromJSON(inputs.runs-on) }}
+  build-binaries:
+    runs-on: ubuntu-22.04
     env:
       RUSTC_VERSION: 1.76.0
     steps:
-    - uses: actions/download-artifact@v4
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
 
     - name: Extract tarball
       run: tar xzf ./artifact/${{ inputs.tarball }}
@@ -47,6 +48,30 @@ jobs:
           target/
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
+    - name: Build bins
+      working-directory: kbs/test
+      run: |
+        make install-dev-dependencies
+        make bins
+
+    - name: Archive test folder
+      run: tar czf test.tar.gz kbs/test
+
+    - uses: actions/upload-artifact@v4
+      with:
+        path: test.tar.gz
+        overwrite: true
+
+  e2e-test:
+    needs: build-binaries
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Extract test folder
+      run: tar xzf ./artifact/test.tar.gz
+
     - name: Set up SGX/TDX certificates cache
       uses: actions/cache@v4
       with:
@@ -59,10 +84,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y make --no-install-recommends
         sudo make install-dependencies
-
-    - name: Build bins
-      working-directory: kbs/test
-      run: make bins
 
     - name: Set cc_kbc sample attester env
       if: inputs.tee == 'sample'
