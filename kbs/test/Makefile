@@ -51,6 +51,19 @@ allow {
 endef
 export TEE_POLICY_REGO
 
+.PHONY: install-dev-dependencies
+install-dev-dependencies: install-dependencies
+	sudo apt-get update && \
+	sudo apt-get install -y \
+		build-essential \
+		clang \
+		libsgx-dcap-quote-verify-dev \
+		libssl-dev \
+		libtdx-attest-dev \
+		libtss2-dev \
+		pkg-config \
+		protobuf-compiler
+
 .PHONY: install-dependencies
 install-dependencies:
 	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo apt-key add - && \
@@ -58,19 +71,13 @@ install-dependencies:
 		| sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
 	sudo apt-get update && \
 	sudo apt-get install -y \
-		build-essential \
-		clang \
 		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify \
-		libsgx-dcap-quote-verify-dev \
 		libsgx-urts \
-		libssl-dev \
 		libtdx-attest \
-		libtdx-attest-dev \
-		libtss2-dev \
-		openssl \
-		pkg-config \
-		protobuf-compiler && \
+		libtss2-esys-3.0.2-0 \
+		libtss2-tctildr0 \
+		openssl && \
 	echo '{"collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG)
 
 kbs:
