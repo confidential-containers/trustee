@@ -96,7 +96,7 @@ Build and run container image
 ```shell
 git clone https://github.com/confidential-containers/trustee
 cd trustee
-docker build -t coco-as:restful -f attestation-service/Dockerfile.as-restful .
+docker build -t coco-as:restful -f attestation-service/docker/as-restful/Dockerfile .
 ```
 
 ### HTTPS support

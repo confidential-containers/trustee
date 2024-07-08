@@ -5,7 +5,7 @@ All the reference values will be stored inside RVPS. When AS queries specific so
 
 ## Architecture
 
-RVPS contains the following componants:
+RVPS contains the following components:
 
 - Pre-Processor : Pre-Processor contains a set of Wares (like Middleware). The Wares can process the input Message and then deliver it to the Extractors.
 
@@ -72,7 +72,7 @@ By default listen to `localhost:50003` to wait for requests
 We can build RVPS docker image
 
 ```bash
-cd .. && docker build -t rvps -f rvps/Dockerfile .
+cd .. && docker build -t rvps -f rvps/docker/Dockerfile .
 ```
 
 Run

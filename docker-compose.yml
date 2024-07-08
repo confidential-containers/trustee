@@ -3,7 +3,7 @@ services:
   kbs:
     build:
       context: .
-      dockerfile: ./kbs/docker/Dockerfile.coco-as-grpc
+      dockerfile: kbs/docker/coco-as-grpc/Dockerfile
     #image: ghcr.io/confidential-containers/key-broker-service:latest
     command: [
         "/usr/local/bin/kbs",
@@ -23,7 +23,7 @@ services:
   as:
     build:
       context: .
-      dockerfile: ./attestation-service/Dockerfile.as-grpc
+      dockerfile: attestation-service/docker/as-grpc/Dockerfile
     #image: ghcr.io/confidential-containers/attestation-service:latest
     ports:
     - "50004:50004"
@@ -46,7 +46,7 @@ services:
     #image: ghcr.io/confidential-containers/reference-value-provider-service:latest
     build:
       context: .
-      dockerfile: ./rvps/Dockerfile
+      dockerfile: rvps/docker/Dockerfile
     restart: always # keep the server running
     ports:
       - "50003:50003"
