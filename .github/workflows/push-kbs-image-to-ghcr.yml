@@ -28,11 +28,11 @@ jobs:
             https_crypto: openssl
             name: build-in AS
           - tag: kbs-grpc-as
-            docker_file: kbs/docker/Dockerfile.coco-as-grpc
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
             https_crypto: rustls
             name: gRPC AS
           - tag: kbs-ita-as
-            docker_file: kbs/docker/Dockerfile.intel-trust-authority
+            docker_file: kbs/docker/intel-trust-authority/Dockerfile
             https_crypto: rustls
             name: Intel Trust Authority AS
 

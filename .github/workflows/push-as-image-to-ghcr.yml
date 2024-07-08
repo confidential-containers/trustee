@@ -20,13 +20,13 @@ jobs:
           - coco-as-restful
           - rvps
         include:
-          - docker_file: attestation-service/Dockerfile.as-grpc
+          - docker_file: attestation-service/docker/as-grpc/Dockerfile
             tag: coco-as-grpc
             name: gRPC CoCo-AS
-          - docker_file: attestation-service/Dockerfile.as-restful
+          - docker_file: attestation-service/docker/as-restful/Dockerfile
             tag: coco-as-restful
             name: RESTful CoCo-AS
-          - docker_file: rvps/Dockerfile
+          - docker_file: rvps/docker/Dockerfile
             tag: rvps
             name: RVPS
     runs-on: ${{ matrix.instance }}
