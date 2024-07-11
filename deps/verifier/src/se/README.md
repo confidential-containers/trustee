@@ -32,7 +32,18 @@ ibm-z-host-key-signing-gen2.crt
 DigiCertCA.crt 
 
 ### CRL
-ibm-z-host-key-gen2.crl
+ibm-z-host-key-gen2.crl  
+DigiCertTrustedRootG4.crl  
+DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+
+Note: `DigiCertTrustedRootG4.crl` and `DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl` come from commands as below:
+```bash
+# openssl x509 -in DigiCertCA.crt --text --noout |grep crl
+                  URI:http://crl3.digicert.com/DigiCertTrustedRootG4.crl
+# openssl x509 -in ibm-z-host-key-signing-gen2.crt --text --noout |grep crl
+                  URI:http://crl3.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+                  URI:http://crl4.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+```
 
 ## Download HKD
 Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-z?topic=execution-verify-host-key-document
@@ -68,6 +79,8 @@ cargo install --locked --debug --path kbs/src/kbs --no-default-features --featur
 |   └── DigiCertCA.crt
 ├── crls
 │   └── ibm-z-host-key-gen2.crl
+│   └── DigiCertTrustedRootG4.crl
+│   └── DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
 ├── hdr
 │   └── hdr.bin
 ├── hkds
@@ -110,7 +123,7 @@ export SE_SKIP_CERTS_VERIFICATION=true
 ./kbs --config-file ./kbs-config.toml
 ```
 
-> Note: `SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine.
+> Note: `export SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine. Use `export CERTS_OFFLINE_VERIFICATION=true` to verifiy the certificates offline.
 
 ## (Option 2) Launch KBS via docker-compose
 - Build the docker image
@@ -147,7 +160,7 @@ services:
       - ./data/rsa/encrypt_key.pem:/run/confidential-containers/ibmse/rsa/encrypt_key.pem
       - ./data/rsa/encrypt_key.pub:/run/confidential-containers/ibmse/rsa/encrypt_key.pub
 ```
-> Note: `SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine.
+> Note: `export SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine. Use `export CERTS_OFFLINE_VERIFICATION=true` to verifiy the certificates offline.
 
 - Prepare the material, similar as:
 ```
@@ -161,6 +174,8 @@ services:
 │   │   └── DigiCertCA.crt
 │   ├── crls
 │   │   └── ibm-z-host-key-gen2.crl
+│   │   └── DigiCertTrustedRootG4.crl
+│   │   └── DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
 │   ├── hdr.bin
 │   ├── hkds
 │   │   └── HKD-3931-0275D38.crt
