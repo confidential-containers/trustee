@@ -13,7 +13,7 @@ use quote::{ecdsa_quote_verification, parse_tdx_quote};
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod claims;
-mod eventlog;
+pub mod eventlog;
 pub(crate) mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
