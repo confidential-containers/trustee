@@ -39,7 +39,6 @@
 //! ```
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
 use serde_json::{Map, Value};
 
 use crate::TeeEvidenceParsedClaim;
@@ -110,37 +109,6 @@ pub fn generate_parsed_claims(quote: sgx_quote3_t) -> Result<TeeEvidenceParsedCl
     log::info!("\nParsed Evidence claims map: \n{:?}\n", &claims);
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
-}
-
-/// Kernel Commandline Event inside Eventlog
-pub struct TdShimPlatformConfigInfo<'a> {
-    pub descriptor: [u8; 16],
-    pub info_length: u32,
-    pub data: &'a [u8],
-}
-
-impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
-    type Error = anyhow::Error;
-
-    fn try_from(data: &'a [u8]) -> std::result::Result<Self, Self::Error> {
-        if data.len() < core::mem::size_of::<[u8; 16]>() + core::mem::size_of::<u32>() {
-            bail!("give data slice is too short");
-        }
-
-        let descriptor = data[0..core::mem::size_of::<[u8; 16]>()].try_into()?;
-        let info_length = (&data[core::mem::size_of::<[u8; 16]>()
-            ..core::mem::size_of::<[u8; 16]>() + core::mem::size_of::<u32>()])
-            .read_u32::<LittleEndian>()?;
-        let data = &data[core::mem::size_of::<[u8; 16]>() + core::mem::size_of::<u32>()
-            ..core::mem::size_of::<[u8; 16]>()
-                + core::mem::size_of::<u32>()
-                + info_length as usize];
-        Ok(Self {
-            descriptor,
-            info_length,
-            data,
-        })
-    }
 }
 
 #[cfg(test)]
