@@ -18,7 +18,7 @@ base64.workspace = true
 clap = { version = "4.0.29", features = ["derive"] }
 env_logger.workspace = true
 jwt-simple.workspace = true
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="df60725afe0ba452a25a740cf460c2855442c49a", default-features = false }
+kbs_protocol = { workspace = true, default-features = false }
 log.workspace = true
 reqwest = { workspace = true, default-features = false, features = ["cookies", "json"] }
 serde = { workspace = true, features = ["derive"] }

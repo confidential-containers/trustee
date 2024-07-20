@@ -118,7 +118,7 @@ pub(crate) async fn get_resource(
         .await
         .read_secret_resource(resource_description)
         .await
-        .map_err(|e| Error::ReadSecretFailed(e.to_string()))?;
+        .map_err(|e| Error::ReadSecretFailed(format!("{e:?}")))?;
 
     let jwe = jwe(pubkey, resource_byte)?;
 

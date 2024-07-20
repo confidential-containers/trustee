@@ -7,10 +7,12 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use strum::EnumString;
 use tokio::sync::RwLock;
 
 mod local_fs;
+
+#[cfg(feature = "aliyun")]
+mod aliyun_kms;
 
 /// Interface of a `Repository`.
 #[async_trait::async_trait]
@@ -46,10 +48,13 @@ impl ResourceDesc {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, EnumString)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum RepositoryConfig {
     LocalFs(local_fs::LocalFsRepoDesc),
+
+    #[cfg(feature = "aliyun")]
+    Aliyun(aliyun_kms::AliyunKmsBackendConfig),
 }
 
 impl RepositoryConfig {
@@ -72,6 +77,11 @@ impl RepositoryConfig {
 
                 Ok(Arc::new(RwLock::new(local_fs::LocalFs::new(desc)?))
                     as Arc<RwLock<dyn Repository + Send + Sync>>)
+            }
+            #[cfg(feature = "aliyun")]
+            Self::Aliyun(config) => {
+                let client = aliyun_kms::AliyunKmsBackend::new(config)?;
+                Ok(Arc::new(RwLock::new(client)) as Arc<RwLock<dyn Repository + Send + Sync>>)
             }
         }
     }
