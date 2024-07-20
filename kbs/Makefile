@@ -1,6 +1,7 @@
 AS_TYPE ?= coco-as
 HTTPS_CRYPTO ?= rustls
 POLICY_ENGINE ?=
+ALIYUN ?= false
 
 ARCH := $(shell uname -m)
 # Check if ARCH is supported, otehrwise return error
@@ -10,6 +11,7 @@ endif
 
 CLI_FEATURES ?=
 ATTESTER ?=
+FEATURES ?=
 
 COCO_AS_INTEGRATION_TYPE ?= builtin
 
@@ -19,6 +21,10 @@ ifeq ($(AS_TYPE), coco-as)
   AS_FEATURE = $(AS_TYPE)-$(COCO_AS_INTEGRATION_TYPE)
 else
   AS_FEATURE = $(AS_TYPE)
+endif
+
+ifeq ($(ALIYUN), true)
+  FEATURES += aliyun
 endif
 
 ifndef CLI_FEATURES
@@ -33,16 +39,16 @@ build: background-check-kbs
 
 .PHONY: background-check-kbs
 background-check-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE)
+	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE),$(FEATURES)
 
 .PHONY: passport-issuer-kbs
 passport-issuer-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO)
+	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO),$(FEATURES)
 	mv ../target/release/kbs ../target/release/issuer-kbs
 
 .PHONY: passport-resource-kbs
 passport-resource-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE)
+	cargo build -p kbs --locked --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE),$(FEATURES)
 	mv ../target/release/kbs ../target/release/resource-kbs
 
 .PHONY: cli

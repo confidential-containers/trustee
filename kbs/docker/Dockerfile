@@ -1,6 +1,7 @@
 FROM rust:slim as builder
 ARG ARCH=x86_64
 ARG HTTPS_CRYPTO=rustls
+ARG ALIYUN=false
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -36,7 +37,8 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN cargo install --locked --path kbs --bin kbs --no-default-features --features coco-as-builtin,resource,opa,${HTTPS_CRYPTO}
+RUN cd kbs && make AS_FEATURE=coco-as-builtin HTTPS_CRYPTO=${HTTPS_CRYPTO} POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
+    make install-kbs
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64
@@ -60,4 +62,4 @@ RUN apt-get update && \
     apt clean all && \
     rm -rf /tmp/*
 
-COPY --from=builder /usr/local/cargo/bin/kbs /usr/local/bin/kbs
+COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs

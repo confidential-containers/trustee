@@ -54,17 +54,26 @@ This section is **optional**. When omitted, a default configuration is used.
 Repository configuration is **specific to a repository type**. See the following sections for
 type-specific properties.
 
->This section is available only when the `resource` feature is enabled.
+>This section is available only when the `resource` feature is enabled. Only one repository is available at a time.
 
-| Property | Type   | Description                                           | Required | Default   |
-|----------|--------|-------------------------------------------------------|----------|-----------|
-| `type`   | String | The resource repository type. Valid values: `LocalFs` | Yes      | -         |
+| Property | Type   | Description                                                     | Required | Default   |
+|----------|--------|-----------------------------------------------------------------|----------|-----------|
+| `type`   | String | The resource repository type. Valid values: `LocalFs`, `Aliyun` | Yes      | `LocalFs` |
 
 **`LocalFs` Properties**
 
 | Property   | Type   | Description                     | Required | Default                                             |
 |------------|--------|---------------------------------|----------|-----------------------------------------------------|
 | `dir_path` | String | Path to a repository directory. | No       | `/opt/confidential-containers/kbs/repository`       |
+
+**`Aliyun` Properties**
+
+| Property          | Type   | Description                       | Required | Example                                             |
+|-------------------|--------|-----------------------------------|----------|-----------------------------------------------------|
+| `client_key`      | String | The KMS instance's AAP client key | Yes      | `{"KeyId": "KA..", "PrivateKeyData": "MIIJqwI..."}` |
+| `kms_instance_id` | String | The KMS instance id               | Yes      | `kst-shh668f7...`                                   |
+| `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
+| `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
 ### Native Attestation
 
