@@ -90,7 +90,7 @@ The Makefile supports a number of other configuration parameters.
 
 For example,
 ```shell
-make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
+make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?] [ALIYUN=?]
 ```
 
 The parameters
@@ -99,7 +99,7 @@ The parameters
 if it is not required.
 - `AS_TYPES`: The KBS supports multiple backend attestation services. `AS_TYPES` selects which verifier to use. The options are `coco-as` and `intel-trust-authority-as`.
 - `COCO_AS_INTEGRATION_TYPE`:  The KBS can connect to the CoCo AS in multiple ways. `COCO_AS_INTEGRATION_TYPE` can be set either to `grpc` or `builtin`. With `grpc` the KBS will make a remote connection to the AS. If you are manually building and configuring the components, you'll need to set them up so that this connection can be established. Similar to passport mode, the remote AS can be useful if secret provisioning and attestation verification are not in the same scope. With `builtin` the KBA uses the AS as a crate. This is recommended if you want to avoid the complexity of a remote connection.
-
+- `ALIYUN`: The kbs support aliyun KMS as secret storage backend. `true` to enable building this feature. By default it is `false`.
 ## HTTPS Support
 
 The KBS can use HTTPS. This requires a crypto backend.
@@ -107,6 +107,13 @@ The KBS can use HTTPS. This requires a crypto backend.
 The options are `rustls` and `openssl`. The default is `rustls`.
 
 If you want a self-signed cert for test cases, please refer to [the document](docs/self-signed-https.md).
+
+## Storage Backend
+
+The KBS can use different backend storage. `LocalFs` will always be builtin.
+`ALIYUN` determines whether aliyun kms support will be built. The options
+are `true` or `false` (by defult). Please refer to [the document](docs/config.md#repository-configuration)
+for more details.
 
 ## References
 
