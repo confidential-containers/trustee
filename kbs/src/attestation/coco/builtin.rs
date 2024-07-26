@@ -34,7 +34,7 @@ impl Attest for BuiltInCoCoAs {
             .read()
             .await
             .evaluate(
-                attestation.tee_evidence.into_bytes(),
+                attestation.tee_evidence.to_string().into_bytes(),
                 tee,
                 Some(Data::Structured(runtime_data_plaintext)),
                 HashAlgorithm::Sha384,
@@ -45,13 +45,17 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
+    async fn generate_challenge(
+        &self,
+        tee: Tee,
+        tee_parameters: serde_json::Value,
+    ) -> Result<Challenge> {
         let nonce = match tee {
             Tee::Se => {
                 self.inner
                     .read()
                     .await
-                    .generate_supplemental_challenge(tee, tee_parameters)
+                    .generate_supplemental_challenge(tee, tee_parameters.to_string())
                     .await?
             }
             _ => make_nonce().await?,
@@ -59,7 +63,7 @@ impl Attest for BuiltInCoCoAs {
 
         let challenge = Challenge {
             nonce,
-            extra_params: String::new(),
+            extra_params: serde_json::Value::String(String::new()),
         };
 
         Ok(challenge)

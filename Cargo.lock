@@ -499,14 +499,15 @@ dependencies = [
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
- "base64 0.21.7",
+ "base64 0.22.1",
  "config",
  "const_format",
+ "kbs-types",
  "log",
  "serde",
  "serde_json",
@@ -562,13 +563,13 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "anyhow",
  "async-trait",
  "az-snp-vtpm 0.6.0",
  "az-tdx-vtpm 0.6.0",
- "base64 0.21.7",
+ "base64 0.22.1",
  "codicon",
  "csv-rs",
  "hex",
@@ -1368,11 +1369,11 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "aes-gcm",
  "anyhow",
- "base64 0.21.7",
+ "base64 0.22.1",
  "ctr",
  "kbs-types",
  "rand",
@@ -2769,9 +2770,9 @@ dependencies = [
 
 [[package]]
 name = "kbs-types"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "febd73b2b1df274ea454d81ddf76f596af9754410b7ed6f988f2e1782a175da3"
+checksum = "9b6441ed73b0faa50707d4de41c6b45c76654b661b96aaf7b26a41331eedc0a5"
 dependencies = [
  "serde",
  "serde_json",
@@ -2780,12 +2781,12 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
- "base64 0.21.7",
+ "base64 0.22.1",
  "crypto",
  "jwt-simple 0.12.9",
  "kbs-types",
@@ -2804,12 +2805,12 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "anyhow",
  "async-trait",
  "attestation-agent",
- "base64 0.21.7",
+ "base64 0.22.1",
  "chrono",
  "const_format",
  "hex",
@@ -2952,9 +2953,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.21"
+version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
+checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "matchit"
@@ -4297,7 +4298,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=9bd6f06a9704e01808e91abde130dffb20e632a5#9bd6f06a9704e01808e91abde130dffb20e632a5"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=cd16b445291ad401b4b53664266983f4927a370e#cd16b445291ad401b4b53664266983f4927a370e"
 dependencies = [
  "anyhow",
  "serde",
