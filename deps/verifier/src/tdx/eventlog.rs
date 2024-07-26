@@ -124,6 +124,7 @@ impl CcEventLog {
 
 /// Defined in TCG PC Client Platform Firmware Profile Specification section
 /// 'UEFI_PLATFORM_FIRMWARE_BLOB Structure Definition'
+#[allow(dead_code)]
 pub struct ParsedUefiPlatformFirmwareBlob2 {
     pub desc_len: u8,
     pub desc: Vec<u8>,

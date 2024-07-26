@@ -4,9 +4,7 @@
 //
 
 use super::{TeeEvidenceParsedClaim, Verifier};
-use crate::snp::{
-    load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
-};
+use crate::snp::{load_milan_cert_chain, parse_tee_evidence, verify_report_signature};
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -19,6 +17,7 @@ use log::{debug, warn};
 use openssl::pkey::PKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sev::certs::snp::Chain;
 use sev::firmware::host::{CertTableEntry, CertType};
 use thiserror::Error;
 
@@ -32,7 +31,7 @@ struct Evidence {
 }
 
 pub struct AzSnpVtpm {
-    vendor_certs: VendorCertificates,
+    vendor_certs: Chain,
 }
 
 #[derive(Error, Debug)]
@@ -54,12 +53,10 @@ pub enum CertError {
 }
 
 impl AzSnpVtpm {
-    pub fn new() -> Result<Self, CertError> {
-        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            return Err(CertError::LoadMilanCert);
-        };
-        let vendor_certs = vendor_certs.clone();
-        Ok(Self { vendor_certs })
+    pub fn new() -> Self {
+        Self {
+            vendor_certs: load_milan_cert_chain().clone(),
+        }
     }
 }
 
@@ -171,7 +168,7 @@ fn verify_report_data(
 fn verify_snp_report(
     snp_report: &AttestationReport,
     vcek: &Vcek,
-    vendor_certs: &VendorCertificates,
+    vendor_certs: &Chain,
 ) -> Result<(), CertError> {
     let vcek_data = vcek.0.to_der().context("Failed to get raw VCEK data")?;
     let cert_chain = [CertTableEntry::new(CertType::VCEK, vcek_data)];
@@ -199,7 +196,7 @@ mod tests {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         verify_snp_report(&snp_report, &vcek, vendor_certs).unwrap();
     }
 
@@ -211,7 +208,7 @@ mod tests {
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         assert_eq!(
             verify_snp_report(&snp_report, &vcek, vendor_certs)
                 .unwrap_err()

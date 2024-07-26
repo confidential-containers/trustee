@@ -15,6 +15,7 @@ use openssl::{
     x509::{self, X509},
 };
 use serde_json::json;
+use sev::certs::snp::{ca::Chain as CaChain, Certificate, Chain};
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
 use std::sync::OnceLock;
@@ -34,41 +35,41 @@ const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
 
 #[derive(Debug)]
 pub struct Snp {
-    vendor_certs: VendorCertificates,
+    vendor_certs: Chain,
 }
 
-pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
-    static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
-    MILAN_CERT_CHAIN.get_or_init(|| {
-        let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark_asvk.pem"))?;
-        if certs.len() != 3 {
-            bail!("Malformed Milan ASK/ARK/ASVK");
+fn link_bytes_from_file() -> Vec<X509> {
+    match X509::stack_from_pem(include_bytes!("milan_ask_ark_asvk.pem")) {
+        Result::Ok(certs) => {
+            if certs.len() != 3 {
+                panic!("Malformed Milan ASK/ARK/ASVK");
+            }
+            return certs;
         }
+        Result::Err(err) => panic!("Error reading certificates file: {err}"),
+    }
+}
 
-        let vendor_certs = VendorCertificates {
-            ask: certs[0].clone(),
-            ark: certs[1].clone(),
-            asvk: certs[2].clone(),
-        };
-        Ok(vendor_certs)
+pub(crate) fn load_milan_cert_chain() -> &'static Chain {
+    static MILAN_CERT_CHAIN: OnceLock<Chain> = OnceLock::new();
+    MILAN_CERT_CHAIN.get_or_init(|| {
+        let certs = link_bytes_from_file();
+        Chain {
+            ca: CaChain {
+                ark: Certificate::from(certs[1].clone()),
+                ask: Certificate::from(certs[0].clone()),
+            },
+            vek: Certificate::from(certs[2].clone()),
+        }
     })
 }
 
 impl Snp {
-    pub fn new() -> Result<Self> {
-        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            bail!("Failed to load Milan cert chain");
-        };
-        let vendor_certs = vendor_certs.clone();
-        Ok(Self { vendor_certs })
+    pub fn new() -> Self {
+        Self {
+            vendor_certs: load_milan_cert_chain().clone(),
+        }
     }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct VendorCertificates {
-    ask: X509,
-    ark: X509,
-    asvk: X509,
 }
 
 #[async_trait]
@@ -165,10 +166,10 @@ fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Res
 pub(crate) fn verify_report_signature(
     report: &AttestationReport,
     cert_chain: &[CertTableEntry],
-    vendor_certs: &VendorCertificates,
+    vendor_certs: &Chain,
 ) -> Result<()> {
     // check cert chain
-    let VendorCertificates { ask, ark, asvk } = vendor_certs;
+    let (ask, ark, asvk): (&X509, &X509, &X509) = vendor_certs.into();
 
     // verify VCEK or VLEK cert chain
     // the key can be either VCEK or VLEK
@@ -322,7 +323,7 @@ mod tests {
 
     #[test]
     fn check_milan_certificates() {
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
         assert_eq!(get_common_name(ark).unwrap(), "ARK-Milan");
         assert_eq!(get_common_name(ask).unwrap(), "SEV-Milan");
         assert_eq!(get_common_name(asvk).unwrap(), "SEV-VLEK-Milan");
@@ -393,7 +394,7 @@ mod tests {
     #[test]
     fn check_vcek_signature_verification() {
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
         verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
     }
 
@@ -406,14 +407,14 @@ mod tests {
         X509::from_der(&vcek).expect("failed to parse der");
 
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
         verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
     }
 
     #[test]
     fn check_vlek_signature_verification() {
         let cert_table = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
         verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
     }
 
@@ -426,14 +427,14 @@ mod tests {
         X509::from_der(&vlek).expect("failed to parse der");
 
         let cert_table = vec![CertTableEntry::new(CertType::VLEK, vlek.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
         verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
     }
 
     #[test]
     fn check_milan_chain_signature_failure() {
         let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let (ask, ark, asvk) = load_milan_cert_chain().into();
 
         // toggle ark <=> ask
         verify_cert_chain(&cert_table, ark, ask, asvk).unwrap_err();
@@ -444,7 +445,7 @@ mod tests {
         let attestation_report =
             bincode::deserialize::<AttestationReport>(VCEK_REPORT.as_slice()).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
     }
 
@@ -453,7 +454,7 @@ mod tests {
         let attestation_report =
             bincode::deserialize::<AttestationReport>(VLEK_REPORT.as_slice()).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
     }
 
@@ -466,7 +467,7 @@ mod tests {
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
     }
 
@@ -479,7 +480,7 @@ mod tests {
 
         let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
         let cert_chain = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
+        let vendor_certs = load_milan_cert_chain();
         verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
     }
 }
