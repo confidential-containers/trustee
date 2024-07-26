@@ -55,10 +55,10 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
 /// * `name`: name of the artifact related to this reference value.
 /// * `expired`: expired time for this reference value.
 /// * `hash_value`: A set of key-value pairs, each indicates a hash
-/// algorithm and its relative hash value for the artifact.
-/// The actual struct deliver from RVPS to AS is
-/// [`TrustedDigest`], whose simple structure is easy
-/// for AS to handle.
+///   algorithm and its relative hash value for the artifact.
+///   The actual struct deliver from RVPS to AS is
+///   [`TrustedDigest`], whose simple structure is easy
+///   for AS to handle.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ReferenceValue {
     #[serde(default = "default_version")]
@@ -140,7 +140,7 @@ impl ReferenceValue {
 /// AS, it will include:
 /// * `name`: The name of the artifact, e.g., `linux-1.1.1`
 /// * `hash_values`: digests that have been verified and can
-/// be trusted, so we can refer them as `trusted digests`.
+///   be trusted, so we can refer them as `trusted digests`.
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
 pub struct TrustedDigest {
     /// The resource name.
