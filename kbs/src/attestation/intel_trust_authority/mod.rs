@@ -66,7 +66,7 @@ impl Attest for IntelTrustAuthority {
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .map_err(|e| anyhow!("Deserialize Attestation failed: {:?}", e))?;
         let evidence =
-            serde_json::from_str::<IntelTrustAuthorityTeeEvidence>(&attestation.tee_evidence)
+            serde_json::from_value::<IntelTrustAuthorityTeeEvidence>(attestation.tee_evidence)
                 .map_err(|e| anyhow!("Deserialize supported TEE Evidence failed: {:?}", e))?;
 
         let runtime_data = json!({

@@ -189,10 +189,17 @@ const RSA_ALGORITHM: &str = "RSA1_5";
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
 pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
-    if tee_pub_key.alg != *RSA_ALGORITHM {
+    let TeePubKey::RSA { alg, k_mod, k_exp } = tee_pub_key else {
+        raise_error!(Error::JWEFailed(format!(
+            "key type is not TeePubKey::RSA but {:?}",
+            tee_pub_key
+        )));
+    };
+
+    if alg != *RSA_ALGORITHM {
         raise_error!(Error::JWEFailed(format!(
             "algorithm is not {RSA_ALGORITHM} but {}",
-            tee_pub_key.alg
+            alg
         )));
     }
 
@@ -207,11 +214,11 @@ pub(crate) fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Respo
         .map_err(|e| Error::JWEFailed(format!("AES encrypt Resource payload failed: {e:?}")))?;
 
     let k_mod = URL_SAFE_NO_PAD
-        .decode(&tee_pub_key.k_mod)
+        .decode(k_mod)
         .map_err(|e| Error::JWEFailed(format!("base64 decode k_mod failed: {e:?}")))?;
     let n = BigUint::from_bytes_be(&k_mod);
     let k_exp = URL_SAFE_NO_PAD
-        .decode(&tee_pub_key.k_exp)
+        .decode(k_exp)
         .map_err(|e| Error::JWEFailed(format!("base64 decode k_exp failed: {e:?}")))?;
     let e = BigUint::from_bytes_be(&k_exp);
 
