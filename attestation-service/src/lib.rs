@@ -154,19 +154,19 @@ impl AttestationService {
     /// Evaluate Attestation Evidence.
     /// Issue an attestation results token which contain TCB status and TEE public key. Input parameters:
     /// - `evidence`: TEE evidence bytes. This might not be the raw hardware evidence bytes. Definitions
-    /// are in `verifier` crate.
+    ///   are in `verifier` crate.
     /// - `tee`: concrete TEE type
     /// - `runtime_data`: These data field will be used to check against the counterpart inside the evidence.
-    /// The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
-    /// will not be performed.
+    ///   The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
+    ///   will not be performed.
     /// - `init_data`: These data field will be used to check against the counterpart inside the evidence.
-    /// The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
-    /// will not be performed.
+    ///   The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
+    ///   will not be performed.
     /// - `hash_algorithm`: The hash algorithm that is used to calculate the digest of `runtime_data` and
-    /// `init_data`.
+    ///   `init_data`.
     /// - `policy_ids`: The policy ids that used to check this evidence. Any check fails against a policy will
-    /// not cause this function to return error. The result check against every policy will be included inside
-    /// the finally Token returned by CoCo-AS.
+    ///   not cause this function to return error. The result check against every policy will be included inside
+    ///   the finally Token returned by CoCo-AS.
     #[allow(clippy::too_many_arguments)]
     pub async fn evaluate(
         &self,
