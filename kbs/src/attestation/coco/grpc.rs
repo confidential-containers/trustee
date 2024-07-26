@@ -105,7 +105,7 @@ impl Attest for GrpcClientPool {
             .to_string();
         let req = tonic::Request::new(AttestationRequest {
             tee,
-            evidence: URL_SAFE_NO_PAD.encode(attestation.tee_evidence),
+            evidence: URL_SAFE_NO_PAD.encode(attestation.tee_evidence.to_string()),
             runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
             init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
             runtime_data: Some(RuntimeData::StructuredRuntimeData(runtime_data_plaintext)),
@@ -124,12 +124,16 @@ impl Attest for GrpcClientPool {
         Ok(token)
     }
 
-    async fn generate_challenge(&self, tee: Tee, tee_parameters: String) -> Result<Challenge> {
+    async fn generate_challenge(
+        &self,
+        tee: Tee,
+        tee_parameters: serde_json::Value,
+    ) -> Result<Challenge> {
         let nonce = match tee {
             Tee::Se => {
                 let mut inner = HashMap::new();
                 inner.insert(String::from("tee"), String::from("se"));
-                inner.insert(String::from("tee_params"), tee_parameters);
+                inner.insert(String::from("tee_params"), tee_parameters.to_string());
                 let req = tonic::Request::new(ChallengeRequest { inner });
 
                 let mut client = { self.pool.lock().await.get().await? };
@@ -145,7 +149,7 @@ impl Attest for GrpcClientPool {
 
         let challenge = Challenge {
             nonce,
-            extra_params: String::new(),
+            extra_params: serde_json::Value::String(String::new()),
         };
 
         Ok(challenge)
