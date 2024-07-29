@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::{collections::HashMap, str::FromStr};
-use strum::{AsRefStr, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData};
@@ -30,7 +30,7 @@ use verifier::{InitDataHash, ReportData};
 use crate::utils::flatten_claims;
 
 /// Hash algorithms used to calculate runtime/init data binding
-#[derive(EnumString, AsRefStr)]
+#[derive(Display, EnumString, AsRefStr)]
 pub enum HashAlgorithm {
     #[strum(ascii_case_insensitive)]
     Sha256,
