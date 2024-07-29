@@ -8,7 +8,7 @@ services:
     command: [
         "/usr/local/bin/kbs",
         "--config-file",
-        "/etc/kbs-config.toml",
+        "/etc/kbs/kbs-config.toml",
       ]
     restart: always # keep the server running
     ports:
@@ -16,7 +16,7 @@ services:
     volumes:
       - ./kbs/data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
       - ./kbs/config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
-      - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
+      - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs/kbs-config.toml
     depends_on:
     - as
 
