@@ -40,6 +40,18 @@ pub async fn make_nonce() -> Result<String> {
     Ok(STANDARD.encode(&nonce))
 }
 
+pub(crate) async fn generic_generate_challenge(
+    _tee: Tee,
+    _tee_parameters: serde_json::Value,
+) -> Result<Challenge> {
+    let nonce = make_nonce().await?;
+
+    Ok(Challenge {
+        nonce,
+        extra_params: serde_json::Value::String(String::new()),
+    })
+}
+
 /// Interface for Attestation Services.
 ///
 /// Attestation Service implementations should implement this interface.
@@ -57,15 +69,10 @@ pub trait Attest: Send + Sync {
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
         &self,
-        _tee: Tee,
-        _tee_parameters: serde_json::Value,
+        tee: Tee,
+        tee_parameters: serde_json::Value,
     ) -> Result<Challenge> {
-        let nonce = make_nonce().await?;
-
-        Ok(Challenge {
-            nonce,
-            extra_params: serde_json::Value::String(String::new()),
-        })
+        generic_generate_challenge(tee, tee_parameters).await
     }
 }
 
