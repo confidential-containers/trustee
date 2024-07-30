@@ -24,7 +24,6 @@ use attestation::AttestationService;
 use jwt_simple::prelude::Ed25519PublicKey;
 #[cfg(feature = "resource")]
 use resource::RepositoryConfig;
-use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 #[cfg(feature = "as")]
 use std::sync::Arc;
 use std::{net::SocketAddr, path::PathBuf};
@@ -68,28 +67,11 @@ mod token;
 /// Resource Policy Engine
 pub mod policy_engine;
 
-static KBS_PREFIX: &str = "/kbs";
-static KBS_MAJOR_VERSION: u64 = 0;
-static KBS_MINOR_VERSION: u64 = 1;
-static KBS_PATCH_VERSION: u64 = 0;
-
-lazy_static! {
-    static ref VERSION_REQ: VersionReq = {
-        let kbs_version = Version {
-            major: KBS_MAJOR_VERSION,
-            minor: KBS_MINOR_VERSION,
-            patch: KBS_PATCH_VERSION,
-            pre: Prerelease::EMPTY,
-            build: BuildMetadata::EMPTY,
-        };
-
-        VersionReq::parse(&format!("<={kbs_version}")).unwrap()
-    };
-}
+static KBS_PREFIX: &str = "/kbs/v0";
 
 macro_rules! kbs_path {
     ($path:expr) => {
-        format!("{}/v{}/{}", KBS_PREFIX, KBS_MAJOR_VERSION, $path)
+        format!("{}/{}", KBS_PREFIX, $path)
     };
 }
 

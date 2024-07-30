@@ -11,7 +11,26 @@ use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use kbs_types::Challenge;
 use log::{debug, error, info};
+use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde_json::json;
+
+static KBS_MAJOR_VERSION: u64 = 0;
+static KBS_MINOR_VERSION: u64 = 1;
+static KBS_PATCH_VERSION: u64 = 0;
+
+lazy_static! {
+    static ref VERSION_REQ: VersionReq = {
+        let kbs_version = Version {
+            major: KBS_MAJOR_VERSION,
+            minor: KBS_MINOR_VERSION,
+            patch: KBS_PATCH_VERSION,
+            pre: Prerelease::EMPTY,
+            build: BuildMetadata::EMPTY,
+        };
+
+        VersionReq::parse(&format!("<={kbs_version}")).unwrap()
+    };
+}
 
 /// POST /auth
 pub(crate) async fn auth(
@@ -22,6 +41,14 @@ pub(crate) async fn auth(
 ) -> Result<HttpResponse> {
     info!("Auth API called.");
     debug!("Auth Request: {:?}", &request);
+    let version = Version::parse(&request.version).unwrap();
+    if !VERSION_REQ.matches(&version) {
+        raise_error!(Error::ProtocolVersion(format!(
+            "expected version: {}, requested version: {}",
+            *VERSION_REQ,
+            request.version.clone()
+        )));
+    }
 
     let challenge = attestation_service
         .generate_challenge(request.tee, request.extra_params.clone())
