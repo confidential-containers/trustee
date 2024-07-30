@@ -6,10 +6,9 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie,
 };
-use anyhow::{bail, Result};
+use anyhow::Result;
 use kbs_types::{Challenge, Request};
 use log::warn;
-use semver::Version;
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
@@ -52,10 +51,6 @@ macro_rules! impl_member {
 
 impl SessionStatus {
     pub fn auth(request: Request, timeout: i64, challenge: Challenge) -> Result<Self> {
-        let version = Version::parse(&request.version).map_err(anyhow::Error::from)?;
-        if !crate::VERSION_REQ.matches(&version) {
-            bail!("Invalid Request version {}", request.version);
-        }
         let id = Uuid::new_v4().as_simple().to_string();
 
         let timeout = OffsetDateTime::now_utc() + Duration::minutes(timeout);
