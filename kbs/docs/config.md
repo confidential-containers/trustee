@@ -92,6 +92,7 @@ List of supported plugins that can be added to `enabled_plugins`.
 
 | Plugin name           | Plugin Description                               | Available Cargo Features      |
 |-----------------------|--------------------------------------------------|-------------------------------|
+| `nebula`              | Provide resources to support the creation of a Nebula encrypted overlay network between nodes.  | `nebula-plugin` |
 
 ### Native Attestation
 

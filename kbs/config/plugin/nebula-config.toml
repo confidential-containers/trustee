@@ -1,0 +1,69 @@
+# Required: <String>
+# CA certificate path
+crt_path = "/opt/confidential-containers/kbs/plugin/nebula/ca/ca.crt"
+
+# Required: <String>
+# CA key path
+key_path = "/opt/confidential-containers/kbs/plugin/nebula/ca/ca.key"
+
+# Required: <u32>
+# Certificate Authority generation policy
+#
+# 1 = Create a self signed CA only if
+#     crt_path/key_path not found
+#
+# 2 = Never generate self signed CA as
+#     both crt_path and key_path are pre-installed
+ca_generation_policy = 1
+
+[self_signed_ca_config]
+
+# Required: <String>
+# Name of the certificate authority
+name = "Nebula CA for Trustee KBS"
+
+# Optional: <u32>
+# Argon2 iterations parameter used for encrypted
+# private key passphrase (default 1)
+## argon_iterations = 1
+
+# Optional: <u32>
+# Argon2 memory parameter (in KiB) used for encrypted
+# private key passphrase (default 2097152)
+## argon_memory = 2097152
+
+# Optional: <u32>
+# Argon2 parallelism parameter used for encrypted private
+# key passphrase (default 4)
+## argon_parallelism = 4
+
+# Optional: <String>
+# EdDSA/ECDSA Curve (25519, P256) (default "25519")
+## curve = "25519"
+
+# Optional: <String>
+# Amount of time the certificate should be valid for.
+# Valid time units are seconds:
+# "s", minutes: "m", hours: "h" (default 8760h0m0s)
+## duration = "8760h0m0s"
+
+# Optional: <String>
+# Comma separated list of groups. This will limit which
+# groups subordinate certs can use
+## groups = "servers,ssh"
+
+# Optional: <String>
+# Comma separated list of ipv4 address and network
+# in CIDR notation. This will limit which ipv4 addresses and
+# networks subordinate certs can use for ip addresses
+## ips = "192.168.100.10/24"
+
+# Optional: <String>
+# Path to write a QR code image (png) of the certificate
+## out_qr = "/opt/confidential-containers/kbs/plugin/nebula/ca/ca.png"
+
+# Optional: <String>
+# Comma separated list of ipv4 address and network
+# in CIDR notation. This will limit which ipv4 addresses and
+# networks subordinate certs can use in subnets
+## subnets = "192.168.86.0/24"
