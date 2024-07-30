@@ -2,6 +2,10 @@ sockets = ["0.0.0.0:8080"]
 auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
 insecure_http = true
 
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/storage"
+
 [plugin_manager_config]
 work_dir = "/opt/confidential-containers/kbs/plugin"
 enabled_plugins = []

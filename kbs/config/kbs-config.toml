@@ -6,7 +6,7 @@ attestation_token_type = "CoCo"
 
 [repository_config]
 type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+dir_path = "/opt/confidential-containers/kbs/storage"
 
 [plugin_manager_config]
 work_dir = "/opt/confidential-containers/kbs/plugin"
