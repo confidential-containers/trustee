@@ -67,6 +67,8 @@ async fn main() -> Result<()> {
         #[cfg(feature = "resource")]
         kbs_config.repository_config.unwrap_or_default(),
         #[cfg(feature = "resource")]
+        kbs_config.plugin_manager_config.unwrap_or_default(),
+        #[cfg(feature = "resource")]
         kbs_config.attestation_token_config,
         #[cfg(feature = "opa")]
         kbs_config.policy_engine_config.unwrap_or_default(),

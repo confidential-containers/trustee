@@ -29,11 +29,11 @@ config = "0.13.3"
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="9bd6f06a9704e01808e91abde130dffb20e632a5", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="0d08cccf3c72647de273fee90716d6842b9ddcfd", default-features = false }
 kbs-types = "0.6.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev="9bd6f06a9704e01808e91abde130dffb20e632a5", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
-log = "0.4.17"
+log = "0.4.22"
 prost = "0.12"
 regorus = { version = "0.1.5", default-features = false, features = ["regex", "base64", "time"] }
 reqwest = "0.12"

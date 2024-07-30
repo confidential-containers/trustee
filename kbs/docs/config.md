@@ -75,6 +75,24 @@ type-specific properties.
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
+### Repository Plugin Configuration
+
+The following properties can be set under the `plugin_manager_config` section.
+
+This section is **optional**. When omitted, a default configuration is used.
+
+>This section is available only when the `resource` feature is enabled.
+
+| Property                   | Type           | Description                                                | Required | Default |
+|----------------------------|----------------|------------------------------------------------------------|----------|---------|
+| `work_dir`                 | String         | Location for the Repository Plugin Manager to store data.  | Yes      | -       |
+| `enabled_plugins`          | String Array   | Name of the plugins that will be configured and available. | Yes      | -       |
+
+List of supported plugins that can be added to `enabled_plugins`.
+
+| Plugin name           | Plugin Description                               | Available Cargo Features      |
+|-----------------------|--------------------------------------------------|-------------------------------|
+
 ### Native Attestation
 
 The following properties can be set under the `as_config` section.

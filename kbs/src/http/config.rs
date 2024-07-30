@@ -124,6 +124,12 @@ pub(crate) async fn set_resource(
             .to_string(),
     };
 
+    if resource_description.repository_name == "plugin" {
+        return Err(Error::InvalidRequest(String::from(
+            "plugin set-resource not supported",
+        )));
+    }
+
     set_secret_resource(&repository, resource_description, data.as_ref())
         .await
         .map_err(|e| Error::SetSecretFailed(format!("{e}")))?;

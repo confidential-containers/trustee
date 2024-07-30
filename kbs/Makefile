@@ -2,6 +2,7 @@ AS_TYPE ?= coco-as
 HTTPS_CRYPTO ?= rustls
 POLICY_ENGINE ?=
 ALIYUN ?= false
+PLUGINS ?=
 
 ARCH := $(shell uname -m)
 # Check if ARCH is supported, otehrwise return error
@@ -24,8 +25,17 @@ else
 endif
 
 ifeq ($(ALIYUN), true)
-  FEATURES += aliyun
+  FEATURE_LIST += aliyun
 endif
+
+ifdef PLUGINS
+  FEATURE_LIST += $(PLUGINS)
+endif
+
+NOOP =
+SPACE = $(NOOP) $(NOOP)
+COMMA = ,
+FEATURES=$(subst $(SPACE),$(COMMA),$(FEATURE_LIST))
 
 ifndef CLI_FEATURES
   ifdef ATTESTER

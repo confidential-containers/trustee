@@ -2,6 +2,7 @@ FROM rust:latest as builder
 ARG ARCH=x86_64
 ARG HTTPS_CRYPTO=rustls
 ARG ALIYUN=false
+ARG PLUGINS=""
 
 WORKDIR /usr/src/kbs
 COPY . .
@@ -9,7 +10,7 @@ COPY . .
 RUN apt-get update && apt install -y protobuf-compiler git
 
 # Build and Install KBS
-RUN cd kbs && make AS_FEATURE=coco-as-grpc HTTPS_CRYPTO=${HTTPS_CRYPTO} POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-grpc HTTPS_CRYPTO=${HTTPS_CRYPTO} POLICY_ENGINE=opa ALIYUN=${ALIYUN} PLUGINS=${PLUGINS} && \
     make install-kbs
 
 FROM ubuntu:22.04
