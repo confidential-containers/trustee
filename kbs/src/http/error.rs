@@ -58,6 +58,9 @@ pub enum Error {
     #[error("Resource not permitted.")]
     PolicyReject,
 
+    #[error("KBS Client Protocol Version Mismatch: {0}")]
+    ProtocolVersion(String),
+
     #[error("Public key get failed: {0}")]
     PublicKeyGetFailed(String),
 
@@ -140,6 +143,7 @@ mod tests {
     #[case(Error::JWEFailed("test".into()))]
     #[case(Error::PolicyEndpoint("test".into()))]
     #[case(Error::PolicyReject)]
+    #[case(Error::ProtocolVersion("test".into()))]
     #[case(Error::PublicKeyGetFailed("test".into()))]
     #[case(Error::ReadSecretFailed("test".into()))]
     #[case(Error::SetSecretFailed("test".into()))]
