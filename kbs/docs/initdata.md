@@ -182,6 +182,7 @@ attributes, but we select only `mr_config_id` for such use.
 - AMD SNP: `hostdata`, 32 bytes.
 - Arm CCA: `CCA_REALM_PERSONALIZATION_VALUE`, 64 bytes.
 - Intel SGX: `CONFIGID`, 64 bytes.
+- IBM SE: `user_data`, 256 bytes.
 
 When users want to deploy a TEE, they need to prepare an initdata. The host
 (probably untrusted) SHOULD start TEE instance with initdata digest as TEE initdata.
@@ -231,6 +232,86 @@ version = "0.1.0"
 ```
 will apparently get different digests. Thus the concrete use case should ensure both
 producer side and consumer side use the same encoding.
+
+`[data]` section might be wroten in files separately, in this case, the digest should be calculated based on the static parts, likely in PeerPod. the initdata might be:
+```toml
+algorithm = "sha384"
+version = "0.1.0"
+
+[data]
+"aa.toml" = '''
+[token_configs]
+[token_configs.coco_as]
+url = 'http://127.0.0.1:8080'
+
+[token_configs.kbs]
+url = 'http://127.0.0.1:8080'
+'''
+
+"cdh.toml"  = '''
+socket = 'unix:///run/confidential-containers/cdh.sock'
+credentials = []
+
+[kbc]
+name = 'cc_kbc'
+url = 'http://1.2.3.4:8080'
+'''
+
+"policy.rego" = '''
+package agent_policy
+
+import future.keywords.in
+import future.keywords.every
+
+import input
+
+# Default values, returned by OPA when rules cannot be evaluated to true.
+default CopyFileRequest := false
+default CreateContainerRequest := false
+default CreateSandboxRequest := true
+default DestroySandboxRequest := true
+default ExecProcessRequest := false
+default GetOOMEventRequest := true
+default GuestDetailsRequest := true
+default OnlineCPUMemRequest := true
+default PullImageRequest := true
+default ReadStreamRequest := false
+default RemoveContainerRequest := true
+default RemoveStaleVirtiofsShareMountsRequest := true
+default SignalProcessRequest := true
+default StartContainerRequest := true
+default StatsContainerRequest := true
+default TtyWinResizeRequest := true
+default UpdateEphemeralMountsRequest := true
+default UpdateInterfaceRequest := true
+default UpdateRoutesRequest := true
+default WaitProcessRequest := true
+default WriteStreamRequest := false
+'''
+```
+
+Network tunnel config `daemon.json` will also be added in, like:
+```yaml
+write_files:
+- path: /run/peerpod/daemon.json
+  content: 
+- path: /run/peerpod/aa.toml
+  content:
+- path: /run/peerpod/cdh.toml
+  content:
+- path: /run/peerpod/policy.rego
+  content:
+```
+
+We can generate a meta file like `/run/peerpod/initdata.meta`:
+```toml
+algorithm = "sha384"
+version = "0.1.0"
+```
+
+Then calculate the digest `/run/peerpod/initdata.digest` based on the algorithm in `/run/peerpod/initdata.meta` and the contents of static files `/run/peerpod/aa.toml`, `/run/peerpod/cdh.toml` and `/run/peerpod/policy.rego`. While `/run/peerpod/daemon.json` will be skipped when calculating the digest because it's dynamical for each instance. 
+
+`/run/peerpod/initdata.digest` could be used by the TEE drivers, likely added in `user_data` in IBM SE. 
 
 # Use cases
 
