@@ -70,8 +70,8 @@ The payload format of the request is as follows:
 
 ```json
 {
-    /* Attestation protocol version number used by KBC */
-    "version": "0.1.0",
+    /* KBS protocol version number used by KBC */
+    "version": "0.1.1",
     /*
      * Type of HW-TEE platforms where KBC is located,
      * e.g. "intel-tdx", "amd-sev-snp", etc.
@@ -286,6 +286,10 @@ The authentication service is provided by the KBS through two endpoints:
    the attester and its attestation results with that cookie.
    2. An attestation challenge for the attester to take. This is the content of
    the response, set to a [KBS Challenge](#challenge) JSON payload.
+   3. In case of an error (such as if the KBS rejects the [KBS Request](#request) based
+   on `version` compatibility), an HTTP response with a 401 (`Unauthorized`) status code
+   together with ErrorInformation JSON payload.
+
 2. `/kbs/v0/attest` only accepts `POST` requests whose body is a [KBS Attestation](#attestation)
    JSON payload and the header contains a `Cookie` set to the value received in
    step 1.i. This is how the attester replies to attestation challenge received
