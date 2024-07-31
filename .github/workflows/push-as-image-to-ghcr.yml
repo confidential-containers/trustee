@@ -32,14 +32,6 @@ jobs:
     runs-on: ${{ matrix.instance }}
 
     steps:
-    - name: Take a pre-action for self-hosted runner
-      run: |
-        # NOTE: Use file checking instead triggering a step based on a runner type
-        # to avoid updating the step for each new self-hosted runner.
-        if [ -f "${HOME}/script/pre_action.sh" ]; then
-          "${HOME}/script/pre_action.sh" cc-trustee
-        fi
-
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -60,14 +52,6 @@ jobs:
         DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" --push --build-arg ARCH="${arch}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" .
-
-    - name: Take a post-action for self-hosted runner
-      if: always()
-      run: |
-        # Please check out the note in the pre-action step for the reason of using file checking
-        if [ -f "${HOME}/script/post_action.sh" ]; then
-          "${HOME}/script/post_action.sh" cc-trustee
-        fi
 
   publish_multi_arch_image:
     needs: build_and_push
