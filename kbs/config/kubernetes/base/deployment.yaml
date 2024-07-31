@@ -17,7 +17,7 @@ spec:
         - sh
         - -c
         - cp -r /config/$(dirname $(readlink /config/policy.rego))/* /opa/confidential-containers/kbs/
-        image: busybox
+        image: quay.io/prometheus/busybox:latest
         imagePullPolicy: Always
         name: copy-config
         volumeMounts:
