@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::attestation::Attest;
+use crate::attestation::{make_nonce, Attest};
 use anyhow::*;
 use async_trait::async_trait;
 use base64::{
@@ -140,15 +140,7 @@ impl Attest for GrpcClientPool {
                     .into_inner()
                     .attestation_challenge
             }
-            _ => {
-                let mut nonce: Vec<u8> = vec![0; 32];
-
-                thread_rng()
-                    .try_fill(&mut nonce[..])
-                    .map_err(anyhow::Error::from)?;
-
-                STANDARD.encode(&nonce)
-            }
+            _ => make_nonce().await?,
         };
 
         let challenge = Challenge {

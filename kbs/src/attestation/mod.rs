@@ -26,6 +26,20 @@ pub mod coco;
 #[cfg(feature = "intel-trust-authority-as")]
 pub mod intel_trust_authority;
 
+/// Number of bytes in a nonce.
+const NONCE_SIZE_BYTES: usize = 32;
+
+/// Create a nonce and return as a base-64 encoded string.
+pub async fn make_nonce() -> Result<String> {
+    let mut nonce: Vec<u8> = vec![0; NONCE_SIZE_BYTES];
+
+    thread_rng()
+        .try_fill(&mut nonce[..])
+        .map_err(anyhow::Error::from)?;
+
+    Ok(STANDARD.encode(&nonce))
+}
+
 /// Interface for Attestation Services.
 ///
 /// Attestation Service implementations should implement this interface.
@@ -42,13 +56,8 @@ pub trait Attest: Send + Sync {
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(&self, _tee: Tee, _tee_parameters: String) -> Result<Challenge> {
-        let mut nonce: Vec<u8> = vec![0; 32];
+        let nonce = make_nonce().await?;
 
-        thread_rng()
-            .try_fill(&mut nonce[..])
-            .map_err(anyhow::Error::from)?;
-
-        let nonce = STANDARD.encode(&nonce);
         Ok(Challenge {
             nonce,
             extra_params: String::new(),
@@ -126,6 +135,48 @@ impl AttestationService {
             AttestationService::IntelTA(inner) => {
                 inner.generate_challenge(tee, tee_parameters).await
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_make_nonce() {
+        const BITS_PER_BYTE: usize = 8;
+
+        /// A base-64 encoded value is this many bits in length.
+        const BASE64_BITS_CHUNK: usize = 6;
+
+        /// Number of bytes that base64 encoding requires the result to align on.
+        const BASE64_ROUNDING_MULTIPLE: usize = 4;
+
+        /// The nominal base64 encoded length.
+        const BASE64_NONCE_LENGTH_UNROUNDED_BYTES: usize =
+            (NONCE_SIZE_BYTES * BITS_PER_BYTE) / BASE64_BITS_CHUNK;
+
+        /// The actual base64 encoded length is rounded up to the specified multiple.
+        const EXPECTED_LENGTH_BYTES: usize =
+            BASE64_NONCE_LENGTH_UNROUNDED_BYTES.next_multiple_of(BASE64_ROUNDING_MULTIPLE);
+
+        // Number of nonce tests to run (arbitrary)
+        let nonce_count = 13;
+
+        let mut nonces = vec![];
+
+        for _ in 0..nonce_count {
+            let nonce = make_nonce().await.unwrap();
+
+            assert_eq!(nonce.len(), EXPECTED_LENGTH_BYTES);
+
+            let found = nonces.contains(&nonce);
+
+            // The nonces should be unique
+            assert_eq!(found, false);
+
+            nonces.push(nonce);
         }
     }
 }
