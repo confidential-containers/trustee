@@ -5,7 +5,6 @@
 use anyhow::*;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::fmt;
 use std::sync::Arc;
 use strum::EnumString;
 use tokio::sync::RwLock;
@@ -49,11 +48,5 @@ pub fn create_token_verifier(
             coco::CoCoAttestationTokenVerifier::new(&config)?,
         ))
             as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
-    }
-}
-
-impl fmt::Display for AttestationTokenVerifierType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
     }
 }
