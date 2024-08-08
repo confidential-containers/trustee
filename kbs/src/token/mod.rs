@@ -34,7 +34,7 @@ pub struct AttestationTokenVerifierConfig {
     pub trusted_certs_paths: Vec<String>,
 }
 
-pub fn create_token_verifier(
+pub async fn create_token_verifier(
     config: AttestationTokenVerifierConfig,
 ) -> Result<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>> {
     match config.attestation_token_type {
