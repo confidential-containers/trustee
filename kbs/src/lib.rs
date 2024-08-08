@@ -240,7 +240,7 @@ impl ApiServer {
 
         #[cfg(feature = "resource")]
         let token_verifier =
-            crate::token::create_token_verifier(self.attestation_token_config.clone())?;
+            crate::token::create_token_verifier(self.attestation_token_config.clone()).await?;
 
         #[cfg(feature = "policy")]
         let policy_engine = PolicyEngine::new(&self.policy_engine_config).await?;
