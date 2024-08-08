@@ -10,6 +10,7 @@ use strum::EnumString;
 use tokio::sync::RwLock;
 
 mod coco;
+mod oidc;
 
 #[async_trait]
 pub trait AttestationTokenVerifier {
@@ -21,13 +22,16 @@ pub trait AttestationTokenVerifier {
 #[derive(Deserialize, Debug, Clone, EnumString)]
 pub enum AttestationTokenVerifierType {
     CoCo,
+    Oidc,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AttestationTokenVerifierConfig {
     pub attestation_token_type: AttestationTokenVerifierType,
 
-    // Trusted Certificates file (PEM format) path to verify Attestation Token Signature.
+    // Trusted Certificates file (PEM format) path or OpenID configuration URLs
+    // that provide "jwks_uri" pointing to JWKS signing certificates to verify
+    // Attestation Token Signature.
     pub trusted_certs_paths: Option<Vec<String>>,
 }
 
@@ -46,6 +50,10 @@ pub async fn create_token_verifier(
     match config.attestation_token_type {
         AttestationTokenVerifierType::CoCo => Ok(Arc::new(RwLock::new(
             coco::CoCoAttestationTokenVerifier::new(&config)?,
+        ))
+            as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
+        AttestationTokenVerifierType::Oidc => Ok(Arc::new(RwLock::new(
+            oidc::OidcAttestationTokenVerifier::new(&config).await?,
         ))
             as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
     }
