@@ -10,7 +10,7 @@ edition.workspace = true
 default = ["coco-as-builtin", "resource", "opa", "rustls"]
 
 # Feature that allows to access resources from KBS
-resource = ["rsa", "dep:openssl", "reqwest", "aes-gcm"]
+resource = ["rsa", "dep:openssl", "reqwest", "aes-gcm", "jsonwebtoken"]
 
 # Support a backend attestation service for KBS
 as = []
