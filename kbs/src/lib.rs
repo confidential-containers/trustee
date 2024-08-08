@@ -11,6 +11,7 @@ extern crate anyhow;
 extern crate base64;
 extern crate env_logger;
 extern crate kbs_types;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate lazy_static;
 extern crate log;
