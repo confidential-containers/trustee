@@ -41,7 +41,7 @@ impl Default for AttestationTokenVerifierConfig {
     }
 }
 
-pub fn create_token_verifier(
+pub async fn create_token_verifier(
     config: AttestationTokenVerifierConfig,
 ) -> Result<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>> {
     match config.attestation_token_type {
