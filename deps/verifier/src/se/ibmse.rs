@@ -277,26 +277,13 @@ impl SeVerifierImpl {
             let c = certs
                 .first()
                 .ok_or(anyhow!("File does not contain a X509 certificate"))?;
-            #[cfg(debug_assertions)]
-            {
-                const DEFAULT_SE_SKIP_CERTS_VERIFICATION: &str = "false";
-                let skip_certs_env = env_or_default!(
-                    "SE_SKIP_CERTS_VERIFICATION",
-                    DEFAULT_SE_SKIP_CERTS_VERIFICATION
-                );
-                let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
-                if !skip_certs {
-                    let verifier = CertVerifier::new(
-                        ca_certs.as_slice(),
-                        crls.as_slice(),
-                        ca_option.clone(),
-                        offline_certs_verify,
-                    )?;
-                    verifier.verify(c)?;
-                }
-            }
-            #[cfg(not(debug_assertions))]
-            {
+            const DEFAULT_SE_SKIP_CERTS_VERIFICATION: &str = "false";
+            let skip_certs_env = env_or_default!(
+                "SE_SKIP_CERTS_VERIFICATION",
+                DEFAULT_SE_SKIP_CERTS_VERIFICATION
+            );
+            let skip_certs: bool = skip_certs_env.parse::<bool>().unwrap_or(false);
+            if !skip_certs {
                 let verifier = CertVerifier::new(
                     ca_certs.as_slice(),
                     crls.as_slice(),
