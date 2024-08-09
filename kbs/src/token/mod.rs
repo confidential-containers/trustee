@@ -5,12 +5,12 @@
 use anyhow::*;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::fmt;
 use std::sync::Arc;
 use strum::EnumString;
 use tokio::sync::RwLock;
 
 mod coco;
+mod oidc;
 
 #[async_trait]
 pub trait AttestationTokenVerifier {
@@ -22,13 +22,16 @@ pub trait AttestationTokenVerifier {
 #[derive(Deserialize, Debug, Clone, EnumString)]
 pub enum AttestationTokenVerifierType {
     CoCo,
+    Oidc,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AttestationTokenVerifierConfig {
     pub attestation_token_type: AttestationTokenVerifierType,
 
-    // Trusted Certificates file (PEM format) path to verify Attestation Token Signature.
+    // Trusted Certificates file (PEM format) path or OpenID configuration URLs
+    // that provide "jwks_uri" pointing to JWKS signing certificates to verify
+    // Attestation Token Signature.
     pub trusted_certs_paths: Option<Vec<String>>,
 }
 
@@ -41,7 +44,7 @@ impl Default for AttestationTokenVerifierConfig {
     }
 }
 
-pub fn create_token_verifier(
+pub async fn create_token_verifier(
     config: AttestationTokenVerifierConfig,
 ) -> Result<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>> {
     match config.attestation_token_type {
@@ -49,11 +52,9 @@ pub fn create_token_verifier(
             coco::CoCoAttestationTokenVerifier::new(&config)?,
         ))
             as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
-    }
-}
-
-impl fmt::Display for AttestationTokenVerifierType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        AttestationTokenVerifierType::Oidc => Ok(Arc::new(RwLock::new(
+            oidc::OidcAttestationTokenVerifier::new(&config).await?,
+        ))
+            as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
     }
 }
