@@ -130,7 +130,6 @@ export SE_SKIP_CERTS_VERIFICATION=true
 ```
 DOCKER_BUILDKIT=1 docker build --build-arg HTTPS_CRYPTO="openssl" --build-arg ARCH="s390x" -t ghcr.io/confidential-containers/staged-images/kbs:latest . -f kbs/docker/Dockerfile
 ```
->Note: Please add `--debug` in statement like `cargo install` in file `kbs/docker/Dockerfile` if you're using a development host key document to skip HKD's signature verification.
 
 - Prepare a docker compose file, similar as:
 ```
