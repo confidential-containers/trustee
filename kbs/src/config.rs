@@ -9,6 +9,8 @@ use crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig;
 #[cfg(feature = "policy")]
 use crate::policy_engine::PolicyEngineConfig;
 #[cfg(feature = "resource")]
+use crate::resource::plugin::PluginManagerConfig;
+#[cfg(feature = "resource")]
 use crate::resource::RepositoryConfig;
 #[cfg(feature = "resource")]
 use crate::token::AttestationTokenVerifierConfig;
@@ -33,6 +35,10 @@ pub struct KbsConfig {
     /// Resource repository config.
     #[cfg(feature = "resource")]
     pub repository_config: Option<RepositoryConfig>,
+
+    /// Resource plugin repository manager.
+    #[cfg(feature = "resource")]
+    pub plugin_manager_config: Option<PluginManagerConfig>,
 
     /// Attestation token result broker config.
     #[cfg(feature = "resource")]

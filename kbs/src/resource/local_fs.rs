@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-pub const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/repository";
+pub const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/storage";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LocalFsRepoDesc {

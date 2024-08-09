@@ -10,6 +10,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 mod local_fs;
+pub mod plugin;
 
 #[cfg(feature = "aliyun")]
 mod aliyun_kms;

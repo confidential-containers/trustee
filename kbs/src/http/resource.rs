@@ -15,7 +15,7 @@ use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::{json, Deserializer, Value};
 
-use crate::raise_error;
+use crate::{raise_error, resource::plugin::PluginManager};
 
 use super::*;
 
@@ -30,6 +30,7 @@ const TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey"
 pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
+    repository_plugin: web::Data<Arc<RwLock<PluginManager>>>,
     #[cfg(feature = "as")] map: web::Data<SessionMap>,
     token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
     #[cfg(feature = "policy")] policy_engine: web::Data<PolicyEngine>,
@@ -113,12 +114,25 @@ pub(crate) async fn get_resource(
         info!("Resource access request passes policy check.");
     }
 
-    let resource_byte = repository
-        .read()
-        .await
-        .read_secret_resource(resource_description)
-        .await
-        .map_err(|e| Error::ReadSecretFailed(format!("{e:?}")))?;
+    let resource_byte = if resource_description.repository_name == "plugin" {
+        repository_plugin
+            .read()
+            .await
+            .get_resource(
+                resource_description.resource_type.as_str(),
+                resource_description.resource_tag.as_str(),
+                request.query_string(),
+            )
+            .await
+            .map_err(|e| Error::ReadSecretFailed(e.to_string()))?
+    } else {
+        repository
+            .read()
+            .await
+            .read_secret_resource(resource_description)
+            .await
+            .map_err(|e| Error::ReadSecretFailed(e.to_string()))?
+    };
 
     let jwe = jwe(pubkey, resource_byte)?;
 
