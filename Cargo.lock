@@ -567,7 +567,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "az-snp-vtpm 0.6.0",
- "az-tdx-vtpm 0.6.0",
+ "az-tdx-vtpm",
  "base64 0.21.7",
  "codicon",
  "csv-rs",
@@ -728,28 +728,12 @@ dependencies = [
 
 [[package]]
 name = "az-tdx-vtpm"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8575eeaefa72d9591355597f5acf9b4ddee8cc19d8b03d947173ae8fcf1e8c2e"
-dependencies = [
- "az-cvm-vtpm 0.5.3",
- "base64-url 2.0.2",
- "bincode",
- "serde",
- "serde_json",
- "thiserror",
- "ureq",
- "zerocopy",
-]
-
-[[package]]
-name = "az-tdx-vtpm"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb795802e685a153ea4906349c86f5760012478a72e349538dd47012409465de"
 dependencies = [
  "az-cvm-vtpm 0.6.0",
- "base64-url 3.0.0",
+ "base64-url",
  "bincode",
  "serde",
  "serde_json",
@@ -796,15 +780,6 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-
-[[package]]
-name = "base64-url"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9fb9fb058cc3063b5fc88d9a21eefa2735871498a04e1650da76ed511c8569"
-dependencies = [
- "base64 0.21.7",
-]
 
 [[package]]
 name = "base64-url"
@@ -5904,7 +5879,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "az-snp-vtpm 0.5.3",
- "az-tdx-vtpm 0.5.3",
+ "az-tdx-vtpm",
  "base64 0.21.7",
  "bincode",
  "byteorder",

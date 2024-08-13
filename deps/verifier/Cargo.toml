@@ -21,7 +21,7 @@ thiserror.workspace = true
 asn1-rs = { version = "0.5.1", optional = true }
 async-trait.workspace = true
 az-snp-vtpm = { version = "0.5.3", default-features = false, features = ["verifier"], optional = true }
-az-tdx-vtpm = { version = "0.5.3", default-features = false, features = ["verifier"], optional = true }
+az-tdx-vtpm = { version = "0.6.0", default-features = false, features = ["verifier"], optional = true }
 base64 = "0.21"
 bincode = "1.3.3"
 byteorder = "1"
