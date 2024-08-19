@@ -9,7 +9,7 @@ This guide will take the following goals
 
 ```bash
 # Edit a crt configuration. You can change the following items to any you want
-cat << localhost.crt > EOF
+cat << EOF > localhost.conf
 [req]
 default_bits       = 2048
 default_keyfile    = localhost.key
@@ -61,7 +61,7 @@ openssl pkey -in private.key -pubout -out public.pub
 ## Launch KBS server
 Set up a `kbs-config.toml`
 ```bash
-cat << kbs-config.toml > EOF
+cat << EOF > kbs-config.toml
 private_key = "/etc/key.pem"
 certificate = "/etc/cert.pem"
 
