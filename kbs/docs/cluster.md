@@ -18,14 +18,15 @@ Users can use very simple command to:
 
 Generate a user auth key pair
 ```
-cd $KBS
+git clone https://github.com/confidential-containers/trustee.git
+cd kbs
 openssl genpkey -algorithm ed25519 > kbs/config/private.key
 openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
 ```
 
 Run the cluster
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Note that by default the KBS cluster blocks sample evidence.
