@@ -41,6 +41,7 @@ rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
 
 # Use openssl crypto stack for KBS
 openssl = ["actix-web/openssl", "dep:openssl"]
+nebula-plugin = []
 
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
@@ -76,15 +77,16 @@ semver = "1.0.16"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 strum.workspace = true
+serde_qs.workspace = true
 thiserror.workspace = true
 time = { version = "0.3.23", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 openssl = { version = "0.10.46", optional = true }
+tempfile.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true
 rstest.workspace = true
 
 [build-dependencies]
