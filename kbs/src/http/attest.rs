@@ -28,7 +28,7 @@ lazy_static! {
             build: BuildMetadata::EMPTY,
         };
 
-        VersionReq::parse(&format!("<={kbs_version}")).unwrap()
+        VersionReq::parse(&format!("={kbs_version}")).unwrap()
     };
 }
 
