@@ -7,6 +7,7 @@ use anyhow::*;
 use async_trait::async_trait;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use log::warn;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::rsa::Rsa;
@@ -17,26 +18,29 @@ use openssl::x509::{X509StoreContext, X509};
 use serde_json::Value;
 
 pub struct CoCoAttestationTokenVerifier {
-    trusted_certs: Option<X509Store>,
+    trusted_certs: X509Store,
 }
 
 impl CoCoAttestationTokenVerifier {
     pub fn new(config: &AttestationTokenVerifierConfig) -> Result<Self> {
-        let trusted_certs = match &config.trusted_certs_paths {
-            Some(paths) => {
-                let mut store_builder = X509StoreBuilder::new()?;
-                for path in paths {
-                    let trust_cert_pem = std::fs::read(path)
-                        .map_err(|e| anyhow!("Load trusted certificate failed: {e}"))?;
-                    let trust_cert = X509::from_pem(&trust_cert_pem)?;
-                    store_builder.add_cert(trust_cert.to_owned())?;
-                }
-                Some(store_builder.build())
-            }
-            None => None,
-        };
+        let mut store_builder = X509StoreBuilder::new()?;
 
-        Ok(Self { trusted_certs })
+        // check all files in trusted_certs_paths but don't exit (only warn).
+        // the result can be an empty trust store.
+        for path in &config.trusted_certs_paths {
+            std::fs::read(path).map_or_else(
+                |e| warn!("Failed to read trusted certificate: {e}"),
+                |pem| {
+                    let _ = X509::from_pem(&pem)
+                        .and_then(|certs| store_builder.add_cert(certs.to_owned()))
+                        .map_err(|e| warn!("Failed to add certificate to trust store: {e}"));
+                },
+            );
+        }
+
+        Ok(Self {
+            trusted_certs: store_builder.build(),
+        })
     }
 }
 
@@ -90,8 +94,8 @@ impl AttestationTokenVerifier for CoCoAttestationTokenVerifier {
             }
         }
 
-        let Some(trusted_store) = &self.trusted_certs else {
-            log::warn!("No Trusted Certificate in Config, skip verification of JWK cert of Attestation Token");
+        if self.trusted_certs.all_certificates().is_empty() {
+            warn!("No Trusted Certificate in Config, skip verification of JWK cert of Attestation Token");
             return Ok(serde_json::to_string(&claims_value)?);
         };
 
@@ -116,9 +120,12 @@ impl AttestationTokenVerifier for CoCoAttestationTokenVerifier {
             untrusted_stack.push(cert.clone())?;
         }
         let mut context = X509StoreContext::new()?;
-        if !context.init(trusted_store, &cert_chain[0], &untrusted_stack, |ctx| {
-            ctx.verify_cert()
-        })? {
+        if !context.init(
+            &self.trusted_certs,
+            &cert_chain[0],
+            &untrusted_stack,
+            |ctx| ctx.verify_cert(),
+        )? {
             bail!("Untrusted certificate in Attestation Token JWK");
         };
 
