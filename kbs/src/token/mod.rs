@@ -18,13 +18,15 @@ pub trait AttestationTokenVerifier {
     async fn verify(&self, token: String) -> Result<String>;
 }
 
-#[derive(Deserialize, Debug, Clone, EnumString)]
+#[derive(Deserialize, Default, Debug, Clone, EnumString)]
 pub enum AttestationTokenVerifierType {
+    #[default]
     CoCo,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AttestationTokenVerifierConfig {
+    #[serde(default)]
     pub attestation_token_type: AttestationTokenVerifierType,
 
     // Trusted Certificates file (PEM format) path to verify Attestation Token Signature.
