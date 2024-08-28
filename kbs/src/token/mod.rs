@@ -30,16 +30,8 @@ pub struct AttestationTokenVerifierConfig {
     pub attestation_token_type: AttestationTokenVerifierType,
 
     // Trusted Certificates file (PEM format) path to verify Attestation Token Signature.
-    pub trusted_certs_paths: Option<Vec<String>>,
-}
-
-impl Default for AttestationTokenVerifierConfig {
-    fn default() -> Self {
-        Self {
-            attestation_token_type: AttestationTokenVerifierType::CoCo,
-            trusted_certs_paths: None,
-        }
-    }
+    #[serde(default)]
+    pub trusted_certs_paths: Vec<String>,
 }
 
 pub fn create_token_verifier(
