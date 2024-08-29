@@ -1,5 +1,2 @@
-# Global owner for changes not matched by more specific rules
-* @sameo
-
-/kbs/ @kbs-maintainers
-/attestation-service/ @attestation-service-maintainers
+# https://github.com/orgs/confidential-containers/teams/trustee-maintainers
+* @confidential-containers/trustee-maintainers
