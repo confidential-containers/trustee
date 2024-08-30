@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::Attest;
+use crate::token::{
+    jwk::JwkAttestationTokenVerifier, AttestationTokenVerifier, AttestationTokenVerifierConfig,
+    AttestationTokenVerifierType,
+};
 use anyhow::*;
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use jsonwebtoken::{decode, decode_header, jwk, Algorithm, DecodingKey, Validation};
 use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fs::File;
-use std::io::BufReader;
-use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
 struct IntelTrustAuthorityTeeEvidence {
@@ -53,7 +53,7 @@ pub struct IntelTrustAuthorityConfig {
 
 pub struct IntelTrustAuthority {
     config: IntelTrustAuthorityConfig,
-    certs: jwk::JwkSet,
+    token_verifier: JwkAttestationTokenVerifier,
 }
 
 #[async_trait]
@@ -109,35 +109,23 @@ impl Attest for IntelTrustAuthority {
                 body.error
             );
         }
-
-        // get token kid
         let resp_data = resp
             .json::<AttestRespData>()
             .await
-            .map_err(|e| anyhow!("Deserialize attestation response failed: {:?}", e))?;
-        let header = decode_header(&resp_data.token)
-            .map_err(|e| anyhow!("Decode token header failed: {:?}", e))?;
-        let kid = header.kid.ok_or(anyhow!("Token missing kid"))?;
+            .context("Failed to deserialize attestation response")?;
 
-        log::debug!("token={}", &resp_data.token);
+        let token = self
+            .token_verifier
+            .verify(resp_data.token.clone())
+            .await
+            .context("Failed to verify attestation token")?;
 
-        // find jwk
-        let key = self.certs.find(&kid).ok_or(anyhow!("Find jwk failed"))?;
-        let alg = key
-            .common
-            .key_algorithm
-            .ok_or(anyhow!("Get jwk alg failed"))?
-            .to_string();
-
-        let alg = Algorithm::from_str(alg.as_str())?;
-        // verify and decode token
-        let dkey = DecodingKey::from_jwk(&key)?;
-        let token = decode::<Claims>(&resp_data.token, &dkey, &Validation::new(alg))
-            .map_err(|e| anyhow!("Decode token failed: {:?}", e))?;
+        let claims = serde_json::from_str::<Claims>(&token)
+            .context("Failed to deserialize attestation token claims")?;
 
         // check unmatched policy
         let allow = self.config.allow_unmatched_policy.unwrap_or(false);
-        if !allow && token.claims.policy_ids_unmatched.is_some() {
+        if !allow && claims.policy_ids_unmatched.is_some() {
             bail!("Evidence doesn't match policy");
         }
 
@@ -146,15 +134,17 @@ impl Attest for IntelTrustAuthority {
 }
 
 impl IntelTrustAuthority {
-    pub fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
-        let file = File::open(&config.certs_file)
-            .map_err(|e| anyhow!("Open certs file failed: {:?}", e))?;
-        let reader = BufReader::new(file);
+    pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
+        let token_verifier = JwkAttestationTokenVerifier::new(&AttestationTokenVerifierConfig {
+            attestation_token_type: AttestationTokenVerifierType::Jwk,
+            trusted_certs_paths: vec![config.certs_file.clone()],
+        })
+        .await
+        .context("Failed to initialize token verifier")?;
 
         Ok(Self {
             config: config.clone(),
-            certs: serde_json::from_reader(reader)
-                .map_err(|e| anyhow!("Deserialize certs failed: {:?}", e))?,
+            token_verifier,
         })
     }
 }

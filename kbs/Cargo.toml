@@ -34,7 +34,7 @@ coco-as-builtin-no-verifier = ["coco-as", "attestation-service/rvps-builtin"]
 coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-build", "prost"]
 
 # Use Intel TA as backend attestation service
-intel-trust-authority-as = ["as", "reqwest", "jsonwebtoken"]
+intel-trust-authority-as = ["as", "reqwest", "resource"]
 
 # Use pure rust crypto stack for KBS
 rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]

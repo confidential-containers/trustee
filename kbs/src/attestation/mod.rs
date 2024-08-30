@@ -98,8 +98,8 @@ impl AttestationService {
 
     /// Create and initialize AttestationService.
     #[cfg(feature = "intel-trust-authority-as")]
-    pub fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
-        let ta_client = intel_trust_authority::IntelTrustAuthority::new(config)?;
+    pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
+        let ta_client = intel_trust_authority::IntelTrustAuthority::new(config).await?;
         Ok(Self::IntelTA(ta_client))
     }
 
