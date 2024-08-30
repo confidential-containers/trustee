@@ -64,10 +64,10 @@ impl Attest for IntelTrustAuthority {
         }
         // get quote
         let attestation = serde_json::from_str::<Attestation>(attestation)
-            .map_err(|e| anyhow!("Deserialize Attestation failed: {:?}", e))?;
+            .context("Failed to deserialize Attestation request")?;
         let evidence =
             serde_json::from_value::<IntelTrustAuthorityTeeEvidence>(attestation.tee_evidence)
-                .map_err(|e| anyhow!("Deserialize supported TEE Evidence failed: {:?}", e))?;
+                .context("Failed to deserialize TEE Evidence")?;
 
         let runtime_data = json!({
             "tee-pubkey": attestation.tee_pubkey,
@@ -82,7 +82,7 @@ impl Attest for IntelTrustAuthority {
         };
 
         let attest_req_body = serde_json::to_string(&req_data)
-            .map_err(|e| anyhow!("Serialize attestation request body failed: {:?}", e))?;
+            .context("Failed to serialize attestation request body")?;
 
         // send attest request
         log::info!("post attestation request ...");
@@ -95,14 +95,14 @@ impl Attest for IntelTrustAuthority {
             .body(attest_req_body)
             .send()
             .await
-            .map_err(|e| anyhow!("Post attestation request failed: {:?}", e))?;
+            .context("Failed to POST attestation HTTP request")?;
 
         let status = resp.status();
         if status != reqwest::StatusCode::OK {
             let body = resp
                 .json::<ErrorResponse>()
                 .await
-                .map_err(|e| anyhow!("Deserialize error response failed: {:?}", e))?;
+                .context("Failed to deserialize attestation error response")?;
             bail!(
                 "Attestation request failed: response status={}, message={}",
                 status,
