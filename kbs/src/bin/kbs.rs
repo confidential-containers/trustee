@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
             } else if #[cfg(feature = "coco-as-grpc")] {
                 AttestationService::new(kbs_config.grpc_config.unwrap_or_default()).await?
             } else if #[cfg(feature = "intel-trust-authority-as")] {
-                AttestationService::new(kbs_config.intel_trust_authority_config)?
+                AttestationService::new(kbs_config.intel_trust_authority_config).await?
             } else {
                 compile_error!("Please enable at least one of the following features: `coco-as-builtin`, `coco-as-builtin-no-verifier`, `coco-as-grpc` or `intel-trust-authority-as` to continue.");
             }
