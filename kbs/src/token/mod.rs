@@ -10,7 +10,7 @@ use strum::EnumString;
 use tokio::sync::RwLock;
 
 mod coco;
-mod jwk;
+pub(crate) mod jwk;
 
 #[async_trait]
 pub trait AttestationTokenVerifier {
