@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/openshift/trustee?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "main"
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: trustee
+    appstudio.openshift.io/component: trustee
+    pipelines.appstudio.openshift.io/type: build
+  name: trustee-on-pull-request
+  namespace: ose-osc-tenant
+spec:
+  params:
+  - name: dockerfile
+    value: kbs/docker/rhel-ubi/Dockerfile
+  - name: git-url
+    value: '{{source_url}}'
+  - name: image-expires-after
+    value: 5d
+  - name: output-image
+    value: quay.io/redhat-user-workloads/ose-osc-tenant/trustee/trustee:on-pr-{{revision}}
+  - name: path-context
+    value: .
+  - name: revision
+    value: '{{revision}}'
+  - name: build-source-image
+    value: "true"
+  - name: enable-amd64-build
+    value: "true"
+  - name: enable-arm64-build
+    value: "false"
+  - name: enable-ppc64le-build
+    value: "false"
+  - name: enable-s390x-build
+    value: "true"
+  pipelineRef:
+    name: multi-arch-build-pipeline
+  taskRunTemplate: {}
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
