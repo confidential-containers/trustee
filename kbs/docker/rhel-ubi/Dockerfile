@@ -33,7 +33,7 @@ meson compile -C build && \
 meson install -C build && \
 popd && \
 # Build KBS.
-cargo install --locked --root /usr/local/ --path kbs --no-default-features --features ${KBS_FEATURES} && \
+cargo install --locked --root /usr/local/ --path kbs/src/kbs --no-default-features --features ${KBS_FEATURES} && \
 # Check the sha256sum of the Intel provided RPMs on x86_64.
 if [ $(uname -m) = "x86_64" ]; then \
   pushd sgx_dcap_quoteverify_stubs && \
