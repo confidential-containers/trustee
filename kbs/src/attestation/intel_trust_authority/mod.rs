@@ -10,11 +10,13 @@ use crate::token::{
 };
 use anyhow::*;
 use async_trait::async_trait;
+use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::Challenge;
 use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use serde_json::from_value;
 use serde_json::json;
 use strum::{AsRefStr, Display, EnumString};
 
@@ -23,6 +25,9 @@ const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
 const ERR_INVALID_TEE: &str = "ITA: Unknown TEE specified";
+
+const BASE_AS_ADDR: &str = "/appraisal/v1/attest";
+const AZURE_TDXVM_ADDR: &str = "/appraisal/v1/attest/azure/tdxvm";
 
 #[derive(Display, EnumString, AsRefStr)]
 pub enum HashAlgorithm {
@@ -37,16 +42,24 @@ pub enum HashAlgorithm {
 }
 
 #[derive(Deserialize, Debug)]
-struct IntelTrustAuthorityTeeEvidence {
+struct ItaTeeEvidence {
     #[serde(skip)]
     _cc_eventlog: Option<String>,
     quote: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct AzItaTeeEvidence {
+    hcl_report: Vec<u8>,
+    td_quote: Vec<u8>,
 }
 
 #[derive(Serialize, Debug)]
 struct AttestReqData {
     quote: String,
     runtime_data: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_data: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -80,15 +93,9 @@ pub struct IntelTrustAuthority {
 #[async_trait]
 impl Attest for IntelTrustAuthority {
     async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        if tee != Tee::Tdx && tee != Tee::Sgx {
-            bail!("ITA: TEE {tee:?} is not supported.");
-        }
         // get quote
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation request")?;
-        let evidence =
-            serde_json::from_value::<IntelTrustAuthorityTeeEvidence>(attestation.tee_evidence)
-                .context("Failed to deserialize TEE Evidence")?;
 
         let runtime_data = json!({
             "tee-pubkey": attestation.tee_pubkey,
@@ -96,20 +103,53 @@ impl Attest for IntelTrustAuthority {
         })
         .to_string();
 
-        // construct attest request data
-        let req_data = AttestReqData {
-            quote: evidence.quote,
-            runtime_data: STANDARD.encode(runtime_data),
+        // construct attest request data and attestation url
+        let (req_data, att_url) = match tee {
+            Tee::AzTdxVtpm => {
+                let att_url = format!("{}{AZURE_TDXVM_ADDR}", &self.config.base_url);
+
+                let evidence = from_value::<AzItaTeeEvidence>(attestation.tee_evidence)
+                    .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
+
+                let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
+
+                let req_data = AttestReqData {
+                    quote: STANDARD.encode(evidence.td_quote),
+                    runtime_data: STANDARD.encode(hcl_report.var_data()),
+                    user_data: Some(STANDARD.encode(runtime_data)),
+                };
+
+                (req_data, att_url)
+            }
+            Tee::Tdx | Tee::Sgx => {
+                let att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
+
+                let evidence = from_value::<ItaTeeEvidence>(attestation.tee_evidence)
+                    .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
+
+                let req_data = AttestReqData {
+                    quote: evidence.quote,
+                    runtime_data: STANDARD.encode(runtime_data),
+                    user_data: None,
+                };
+
+                (req_data, att_url)
+            }
+            _ => {
+                bail!("Intel Trust Authority: TEE {tee:?} is not supported.");
+            }
         };
 
         let attest_req_body = serde_json::to_string(&req_data)
             .context("Failed to serialize attestation request body")?;
 
         // send attest request
-        log::info!("post attestation request ...");
+        log::info!("POST attestation request ...");
+        log::debug!("Attestation URL: {:?}", &att_url);
+
         let client = reqwest::Client::new();
         let resp = client
-            .post(format!("{}/appraisal/v1/attest", &self.config.base_url))
+            .post(att_url)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
             .header("x-api-key", &self.config.api_key)
@@ -201,7 +241,7 @@ impl Attest for IntelTrustAuthority {
         );
 
         let hash_algorithm: String = match tee {
-            Tee::Sgx => {
+            Tee::Sgx | Tee::AzTdxVtpm => {
                 let needed_algorithm = HashAlgorithm::Sha256.as_ref().to_string().to_lowercase();
 
                 if supported_hash_algorithms.contains(&needed_algorithm) {
