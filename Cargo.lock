@@ -527,7 +527,7 @@ dependencies = [
  "anyhow",
  "assert-json-diff",
  "async-trait",
- "base64 0.21.7",
+ "base64 0.22.1",
  "cfg-if",
  "clap 4.5.4",
  "env_logger 0.10.2",
@@ -584,7 +584,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sev",
+ "sev 3.1.1",
  "sha2",
  "strum",
  "tdx-attest-rs",
@@ -657,27 +657,6 @@ dependencies = [
 
 [[package]]
 name = "az-cvm-vtpm"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e2d89967f683d16dafdaacb578a2841daff9f43c856c6a6dc9939cc11272712"
-dependencies = [
- "bincode",
- "jsonwebkey",
- "memoffset",
- "openssl",
- "rsa 0.9.6",
- "serde",
- "serde-big-array",
- "serde_json",
- "sev",
- "sha2",
- "thiserror",
- "tss-esapi",
- "zerocopy",
-]
-
-[[package]]
-name = "az-cvm-vtpm"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1940b5a30bbaa585acd365e329c8c4c5c119345fef81830bd5f38f2360caa7d6"
@@ -689,7 +668,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev",
+ "sev 3.1.1",
  "sha2",
  "thiserror",
  "tss-esapi",
@@ -697,19 +676,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "az-snp-vtpm"
-version = "0.5.3"
+name = "az-cvm-vtpm"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9da68a854978d9d32cc03ba6cd4a24b1f43fafad91eb7e15578cdf9a9cbdfe7"
+checksum = "f500c98db61d29b592d51d1cf56a1d996c34f9346b8b89b28008b5403e65450a"
 dependencies = [
- "az-cvm-vtpm 0.5.3",
  "bincode",
- "clap 4.5.4",
+ "jsonwebkey",
+ "memoffset",
  "openssl",
  "serde",
- "sev",
+ "serde-big-array",
+ "serde_json",
+ "sev 4.0.0",
+ "sha2",
  "thiserror",
- "ureq",
+ "tss-esapi",
+ "zerocopy",
 ]
 
 [[package]]
@@ -722,19 +705,35 @@ dependencies = [
  "bincode",
  "clap 4.5.4",
  "serde",
- "sev",
+ "sev 3.1.1",
+ "thiserror",
+ "ureq",
+]
+
+[[package]]
+name = "az-snp-vtpm"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49473355e76f066300f14aa56c6df23b1a037bea179dbb1b582ecefc8f6fd37c"
+dependencies = [
+ "az-cvm-vtpm 0.7.0",
+ "bincode",
+ "clap 4.5.4",
+ "openssl",
+ "serde",
+ "sev 4.0.0",
  "thiserror",
  "ureq",
 ]
 
 [[package]]
 name = "az-tdx-vtpm"
-version = "0.5.3"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8575eeaefa72d9591355597f5acf9b4ddee8cc19d8b03d947173ae8fcf1e8c2e"
+checksum = "eb795802e685a153ea4906349c86f5760012478a72e349538dd47012409465de"
 dependencies = [
- "az-cvm-vtpm 0.5.3",
- "base64-url 2.0.2",
+ "az-cvm-vtpm 0.6.0",
+ "base64-url",
  "bincode",
  "serde",
  "serde_json",
@@ -745,12 +744,12 @@ dependencies = [
 
 [[package]]
 name = "az-tdx-vtpm"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb795802e685a153ea4906349c86f5760012478a72e349538dd47012409465de"
+checksum = "55802d75ce5ef102b03f687b220dab76a626e0ca4c79e3f4af3c544734152356"
 dependencies = [
- "az-cvm-vtpm 0.6.0",
- "base64-url 3.0.0",
+ "az-cvm-vtpm 0.7.0",
+ "base64-url",
  "bincode",
  "serde",
  "serde_json",
@@ -797,15 +796,6 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-
-[[package]]
-name = "base64-url"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9fb9fb058cc3063b5fc88d9a21eefa2735871498a04e1650da76ed511c8569"
-dependencies = [
- "base64 0.21.7",
-]
 
 [[package]]
 name = "base64-url"
@@ -894,6 +884,12 @@ name = "bitfield"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d7e60934ceec538daadb9d8432424ed043a904d8e0243f3c6446bce549a46ac"
+
+[[package]]
+name = "bitfield"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c821a6e124197eb56d907ccc2188eab1038fb919c914f47976e64dd8dbc855d1"
 
 [[package]]
 name = "bitflags"
@@ -2716,7 +2712,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "attestation-service",
- "base64 0.21.7",
+ "base64 0.22.1",
  "cfg-if",
  "clap 4.5.4",
  "config",
@@ -2756,7 +2752,7 @@ name = "kbs-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.21.7",
+ "base64 0.22.1",
  "clap 4.5.4",
  "env_logger 0.10.2",
  "jwt-simple 0.11.9",
@@ -2881,7 +2877,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -3488,16 +3484,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
-name = "pbkdf2"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
-dependencies = [
- "digest",
- "hmac",
-]
-
-[[package]]
 name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3736,21 +3722,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pkcs5"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e847e2c91a18bfa887dd028ec33f2fe6f25db77db3619024764914affe8b69a6"
-dependencies = [
- "aes",
- "cbc",
- "der 0.7.9",
- "pbkdf2",
- "scrypt",
- "sha2",
- "spki 0.7.3",
-]
-
-[[package]]
 name = "pkcs8"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3767,8 +3738,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der 0.7.9",
- "pkcs5",
- "rand_core",
  "spki 0.7.3",
 ]
 
@@ -4090,6 +4059,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rdrand"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d92195228612ac8eed47adbc2ed0f04e513a4ccb98175b6f2bd04d963b533655"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4125,7 +4103,7 @@ dependencies = [
  "anyhow",
  "assert-json-diff",
  "async-trait",
- "base64 0.21.7",
+ "base64 0.22.1",
  "cfg-if",
  "chrono",
  "clap 4.5.4",
@@ -4617,15 +4595,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "salsa20"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97a22f5af31f73a954c10289c93e8a50cc23d971e80ee446f1f6f7137a088213"
-dependencies = [
- "cipher",
-]
-
-[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4716,17 +4685,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.60",
-]
-
-[[package]]
-name = "scrypt"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0516a385866c09368f0b5bcd1caff3366aace790fcd46e2bb032697bb172fd1f"
-dependencies = [
- "pbkdf2",
- "salsa20",
- "sha2",
 ]
 
 [[package]]
@@ -4936,6 +4894,32 @@ dependencies = [
  "lazy_static",
  "libc",
  "openssl",
+ "serde",
+ "serde-big-array",
+ "serde_bytes",
+ "static_assertions",
+ "uuid",
+]
+
+[[package]]
+name = "sev"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a97bd0b2e2d937951add10c8512a2dacc6ad29b39e5c5f26565a3e443329857d"
+dependencies = [
+ "base64 0.22.1",
+ "bincode",
+ "bitfield 0.15.0",
+ "bitflags 1.3.2",
+ "byteorder",
+ "codicon",
+ "dirs",
+ "hex",
+ "iocuddle",
+ "lazy_static",
+ "libc",
+ "openssl",
+ "rdrand",
  "serde",
  "serde-big-array",
  "serde_bytes",
@@ -5959,9 +5943,9 @@ dependencies = [
  "asn1-rs",
  "assert-json-diff",
  "async-trait",
- "az-snp-vtpm 0.5.3",
- "az-tdx-vtpm 0.5.3",
- "base64 0.21.7",
+ "az-snp-vtpm 0.7.0",
+ "az-tdx-vtpm 0.7.0",
+ "base64 0.22.1",
  "bincode",
  "byteorder",
  "cfg-if",
@@ -5983,7 +5967,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "serial_test",
- "sev",
+ "sev 4.0.0",
  "sha2",
  "shadow-rs",
  "strum",

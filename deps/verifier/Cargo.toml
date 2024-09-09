@@ -20,9 +20,9 @@ anyhow.workspace = true
 thiserror.workspace = true
 asn1-rs = { version = "0.5.1", optional = true }
 async-trait.workspace = true
-az-snp-vtpm = { version = "0.5.3", default-features = false, features = ["verifier"], optional = true }
-az-tdx-vtpm = { version = "0.5.3", default-features = false, features = ["verifier"], optional = true }
-base64 = "0.21"
+az-snp-vtpm = { version = "0.7.0", default-features = false, features = ["verifier"], optional = true }
+az-tdx-vtpm = { version = "0.7.0", default-features = false, features = ["verifier"], optional = true }
+base64 = "0.22.1"
 bincode = "1.3.3"
 byteorder = "1"
 cfg-if = "1.0.0"
@@ -41,7 +41,7 @@ scroll = { version = "0.11.0", default-features = false, features = ["derive"], 
 serde.workspace = true
 serde_json.workspace = true
 serde_with = { workspace = true, optional = true }
-sev = { version = "3.1.1", features = ["openssl", "snp"], optional = true }
+sev = { version = "4.0.0", features = ["openssl", "snp"], optional = true }
 sha2.workspace = true 
 tokio = { workspace = true, optional = true }
 intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.21", optional = true }
