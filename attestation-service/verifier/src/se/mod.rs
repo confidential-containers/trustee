@@ -38,13 +38,12 @@ impl Verifier for SeVerifier {
         se_verifier.evaluate(evidence)
     }
 
-    async fn generate_supplemental_challenge(
-        &self,
-        _tee_parameters: String,
-    ) -> Result<String> {
+    async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
         let se_verifier = VERIFIER
             .get_or_try_init(|| async { SeVerifierImpl::new() })
             .await?;
-        se_verifier.generate_supplemental_challenge(_tee_parameters).await
+        se_verifier
+            .generate_supplemental_challenge(_tee_parameters)
+            .await
     }
 }

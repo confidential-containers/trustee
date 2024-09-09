@@ -1,10 +1,22 @@
-# Deployment of KBS with IBM SE verifier
+
+# KBS with IBM SE verifier
 
 This is a document to guide developer run a KBS with IBM SE verifier locally for development purpose.
 
+## Index
+
+- [Deployment of KBS with IBM SE verifier](#deployment-of-kbs-with-ibm-se-verifier)
+- [Set attestation policy for IBM SE verifier](#set-attestation-policy)
+
+
+
+# Deployment of KBS with IBM SE verifier
+
+This section is about deployment of KBS without rvps checking.
+
 ## Generate RSA keys
 Generate RSA 4096 key pair following commands:
-```
+```bash
 openssl genrsa -aes256 -passout pass:test1234 -out encrypt_key-psw.pem 4096
 openssl rsa -in encrypt_key-psw.pem -passin pass:test1234 -pubout -out encrypt_key.pub
 openssl rsa -in encrypt_key-psw.pem -out encrypt_key.pem
@@ -20,14 +32,25 @@ ibm-z-host-key-signing-gen2.crt
 DigiCertCA.crt 
 
 ### CRL
-ibm-z-host-key-gen2.crl
+ibm-z-host-key-gen2.crl  
+DigiCertTrustedRootG4.crl  
+DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+
+Note: `DigiCertTrustedRootG4.crl` and `DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl` come from commands as below:
+```bash
+# openssl x509 -in DigiCertCA.crt --text --noout |grep crl
+                  URI:http://crl3.digicert.com/DigiCertTrustedRootG4.crl
+# openssl x509 -in ibm-z-host-key-signing-gen2.crt --text --noout |grep crl
+                  URI:http://crl3.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+                  URI:http://crl4.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
+```
 
 ## Download HKD
 Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-z?topic=execution-verify-host-key-document
 
 ## Get SE Header
 Build `se.img` following [Generate an IBM Secure Execution image](https://www.ibm.com/docs/en/linux-on-systems?topic=commands-genprotimg) and retrieve the hdr.bin via command like below.
-```
+```bash
 ./pvextract-hdr -o hdr.bin se.img
 ```
 
@@ -35,7 +58,7 @@ Refer [ibm-s390-linux](https://github.com/ibm-s390-linux/s390-tools/blob/v2.33.1
 
 ## Generate KBS key
 Generate keys used by KBS service.
-```
+```bash
 openssl genpkey -algorithm ed25519 > kbs.key
 openssl pkey -in kbs.key -pubout -out kbs.pem
 ```
@@ -43,7 +66,7 @@ openssl pkey -in kbs.key -pubout -out kbs.pem
 ## (Option 1) Launch KBS as a program
 
 - Build KBS
-```
+```bash
 cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,openssl,resource,opa 
 ```
 
@@ -56,6 +79,8 @@ cargo install --locked --debug --path kbs/src/kbs --no-default-features --featur
 |   └── DigiCertCA.crt
 ├── crls
 │   └── ibm-z-host-key-gen2.crl
+│   └── DigiCertTrustedRootG4.crl
+│   └── DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
 ├── hdr
 │   └── hdr.bin
 ├── hkds
@@ -92,25 +117,24 @@ remote_addr = ""
 ```
 
 - Launch the KBS program
-```
+```bash
 export RUST_LOG=debug
 export SE_SKIP_CERTS_VERIFICATION=true
 ./kbs --config-file ./kbs-config.toml
 ```
 
-> Note: `SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine.
+> Note: `export SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine. Use `export CERTS_OFFLINE_VERIFICATION=true` to verifiy the certificates offline.
 
 ## (Option 2) Launch KBS via docker-compose
 - Build the docker image
 ```
-DOCKER_BUILDKIT=1 docker build -t ghcr.io/confidential-containers/staged-images/kbs:latest --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile
+DOCKER_BUILDKIT=1 docker build --build-arg HTTPS_CRYPTO="openssl" --build-arg ARCH="s390x" -t ghcr.io/confidential-containers/staged-images/kbs:latest . -f kbs/docker/Dockerfile
 ```
->Note: Please add `--debug` in statement like `cargo install` in file `kbs/docker/Dockerfile` if you're using a development host key document to skip HKD's signature verification.
 
 - Prepare a docker compose file, similar as:
 ```
 services:
-  web:
+  kbs:
     image: ghcr.io/confidential-containers/staged-images/kbs:latest
     command: [
         "/usr/local/bin/kbs",
@@ -135,7 +159,7 @@ services:
       - ./data/rsa/encrypt_key.pem:/run/confidential-containers/ibmse/rsa/encrypt_key.pem
       - ./data/rsa/encrypt_key.pub:/run/confidential-containers/ibmse/rsa/encrypt_key.pub
 ```
-> Note: `SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine.
+> Note: `export SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine. Use `export CERTS_OFFLINE_VERIFICATION=true` to verifiy the certificates offline.
 
 - Prepare the material, similar as:
 ```
@@ -149,6 +173,8 @@ services:
 │   │   └── DigiCertCA.crt
 │   ├── crls
 │   │   └── ibm-z-host-key-gen2.crl
+│   │   └── DigiCertTrustedRootG4.crl
+│   │   └── DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
 │   ├── hdr.bin
 │   ├── hkds
 │   │   └── HKD-3931-0275D38.crt
@@ -167,10 +193,63 @@ services:
 ```
 
 - Launch KBS as docker compose application
-```
+```bash
 docker-compose up -d
-docker-compose logs web
+docker-compose logs kbs
 docker-compose down
 ```
 
 
+# Set attestation policy
+
+This section is about setting attestation policy.
+
+### Retrive the attestation policy fields for IBM SE
+
+Using [se_parse_hdr.py](se_parse_hdr.py) on a s390x instance to retrieve the IBM SE fields for attestation policy.
+
+```bash
+python3 se_parse_hdr.py hdr.bin HKD-3931.crt 
+
+...
+  ================================================ 
+  se.image_phkh: xxx
+  se.version: 256
+  se.tag: xxx
+  se.attestation_phkh: xxx
+```
+
+We get following fields and will set these fields in rvps for attestation policy. 
+`se.version: 256`  
+`se.tag: xxx`  
+`se.attestation_phkh: xxx`  
+`se.image_phkh: xxx`  
+
+
+### Set attestation policy
+
+#### Generate attestation policy file
+```bash
+cat << EOF > ibmse-policy.rego
+package policy
+import rego.v1
+default allow = false
+
+converted_version := sprintf("%v", [input["se.version"]])
+
+allow if {
+    input["se.attestation_phkh"] == "xxx"
+    input["se.image_phkh"] == "xxx"
+    input["se.tag"] == "xxx"
+    input["se.user_data"] == "xxx"
+    converted_version == "256"
+}
+EOF
+```
+
+Where the values `se.version`, `se.attestation_phkh`, `se.image_phkh` and `se.tag` come from [retrive-the-rvps-field-for-an-ibm-se-image](#retrive-the-rvps-field-for-an-ibm-se-image). The value `se.user_data` comes from [initdata](https://github.com/confidential-containers/cloud-api-adaptor/blob/main/src/cloud-api-adaptor/docs/initdata.md). Please remove `input["se.user_data"] == "xxx"` if `initdata` is not used.
+
+#### Set the attestation policy
+```bash
+kbs-client --url http://127.0.0.1:8080 config --auth-private-key ./kbs/kbs.key set-attestation-policy --policy-file ./ibmse-policy.rego
+```
