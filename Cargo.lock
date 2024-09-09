@@ -2712,6 +2712,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "attestation-service",
+ "az-cvm-vtpm 0.7.0",
  "base64 0.22.1",
  "cfg-if",
  "clap 4.5.4",
