@@ -1,0 +1,14 @@
+sockets = ["0.0.0.0:8080"]
+auth_public_key = "/kbs/kbs.pem"
+# Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
+# https://cert-manager.io/docs/configuration/acme/
+insecure_http = true
+
+[attestation_token_config]
+attestation_token_type = "Jwk"
+trusted_certs_paths = ["https://portal.trustauthority.intel.com"]
+
+[intel_trust_authority_config]
+base_url = "https://api.trustauthority.intel.com"
+api_key = "tBfd5kKX2x9ahbodKV1..."
+certs_file = "https://portal.trustauthority.intel.com"
