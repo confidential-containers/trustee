@@ -29,9 +29,9 @@ config = "0.13.3"
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="cd16b445291ad401b4b53664266983f4927a370e", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="1db6c3a87665dde58d0efa56f4e4af5fcd19620e", default-features = false }
 kbs-types = "0.7.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev="cd16b445291ad401b4b53664266983f4927a370e", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev="1db6c3a87665dde58d0efa56f4e4af5fcd19620e", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 prost = "0.12"
