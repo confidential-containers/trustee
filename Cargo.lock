@@ -2662,7 +2662,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "attestation-service",
- "az-cvm-vtpm 0.7.0",
+ "az-cvm-vtpm",
  "base64 0.22.1",
  "cfg-if",
  "clap 4.5.4",
@@ -2823,12 +2823,12 @@ dependencies = [
 
 [[package]]
 name = "libloading"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
+checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
