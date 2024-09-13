@@ -1,4 +1,4 @@
-use std::process::exit;
+use std::process::{exit, Command};
 
 fn real_main() -> Result<(), String> {
     let out_dir = std::env::var("OUT_DIR").unwrap();
