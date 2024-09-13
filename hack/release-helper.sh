@@ -11,17 +11,14 @@ declare -g release_tag
 declare -A staged_to_release=(
     ["staged-images/kbs"]="key-broker-service"
     ["staged-images/kbs-grpc-as"]="key-broker-service"
-    ["staged-images/kbs-ita-as"]="key-broker-service"
     ["staged-images/rvps"]="reference-value-provider-service"
     ["staged-images/coco-as-grpc"]="attestation-service"
     ["staged-images/coco-as-restful"]="attestation-service"
 )
 declare -A staged_to_release_tag_prefix=(
     ["staged-images/kbs"]="built-in-as-"
-    ["staged-images/kbs-ita-as"]="ita-as-"
     ["staged-images/coco-as-restful"]="rest-"
 )
-
 
 function usage_and_exit() {
     echo
@@ -109,7 +106,21 @@ function tag_and_push_packages() {
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-x86_64 \
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
         docker manifest push ${ghcr_repo}/${release_pkg_name}:${release_tag_full}
+
+        docker manifest create ${ghcr_repo}/${release_pkg_name}:${release_tag_full} \
+            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-x86_64 \
+            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
+        docker manifest push ${ghcr_repo}/${release_pkg_name}:latest
     done
+
+    # Push ITA
+    docker pull ${ghcr_repo}/staged-images/kbs-ita-as:${release_candidate_sha}-x86_64
+    docker tag ${ghcr_repo}/staged-images/kbs-ita-as:${release_candidate_sha}-x86_64 \
+        ${ghcr_repo}/key-broker-service:ita-as-${release_tag}
+    docker tag ${ghcr_repo}/staged-images/kbs-ita-as:${release_candidate_sha}-x86_64 \
+        ${ghcr_repo}/key-broker-service:ita-as-${release_tag}-x86_64
+    docker push ${ghcr_repo}/key-broker-service:ita-as-${release_tag}
+    docker push ${ghcr_repo}/key-broker-service:ita-as-${release_tag}-x86_64
 }
 
 
