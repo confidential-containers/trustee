@@ -170,12 +170,12 @@ fn rs384_verify(payload: &[u8], signature: &[u8], jwk: &RsaJWK) -> Result<()> {
     Ok(())
 }
 
-async fn download_cert_chain(url: String, mut chain: &mut Vec<X509>) -> Result<()> {
+async fn download_cert_chain(url: String, chain: &mut Vec<X509>) -> Result<()> {
     let res = reqwest::get(url).await?;
     match res.status() {
         reqwest::StatusCode::OK => {
             let pem_cert_chain = res.text().await?;
-            parse_pem_cert_chain(pem_cert_chain, &mut chain)?;
+            parse_pem_cert_chain(pem_cert_chain, chain)?;
         }
         _ => {
             bail!(

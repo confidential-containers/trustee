@@ -97,11 +97,10 @@ pub struct sgx_quote3_t {
     pub header: sgx_quote_header_t,
     pub report_body: sgx_report_body_t,
     pub signature_data_len: u32,
-
-    /// The length of the signature data is defined by `signature_data_len`,
-    /// which cannot be determined at compilation time. Thus this field
-    /// is just marked with a `u8` slice of length 0.
-    pub signature_data: [u8; 0],
+    // TODO: add parse rule for signature_data. It's omitted here due to
+    // `zero_repeat_side_effects` error (see #448)
+    // The length of the signature data is defined by `signature_data_len`,
+    // which cannot be determined at compilation time.
 }
 
 impl fmt::Display for sgx_quote3_t {
@@ -174,9 +173,8 @@ REPORT BODY
             "
 SIGNATURE
             
-\tsignature_data_len:\t{:X?}
-\tsignature_data:\t{:X?}\n",
-            self.signature_data_len, self.signature_data
+\tsignature_data_len:\t{:X?}",
+            self.signature_data_len
         )
     }
 }
