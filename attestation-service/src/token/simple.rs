@@ -150,7 +150,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             x5c: None,
         };
 
-        jwk.x5u = self.cert_url.clone();
+        jwk.x5u.clone_from(&self.cert_url);
         if let Some(cert_chain) = self.cert_chain.clone() {
             let mut x5c = Vec::new();
             for cert in cert_chain {

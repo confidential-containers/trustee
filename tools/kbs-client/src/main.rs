@@ -80,6 +80,7 @@ struct Config {
     auth_private_key: PathBuf,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Subcommand)]
 enum ConfigCommands {
     /// Set attestation verification policy

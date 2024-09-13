@@ -20,11 +20,11 @@ const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
 #[derive(Error, Debug)]
 pub enum JwksGetError {
     #[error("Invalid source path: {0}")]
-    SourcePath(String),
+    InvalidSourcePath(String),
     #[error("Failed to access source: {0}")]
-    SourceAccess(String),
+    AccessFailed(String),
     #[error("Failed to deserialize source data: {0}")]
-    SourceDeserializeJson(String),
+    DeserializeSource(String),
 }
 
 #[derive(Deserialize)]
@@ -37,35 +37,35 @@ pub struct JwkAttestationTokenVerifier {
 }
 
 pub async fn get_jwks_from_file_or_url(p: &str) -> Result<jwk::JwkSet, JwksGetError> {
-    let mut url = Url::parse(p).map_err(|e| JwksGetError::SourcePath(e.to_string()))?;
+    let mut url = Url::parse(p).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
         "https" => {
             url.set_path(OPENID_CONFIG_URL_SUFFIX);
 
             let oidc = get(url.as_str())
                 .await
-                .map_err(|e| JwksGetError::SourceAccess(e.to_string()))?
+                .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?
                 .json::<OpenIDConfig>()
                 .await
-                .map_err(|e| JwksGetError::SourceDeserializeJson(e.to_string()))?;
+                .map_err(|e| JwksGetError::DeserializeSource(e.to_string()))?;
 
             let jwkset = get(oidc.jwks_uri)
                 .await
-                .map_err(|e| JwksGetError::SourceAccess(e.to_string()))?
+                .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?
                 .json::<jwk::JwkSet>()
                 .await
-                .map_err(|e| JwksGetError::SourceDeserializeJson(e.to_string()))?;
+                .map_err(|e| JwksGetError::DeserializeSource(e.to_string()))?;
 
             Ok(jwkset)
         }
         "file" => {
             let file = File::open(url.path())
-                .map_err(|e| JwksGetError::SourceAccess(format!("open {}: {}", url.path(), e)))?;
+                .map_err(|e| JwksGetError::AccessFailed(format!("open {}: {}", url.path(), e)))?;
 
             serde_json::from_reader(BufReader::new(file))
-                .map_err(|e| JwksGetError::SourceDeserializeJson(e.to_string()))
+                .map_err(|e| JwksGetError::DeserializeSource(e.to_string()))
         }
-        _ => Err(JwksGetError::SourcePath(format!(
+        _ => Err(JwksGetError::InvalidSourcePath(format!(
             "unsupported scheme {} (must be either file or https)",
             url.scheme()
         ))),
