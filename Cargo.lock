@@ -4574,9 +4574,9 @@ dependencies = [
 
 [[package]]
 name = "scientific"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc53198b8e237c451c68dba8411a1f8bd92787657689f24d67ae3d6b98c39f59"
+checksum = "38a4b339a8de779ecb098a772ecbba2ace74e23ed959a5b4f30631d8bf1799a8"
 dependencies = [
  "scientific-macro",
 ]
