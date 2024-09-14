@@ -86,7 +86,7 @@ check:
 	cargo test -p kbs -p kbs-client
 
 lint:
-	cargo clippy -p kbs -p kbs-client -- -D warnings -A clippy::enum_variant_names -A clippy::needless_borrow
+	cargo clippy -p kbs -p kbs-client -- -D warnings
 
 format:
 	cargo fmt -p kbs -p kbs-client -- --check --config format_code_in_doc_comments=true
