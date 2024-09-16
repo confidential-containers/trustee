@@ -144,12 +144,12 @@ The following properties can be set under the `intel_trust_authority_config` sec
 
 >This section is available only when the `intel-trust-authority-as` feature is enabled.
 
-| Property                 | Type    | Description                                                                            | Required                | Default |
-|--------------------------|---------|----------------------------------------------------------------------------------------|-------------------------|---------|
-| `base_url`               | String  | Intel Trust Authority API URL.                                                         | Yes                     | -       |
-| `api_key`                | String  | Intel Trust Authority API key.                                                         | Yes                     | -       |
-| `certs_file`             | String  | Path to an Intel Trust Authority certificates JWKS file used for token verification.   | Yes                     | -       |
-| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                   | No                      | false   |
+| Property                 | Type    | Description                                                                              | Required                | Default |
+|--------------------------|---------|------------------------------------------------------------------------------------------|-------------------------|---------|
+| `base_url`               | String  | Intel Trust Authority API URL.                                                           | Yes                     | -       |
+| `api_key`                | String  | Intel Trust Authority API key.                                                           | Yes                     | -       |
+| `certs_file`             | String  | URL to an Intel Trust Authority portal or path to JWKS file used for token verification. | Yes                     | -       |
+| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                     | No                      | false   |
 
 Detailed [documentation](https://docs.trustauthority.intel.com).
 
@@ -205,6 +205,10 @@ Running with Intel Trust Authority attestation service:
 insecure_http = true
 insecure_api = true
 
+[attestation_token_config]
+attestation_token_type = "Jwk"
+trusted_certs_paths = ["https://portal.trustauthority.intel.com"]
+
 [repository_config]
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
@@ -212,7 +216,7 @@ dir_path = "/opt/confidential-containers/kbs/repository"
 [intel_trust_authority_config]
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
-certs_file = "/etc/intel-trust-authority-certs.txt"
+certs_file = "https://portal.trustauthority.intel.com"
 allow_unmatched_policy = true
 ```
 
