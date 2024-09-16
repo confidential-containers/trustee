@@ -10,7 +10,7 @@ fn real_main() -> Result<(), String> {
         println!("cargo:rustc-link-lib=static=cgo");
 
         let cgo_dir = "./cgo".to_string();
-        let cgo = Command::new("go")
+        let cgo = std::process::Command::new("go")
             .args([
                 "build",
                 "-o",
