@@ -1,0 +1,19 @@
+{
+    "work_dir": "/var/lib/attestation-service/",
+    "rvps_config": {
+	"type": "BuiltIn",
+        "store_type": "LocalFs",
+        "remote_addr": ""
+    },
+    "attestation_token_broker": {
+        "type": "Simple",
+        "duration_min": 5,
+        "policy_dir": "/var/lib/attestation-service/policies",
+        "issuer_name": "test",
+        "signer": {
+            "key_path": "/etc/key",
+            "cert_url": "https://example.io",
+            "cert_path": "/etc/cert.pem"
+        }
+    }
+}

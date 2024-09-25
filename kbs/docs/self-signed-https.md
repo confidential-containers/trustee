@@ -81,9 +81,9 @@ policy_path = "/opa/confidential-containers/kbs/policy.rego"
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
 
-    [attestation_service.attestation_token_config]
+    [attestation_serivce.attestation_token_broker]
+    type = "Ear"
     duration_min = 5
 
     [attestation_service.rvps_config]

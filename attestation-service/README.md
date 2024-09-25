@@ -145,7 +145,7 @@ The results of every policy that is evaluated are included in the attestation to
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about Rego.
 
-If the policy is not updated, the AS will use the [default policy](src/policy_engine/opa/default_policy.rego).
+If the policy is not updated, the AS will use the [default policy](src/token/ear_default_policy.rego).
 
 Concrete policy usages please refer to [this guide](docs/policy.md).
 
