@@ -14,12 +14,12 @@ work_dir = "./work/attestation-service"
 policy_engine = "opa"
 attestation_token_broker = "Simple"
 
-[attestation_service.attestation_token_config]
+[attestation_service.attestation_token_broker]
+type = "Ear"
 duration_min = 5
 
-[attestation_service.attestation_token_config.signer]
-key_path = "./work/token.key"
-cert_path = "./work/token-cert-chain.pem"
+[attestation_service.attestation_token_broker.signer]
+key_path = "./work/as-private-key.pem"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"

@@ -38,9 +38,11 @@ async-trait.workspace = true
 base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, optional = true }
+ear.workspace = true
 env_logger = { workspace = true, optional = true }
 futures = "0.3.17"
 hex.workspace = true
+jsonwebtoken.workspace = true
 kbs-types.workspace = true
 lazy_static = "1.4.0"
 log.workspace = true
@@ -56,6 +58,7 @@ serde_variant = "0.1.2"
 sha2.workspace = true
 shadow-rs.workspace = true
 strum.workspace = true
+tempfile.workspace = true
 time = { version = "0.3.23", features = ["std"] }
 thiserror.workspace = true
 tokio.workspace = true

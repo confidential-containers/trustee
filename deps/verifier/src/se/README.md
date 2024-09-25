@@ -106,9 +106,9 @@ insecure_key = true
 [as_config]
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
 
-[as_config.attestation_token_config]
+[as_config.attestation_token_broker]
+type = "Ear"
 duration_min = 5
 
 [as_config.rvps_config]

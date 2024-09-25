@@ -214,7 +214,7 @@ which both should be PEM format.
 
 Adding the following content to TOML config file of KBS itself:
 ```toml
-[as_config.attestation_token_config.signer]
+[as_config.attestation_token_broker.signer]
 key_path = "/path/to/token-key.pem"
 cert_path = "/path/to/token-cert-chain.pem"
 ```
@@ -228,7 +228,8 @@ Adding the following content to JSON config file of gRPC AS:
 {
     ...
 
-    "attestation_token_config": {
+    "attestation_token_broker": {
+	"type": "Ear",
         "duration_min": 5,
 		"signer": {
 			"key_path": "/path/to/token-key.pem",
