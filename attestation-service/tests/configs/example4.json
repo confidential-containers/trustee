@@ -1,0 +1,22 @@
+{
+    "work_dir": "/var/lib/attestation-service/",
+    "rvps_config": {
+	"type": "BuiltIn",
+        "store_type": "LocalFs",
+        "remote_addr": ""
+    },
+    "attestation_token_broker": {
+        "type": "Ear",
+        "duration_min": 5,
+        "policy_dir": "/var/lib/attestation-service/policies",
+        "issuer_name": "test",
+        "developer_name": "someone",
+        "build_name": "0.1.0",
+        "profile_name": "tag:github.com,2024:confidential-containers/Trustee",
+        "signer": {
+            "key_path": "/etc/key",
+            "cert_url": "https://example.io",
+            "cert_path": "/etc/cert.pem"
+        }
+    }
+}

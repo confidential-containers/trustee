@@ -2,7 +2,9 @@
 type = "coco_as_builtin"
 work_dir = "/opt/coco/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
+
+    [attestation_service.attestation_token_broker]
+    type = "Simple"
 
 [attestation_service.rvps_config]
 type = "GrpcRemote"

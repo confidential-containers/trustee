@@ -41,7 +41,7 @@ impl Attest for BuiltInCoCoAs {
                 HashAlgorithm::Sha384,
                 None,
                 HashAlgorithm::Sha384,
-                vec!["default".into()],
+                vec!["default".to_string()],
             )
             .await
     }

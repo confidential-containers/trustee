@@ -11,10 +11,13 @@ insecure_key = true
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
 
-[attestation_service.attestation_token_config]
+[attestation_service.attestation_token_broker]
+type = "Ear"
 duration_min = 5
+
+[attestation_service.attestation_token_broker.signer]
+key_path = "/kbs/as-private-key.pem"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
@@ -27,3 +30,4 @@ auth_public_key = "/kbs/kbs.pem"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+
