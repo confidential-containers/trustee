@@ -139,9 +139,8 @@ pub async fn attestation(
             HashAlgorithm::Sha384
         }
     };
-
     let policy_ids = if request.policy_ids.is_empty() {
-        info!("no policy specified, use `default`");
+        info!("no policy specified. `default` will be used");
         vec!["default".into()]
     } else {
         request.policy_ids

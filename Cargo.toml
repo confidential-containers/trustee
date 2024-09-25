@@ -26,6 +26,7 @@ cfg-if = "1.0.0"
 chrono = "0.4.19"
 clap = { version = "4", features = ["derive"] }
 config = "0.13.3"
+ear = "0.3.0"
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"
@@ -35,7 +36,7 @@ kms = { git = "https://github.com/confidential-containers/guest-components.git",
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 prost = "0.12"
-regorus = { version = "0.1.5", default-features = false, features = ["regex", "base64", "time"] }
+regorus = { version = "0.2.6", default-features = false, features = ["regex", "base64", "time", "std" ] }
 reqwest = { version = "0.12", default-features = false, features = ["default-tls"] }
 rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
