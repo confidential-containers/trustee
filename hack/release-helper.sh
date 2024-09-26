@@ -8,6 +8,11 @@ declare -g release_candidate_sha
 declare -g release_tag
 
 # Output naming convention along with release guide can be found in release-guide.md
+declare -a release_pkg_names=(
+    "key-broker-service"
+    "reference-value-provider-service"
+    "attestation-service"
+)
 declare -A staged_to_release=(
     ["staged-images/kbs"]="key-broker-service"
     ["staged-images/kbs-grpc-as"]="key-broker-service"
@@ -36,7 +41,7 @@ function usage_and_exit() {
     echo "      Example: v0.8.2"
     echo
     echo "Example usage:"
-    echo "    ./release-helper.sh -u \${gh_username} -k \${gh_token} -c dc01f454264fb4350e5f69eba05683a9a1882c41 -n v0.8.2"
+    echo "    ./release-helper.sh -u \${gh_username} -k \${gh_token} -c dc01f454264fb4350e5f69eba05683a9a1882c41 -r v0.8.2"
     echo
     exit 1
 }
@@ -106,10 +111,14 @@ function tag_and_push_packages() {
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-x86_64 \
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
         docker manifest push ${ghcr_repo}/${release_pkg_name}:${release_tag_full}
+    done
 
-        docker manifest create ${ghcr_repo}/${release_pkg_name}:${release_tag_full} \
-            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-x86_64 \
-            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
+    # Publish a latest tag. Note this will be applied to only the non-prefixed
+    # packages (e.g. the "built-in-as" kbs package won't have a latest tag).
+    for release_pkg_name in ${release_pkg_names[@]}; do
+        docker manifest create ${ghcr_repo}/${release_pkg_name}:latest \
+            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag}-x86_64 \
+            --amend ${ghcr_repo}/${release_pkg_name}:${release_tag}-s390x
         docker manifest push ${ghcr_repo}/${release_pkg_name}:latest
     done
 
