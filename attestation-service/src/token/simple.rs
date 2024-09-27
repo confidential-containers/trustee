@@ -18,7 +18,6 @@ use serde_json::{json, Value};
 
 use crate::token::{AttestationTokenBroker, AttestationTokenConfig};
 
-pub const COCO_AS_ISSUER_NAME: &str = "CoCo-Attestation-Service";
 const RSA_KEY_BITS: u32 = 2048;
 const SIMPLE_TOKEN_ALG: &str = "RS384";
 

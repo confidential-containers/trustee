@@ -1,0 +1,28 @@
+[http_server]
+insecure_http = true
+
+[attestation_token_config]
+type = "CoCo"
+
+[repository]
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/confidential-containers/attestation-service"
+policy_engine = "opa"
+attestation_token_broker = "Simple"
+
+    [attestation_service.attestation_token_config]
+    duration_min = 5
+
+    [attestation_service.rvps_config]
+    store_type = "LocalFs"
+    remote_addr = ""
+
+[policy_engine]
+policy_path = "/opa/confidential-containers/kbs/policy.rego"
+
+[admin]
+insecure_api = true

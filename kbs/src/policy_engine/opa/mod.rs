@@ -116,7 +116,7 @@ mod tests {
         let policy = std::fs::read(PathBuf::from(path.to_string())).unwrap();
         let policy = URL_SAFE_NO_PAD.encode(policy);
 
-        opa.set_policy(policy).await
+        opa.set_policy(&policy).await
     }
 
     #[tokio::test]
@@ -130,7 +130,7 @@ mod tests {
             .unwrap();
 
         // decode error
-        let malformed_policy = "123".to_string();
+        let malformed_policy = "123";
         let res = opa.set_policy(malformed_policy).await;
         assert!(matches!(
             res.err().unwrap(),
@@ -192,10 +192,8 @@ mod tests {
 
         set_policy_from_file(&mut opa, policy_path).await.unwrap();
 
-        let resource_path = resource_path.to_string();
-
         let res = opa
-            .evaluate(resource_path.clone(), dummy_input(input_name, input_svn))
+            .evaluate(resource_path, &dummy_input(input_name, input_svn))
             .await;
 
         if let Ok(actual) = res {
