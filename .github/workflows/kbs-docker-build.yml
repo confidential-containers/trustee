@@ -16,7 +16,6 @@ jobs:
     - name: Build KBS Container Image
       run: |
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f kbs/docker/Dockerfile; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-openssl --build-arg KBS_FEATURES=coco-as-builtin,openssl,resource,opa . -f kbs/docker/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-grpc . -f kbs/docker/coco-as-grpc/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-rhel-ubi . -f kbs/docker/rhel-ubi/Dockerfile; \
         DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-ita . -f kbs/docker/intel-trust-authority/Dockerfile

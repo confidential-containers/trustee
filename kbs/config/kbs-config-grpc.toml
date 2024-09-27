@@ -1,9 +1,14 @@
+[http_server]
 insecure_http = true
-insecure_api = true
 
-[attestation_token_config]
-attestation_token_type = "CoCo"
+[attestation_token]
+type = "CoCo"
+insecure_key = true
 
-[grpc_config]
+[attestation_service]
+type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50004"
 pool_size = 200
+
+[admin]
+insecure_api = true
