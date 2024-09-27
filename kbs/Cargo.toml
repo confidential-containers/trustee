@@ -54,6 +54,7 @@ log.workspace = true
 mobc = { version = "0.8.3", optional = true }
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
+regex = "1.11.1"
 regorus.workspace = true
 reqwest = { workspace = true, features = ["json"], optional = true }
 rsa = { version = "0.9.2", optional = true, features = ["sha2"] }
