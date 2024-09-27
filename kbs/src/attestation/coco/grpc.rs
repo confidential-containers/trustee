@@ -30,17 +30,27 @@ pub const DEFAULT_POOL_SIZE: u64 = 100;
 
 pub const COCO_AS_HASH_ALGORITHM: &str = "sha384";
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct GrpcConfig {
-    as_addr: Option<String>,
-    pool_size: Option<u64>,
+    #[serde(default = "default_as_addr")]
+    pub(crate) as_addr: String,
+    #[serde(default = "default_pool_size")]
+    pub(crate) pool_size: u64,
+}
+
+fn default_as_addr() -> String {
+    DEFAULT_AS_ADDR.to_string()
+}
+
+fn default_pool_size() -> u64 {
+    DEFAULT_POOL_SIZE
 }
 
 impl Default for GrpcConfig {
     fn default() -> Self {
         Self {
-            as_addr: Some(DEFAULT_AS_ADDR.to_string()),
-            pool_size: Some(DEFAULT_POOL_SIZE),
+            as_addr: DEFAULT_AS_ADDR.to_string(),
+            pool_size: DEFAULT_POOL_SIZE,
         }
     }
 }
@@ -51,19 +61,14 @@ pub struct GrpcClientPool {
 
 impl GrpcClientPool {
     pub async fn new(config: GrpcConfig) -> Result<Self> {
-        let as_addr = config.as_addr.unwrap_or_else(|| {
-            log::info!("Default remote AS address ({DEFAULT_AS_ADDR}) is used");
-            DEFAULT_AS_ADDR.to_string()
-        });
-
-        let pool_size = config.pool_size.unwrap_or_else(|| {
-            log::info!("Default AS connection pool size ({DEFAULT_POOL_SIZE}) is used");
-            DEFAULT_POOL_SIZE
-        });
-
-        info!("connect to remote AS [{as_addr}] with pool size {pool_size}");
-        let manager = GrpcManager { as_addr };
-        let pool = Mutex::new(Pool::builder().max_open(pool_size).build(manager));
+        info!(
+            "connect to remote AS [{}] with pool size {}",
+            config.as_addr, config.pool_size
+        );
+        let manager = GrpcManager {
+            as_addr: config.as_addr,
+        };
+        let pool = Mutex::new(Pool::builder().max_open(config.pool_size).build(manager));
 
         Ok(Self { pool })
     }

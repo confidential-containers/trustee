@@ -1,0 +1,8 @@
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/coco/attestation-service"
+policy_engine = "opa"
+attestation_token_broker = "Simple"
+
+    [attestation_service.rvps_config]
+    remote_addr = "http://127.0.0.1:50003"
