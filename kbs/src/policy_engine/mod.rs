@@ -40,17 +40,17 @@ pub(crate) trait PolicyEngineInterface: Send + Sync {
 }
 
 /// Policy engine configuration.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct PolicyEngineConfig {
     /// Path to a file containing a policy for evaluating whether the TCB status has access to
     /// specific resources.
-    pub policy_path: Option<PathBuf>,
+    pub policy_path: PathBuf,
 }
 
 impl Default for PolicyEngineConfig {
     fn default() -> Self {
         Self {
-            policy_path: Some(PathBuf::from(DEFAULT_POLICY_PATH)),
+            policy_path: PathBuf::from(DEFAULT_POLICY_PATH),
         }
     }
 }

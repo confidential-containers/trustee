@@ -2,59 +2,25 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "coco-as-grpc")]
-use crate::attestation::coco::grpc::GrpcConfig;
-#[cfg(feature = "intel-trust-authority-as")]
-use crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig;
-#[cfg(feature = "policy")]
+use crate::admin::config::{AdminConfig, DEFAULT_INSECURE_API};
+use crate::plugins::PluginsConfig;
 use crate::policy_engine::PolicyEngineConfig;
-#[cfg(feature = "resource")]
-use crate::resource::RepositoryConfig;
-#[cfg(feature = "resource")]
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
-#[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
-use attestation_service::config::Config as AsConfig;
 use clap::Parser;
 use config::{Config, File};
 use serde::Deserialize;
-use serde_json::Value;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_INSECURE_API: bool = false;
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
 const DEFAULT_TIMEOUT: i64 = 5;
 
-/// Contains all configurable KBS properties.
-#[derive(Clone, Debug, Deserialize)]
-pub struct KbsConfig {
-    /// Resource repository config.
-    #[cfg(feature = "resource")]
-    pub repository_config: Option<RepositoryConfig>,
-
-    /// Attestation token result broker config.
-    #[cfg(feature = "resource")]
-    pub attestation_token_config: AttestationTokenVerifierConfig,
-
-    /// Configuration for the built-in Attestation Service.
-    #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
-    pub as_config: Option<AsConfig>,
-
-    /// Configuration for remote attestation over gRPC.
-    #[cfg(feature = "coco-as-grpc")]
-    pub grpc_config: Option<GrpcConfig>,
-
-    /// Configuration for Intel Trust Authority attestation.
-    #[cfg(feature = "intel-trust-authority-as")]
-    pub intel_trust_authority_config: IntelTrustAuthorityConfig,
-
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct HttpServerConfig {
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
     pub sockets: Vec<SocketAddr>,
-
-    /// HTTPS session timeout in minutes.
-    pub timeout: i64,
 
     /// HTTPS private key.
     pub private_key: Option<PathBuf>,
@@ -65,20 +31,48 @@ pub struct KbsConfig {
     /// Insecure HTTP.
     /// WARNING: Using this option makes the HTTP connection insecure.
     pub insecure_http: bool,
+}
 
-    /// Public key used to authenticate the resource registration endpoint token (JWT).
-    /// Only JWTs signed with the corresponding private keys are authenticated.
-    pub auth_public_key: Option<PathBuf>,
+impl Default for HttpServerConfig {
+    fn default() -> Self {
+        Self {
+            sockets: vec![DEFAULT_SOCKET.parse().expect("unexpected parse error")],
+            private_key: None,
+            certificate: None,
+            insecure_http: DEFAULT_INSECURE_HTTP,
+        }
+    }
+}
 
-    /// Insecure HTTP APIs.
-    /// WARNING: Using this option enables KBS insecure APIs such as Resource Registration without
-    /// verifying the JWK.
-    pub insecure_api: bool,
+/// Contains all configurable KBS properties.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct KbsConfig {
+    /// Resource repository config.
+    #[cfg(feature = "resource")]
+    #[serde(default)]
+    pub repository: crate::resource::RepositoryConfig,
+
+    /// Attestation token result broker config.
+    #[serde(default)]
+    pub attestation_token: AttestationTokenVerifierConfig,
+
+    /// Configuration for the Attestation Service.
+    #[cfg(feature = "as")]
+    pub attestation_service: crate::attestation::config::AttestationConfig,
+
+    /// Configuration for the KBS Http Server
+    pub http_server: HttpServerConfig,
+
+    /// Configuration for the KBS admin API
+    pub admin: AdminConfig,
 
     /// Policy engine configuration used for evaluating whether the TCB status has access to
     /// specific resources.
-    #[cfg(feature = "policy")]
-    pub policy_engine_config: Option<PolicyEngineConfig>,
+    #[serde(default)]
+    pub policy_engine: PolicyEngineConfig,
+
+    #[serde(default)]
+    pub client_plugins: Vec<PluginsConfig>,
 }
 
 impl TryFrom<&Path> for KbsConfig {
@@ -88,10 +82,10 @@ impl TryFrom<&Path> for KbsConfig {
     /// `config` crate. See `KbsConfig` for schema information.
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
         let c = Config::builder()
-            .set_default("insecure_api", DEFAULT_INSECURE_API)?
-            .set_default("insecure_http", DEFAULT_INSECURE_HTTP)?
-            .set_default("sockets", vec![DEFAULT_SOCKET])?
-            .set_default("timeout", DEFAULT_TIMEOUT)?
+            .set_default("admin.insecure_api", DEFAULT_INSECURE_API)?
+            .set_default("http_server.insecure_http", DEFAULT_INSECURE_HTTP)?
+            .set_default("http_server.sockets", vec![DEFAULT_SOCKET])?
+            .set_default("attestation_service.timeout", DEFAULT_TIMEOUT)?
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
 
@@ -108,4 +102,398 @@ pub struct Cli {
     /// supported by the `config` crate.
     #[arg(short, long, env = "KBS_CONFIG_FILE")]
     pub config_file: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use crate::{
+        admin::config::AdminConfig,
+        config::{
+            HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP, DEFAULT_SOCKET,
+            DEFAULT_TIMEOUT,
+        },
+        plugins::{sample::SampleConfig, PluginsConfig},
+        policy_engine::{PolicyEngineConfig, DEFAULT_POLICY_PATH},
+        token::AttestationTokenVerifierConfig,
+    };
+
+    use super::KbsConfig;
+
+    #[cfg(feature = "coco-as-builtin")]
+    use attestation_service::{
+        rvps::{RvpsConfig, DEFAULT_STORAGE_TYPE},
+        token::{
+            AttestationTokenBrokerType, AttestationTokenConfig, COCO_AS_ISSUER_NAME,
+            DEFAULT_TOKEN_TIMEOUT,
+        },
+    };
+
+    use rstest::rstest;
+    use serde_json::json;
+
+    #[rstest]
+    #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc {
+                dir_path: "/tmp/kbs-resource".into(),
+            },
+        ),
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_certs_paths: vec!["/etc/ca".into(), "/etc/ca2".into()],
+            insecure_key: false,
+            trusted_jwk_sets: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "coco-as-grpc")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASGrpc(
+                    crate::attestation::coco::grpc::GrpcConfig {
+                        as_addr: "http://127.0.0.1:50001".into(),
+                        pool_size: 100,
+                    },
+                ),
+            timeout: 600,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec!["0.0.0.0:8080".parse().unwrap()],
+            private_key: Some("/etc/kbs-private.key".into()),
+            certificate: Some("/etc/kbs-cert.pem".into()),
+            insecure_http: false,
+        },
+        admin: AdminConfig {
+            auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
+            insecure_api: false,
+        },
+        policy_engine: PolicyEngineConfig {
+            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+        },
+        client_plugins: vec![PluginsConfig::Sample(SampleConfig {
+            item: "value1".into(),
+        })],
+    })]
+    #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc {
+                dir_path: DEFAULT_REPO_DIR_PATH.into(),
+            },
+        ),
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_certs_paths: vec![],
+            insecure_key: false,
+            trusted_jwk_sets: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "coco-as-builtin")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
+                    attestation_service::config::Config {
+                        work_dir: "/opt/coco/attestation-service".into(),
+                        policy_engine: "opa".into(),
+                        attestation_token_broker: AttestationTokenBrokerType::Simple,
+                        rvps_config: RvpsConfig {
+                            remote_addr: "http://127.0.0.1:50003".into(),
+                            store_type: DEFAULT_STORAGE_TYPE.into(),
+                            store_config: json!({}),
+                        },
+                        attestation_token_config: AttestationTokenConfig {
+                            duration_min: DEFAULT_TOKEN_TIMEOUT,
+                            issuer_name: COCO_AS_ISSUER_NAME.into(),
+                            signer: None,
+                        },
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec![DEFAULT_SOCKET.parse().unwrap()],
+            private_key: None,
+            certificate: None,
+            insecure_http: DEFAULT_INSECURE_HTTP,
+        },
+        admin: AdminConfig {
+            auth_public_key: None,
+            insecure_api: DEFAULT_INSECURE_API,
+        },
+        policy_engine: PolicyEngineConfig {
+            policy_path: DEFAULT_POLICY_PATH.into(),
+        },
+        client_plugins: vec![],
+    })]
+    #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc {
+                dir_path: "/tmp/kbs-resource".into(),
+            },
+        ),
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_jwk_sets: vec!["/etc/ca".into(), "/etc/ca2".into()],
+            insecure_key: false,
+            trusted_certs_paths: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "intel-trust-authority-as")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::IntelTA(
+                    crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig {
+                        base_url: "example.io".into(),
+                        api_key: "this-is-a-key".into(),
+                        certs_file: "file:///etc/ita-cert.pem".into(),
+                        allow_unmatched_policy: Some(true),
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec!["0.0.0.0:8080".parse().unwrap()],
+            private_key: Some("/etc/kbs-private.key".into()),
+            certificate: Some("/etc/kbs-cert.pem".into()),
+            insecure_http: false,
+        },
+        admin: AdminConfig {
+            auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
+            insecure_api: false,
+        },
+        policy_engine: PolicyEngineConfig {
+            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+        },
+        client_plugins: vec![PluginsConfig::Sample(SampleConfig {
+            item: "value1".into(),
+        })],
+    })]
+    #[case("test_data/configs/coco-as-grpc-2.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::default(),
+        attestation_token: AttestationTokenVerifierConfig {
+            ..Default::default()
+        },
+        #[cfg(feature = "coco-as-grpc")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASGrpc(
+                    crate::attestation::coco::grpc::GrpcConfig {
+                        as_addr: "http://as:50004".into(),
+                        pool_size: crate::attestation::coco::grpc::DEFAULT_POOL_SIZE,
+                    },
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec!["0.0.0.0:8080".parse().unwrap()],
+            private_key: None,
+            certificate: None,
+            insecure_http: true,
+        },
+        admin: AdminConfig {
+            auth_public_key: Some(PathBuf::from("/opt/confidential-containers/kbs/user-keys/public.pub")),
+            insecure_api: DEFAULT_INSECURE_API,
+        },
+        policy_engine: PolicyEngineConfig::default(),
+        client_plugins: Vec::default(),
+    })]
+    #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc {
+                dir_path: DEFAULT_REPO_DIR_PATH.into(),
+            },
+        ),
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_certs_paths: vec![],
+            insecure_key: false,
+            trusted_jwk_sets: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "coco-as-builtin")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
+                    attestation_service::config::Config {
+                        work_dir: "/opt/confidential-containers/attestation-service".into(),
+                        policy_engine: "opa".into(),
+                        attestation_token_broker: AttestationTokenBrokerType::Simple,
+                        rvps_config: RvpsConfig {
+                            remote_addr: "".into(),
+                            store_type: "LocalFs".into(),
+                            store_config: json!({}),
+                        },
+                        attestation_token_config: AttestationTokenConfig {
+                            duration_min: 5,
+                            ..Default::default()
+                        },
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec!["0.0.0.0:8080".parse().unwrap()],
+            private_key: None,
+            certificate: None,
+            insecure_http: true,
+        },
+        admin: AdminConfig {
+            auth_public_key: Some("/kbs/kbs.pem".into()),
+            insecure_api: DEFAULT_INSECURE_API,
+        },
+        policy_engine: PolicyEngineConfig::default(),
+        client_plugins: vec![],
+    })]
+    #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
+            insecure_key: false,
+            trusted_certs_paths: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "intel-trust-authority-as")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::IntelTA(
+                    crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig {
+                        base_url: "https://api.trustauthority.intel.com".into(),
+                        api_key: "tBfd5kKX2x9ahbodKV1...".into(),
+                        certs_file: "https://portal.trustauthority.intel.com".into(),
+                        allow_unmatched_policy: None,
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            sockets: vec!["0.0.0.0:8080".parse().unwrap()],
+            private_key: None,
+            certificate: None,
+            insecure_http: true,
+        },
+        admin: AdminConfig {
+            auth_public_key: Some("/kbs/kbs.pem".into()),
+            insecure_api: DEFAULT_INSECURE_API,
+        },
+        policy_engine: PolicyEngineConfig::default(),
+        client_plugins: vec![],
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc::default(),
+        ),
+    })]
+    #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::default(),
+        attestation_token: AttestationTokenVerifierConfig {
+            ..Default::default()
+        },
+        #[cfg(feature = "coco-as-grpc")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASGrpc(
+                    crate::attestation::coco::grpc::GrpcConfig {
+                        as_addr: "http://127.0.0.1:50004".into(),
+                        pool_size: 100,
+                    },
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            insecure_http: true,
+            ..Default::default()
+        },
+        admin: AdminConfig {
+            insecure_api: true,
+            ..Default::default()
+        },
+        policy_engine: PolicyEngineConfig::default(),
+        client_plugins: Vec::default(),
+    })]
+    #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
+            insecure_key: false,
+            trusted_certs_paths: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "intel-trust-authority-as")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::IntelTA(
+                    crate::attestation::intel_trust_authority::IntelTrustAuthorityConfig {
+                        base_url: "https://api.trustauthority.intel.com".into(),
+                        api_key: "tBfd5kKX2x9ahbodKV1...".into(),
+                        certs_file: "https://portal.trustauthority.intel.com".into(),
+                        allow_unmatched_policy: None,
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            insecure_http: true,
+            ..Default::default()
+        },
+        admin: AdminConfig {
+            insecure_api: true,
+            ..Default::default()
+        },
+        policy_engine: PolicyEngineConfig::default(),
+        client_plugins: vec![],
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc::default(),
+        ),
+    })]
+    #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
+        #[cfg(feature = "resource")]
+        repository: crate::resource::RepositoryConfig::LocalFs(
+            crate::resource::local_fs::LocalFsRepoDesc {
+                dir_path: "/opt/confidential-containers/kbs/repository".into(),
+            },
+        ),
+        attestation_token: AttestationTokenVerifierConfig {
+            trusted_certs_paths: vec![],
+            insecure_key: false,
+            trusted_jwk_sets: vec![],
+            extra_teekey_paths: vec![],
+        },
+        #[cfg(feature = "coco-as-builtin")]
+        attestation_service: crate::attestation::config::AttestationConfig {
+            attestation_service:
+                crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
+                    attestation_service::config::Config {
+                        work_dir: "/opt/confidential-containers/attestation-service".into(),
+                        policy_engine: "opa".into(),
+                        attestation_token_broker: AttestationTokenBrokerType::Simple,
+                        rvps_config: RvpsConfig {
+                            remote_addr: "".into(),
+                            store_type: "LocalFs".into(),
+                            ..Default::default()
+                        },
+                        attestation_token_config: AttestationTokenConfig {
+                            duration_min: 5,
+                            ..Default::default()
+                        },
+                    }
+                ),
+            timeout: DEFAULT_TIMEOUT,
+        },
+        http_server: HttpServerConfig {
+            insecure_http: true,
+            ..Default::default()
+        },
+        admin: AdminConfig {
+            insecure_api: true,
+            ..Default::default()
+        },
+        policy_engine: PolicyEngineConfig {
+            policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
+        },
+        client_plugins: vec![],
+    })]
+    fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
+        let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
+        assert_eq!(config, expected, "case {config_path}");
+    }
 }
