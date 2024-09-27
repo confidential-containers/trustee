@@ -1,10 +1,14 @@
+[http_server]
 insecure_http = true
+
+[admin]
 insecure_api = true
 
-[attestation_token_config]
-trusted_certs_paths = ["https://portal.trustauthority.intel.com"]
+[attestation_token]
+trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
 
-[intel_trust_authority_config]
+[attestation_service]
+type = "intel_ta"
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"

@@ -16,33 +16,31 @@ environment variable.
 The following sections list the KBS properties which can be set through the
 configuration file.
 
-### Global Properties
+### HTTP Server Configuration
 
-The following properties can be set globally, i.e. not under any configuration
-section:
+The following properties can be set under the `[http_server]` section.
 
 | Property                 | Type         | Description                                                                                                | Required | Default              |
 |--------------------------|--------------|------------------------------------------------------------------------------------------------------------|----------|----------------------|
 | `sockets`                | String array | One or more sockets to listen on.                                                                          | No       | `["127.0.0.1:8080"]` |
-| `insecure_api`           | Boolean      | Enable KBS insecure APIs such as Resource Registration without JWK verification.                           | No       | `false`              |
 | `insecure_http`          | Boolean      | Don't use TLS for the KBS HTTP endpoint.                                                                   | No       | `false`              |
-| `timeout`                | Integer      | HTTP session timeout in minutes.                                                                           | No       | `5`                  |
-| `private_key`            | String       | Path to a private key file to be used for HTTPS.                                                           | No       | -                    |
-| `certificate`            | String       | Path to a certificate file to be used for HTTPS.                                                           | No       | -                    |
-| `auth_public_key`        | String       | Path to a public key file to be used for authenticating the resource registration endpoint token (JWT).    | No       | -                    |
+| `private_key`            | String       | Path to a private key file to be used for HTTPS.                                                           | No       | None                 |
+| `certificate`            | String       | Path to a certificate file to be used for HTTPS.                                                           | No       | None                 |
 
 ### Attestation Token Configuration
 
-The following properties can be set under the `attestation_token_config` section.
+Attestation Token configuration controls attestation token verifications. This
+is important when a resource retrievement is handled by KBS. Usually an attestation
+token will be together with the request, and KBS will first verify the token.
 
->This section is available only when the `resource` feature is enabled.
+The following properties can be set under the `[attestation_token]` section.
 
-| Property                   | Type         | Description                                                                                                                                              | Required | Default |
-|----------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------|
-| `trusted_jwk_sets` | String Array      | Valid Url (`file://` or `https://`) pointing to trusted JWKSets (local or OpenID) for Attestation Tokens trustworthy verification                                                                                             | No      | -       |
-| `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification  | No       | -       |
-| `extra_teekey_paths` | String Array | User defined paths to the tee public key in the JWT body  | No       | -       |
-| `insecure_key` | Boolean | Whether to check the trustworthy of the JWK inside JWT. See comments. | No       | `false`      |
+| Property                   | Type         | Description                                                                                                                                               | Default |
+|----------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `trusted_jwk_sets` | String Array      | Valid Url (`file://` or `https://`) pointing to trusted JWKSets (local or OpenID) for Attestation Tokens trustworthy verification                                                                                             | Empty       |
+| `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification | Empty       |
+| `extra_teekey_paths` | String Array | User defined paths to the tee public key in the JWT body  | Empty       |
+| `insecure_key` | Boolean | Whether to check the trustworthy of the JWK inside JWT. See comments. | `false`      |
 
 Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of this Key in the JWT.
 Example of `extra_teekey_paths` is `/attester_runtime_data/tee-pubkey` which refers to the key
@@ -60,16 +58,134 @@ For Attestation Services like Intel TA, there will only be a `kid` field inside 
 The `kid` field is used to look up the trusted jwk configured by KBS via `trusted_jwk_sets` to
 verify the integrity and trustworthy of the JWT.
 
-### Repository Configuration
+### Attestation Configuration
 
-The following properties can be set under the `repository_config` section.
+Attestation configuration defines the attestation service that KBS' RCAR protocol
+will leverage.
+
+The following properties can be set under the `[attestation_service]` section.
+
+Concrete attestation service can be set via `type` field. Supported attestation
+services are
+- `coco_as_builtin`: CoCo AS that built inside KBS binary
+- `coco_as_grpc`: CoCo AS service running remotely
+- `intel_ta`: Intel&reg; Trust Authority
+
+Due to different `type` field, properties are different.
+
+#### Built-In CoCo AS
+
+When `type` is set to `coco_as_builtin`, the following properties can be set.
+
+>Built-In CoCo AS is available only when one or more of the following features are enabled:
+>`coco-as-builtin`, `coco-as-builtin-no-verifier`
+
+| Property                   | Type                        | Description                                          | Default |
+|----------------------------|-----------------------------|-----------------------------------------------------|----------|
+| `timeout`            | Integer                      | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests             |  5       |
+| `work_dir`                 | String                      | The location for Attestation Service to store data. |  First try from env `AS_WORK_DIR`. If no this env, then use `/opt/confidential-containers/attestation-service`       |
+| `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             |  `opa`       |
+| `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  |  See [RVPSConfiguration][2]       |
+| `attestation_token_broker` | String                      | Type of the attestation result token broker.        |  `Simple`       |
+| `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             |  See [AttestationTokenConfig][1]       |
+
+[1]: #attestationtokenconfig
+[2]: #rvps-configuration
+
+
+##### AttestationTokenConfig
+
+| Property       | Type                    | Description                                          | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|
+| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | 5       |
+| `issuer_name`  | String                  | Issure name of the attestation result token.         | `CoCo-Attestation-Service`       |
+| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | None       |
+
+[1]: #tokensignerconfig
+
+##### TokenSignerConfig
+
+This section is **optional**. When omitted, an ephemeral RSA key pair is generated and used. 
+
+| Property       | Type    | Description                                              | Required |
+|----------------|---------|----------------------------------------------------------|----------|
+| `key_path`     | String  | RSA Key Pair file (PEM format) path.                     | Yes      |
+| `cert_url`     | String  | RSA Public Key certificate chain (PEM format) URL.       | No       |
+| `cert_path`    | String  | RSA Public Key certificate chain (PEM format) file path. | No       |
+
+##### RVPS Configuration
+
+| Property       | Type                    | Description                                           | Default |
+|----------------|-------------------------|------------------------------------------------------|---------|
+| `remote_addr`  | String                  | Remote RVPS' address. If this is specified, will use a remote RVPS. Or a local RVPS will be configured with `store_type` and `store_config`| Empty       |
+| `store_type`   | String                  | Used if `remote_addr` is not set. The underlying storage type of RVPS.                                                                     | `LocalFs`       |
+| `store_config` | JSON Map                | Used if `remote_addr` is not set. The optional configurations to the underlying storage.                                                   | Empty       |
+
+Different `store_type` will have different `store_config` items.
+See the details of `store_config` in [concrete implementations of storages](../../rvps/src/store/).
+
+#### gRPC CoCo AS
+
+When `type` is set to `coco_as_grpc`, KBS will try to connect a remote CoCo AS for
+attestation. The following properties can be set.
+
+>gRPC CoCo AS is available only when `coco-as-grpc` feature is enabled.
+
+| Property                   | Type                        | Description                                          | Default |
+|----------------------------|-----------------------------|-----------------------------------------------------|----------|
+| `timeout`            | Integer                      | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests             |  5       |
+| `as_addr`                 | String                      | The URL of the remote CoCoAS |  `http://127.0.0.1:50004`       |
+| `pool_size`   | Integer         | The connections between KBS and CoCoAS are maintained in a conenction pool. This property determines the max size of the pool                      | `100`             |
+
+#### Intel&reg; TA
+
+When `type` is set to `intel_ta`, KBS will try to connect a remote Intel TA service for
+attestation. The following properties can be set.
+
+>gRPC CoCo AS is available only when `coco-as-grpc` feature is enabled.
+
+| Property                 | Type    | Description                                                                              | Required | Default |
+|--------------------------|---------|------------------------------------------------------------------------------------------|----------|---------|
+| `timeout`                | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests      | No       | 5       |
+| `base_url`               | String  | Intel Trust Authority API URL.                                                           | Yes      | -       |
+| `api_key`                | String  | Intel Trust Authority API key.                                                           | Yes      | -       |
+| `certs_file`             | String  | URL to an Intel Trust Authority portal or path to JWKS file used for token verification. | Yes      | -       |
+| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                     | No       | false   |
+
+Detailed [documentation](https://docs.trustauthority.intel.com).
+
+### Admin API Configuration
+
+The following properties can be set under the `[admin]` section.
+
+| Property                 | Type         | Description                                                                                                | Required | Default              |
+|--------------------------|--------------|------------------------------------------------------------------------------------------------------------|----------|----------------------|
+| `auth_public_key`        | String       | Path to the public key used to authenticate the admin APIs                                                 | No       | None                 |
+| `insecure_api`           | Boolean      | Whether KBS will not verify the public key when called admin APIs                                          | No       | `false`              |
+
+### Policy Engine Configuration
+
+The following properties can be set under the `[policy_engine]` section.
 
 This section is **optional**. When omitted, a default configuration is used.
 
-Repository configuration is **specific to a repository type**. See the following sections for
-type-specific properties.
+| Property                 | Type    | Description                                                                                                | Required                | Default                                        |
+|--------------------------|---------|------------------------------------------------------------------------------------------------------------|-------------------------|------------------------------------------------|
+| `policy_path`            | String  | Path to a file containing a policy for evaluating whether the TCB status has access to specific resources. | No                      | `/opa/confidential-containers/kbs/policy.rego` |
 
->This section is available only when the `resource` feature is enabled. Only one repository is available at a time.
+### Plugins Configuration
+
+KBS supports different kinds of plugins, and they can be enabled via add corresponding configs.
+
+Multiple `[[plugins]]` sections are allowed at the same time for different plugins.
+Concrete attestation service can be set via `name` field.
+
+#### Resource Configuration
+
+The `name` field is `resource` to enable this plugin.
+
+Resource plugin allows user with proper attestation token to access storage that KBS keeps.
+This is also called "Repository" in old versions. The properties to be configured are listed.
 
 | Property | Type   | Description                                                     | Required | Default   |
 |----------|--------|-----------------------------------------------------------------|----------|-----------|
@@ -90,160 +206,111 @@ type-specific properties.
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
-### Native Attestation
-
-The following properties can be set under the `as_config` section.
-
-This section is **optional**. When omitted, a default configuration is used.
-
->This section is available only when one or more of the following features are enabled:
->`coco-as-builtin`, `coco-as-builtin-no-verifier`
-
-| Property                   | Type                        | Description                                         | Required | Default |
-|----------------------------|-----------------------------|-----------------------------------------------------|----------|---------|
-| `work_dir`                 | String                      | The location for Attestation Service to store data. | Yes      | -       |
-| `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             | Yes      | -       |
-| `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  | Yes      | -       |
-| `attestation_token_broker` | String                      | Type of the attestation result token broker.        | Yes      | -       |
-| `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             | Yes      | -       |
-
-[1]: #attestationtokenconfig
-[2]: #rvps-configuration
-
-#### AttestationTokenConfig
-
-| Property       | Type                    | Description                                          | Required | Default |
-|----------------|-------------------------|------------------------------------------------------|----------|---------|
-| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | Yes      | -       |
-| `issuer_name`  | String                  | Issure name of the attestation result token.         | No       | -       |
-| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | -       |
-
-[1]: #tokensignerconfig
-
-#### TokenSignerConfig
-
-This section is **optional**. When omitted, a new RSA key pair is generated and used.
-
-| Property       | Type    | Description                                              | Required | Default |
-|----------------|---------|----------------------------------------------------------|----------|---------|
-| `key_path`     | String  | RSA Key Pair file (PEM format) path.                     | Yes      | -       |
-| `cert_url`     | String  | RSA Public Key certificate chain (PEM format) URL.       | No       | -       |
-| `cert_path`    | String  | RSA Public Key certificate chain (PEM format) file path. | No       | -       |
-
-#### RVPS Configuration
-
-| Property       | Type                    | Description                                          | Required | Default |
-|----------------|-------------------------|------------------------------------------------------|----------|---------|
-| `remote_addr`  | String                  | Remote RVPS' address. If this is specified, will use a remote RVPS. Or a local RVPS will be configured with `store_type` and `store_config`| Conditional       | -       |
-| `store_type`   | String                  | Used if `remote_addr` is not set. The underlying storage type of RVPS.                                                                     | Conditional       | -       |
-| `store_config` | JSON Map                | Used if `remote_addr` is not set. The optional configurations to the underlying storage.                                                   | Conditional       | -       |
-
-Different `store_type` will have different `store_config` items.
-See the details of `store_config` in [concrete implementations of storages](../../rvps/src/store/).
-
-### gRPC Attestation
-
-The following properties can be set under the `grpc_config` section.
-
-This section is **optional**. When omitted, a default configuration is used.
-
->This section is available only when the `coco-as-grpc` feature is enabled.
-
-| Property  | Type   | Description                  | Required | Default                  |
-|-----------|--------|------------------------------|----------|--------------------------|
-| `as_addr` | String | Attestation service address. | No       | `http://127.0.0.1:50004` |
-
-### Intel Trust Authority (formerly known as Amber)
-
-The following properties can be set under the `intel_trust_authority_config` section.
-
->This section is available only when the `intel-trust-authority-as` feature is enabled.
-
-| Property                 | Type    | Description                                                                              | Required                | Default |
-|--------------------------|---------|------------------------------------------------------------------------------------------|-------------------------|---------|
-| `base_url`               | String  | Intel Trust Authority API URL.                                                           | Yes                     | -       |
-| `api_key`                | String  | Intel Trust Authority API key.                                                           | Yes                     | -       |
-| `certs_file`             | String  | URL to an Intel Trust Authority portal or path to JWKS file used for token verification. | Yes                     | -       |
-| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                     | No                      | false   |
-
-Detailed [documentation](https://docs.trustauthority.intel.com).
-
-### Policy Engine Configuration
-
-The following properties can be set under the `policy_engine_config` section.
-
-This section is **optional**. When omitted, a default configuration is used.
-
-| Property                 | Type    | Description                                                                                                | Required                | Default                                        |
-|--------------------------|---------|------------------------------------------------------------------------------------------------------------|-------------------------|------------------------------------------------|
-| `policy_path`            | String  | Path to a file containing a policy for evaluating whether the TCB status has access to specific resources. | No                      | `/opa/confidential-containers/kbs/policy.rego` |
-
 ## Configuration Examples
 
-Running with a built-in native attestation service:
+Using a built-in CoCo AS:
 
 ```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
 insecure_http = true
+
+[admin]
 insecure_api = true
 
-[repository_config]
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+[attestation_token]
 
-[as_config]
+[attestation_service]
+type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
-rvps_store_type = "LocalFs"
 attestation_token_broker = "Simple"
 
-[as_config.attestation_token_config]
-duration_min = 5
-```
+    [attestation_service.attestation_token_config]
+    duration_min = 5
 
-Running the attestation service remotely:
+    [attestation_service.rvps_config]
+    store_type = "LocalFs"
+    remote_addr = ""
 
-```toml
-insecure_http = true
-insecure_api = true
-
-[repository_config]
+[[plugins]]
+name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+```
 
-[grpc_config]
+Using a remote CoCo AS:
+
+```toml
+[http_server]
+insecure_http = true
+
+[admin]
+insecure_api = true
+
+[attestation_service]
+type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50004"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
 ```
 
 Running with Intel Trust Authority attestation service:
 
 ```toml
-insecure_http = true
-insecure_api = true
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+insecure_http = false
 
-[attestation_token_config]
+[attestation_token]
 trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
 
-[repository_config]
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+[attestation_token]
 
-[intel_trust_authority_config]
+[attestation_service]
+type = "intel_ta"
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
 allow_unmatched_policy = true
+
+[admin]
+auth_public_key = "/etc/kbs-admin.pub"
+insecure_api = false
+
+[policy_engine]
+policy_path = "/etc/kbs-policy.rego"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
 ```
 
 Distributing resources in Passport mode:
 
 ```toml
+[http_server]
+sockets = ["127.0.0.1:50002"]
 insecure_http = true
-insecure_api = true
 
-[repository_config]
+[admin]
+auth_public_key = "./work/kbs.pem"
+
+[attestation_token]
+trusted_certs_paths = ["./work/ca-cert.pem"]
+insecure_key = false
+
+[policy_engine]
+policy_path = "./work/kbs-policy.rego"
+
+[[plugins]]
+name = "resource"
 type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
-
-[policy_engine_config]
-policy_path = "/opt/confidential-containers/kbs/policy.rego"
+dir_path = "./work/repository"
 ```

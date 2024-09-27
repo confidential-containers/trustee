@@ -56,11 +56,11 @@ jobs:
       working-directory: kbs
       run: make
 
-    - name: KBS Build [Built-in CoCo AS, OpenSSL]
+    - name: KBS Build [Built-in CoCo AS]
       working-directory: kbs
       run: make
 
-    - name: KBS Build [gRPC CoCo AS, RustTLS]
+    - name: KBS Build [gRPC CoCo AS]
       working-directory: kbs
       run: make COCO_AS_INTEGRATE_TYPE=grpc
 
