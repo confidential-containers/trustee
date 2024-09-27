@@ -7,7 +7,7 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["coco-as-builtin", "resource", "opa"]
+default = ["coco-as-builtin", "coco-as-grpc", "intel-trust-authority-as", "resource"]
 
 # Feature that allows to access resources from KBS
 resource = ["rsa", "reqwest", "aes-gcm", "jsonwebtoken"]
