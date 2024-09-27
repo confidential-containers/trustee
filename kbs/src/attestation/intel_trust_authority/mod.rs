@@ -76,7 +76,7 @@ struct ErrorResponse {
     error: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct IntelTrustAuthorityConfig {
     pub base_url: String,
     pub api_key: String,
