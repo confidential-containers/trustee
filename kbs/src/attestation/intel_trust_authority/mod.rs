@@ -2,9 +2,10 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::Attest;
-use crate::attestation::{generic_generate_challenge, make_nonce};
-use crate::token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig};
+use crate::{
+    attestation::backend::{generic_generate_challenge, make_nonce, Attest},
+    token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
+};
 use anyhow::*;
 use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;

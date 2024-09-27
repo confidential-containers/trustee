@@ -2,22 +2,19 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::attestation::{make_nonce, Attest};
 use anyhow::*;
 use async_trait::async_trait;
-use base64::{
-    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
-    Engine,
-};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{Attestation, Challenge, Tee};
 use log::info;
 use mobc::{Manager, Pool};
-use rand::{thread_rng, Rng};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
+
+use crate::attestation::backend::{make_nonce, Attest};
 
 use self::attestation::{
     attestation_request::RuntimeData, attestation_service_client::AttestationServiceClient,
