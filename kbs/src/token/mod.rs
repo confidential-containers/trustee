@@ -2,54 +2,86 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::*;
-use async_trait::async_trait;
+use jwk::JwkAttestationTokenVerifier;
+use kbs_types::TeePubKey;
 use serde::Deserialize;
-use std::sync::Arc;
+use serde_json::Value;
 use strum::EnumString;
-use tokio::sync::RwLock;
 
-mod coco;
+mod error;
 pub(crate) mod jwk;
+pub use error::*;
 
-#[async_trait]
-pub trait AttestationTokenVerifier {
-    /// Verify an signed attestation token.
-    /// Returns the custom claims JSON string of the token.
-    async fn verify(&self, token: String) -> Result<String>;
-}
+pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/attester_runtime_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_COCO: &str = "/customized_claims/runtime_data/tee-pubkey";
 
-#[derive(Deserialize, Default, Debug, Clone, EnumString)]
+#[derive(Deserialize, Default, Debug, Clone, EnumString, PartialEq)]
 pub enum AttestationTokenVerifierType {
     #[default]
     CoCo,
-    Jwk,
+
+    #[serde(rename = "ITA")]
+    Ita,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct AttestationTokenVerifierConfig {
     #[serde(default)]
-    pub attestation_token_type: AttestationTokenVerifierType,
+    pub r#type: AttestationTokenVerifierType,
 
-    /// Trusted Certificates file (PEM format) path (for "CoCo") or a valid Url
-    /// (file:// and https:// schemes accepted) pointing to a local JWKSet file
+    /// Trusted Certificates file (PEM format) paths use to verify Attestation
+    /// Token Signature.
+    #[serde(default)]
+    pub trusted_certs_paths: Vec<String>,
+
+    /// Urls (file:// and https:// schemes accepted) pointing to a local JWKSet file
     /// or to an OpenID configuration url giving a pointer to JWKSet certificates
     /// (for "Jwk") to verify Attestation Token Signature.
     #[serde(default)]
-    pub trusted_certs_paths: Vec<String>,
+    pub trusted_jwk_sets: Vec<String>,
+
+    /// Whether a JWK that directly comes from the JWT token is allowed to verify
+    /// the signature. This is insecure as it will not check the endorsement of
+    /// the JWK. If this option is set to false, the JWK will be looked up from
+    /// the key store configured during launching the KBS with kid field in the JWT,
+    /// or be checked against the configured trusted CA certs.
+    #[serde(default = "bool::default")]
+    pub insecure_key: bool,
 }
 
-pub async fn create_token_verifier(
-    config: AttestationTokenVerifierConfig,
-) -> Result<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>> {
-    match config.attestation_token_type {
-        AttestationTokenVerifierType::CoCo => Ok(Arc::new(RwLock::new(
-            coco::CoCoAttestationTokenVerifier::new(&config)?,
-        ))
-            as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
-        AttestationTokenVerifierType::Jwk => Ok(Arc::new(RwLock::new(
-            jwk::JwkAttestationTokenVerifier::new(&config).await?,
-        ))
-            as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
+#[derive(Clone)]
+pub struct TokenVerifier {
+    verifier: JwkAttestationTokenVerifier,
+    token_type: AttestationTokenVerifierType,
+}
+
+impl TokenVerifier {
+    pub async fn verify(&self, token: String) -> Result<Value> {
+        self.verifier
+            .verify(token)
+            .await
+            .map_err(|e| Error::TokenVerificationFailed { source: e })
+    }
+
+    pub async fn from_config(config: AttestationTokenVerifierConfig) -> Result<Self> {
+        let verifier = JwkAttestationTokenVerifier::new(&config)
+            .await
+            .map_err(|e| Error::TokenVerifierInitialization { source: e })?;
+        Ok(Self {
+            verifier,
+            token_type: config.r#type,
+        })
+    }
+
+    /// Different attestation service would embed tee public key
+    /// in different parts of the claims.
+    pub fn extract_tee_public_key(&self, claim: Value) -> Result<TeePubKey> {
+        let path = match self.token_type {
+            AttestationTokenVerifierType::CoCo => TOKEN_TEE_PUBKEY_PATH_COCO,
+            AttestationTokenVerifierType::Ita => TOKEN_TEE_PUBKEY_PATH_ITA,
+        };
+
+        let pkey_value = claim.pointer(path).ok_or(Error::NoTeePubKeyClaimFound)?;
+        TeePubKey::deserialize(pkey_value).map_err(|_| Error::TeePubKeyParseFailed)
     }
 }

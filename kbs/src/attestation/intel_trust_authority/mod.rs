@@ -4,8 +4,7 @@
 
 use crate::attestation::backend::{generic_generate_challenge, make_nonce};
 use crate::token::{
-    jwk::JwkAttestationTokenVerifier, AttestationTokenVerifier, AttestationTokenVerifierConfig,
-    AttestationTokenVerifierType,
+    jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig, AttestationTokenVerifierType,
 };
 use anyhow::*;
 use async_trait::async_trait;
@@ -15,8 +14,7 @@ use kbs_types::Challenge;
 use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use serde_json::from_value;
-use serde_json::json;
+use serde_json::{from_value, json};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::backend::Attest;
@@ -182,7 +180,7 @@ impl Attest for IntelTrustAuthority {
             .await
             .context("Failed to verify attestation token")?;
 
-        let claims = serde_json::from_str::<Claims>(&token)
+        let claims = serde_json::from_value::<Claims>(token)
             .context("Failed to deserialize attestation token claims")?;
 
         // check unmatched policy
@@ -279,8 +277,10 @@ impl Attest for IntelTrustAuthority {
 impl IntelTrustAuthority {
     pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
         let token_verifier = JwkAttestationTokenVerifier::new(&AttestationTokenVerifierConfig {
-            attestation_token_type: AttestationTokenVerifierType::Jwk,
-            trusted_certs_paths: vec![config.certs_file.clone()],
+            r#type: AttestationTokenVerifierType::Ita,
+            trusted_certs_paths: vec![],
+            trusted_jwk_sets: vec![config.certs_file.clone()],
+            insecure_key: true,
         })
         .await
         .context("Failed to initialize token verifier")?;
