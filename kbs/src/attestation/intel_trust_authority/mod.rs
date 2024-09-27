@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::Attest;
-use crate::attestation::{generic_generate_challenge, make_nonce};
+use crate::attestation::backend::{generic_generate_challenge, make_nonce};
 use crate::token::{
     jwk::JwkAttestationTokenVerifier, AttestationTokenVerifier, AttestationTokenVerifierConfig,
     AttestationTokenVerifierType,
@@ -19,6 +18,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::from_value;
 use serde_json::json;
 use strum::{AsRefStr, Display, EnumString};
+
+use super::backend::Attest;
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
 const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
