@@ -15,7 +15,7 @@
 #
 # The <PATH> variable is a KBS resource path,
 # which is required to be a string in three segment path format:<TOP>/<MIDDLE>/<TAIL>,
-# for example: "my'repo/License/key".
+# for example: "repo/License/key".
 #
 # The format of Attestation Claims Input is defined by the attestation service,
 # and its format may look like the following:
