@@ -82,12 +82,12 @@ install-dependencies:
 
 kbs:
 	cd $(PROJECT_DIR) && \
-	make background-check-kbs POLICY_ENGINE=opa && \
+	make background-check-kbs && \
 	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/kbs
 
 resource-kbs:
 	cd $(PROJECT_DIR) && \
-	make passport-resource-kbs POLICY_ENGINE=opa && \
+	make passport-resource-kbs && \
 	install -D --compare $(PROJECT_DIR)/../target/release/resource-kbs $(CURDIR)/resource-kbs
 
 client:

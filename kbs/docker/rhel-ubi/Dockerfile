@@ -15,7 +15,7 @@ dnf -y install --nogpgcheck --repofrompath "sgx,file:///root/sgx_rpm_local_repo"
 # Build.
 WORKDIR /usr/src/kbs
 COPY . .
-ARG KBS_FEATURES=coco-as-builtin,resource,opa
+ARG KBS_FEATURES=coco-as-builtin
 RUN \
 cargo install --locked --root /usr/local/ --path kbs --bin kbs --no-default-features --features ${KBS_FEATURES} && \
 # Collect linked files necessary for the binary to run.
