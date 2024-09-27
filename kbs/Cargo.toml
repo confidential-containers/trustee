@@ -18,12 +18,6 @@ as = []
 # Use CoCo-AS as backend attestation service
 coco-as = ["as"]
 
-# Support resource policy for KBS
-policy = []
-
-# Use OPA/Rego as resource policy for KBS
-opa = ["policy"]
-
 # Use built-in CoCo-AS as backend attestation service
 coco-as-builtin = ["coco-as", "attestation-service/default"]
 

@@ -2,63 +2,41 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::path::PathBuf;
-use std::sync::Arc;
-use thiserror::Error;
+use serde_json::Value;
 use tokio::sync::Mutex;
 
-#[cfg(feature = "opa")]
+use std::path::PathBuf;
+use std::sync::Arc;
+
 mod opa;
 
-const DEFAULT_POLICY_PATH: &str = "/opa/confidential-containers/kbs/policy.rego";
+mod error;
+pub use error::*;
 
-#[derive(Error, Debug)]
-pub enum ResourcePolicyError {
-    #[error("Failed to evaluate resource policy {0}")]
-    EvaluationError(#[from] anyhow::Error),
-
-    #[error("Failed to load data for resource policy")]
-    DataLoadError,
-
-    #[error("Invalid resource path format")]
-    ResourcePathError,
-
-    #[error("Resource Policy IO Error: {0}")]
-    IOError(#[from] std::io::Error),
-
-    #[error("Decoding (base64) resource policy failed: {0}")]
-    DecodeError(#[from] base64::DecodeError),
-
-    #[error("Failed to load input for resource policy")]
-    InputError,
-
-    #[error("Failed to load resource policy")]
-    PolicyLoadError,
-}
+pub const DEFAULT_POLICY_PATH: &str = "/opt/confidential-containers/kbs/policy.rego";
 
 /// Resource policy engine interface
+///
+/// TODO: Use a better authentication and authorization policy
 #[async_trait]
 pub(crate) trait PolicyEngineInterface: Send + Sync {
-    /// Determine whether there is access to a specific path resource based on the input claims.
+    /// Determine whether there is access to a specific path based on the input claims.
     /// Input parameters:
-    /// resource_path: Required to be a string in three segment path format:<TOP>/<MIDDLE>/<TAIL>, for example: "my'repo/License/key".
+    /// request_path: Required to be a string in segments path format:<FIRST>/.../<END>, for example: "my'repo/License/key".
     /// input_claims: Parsed claims from Attestation Token.
     ///
     /// return value:
-    /// ([decide_result, extra_output])
+    /// (decide_result)
     /// decide_result: Boolean value to present whether the evaluate is passed or not.
-    /// extra_output: original ouput from policy engine.
-    async fn evaluate(
-        &self,
-        resource_path: String,
-        input_claims: String,
-    ) -> Result<bool, ResourcePolicyError>;
+    async fn evaluate(&self, request_path: &str, input_claims: &str) -> Result<bool>;
 
     /// Set policy (Base64 encode)
-    async fn set_policy(&mut self, policy: String) -> Result<(), ResourcePolicyError>;
+    async fn set_policy(&mut self, policy: &str) -> Result<()>;
+
+    /// Get policy (Base64 encode)
+    async fn get_policy(&self) -> Result<String>;
 }
 
 /// Policy engine configuration.
@@ -83,16 +61,37 @@ pub(crate) struct PolicyEngine(pub Arc<Mutex<dyn PolicyEngineInterface>>);
 
 impl PolicyEngine {
     /// Create and initialize PolicyEngine
-    pub async fn new(config: &PolicyEngineConfig) -> Result<Self, ResourcePolicyError> {
-        let policy_engine: Arc<Mutex<dyn PolicyEngineInterface>> = {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "opa")] {
-                    Arc::new(Mutex::new(opa::Opa::new(config.policy_path.clone().unwrap_or(PathBuf::from(DEFAULT_POLICY_PATH)))?))
-                } else {
-                    compile_error!("Please enable at least one of the following features: `opa` to continue.");
-                }
-            }
-        };
+    pub async fn new(config: &PolicyEngineConfig) -> Result<Self> {
+        let policy_engine: Arc<Mutex<dyn PolicyEngineInterface>> =
+            Arc::new(Mutex::new(opa::Opa::new(config.policy_path.clone())?));
         Ok(Self(policy_engine))
+    }
+
+    pub async fn evaluate(&self, request_path: &str, input_claims: &str) -> Result<bool> {
+        self.0
+            .lock()
+            .await
+            .evaluate(request_path, input_claims)
+            .await
+    }
+
+    pub async fn set_policy(&self, request: &[u8]) -> Result<()> {
+        let request: Value = serde_json::from_slice(request).map_err(|_| {
+            KbsPolicyEngineError::IllegalSetPolicyRequest("Illegal SetPolicy Request Json")
+        })?;
+        let policy = request
+            .pointer("/policy")
+            .ok_or(KbsPolicyEngineError::IllegalSetPolicyRequest(
+                "No `policy` field inside SetPolicy Request Json",
+            ))?
+            .as_str()
+            .ok_or(KbsPolicyEngineError::IllegalSetPolicyRequest(
+                "`policy` field is not a string in SetPolicy Request Json",
+            ))?;
+        self.0.lock().await.set_policy(policy).await
+    }
+
+    pub async fn get_policy(&self) -> Result<String> {
+        self.0.lock().await.get_policy().await
     }
 }
