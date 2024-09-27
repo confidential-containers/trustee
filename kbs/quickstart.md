@@ -48,7 +48,7 @@ and pass it to the KBS server through startup parameters.
 
 Build KBS in Background Check mode:
 ```shell
-make background-check-kbs POLICY_ENGINE=opa
+make background-check-kbs
 sudo make install-kbs
 ```
 
@@ -112,7 +112,7 @@ issuer-kbs --socket 127.0.0.1:50001 --insecure-http --auth-public-key config/pub
 
 Build and start KBS for resource distribution:
 ```shell
-make passport-resource-kbs POLICY_ENGINE=opa
+make passport-resource-kbs
 make install-resource-kbs
 resource-kbs --socket 127.0.0.1:50002 --insecure-http --auth-public-key config/public.pub
 ```

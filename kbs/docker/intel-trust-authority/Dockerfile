@@ -7,7 +7,7 @@ COPY . .
 RUN apt-get update && apt install -y git
 
 # Build and Install KBS
-RUN cd kbs && make AS_FEATURE=intel-trust-authority-as POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
+RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} && \
     make install-kbs
 
 FROM ubuntu:22.04

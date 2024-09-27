@@ -1,31 +1,36 @@
+[http_server]
 sockets = ["127.0.0.1:8080"]
-auth_public_key = "./work/kbs.pem"
-
 private_key = "./work/https.key"
 certificate = "./work/https.crt"
+insecure_http = false
 
-[attestation_token_config]
-trusted_certs_paths = ["./work/token-cert.pem"]
+[attestation_token]
+insecure_key = false
+trusted_certs_paths = ["./work/ca-cert.pem"]
 
-[repository_config]
+[repository]
 type = "LocalFs"
 dir_path = "./work/repository"
 
-[as_config]
+[attestation_service]
+type = "coco_as_builtin"
 work_dir = "./work/attestation-service"
 policy_engine = "opa"
 attestation_token_broker = "Simple"
 
-[as_config.attestation_token_config]
-duration_min = 5
+    [attestation_service.attestation_token_config]
+    duration_min = 5
 
-[as_config.attestation_token_config.signer]
-key_path = "./work/token.key"
-cert_path = "./work/token-cert-chain.pem"
+    [attestation_service.attestation_token_config.signer]
+    key_path = "./work/token.key"
+    cert_path = "./work/token-cert-chain.pem"
 
-[as_config.rvps_config]
-store_type = "LocalFs"
-remote_addr = ""
+    [attestation_service.rvps_config]
+    store_type = "LocalFs"
+    remote_addr = ""
 
-[policy_engine_config]
+[policy_engine]
 policy_path = "./work/kbs-policy.rego"
+
+[admin]
+auth_public_key = "./work/kbs.pem"
