@@ -8,7 +8,7 @@ COPY . .
 RUN apt-get update && apt install -y protobuf-compiler git
 
 # Build and Install KBS
-RUN cd kbs && make AS_FEATURE=coco-as-grpc POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-grpc ALIYUN=${ALIYUN} && \
     make install-kbs
 
 FROM ubuntu:22.04

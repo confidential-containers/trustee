@@ -1,8 +1,7 @@
 [http_server]
 insecure_http = true
 
-[attestation_token_config]
-type = "CoCo"
+[attestation_token]
 
 [repository]
 type = "LocalFs"

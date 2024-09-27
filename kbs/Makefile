@@ -1,5 +1,4 @@
 AS_TYPE ?= coco-as
-POLICY_ENGINE ?=
 ALIYUN ?= false
 
 ARCH := $(shell uname -m)
@@ -38,7 +37,7 @@ build: background-check-kbs
 
 .PHONY: background-check-kbs
 background-check-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(FEATURES)
 
 .PHONY: passport-issuer-kbs
 passport-issuer-kbs:
@@ -47,7 +46,7 @@ passport-issuer-kbs:
 
 .PHONY: passport-resource-kbs
 passport-resource-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features resource,$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features resource,$(FEATURES)
 	mv ../target/release/kbs ../target/release/resource-kbs
 
 .PHONY: cli
