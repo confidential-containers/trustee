@@ -30,8 +30,8 @@ impl Opa {
 impl PolicyEngineInterface for Opa {
     async fn evaluate(
         &self,
-        resource_path: String,
-        input_claims: String,
+        resource_path: &str,
+        input_claims: &str,
     ) -> Result<bool, PolicyEngineError> {
         let mut engine = regorus::Engine::new();
 
@@ -58,7 +58,7 @@ impl PolicyEngineInterface for Opa {
         Ok(res)
     }
 
-    async fn set_policy(&mut self, policy: String) -> Result<(), PolicyEngineError> {
+    async fn set_policy(&mut self, policy: &str) -> Result<(), PolicyEngineError> {
         let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(policy)?;
 
         tokio::fs::write(&self.policy_path, policy_bytes).await?;
@@ -113,7 +113,7 @@ mod tests {
         let policy = std::fs::read(PathBuf::from(path.to_string())).unwrap();
         let policy = URL_SAFE_NO_PAD.encode(policy);
 
-        opa.set_policy(policy).await
+        opa.set_policy(&policy).await
     }
 
     #[tokio::test]
@@ -127,7 +127,7 @@ mod tests {
             .unwrap();
 
         // decode error
-        let malformed_policy = "123".to_string();
+        let malformed_policy = "123";
         let res = opa.set_policy(malformed_policy).await;
         assert!(matches!(
             res.err().unwrap(),
@@ -186,10 +186,8 @@ mod tests {
 
         set_policy_from_file(&mut opa, policy_path).await.unwrap();
 
-        let resource_path = resource_path.to_string();
-
         let res = opa
-            .evaluate(resource_path.clone(), dummy_input(input_name, input_svn))
+            .evaluate(resource_path, &dummy_input(input_name, input_svn))
             .await;
 
         if let Ok(actual) = res {

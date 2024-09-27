@@ -30,7 +30,7 @@ pub(crate) trait PolicyEngineInterface: Send + Sync {
     /// return value:
     /// (decide_result)
     /// decide_result: Boolean value to present whether the evaluate is passed or not.
-    async fn evaluate(&self, accessed_path: String, input_claims: String) -> Result<bool>;
+    async fn evaluate(&self, accessed_path: &str, input_claims: &str) -> Result<bool>;
 
     /// Set policy (Base64 encode)
     async fn set_policy(&mut self, policy: &str) -> Result<()>;
@@ -40,17 +40,17 @@ pub(crate) trait PolicyEngineInterface: Send + Sync {
 }
 
 /// Policy engine configuration.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct PolicyEngineConfig {
     /// Path to a file containing a policy for evaluating whether the TCB status has access to
     /// specific resources.
-    pub policy_path: Option<PathBuf>,
+    pub policy_path: PathBuf,
 }
 
 impl Default for PolicyEngineConfig {
     fn default() -> Self {
         Self {
-            policy_path: Some(PathBuf::from(DEFAULT_POLICY_PATH)),
+            policy_path: PathBuf::from(DEFAULT_POLICY_PATH),
         }
     }
 }
@@ -67,7 +67,7 @@ impl PolicyEngine {
         Ok(Self(policy_engine))
     }
 
-    pub async fn evaluate(&self, accessed_path: String, input_claims: String) -> Result<bool> {
+    pub async fn evaluate(&self, accessed_path: &str, input_claims: &str) -> Result<bool> {
         self.0
             .lock()
             .await
@@ -82,9 +82,7 @@ impl PolicyEngine {
             .pointer("/policy")
             .ok_or(PolicyEngineError::IllegalSetPolicyRequest)?
             .as_str()
-            .ok_or(PolicyEngineError::IllegalSetPolicyRequest)?
-            .to_string();
-        log::info!("policy : {policy}");
+            .ok_or(PolicyEngineError::IllegalSetPolicyRequest)?;
         self.0.lock().await.set_policy(policy).await
     }
 

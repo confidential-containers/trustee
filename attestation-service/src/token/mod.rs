@@ -6,12 +6,12 @@
 use anyhow::*;
 use serde::Deserialize;
 use serde_json::Value;
-use simple::COCO_AS_ISSUER_NAME;
 use strum::{Display, EnumString};
 
 mod simple;
 
-const DEFAULT_TOKEN_TIMEOUT: i64 = 5;
+pub const COCO_AS_ISSUER_NAME: &str = "CoCo-Attestation-Service";
+pub const DEFAULT_TOKEN_TIMEOUT: i64 = 5;
 
 pub trait AttestationTokenBroker {
     /// Issue an signed attestation token with custom claims.
@@ -23,7 +23,7 @@ pub trait AttestationTokenBroker {
     fn pubkey_jwks(&self) -> Result<String>;
 }
 
-#[derive(Deserialize, Debug, Clone, EnumString, Display)]
+#[derive(Deserialize, Debug, Clone, EnumString, Display, PartialEq)]
 pub enum AttestationTokenBrokerType {
     Simple,
 }
@@ -42,9 +42,10 @@ impl AttestationTokenBrokerType {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct AttestationTokenConfig {
     /// The Attestation Result Token duration time(in minute)
+    #[serde(default = "default_duration_min")]
     pub duration_min: i64,
 
     #[serde(default = "default_issuer_name")]
@@ -53,11 +54,15 @@ pub struct AttestationTokenConfig {
     pub signer: Option<TokenSignerConfig>,
 }
 
+fn default_duration_min() -> i64 {
+    DEFAULT_TOKEN_TIMEOUT
+}
+
 fn default_issuer_name() -> String {
     COCO_AS_ISSUER_NAME.to_string()
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct TokenSignerConfig {
     pub key_path: String,
     pub cert_url: Option<String>,
