@@ -9,9 +9,10 @@ auth_public_key = "./work/kbs.pem"
 trusted_certs_paths = ["./work/ca-cert.pem"]
 insecure_key = false
 
-[repository]
-type = "LocalFs"
-dir_path = "./work/repository"
-
 [policy_engine]
 policy_path = "./work/kbs-policy.rego"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "./work/repository"

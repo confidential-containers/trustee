@@ -6,6 +6,8 @@ use log::error;
 use strum::AsRefStr;
 use thiserror::Error;
 
+use super::ResourceError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, AsRefStr, Debug)]
@@ -29,4 +31,7 @@ pub enum Error {
         source: anyhow::Error,
         plugin_name: String,
     },
+
+    #[error("Resource access failed")]
+    ResourceAccessFailed(#[from] ResourceError),
 }

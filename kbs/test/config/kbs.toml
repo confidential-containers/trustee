@@ -8,10 +8,6 @@ insecure_http = false
 insecure_key = false
 trusted_certs_paths = ["./work/ca-cert.pem"]
 
-[repository]
-type = "LocalFs"
-dir_path = "./work/repository"
-
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "./work/attestation-service"
@@ -34,3 +30,8 @@ policy_path = "./work/kbs-policy.rego"
 
 [admin]
 auth_public_key = "./work/kbs.pem"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "./work/repository"
