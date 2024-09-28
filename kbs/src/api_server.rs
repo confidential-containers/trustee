@@ -109,14 +109,14 @@ impl ApiServer {
                     .wrap(middleware::Logger::default())
                     .app_data(web::Data::new(api_server))
                     .service(
+                        web::resource([kbs_path!("admin/{plugin}{sub_path:.*}")])
+                            .route(web::get().to(admin))
+                            .route(web::post().to(admin)),
+                    )
+                    .service(
                         web::resource([kbs_path!("{plugin}{sub_path:.*}")])
                             .route(web::get().to(client))
                             .route(web::post().to(client)),
-                    )
-                    .service(
-                        web::resource([kbs_path!("admin/{plugin}/{sub_path:.*}")])
-                            .route(web::get().to(admin))
-                            .route(web::post().to(admin)),
                     )
             }
         });
@@ -180,81 +180,46 @@ pub(crate) async fn client(
             .attest(&body, request)
             .await
             .map_err(From::from),
-        #[cfg(feature = "as")]
-        "attestation-policy" if request.method() == Method::POST => {
-            core.admin_auth.validate_auth(&request)?;
 
-            core.attestation_service.set_policy(&body).await?;
-
-            Ok(HttpResponse::Ok().finish())
-        }
-        "resource-policy" if request.method() == Method::POST => {
-            core.admin_auth.validate_auth(&request)?;
-
-            core.policy_engine.set_policy(&body).await?;
-
-            Ok(HttpResponse::Ok().finish())
-        }
         #[cfg(feature = "resource")]
-        "resource" => {
-            if request.method() == Method::GET {
-                // Resource APIs needs to be authorized by the Token and policy
-                let resource_desc =
-                    sub_path
-                        .strip_prefix('/')
-                        .ok_or(Error::IllegalAccessedPath {
-                            path: end_point.clone(),
-                        })?;
+        "resource" if request.method() == Method::GET => {
+            // Resource APIs needs to be authorized by the Token and policy
+            let resource_desc = sub_path
+                .strip_prefix('/')
+                .ok_or(Error::IllegalAccessedPath {
+                    path: end_point.clone(),
+                })?;
 
-                let token = core
-                    .get_attestation_token(&request)
-                    .await
-                    .map_err(|_| Error::TokenNotFound)?;
+            let token = core
+                .get_attestation_token(&request)
+                .await
+                .map_err(|_| Error::TokenNotFound)?;
 
-                let claims = core.token_verifier.verify(token).await?;
+            let claims = core.token_verifier.verify(token).await?;
 
-                let claim_str = serde_json::to_string(&claims)?;
-                if !core
-                    .policy_engine
-                    .evaluate(resource_desc, &claim_str)
-                    .await?
-                {
-                    return Err(Error::PolicyDeny);
-                };
+            let claim_str = serde_json::to_string(&claims)?;
+            if !core
+                .policy_engine
+                .evaluate(resource_desc, &claim_str)
+                .await?
+            {
+                return Err(Error::PolicyDeny);
+            };
 
-                let resource_description = ResourceDesc::try_from(resource_desc)?;
-                let resource = core
-                    .resource_storage
-                    .get_secret_resource(resource_description)
-                    .await?;
+            let resource_description = ResourceDesc::try_from(resource_desc)?;
+            let resource = core
+                .resource_storage
+                .get_secret_resource(resource_description)
+                .await?;
 
-                let public_key = core.token_verifier.extract_tee_public_key(claims)?;
-                let jwe = jwe(public_key, resource).map_err(|e| Error::JweError { source: e })?;
+            let public_key = core.token_verifier.extract_tee_public_key(claims)?;
+            let jwe = jwe(public_key, resource).map_err(|e| Error::JweError { source: e })?;
 
-                let res = serde_json::to_string(&jwe)?;
+            let res = serde_json::to_string(&jwe)?;
 
-                Ok(HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(res))
-            } else if request.method() == Method::POST {
-                let resource_desc =
-                    sub_path
-                        .strip_prefix('/')
-                        .ok_or(Error::IllegalAccessedPath {
-                            path: end_point.clone(),
-                        })?;
-                let resource_description = ResourceDesc::try_from(resource_desc)?;
-                core.admin_auth.validate_auth(&request)?;
-                core.resource_storage
-                    .set_secret_resource(resource_description, &body)
-                    .await?;
-
-                Ok(HttpResponse::Ok().content_type("application/json").body(""))
-            } else {
-                Ok(HttpResponse::NotImplemented()
-                    .content_type("application/json")
-                    .body(""))
-            }
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(res))
         }
         plugin_name => {
             // Plugin calls needs to be authorized by the Token and policy
@@ -290,7 +255,7 @@ pub(crate) async fn client(
 /// Admin APIs.
 pub(crate) async fn admin(
     request: HttpRequest,
-    _body: web::Bytes,
+    body: web::Bytes,
     core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
     // Admin APIs needs to be authorized by the admin asymmetric key
@@ -311,7 +276,39 @@ pub(crate) async fn admin(
 
     info!("Admin plugin {plugin_name} with path {sub_path} called");
 
-    // TODO: add admin path handlers
-    let response = HttpResponse::NotFound().body("no admin plugin found");
-    Ok(response)
+    let end_point = format!("admin/{plugin_name}{sub_path}");
+
+    match plugin_name {
+        #[cfg(feature = "as")]
+        "attestation-policy" if request.method() == Method::POST => {
+            core.attestation_service.set_policy(&body).await?;
+
+            Ok(HttpResponse::Ok().finish())
+        }
+        "resource-policy" if request.method() == Method::POST => {
+            core.policy_engine.set_policy(&body).await?;
+
+            Ok(HttpResponse::Ok().finish())
+        }
+        "resource-policy" if request.method() == Method::GET => {
+            let policy = core.policy_engine.get_policy().await?;
+
+            Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
+        }
+        #[cfg(feature = "resource")]
+        "resource" if request.method() == Method::POST => {
+            let resource_desc = sub_path
+                .strip_prefix('/')
+                .ok_or(Error::IllegalAccessedPath { path: end_point })?;
+            let resource_description = ResourceDesc::try_from(resource_desc)?;
+            core.resource_storage
+                .set_secret_resource(resource_description, &body)
+                .await?;
+
+            Ok(HttpResponse::Ok().content_type("application/json").body(""))
+        }
+        _ => Ok(HttpResponse::NotImplemented()
+            .content_type("application/json")
+            .body("")),
+    }
 }
