@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: coco-tenant
 
 resources:
-- ../common
+- ../../base
 - pvc.yaml
 
 patches:

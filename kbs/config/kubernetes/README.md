@@ -91,7 +91,10 @@ Deploy KBS by running the following command:
 ./deploy-kbs.sh
 ```
 
-For IBM Secure Execution (s390x), an environment variable `IBM_SE_CREDS_DIR` should be exported as follows:
+When deploying trustee on an [IBM Secure Execution](https://www.ibm.com/docs/en/linux-on-systems?topic=management-secure-execution)
+enabled environment, where the IBM SE verifier verifier is needed,
+an environment variable `IBM_SE_CREDS_DIR` is needed that points to a directory containing extra files required for
+attestation on IBM Secure Execution:
 
 ```
 $ export IBM_SE_CREDS_DIR=/path/to/your/directory
@@ -113,6 +116,10 @@ $ tree $IBM_SE_CREDS_DIR
 ```
 
 Please check out the [documentation](https://github.com/confidential-containers/trustee/tree/main/deps/verifier/src/se) for details.
+
+> [!NOTE]
+> For running trustee on non-TEE s390x environment using the sample verifier for non-production environments, this extra
+> `IBM_SE_CREDS_DIR` environment variable is not required.
 
 ## Check deployment
 
