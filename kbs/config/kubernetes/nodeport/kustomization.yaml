@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: coco-tenant
 
 resources:
-- ../../overlays/s390x
+- ../overlays/
 
 patches:
 - path: patch.yaml
