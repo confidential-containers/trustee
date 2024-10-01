@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: coco-tenant
 
 resources:
-- ../../overlays/x86_64
+- ../../overlays/ibm-se
 
 patches:
 - path: patch.yaml

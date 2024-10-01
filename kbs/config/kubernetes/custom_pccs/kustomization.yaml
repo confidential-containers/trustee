@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: coco-tenant
 
 resources:
-- ../nodeport/x86_64
+- ../nodeport/
 
 patches:
 - path: set_custom_pccs.yaml

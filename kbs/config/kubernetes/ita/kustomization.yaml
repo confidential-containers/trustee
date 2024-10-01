@@ -7,7 +7,7 @@ images:
   newTag: ita-as-v0.10.1
 
 resources:
-- ../nodeport/x86_64
+- ../nodeport/
 
 configMapGenerator:
 - name: kbs-config
