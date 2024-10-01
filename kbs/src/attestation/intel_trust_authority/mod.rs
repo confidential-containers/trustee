@@ -14,7 +14,7 @@ use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::Challenge;
 use kbs_types::{Attestation, Tee};
-use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::from_value;
 use serde_json::json;
@@ -28,6 +28,8 @@ const ERR_INVALID_TEE: &str = "ITA: Unknown TEE specified";
 
 const BASE_AS_ADDR: &str = "/appraisal/v1/attest";
 const AZURE_TDXVM_ADDR: &str = "/appraisal/v1/attest/azure/tdxvm";
+
+const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
 
 #[derive(Display, EnumString, AsRefStr)]
 pub enum HashAlgorithm {
@@ -147,9 +149,16 @@ impl Attest for IntelTrustAuthority {
         log::info!("POST attestation request ...");
         log::debug!("Attestation URL: {:?}", &att_url);
 
+        let user_agent = format!(
+            "{TRUSTEE_USER_AGENT} {}/{}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        );
+
         let client = reqwest::Client::new();
         let resp = client
             .post(att_url)
+            .header(USER_AGENT, user_agent)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
             .header("x-api-key", &self.config.api_key)
