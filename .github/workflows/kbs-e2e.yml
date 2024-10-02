@@ -88,10 +88,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y make --no-install-recommends
         sudo make install-dependencies
-
-    - name: Set cc_kbc sample attester env
-      if: inputs.tee == 'sample'
-      run: echo "AA_SAMPLE_ATTESTER_TEST=1" >> "$GITHUB_ENV"
     
     - name: Run e2e test
       working-directory: kbs/test
