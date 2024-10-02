@@ -37,10 +37,10 @@ The following properties can be set under the `attestation_token_config` section
 
 >This section is available only when the `resource` feature is enabled.
 
-| Property                   | Type         | Description                                                                                                                         | Required | Default |
-|----------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------|----------|---------|
-| `attestation_token_config` | String       | Attestation token broker type. Valid values: `CoCo`                                                                                 | Yes      | -       |
-| `trusted_certs_paths`      | String Array | Trusted Certificates file (PEM format) or a valid Url (`file://` or `https://`) pointing to a JWKSet certificates (local or OpenID) | No       | -       |
+| Property                   | Type         | Description                                                                                                                                              | Required | Default |
+|----------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------|
+| `attestation_token_config` | String       | Attestation token broker type. Valid values: `CoCo`, `Jwk`                                                                                               | Yes      | -       |
+| `trusted_certs_paths`      | String Array | Trusted Certificates file (PEM format) for `CoCo` or a valid Url (`file://` or `https://`) pointing to a JWKSet certificates (local or OpenID) for `Jwk` | No       | -       |
 
 
 If `trusted_certs_paths` is set, KBS will forcibly check the validity of the Attestation Token signature public key certificate,
