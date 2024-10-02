@@ -61,6 +61,7 @@ jobs:
       with:
         path: test.tar.gz
         overwrite: true
+        name: artifacts-${{ inputs.tee }}
 
   e2e-test:
     needs: build-binaries
@@ -68,9 +69,11 @@ jobs:
     steps:
     - name: Download artifacts
       uses: actions/download-artifact@v4
+      with:
+        name: artifacts-${{ inputs.tee }}
 
     - name: Extract test folder
-      run: tar xzf ./artifact/test.tar.gz
+      run: tar xzf ./test.tar.gz
 
     - name: Set up SGX/TDX certificates cache
       uses: actions/cache@v4
