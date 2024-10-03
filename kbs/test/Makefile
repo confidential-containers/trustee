@@ -46,7 +46,7 @@ package policy
 default allow = false
 
 allow {
-        input["tee"] == "$(TEE)"
+	input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef
 export TEE_POLICY_REGO
@@ -107,7 +107,7 @@ $(CA_CERT): $(CA_KEY)
 	openssl req -x509 -days 3650 -key "$(CA_KEY)" -in "$(CA_CSR)" -out "$(CA_CERT)"
 
 $(TOKEN_KEY):
-	openssl genrsa -traditional -out "$(TOKEN_KEY)" 2048
+	openssl ecparam -name prime256v1 -genkey -noout -out "$@"
 
 $(TOKEN_CERT): $(TOKEN_KEY) $(CA_CERT) $(CA_KEY)
 	openssl req -new -key "$(TOKEN_KEY)" -out "$(TOKEN_CSR)" \
