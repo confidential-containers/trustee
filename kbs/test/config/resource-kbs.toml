@@ -6,8 +6,7 @@ insecure_http = true
 auth_public_key = "./work/kbs.pem"
 
 [attestation_token]
-type = "Ear"
-trusted_certs_paths = ["./work/as-public-key.pem"]
+trusted_certs_paths = ["./work/ca-cert.pem"]
 
 [policy_engine]
 policy_path = "./work/kbs-policy.rego"
