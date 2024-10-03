@@ -5,21 +5,20 @@ certificate = "./work/https.crt"
 insecure_http = false
 
 [attestation_token]
-insecure_key = false
 trusted_certs_paths = ["./work/ca-cert.pem"]
 
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "./work/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
 
 [attestation_service.attestation_token_broker]
 type = "Ear"
 duration_min = 5
 
 [attestation_service.attestation_token_broker.signer]
-key_path = "./work/as-private-key.pem"
+key_path = "./work/token.key"
+cert_path = "./work/token-cert-chain.pem"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
