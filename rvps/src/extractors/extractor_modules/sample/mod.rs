@@ -33,7 +33,7 @@ pub struct SampleExtractor;
 const DEFAULT_ALG: &str = "sha384";
 
 /// The reference value will be expired in the default time (months)
-const DEFAULT_EXPIRED_TIME: u32 = 12;
+const MONTHS_BEFORE_EXPIRATION: u32 = 12;
 
 impl Extractor for SampleExtractor {
     fn verify_and_extract(&self, provenance_base64: &str) -> Result<Vec<ReferenceValue>> {
@@ -54,12 +54,13 @@ impl Extractor for SampleExtractor {
 
                 let time = Utc::now()
                     .with_nanosecond(0)
-                    .and_then(|t| t.checked_add_months(Months::new(DEFAULT_EXPIRED_TIME)));
+                    .and_then(|t| t.checked_add_months(Months::new(MONTHS_BEFORE_EXPIRATION)));
+
                 match time {
-                    Some(expired) => Some(ReferenceValue {
+                    Some(expiration) => Some(ReferenceValue {
                         version: REFERENCE_VALUE_VERSION.into(),
                         name: name.to_string(),
-                        expired,
+                        expiration,
                         hash_value: rvs,
                     }),
                     None => {

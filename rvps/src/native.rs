@@ -4,16 +4,15 @@
 //
 
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Utc};
 use log::{info, warn};
-use std::time::SystemTime;
+use std::collections::HashMap;
 
 use crate::{store::StoreType, Config};
 
 use super::{
     extractors::{Extractors, ExtractorsImpl},
     pre_processor::{PreProcessor, PreProcessorAPI},
-    Message, Store, TrustedDigest, MESSAGE_VERSION,
+    Message, Store, MESSAGE_VERSION,
 };
 
 /// The core of the RVPS, s.t. componants except communication componants.
@@ -71,28 +70,24 @@ impl Core {
         Ok(())
     }
 
-    pub async fn get_digests(&self, name: &str) -> Result<Option<TrustedDigest>> {
-        let rv = self.store.get(name).await?;
-        match rv {
-            None => Ok(None),
-            Some(rv) => {
-                let now: DateTime<Utc> = DateTime::from(SystemTime::now());
-                if now > *rv.expired() {
-                    warn!("Reference value of {} is expired.", name);
-                    return Ok(None);
-                }
+    pub async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+        let mut rv_map = HashMap::new();
+        let reference_values = self.store.get_values().await?;
 
-                let hash_values = rv
-                    .hash_values()
-                    .iter()
-                    .map(|pair| pair.value().to_owned())
-                    .collect();
-
-                Ok(Some(TrustedDigest {
-                    name: name.to_owned(),
-                    hash_values,
-                }))
+        for rv in reference_values {
+            if rv.expired() {
+                warn!("Reference value of {} is expired.", rv.name());
+                continue;
             }
+
+            let hash_values = rv
+                .hash_values()
+                .iter()
+                .map(|pair| pair.value().to_owned())
+                .collect();
+
+            rv_map.insert(rv.name().to_string(), hash_values);
         }
+        Ok(rv_map)
     }
 }
