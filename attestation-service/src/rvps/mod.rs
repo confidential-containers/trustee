@@ -6,6 +6,7 @@
 use log::info;
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[cfg(feature = "rvps-grpc")]
@@ -41,9 +42,8 @@ pub trait RvpsApi {
     /// Verify the given message and register the reference value included.
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
-    /// Get the reference values / golden values / expected digests in hex of the
-    /// given component name.
-    async fn get_digests(&self, name: &str) -> Result<Vec<String>>;
+    /// Get the reference values / golden values / expected digests in hex.
+    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]

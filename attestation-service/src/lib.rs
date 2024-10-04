@@ -190,7 +190,8 @@ impl AttestationService {
         info!("{:?} Verifier/endorsement check passed.", tee);
 
         let reference_data_map = self
-            .get_reference_data(["placeholder".to_string()].iter())
+            .rvps
+            .get_digests()
             .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
         debug!("reference_data_map: {:#?}", reference_data_map);
@@ -207,21 +208,6 @@ impl AttestationService {
             )
             .await?;
         Ok(attestation_results_token)
-    }
-
-    async fn get_reference_data<'a, I>(&self, tcb_claims: I) -> Result<HashMap<String, Vec<String>>>
-    where
-        I: Iterator<Item = &'a String>,
-    {
-        let mut data = HashMap::new();
-        for key in tcb_claims {
-            let reference_value = self.rvps.get_digests(key).await?;
-            if !reference_value.is_empty() {
-                debug!("Successfully get reference values of {key} from RVPS.");
-            }
-            data.insert(key.to_string(), reference_value);
-        }
-        Ok(data)
     }
 
     /// Registry a new reference value

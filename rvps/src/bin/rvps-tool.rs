@@ -31,11 +31,9 @@ async fn register(addr: &str, provenance_path: &str) -> Result<()> {
     Ok(())
 }
 
-async fn query(addr: &str, name: &str) -> Result<()> {
+async fn query(addr: &str) -> Result<()> {
     let mut client = ReferenceValueProviderServiceClient::connect(addr.to_string()).await?;
-    let req = tonic::Request::new(ReferenceValueQueryRequest {
-        name: name.to_string(),
-    });
+    let req = tonic::Request::new(ReferenceValueQueryRequest {});
 
     let rvs = client
         .query_reference_value(req)
@@ -77,10 +75,6 @@ struct QueryArgs {
     /// The address of target RVPS
     #[arg(short, long, default_value = DEFAULT_ADDR)]
     addr: String,
-
-    /// The name to query reference value
-    #[arg(short, long)]
-    name: String,
 }
 
 #[tokio::main]
@@ -100,6 +94,6 @@ async fn main() -> Result<()> {
 
     match cli {
         Cli::Register(para) => register(&para.addr, &para.path).await,
-        Cli::Query(para) => query(&para.addr, &para.name).await,
+        Cli::Query(para) => query(&para.addr).await,
     }
 }
