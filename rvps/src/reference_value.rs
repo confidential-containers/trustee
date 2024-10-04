@@ -8,6 +8,7 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
+use std::time::SystemTime;
 
 /// Default version of ReferenceValue
 pub const REFERENCE_VALUE_VERSION: &str = "0.1.0";
@@ -53,7 +54,7 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
 /// Here, ReferenceValue is stored inside RVPS. Its format MAY be modified.
 /// * `version`: version of the reference value format.
 /// * `name`: name of the artifact related to this reference value.
-/// * `expired`: expired time for this reference value.
+/// * `expiration`: Time after which refrence valid is invalid
 /// * `hash_value`: A set of key-value pairs, each indicates a hash
 ///   algorithm and its relative hash value for the artifact.
 ///   The actual struct deliver from RVPS to AS is
@@ -65,7 +66,7 @@ pub struct ReferenceValue {
     pub version: String,
     pub name: String,
     #[serde(deserialize_with = "primitive_date_time_from_str")]
-    pub expired: DateTime<Utc>,
+    pub expiration: DateTime<Utc>,
     #[serde(rename = "hash-value")]
     pub hash_value: Vec<HashValuePair>,
 }
@@ -76,7 +77,7 @@ fn default_version() -> String {
 }
 
 impl ReferenceValue {
-    /// Create a new `ReferenceValue`, the `expired`
+    /// Create a new `ReferenceValue`, the `expiration`
     /// field's nanosecond will be set to 0. This avoid
     /// a rare bug that when the nanosecond of the time
     /// is not 0, the test case will fail.
@@ -84,7 +85,7 @@ impl ReferenceValue {
         Ok(ReferenceValue {
             version: REFERENCE_VALUE_VERSION.into(),
             name: String::new(),
-            expired: Utc::now()
+            expiration: Utc::now()
                 .with_nanosecond(0)
                 .ok_or_else(|| anyhow!("set nanosecond failed."))?,
             hash_value: Vec::new(),
@@ -103,14 +104,18 @@ impl ReferenceValue {
     }
 
     /// Set expired time of the ReferenceValue.
-    pub fn set_expired(mut self, expired: DateTime<Utc>) -> Self {
-        self.expired = expired.with_nanosecond(0).expect("Set nanosecond failed.");
+    pub fn set_expiration(mut self, expiration: DateTime<Utc>) -> Self {
+        self.expiration = expiration
+            .with_nanosecond(0)
+            .expect("Set nanosecond failed.");
         self
     }
 
-    /// Get expired of the ReferenceValue.
-    pub fn expired(&self) -> &DateTime<Utc> {
-        &self.expired
+    /// Check whether reference value is expired
+    pub fn expired(&self) -> bool {
+        let now: DateTime<Utc> = DateTime::from(SystemTime::now());
+
+        now > self.expiration
     }
 
     /// Set hash value of the ReferenceValue.
@@ -162,13 +167,13 @@ mod test {
             .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
-            .set_expired(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
+            .set_expiration(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
             .add_hash_value("sha512".into(), "123".into());
 
         assert_eq!(rv.version(), "1.0.0");
 
         let rv_json = json!({
-            "expired": "1970-01-01T00:00:00Z",
+            "expiration": "1970-01-01T00:00:00Z",
             "name": "artifact",
             "version": "1.0.0",
             "hash-value": [{
@@ -187,12 +192,12 @@ mod test {
             .expect("create ReferenceValue failed.")
             .set_version("1.0.0")
             .set_name("artifact")
-            .set_expired(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
+            .set_expiration(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
             .add_hash_value("sha512".into(), "123".into());
 
         assert_eq!(rv.version(), "1.0.0");
         let rv_json = r#"{
-            "expired": "1970-01-01T00:00:00Z",
+            "expiration": "1970-01-01T00:00:00Z",
             "name": "artifact",
             "version": "1.0.0",
             "hash-value": [{

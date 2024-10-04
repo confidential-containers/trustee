@@ -31,21 +31,16 @@ impl RVPSServer {
 impl ReferenceValueProviderService for RVPSServer {
     async fn query_reference_value(
         &self,
-        request: Request<ReferenceValueQueryRequest>,
+        _request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
-        let request = request.into_inner();
-
-        info!("query {}", request.name);
-
         let rvs = self
             .rvps
             .lock()
             .await
-            .get_digests(&request.name)
+            .get_digests()
             .await
-            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?
-            .map(|rvs| rvs.hash_values)
-            .unwrap_or_default();
+            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
+
         let reference_value_results = serde_json::to_string(&rvs)
             .map_err(|e| Status::aborted(format!("Serde reference value: {e}")))?;
         info!("Reference values: {}", reference_value_results);

@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use thiserror::Error;
+use std::collections::HashMap;
 use tokio::sync::Mutex;
 
 use self::rvps_api::{
@@ -62,10 +63,8 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    async fn get_digests(&self, name: &str) -> Result<Vec<String>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {
-            name: name.to_string(),
-        });
+    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+        let req = tonic::Request::new(ReferenceValueQueryRequest {});
         let res = self
             .client
             .lock()
