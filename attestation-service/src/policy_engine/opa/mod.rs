@@ -187,11 +187,8 @@ impl PolicyEngine for OPA {
 //     use rstest::rstest;
 //     use serde_json::{json, Value};
 //     use std::collections::BTreeMap;
-
 //     use crate::transform_claims;
-
 //     use super::*;
-
 //     fn dummy_reference(product_id: u64, svn: u64, launch_digest: String) -> String {
 //         json!({
 //             "productId": [product_id.to_string()],
@@ -214,7 +211,6 @@ impl PolicyEngine for OPA {
 //             Tee::Sample,
 //         )
 //         .unwrap();
-
 //         ear_claims
 //     }
 //     #[rstest]
