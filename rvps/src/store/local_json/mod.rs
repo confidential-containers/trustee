@@ -71,4 +71,11 @@ impl Store for LocalJson {
         let rv = rvs.into_iter().find(|rv| rv.name == name);
         Ok(rv)
     }
+
+    async fn get_values(&self) -> Result<Vec<ReferenceValue>> {
+        let _ = self.lock.read().await;
+        let file = tokio::fs::read(&self.file_path).await?;
+        let rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
+        Ok(rvs)
+    }
 }
