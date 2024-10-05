@@ -38,6 +38,13 @@ openssl genpkey -algorithm ed25519 > config/private.key
 openssl pkey -in config/private.key -pubout -out config/public.pub
 ```
 
+Generate keypair for signing and verifying attestation tokens:
+```shell
+`openssl ecparam -name prime256v1 -genkey -noout -out config/pkey.pem
+`openssl pkcs8 -topk8 -inform PEM -outform PEM -in config/pkey.pem -nocrypt -out config/as-private-key.pem`
+`openssl ec -in config/as-private-key.pem -pubout -out config/as-public-key.pem`
+```
+
 If you want connect KBS with HTTPS,
 you should generate a server-side certificate for KBS using a trusted CA
 and pass it to the KBS server through startup parameters.

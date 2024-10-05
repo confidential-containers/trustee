@@ -110,7 +110,8 @@ impl Attest for GrpcClientPool {
             init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
             runtime_data: Some(RuntimeData::StructuredRuntimeData(runtime_data_plaintext)),
             init_data: None,
-            policy_ids: vec!["default".to_string()],
+            // TODO: figure out a better way to set this
+            policy_id: "default".to_string(),
         });
 
         let mut client = { self.pool.lock().await.get().await? };

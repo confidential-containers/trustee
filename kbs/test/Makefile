@@ -30,6 +30,9 @@ TEE_KEY := $(WORK_DIR)/tee.key
 HTTPS_KEY := $(WORK_DIR)/https.key
 HTTPS_CERT := $(WORK_DIR)/https.crt
 KBS_POLICY := $(WORK_DIR)/kbs-policy.rego
+AS_KEY := $(WORK_DIR)/as-key.pem
+AS_PRIVATE_KEY := $(WORK_DIR)/as-private-key.pem
+AS_PUBLIC_KEY := $(WORK_DIR)/as-public-key.pem
 
 SHELL := bash
 ifeq ($(OS),Ubuntu)
@@ -46,7 +49,7 @@ package policy
 default allow = false
 
 allow {
-        input["tee"] == "$(TEE)"
+	input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef
 export TEE_POLICY_REGO
@@ -141,13 +144,22 @@ $(SECRET_FILE):
 	mkdir -p $$(dirname "$(SECRET_FILE)") && \
 	openssl rand 16 > "$(SECRET_FILE)"
 
+$(AS_KEY):
+	openssl ecparam -name prime256v1 -genkey -noout -out "$@"
+
+$(AS_PRIVATE_KEY): $(AS_KEY)
+	openssl pkcs8 -topk8 -inform PEM -outform PEM -in "$(AS_KEY)" -nocrypt -out "$@"
+
+$(AS_PUBLIC_KEY): $(AS_PRIVATE_KEY)
+	openssl ec -in "$(AS_PRIVATE_KEY)" -pubout -out "$@"
+
 .PHONY: start-kbs
 start-kbs: kbs.PID
 
 .PHONY: start-resource-kbs
 start-resource-kbs: resource-kbs.PID
 
-kbs-keys: $(KBS_KEY) $(TOKEN_KEY) $(HTTPS_KEY)
+kbs-keys: $(KBS_KEY) $(TOKEN_KEY) $(HTTPS_KEY) $(AS_PUBLIC_KEY) $(AS_PRIVATE_KEY)
 
 kbs-certs: $(KBS_PEM) $(TOKEN_CERT_CHAIN) $(HTTPS_CERT)
 
@@ -159,7 +171,7 @@ kbs.PID: kbs kbs-keys kbs-certs $(SECRET_FILE)
 	} && \
 	sleep 1
 
-resource-kbs.PID: resource-kbs $(KBS_PEM) $(CA_CERT) $(SECRET_FILE)
+resource-kbs.PID: resource-kbs $(KBS_PEM) $(CA_CERT) $(SECRET_FILE) $(AS_PUBLIC_KEY)
 	@printf "${BOLD}start resource-kbs${SGR0}\n"
 	{ \
 		./resource-kbs --config-file "$(KBS_CONFIG_PATH)/resource-kbs.toml" \

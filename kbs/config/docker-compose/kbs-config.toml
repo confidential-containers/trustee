@@ -3,7 +3,8 @@ auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+attestation_token_type = "Ear"
+trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/as-public.pem"]
 
 [grpc_config]
 as_addr = "http://as:50004"

@@ -56,6 +56,7 @@ base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
+ear.workspace = true
 env_logger.workspace = true
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 jwt-simple.workspace = true

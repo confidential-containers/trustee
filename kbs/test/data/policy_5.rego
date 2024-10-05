@@ -8,17 +8,12 @@ default allow := false
 # path should be of form `repository_name/resource_type/resource_name`
 path := split(data["resource-path"], "/")
 
-# these are the claims that the verifier extracted from the evidence
-input_tcb := input["tcb-status"]
-
-platform := input.tee
-
 # mapping of resource ids to minimum SVNs
 resources := {"secret1": 2, "secret2": 3}
 
 allow if {
     # check that evidence comes from expected platform
-    platform == "sample"
+    input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["sample"]
 
     # check tht resource path is valid
     count(path) == 3
@@ -28,6 +23,6 @@ allow if {
     path[1] == "secret"
 
     # check that the secret name exists and tht the minimum svn is met
-    resources[path[2]] <= input_tcb.svn 
+    resources[path[2]] <= input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["sample"]["svn"]
     
 }

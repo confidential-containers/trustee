@@ -18,16 +18,18 @@ pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
 use policy_engine::{PolicyEngine, PolicyEngineType};
 use rvps::{RvpsApi, RvpsError};
-use serde_json::{json, Value};
-use serde_variant::to_variant_name;
+use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+};
 use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData};
 
-use crate::utils::flatten_claims;
+use crate::utils::transform_claims;
 
 /// Hash algorithms used to calculate runtime/init data binding
 #[derive(Display, EnumString, AsRefStr)]
@@ -96,7 +98,7 @@ pub struct AttestationService {
     _config: Config,
     policy_engine: Box<dyn PolicyEngine + Send + Sync>,
     rvps: Box<dyn RvpsApi + Send + Sync>,
-    token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
+    token_broker: AttestationTokenBroker,
 }
 
 impl AttestationService {
@@ -116,9 +118,7 @@ impl AttestationService {
             .await
             .map_err(ServiceError::Rvps)?;
 
-        let token_broker = config
-            .attestation_token_broker
-            .to_token_broker(config.attestation_token_config.clone())?;
+        let token_broker = AttestationTokenBroker::new(config.attestation_token_config.clone())?;
 
         Ok(Self {
             _config: config,
@@ -164,9 +164,8 @@ impl AttestationService {
     ///   will not be performed.
     /// - `hash_algorithm`: The hash algorithm that is used to calculate the digest of `runtime_data` and
     ///   `init_data`.
-    /// - `policy_ids`: The policy ids that used to check this evidence. Any check fails against a policy will
-    ///   not cause this function to return error. The result check against every policy will be included inside
-    ///   the finally Token returned by CoCo-AS.
+    /// - `policy_id`: The id of the policy that will be used to evaluate the claims.
+    ///    The hash of the policy will be returned as part of the attestation token.
     #[allow(clippy::too_many_arguments)]
     pub async fn evaluate(
         &self,
@@ -176,7 +175,7 @@ impl AttestationService {
         runtime_data_hash_algorithm: HashAlgorithm,
         init_data: Option<Data>,
         init_data_hash_algorithm: HashAlgorithm,
-        policy_ids: Vec<String>,
+        policy_id: String,
     ) -> Result<String> {
         let verifier = verifier::to_verifier(&tee)?;
 
@@ -202,72 +201,36 @@ impl AttestationService {
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
         info!("{:?} Verifier/endorsement check passed.", tee);
 
-        let flattened_claims = flatten_claims(tee, &claims_from_tee_evidence)?;
-        debug!("flattened_claims: {:#?}", flattened_claims);
-
-        let tcb_json = serde_json::to_string(&flattened_claims)?;
+        let tcb_claims = transform_claims(
+            claims_from_tee_evidence,
+            init_data_claims,
+            runtime_data_claims,
+            tee,
+        )?;
+        debug!("tcb_claims: {:#?}", tcb_claims);
 
         let reference_data_map = self
-            .get_reference_data(flattened_claims.keys())
+            .rvps
+            .get_digests()
             .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
         debug!("reference_data_map: {:#?}", reference_data_map);
 
-        let evaluation_report = self
+        let appraisal = self
             .policy_engine
-            .evaluate(reference_data_map.clone(), tcb_json, policy_ids.clone())
+            .evaluate(reference_data_map.clone(), tcb_claims, policy_id.clone())
             .await
             .map_err(|e| anyhow!("Policy Engine evaluation failed: {e}"))?;
 
-        info!("Policy check passed.");
-        let policies: Vec<_> = evaluation_report
-            .into_iter()
-            .map(|(k, v)| {
-                json!({
-                    "policy-id": k,
-                    "policy-hash": v,
-                })
-            })
-            .collect();
+        info!("TCB Appraisal Generated Successfully");
 
-        let reference_data_map: HashMap<String, Vec<String>> = reference_data_map
-            .into_iter()
-            .filter(|it| !it.1.is_empty())
-            .collect();
+        // For now, create only one submod, called `cpu`.
+        // We can create more when we support attesting multiple devices at once.
+        let mut submods = BTreeMap::new();
+        submods.insert("cpu".to_string(), appraisal);
 
-        let token_claims = json!({
-            "tee": to_variant_name(&tee)?,
-            "evaluation-reports": policies,
-            "tcb-status": flattened_claims,
-            "reference-data": reference_data_map,
-            "customized_claims": {
-                "init_data": init_data_claims,
-                "runtime_data": runtime_data_claims,
-            },
-        });
-
-        let attestation_results_token = self.token_broker.issue(token_claims)?;
-        info!(
-            "Attestation Token ({}) generated.",
-            self._config.attestation_token_broker
-        );
-
+        let attestation_results_token = self.token_broker.issue_ear(submods)?;
         Ok(attestation_results_token)
-    }
-
-    async fn get_reference_data<'a, I>(&self, tcb_claims: I) -> Result<HashMap<String, Vec<String>>>
-    where
-        I: Iterator<Item = &'a String>,
-    {
-        let mut data = HashMap::new();
-        for key in tcb_claims {
-            let reference_value = self.rvps.get_digests(key).await?;
-            if !reference_value.is_empty() {
-                debug!("Successfully get reference values of {key} from RVPS.");
-            }
-            data.insert(key.to_string(), reference_value);
-        }
-        Ok(data)
     }
 
     /// Registry a new reference value
@@ -295,7 +258,8 @@ fn parse_data(
 ) -> Result<(Option<Vec<u8>>, Value)> {
     match data {
         Some(value) => match value {
-            Data::Raw(raw) => Ok((Some(raw), Value::Null)),
+            // Ear RawValue does not support NULL, so use an empty string
+            Data::Raw(raw) => Ok((Some(raw), Value::String("".to_string()))),
             Data::Structured(structured) => {
                 // by default serde_json will enforence the alphabet order for keys
                 let hash_materials =
@@ -304,7 +268,7 @@ fn parse_data(
                 Ok((Some(digest), structured))
             }
         },
-        None => Ok((None, Value::Null)),
+        None => Ok((None, Value::String("".to_string()))),
     }
 }
 
@@ -317,8 +281,8 @@ mod tests {
     use crate::{Data, HashAlgorithm};
 
     #[rstest]
-    #[case(Some(Data::Raw(b"aaaaa".to_vec())), Some(b"aaaaa".to_vec()), HashAlgorithm::Sha384, Value::Null)]
-    #[case(None, None, HashAlgorithm::Sha384, Value::Null)]
+    #[case(Some(Data::Raw(b"aaaaa".to_vec())), Some(b"aaaaa".to_vec()), HashAlgorithm::Sha384, Value::String("".to_string()))]
+    #[case(None, None, HashAlgorithm::Sha384, Value::String("".to_string()))]
     #[case(Some(Data::Structured(json!({"b": 1, "a": "test", "c": {"d": "e"}}))), Some(hex::decode(b"e71ce8e70d814ba6639c3612ebee0ff1f76f650f8dbb5e47157e0f3f525cd22c4597480a186427c813ca941da78870c3").unwrap()), HashAlgorithm::Sha384, json!({"b": 1, "a": "test", "c": {"d": "e"}}))]
     fn parse_data_json_binding(
         #[case] input: Option<Data>,

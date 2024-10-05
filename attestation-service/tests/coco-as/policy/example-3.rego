@@ -1,10 +1,10 @@
 package policy
 import rego.v1
-default allow = false
+default executables := 33
 
 converted_version := sprintf("%v", [input["se.version"]])
 
-allow if {
+executables := 3 if {
 	converted_version == "256"
 	input["se.user_data"] == "00"
 	input["se.tag"] == "773780962a7350165054673b6c54235d"

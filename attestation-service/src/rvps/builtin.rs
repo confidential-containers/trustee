@@ -3,6 +3,7 @@ use anyhow::*;
 use async_trait::async_trait;
 use core::result::Result::Ok;
 use reference_value_provider_service::{Config, Core};
+use std::collections::HashMap;
 
 pub struct Rvps {
     core: Core,
@@ -22,13 +23,9 @@ impl RvpsApi for Rvps {
         Ok(())
     }
 
-    async fn get_digests(&self, name: &str) -> Result<Vec<String>> {
-        let hashes = self
-            .core
-            .get_digests(name)
-            .await?
-            .unwrap_or_default()
-            .hash_values;
+    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+        let hashes = self.core.get_digests().await?;
+
         Ok(hashes)
     }
 }

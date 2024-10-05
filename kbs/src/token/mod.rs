@@ -10,6 +10,7 @@ use strum::EnumString;
 use tokio::sync::RwLock;
 
 mod coco;
+mod ear;
 pub(crate) mod jwk;
 
 #[async_trait]
@@ -21,9 +22,10 @@ pub trait AttestationTokenVerifier {
 
 #[derive(Deserialize, Default, Debug, Clone, EnumString)]
 pub enum AttestationTokenVerifierType {
-    #[default]
     CoCo,
     Jwk,
+    #[default]
+    Ear,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -49,6 +51,10 @@ pub async fn create_token_verifier(
             as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
         AttestationTokenVerifierType::Jwk => Ok(Arc::new(RwLock::new(
             jwk::JwkAttestationTokenVerifier::new(&config).await?,
+        ))
+            as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
+        AttestationTokenVerifierType::Ear => Ok(Arc::new(RwLock::new(
+            ear::EarAttestationTokenVerifier::new(&config)?,
         ))
             as Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>),
     }

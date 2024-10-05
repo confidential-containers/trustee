@@ -62,9 +62,8 @@ message AttestationRequest {
     // "sha384" or "sha512". If not specified, "sha384" will be selected.
     string init_data_hash_algorithm = 8;
 
-    // List of IDs of the policy used to check evidence. If not provided,
-    // a "default" one will be used.
-    repeated string policy_ids = 9;
+    // ID of the policy used to check evidence.
+    string policy_id = 9;
 }
 
 message AttestationResponse {

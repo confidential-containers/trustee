@@ -23,6 +23,13 @@ configMapGenerator:
 
 # KBS auth public key.
 secretGenerator:
-- files:
+- name: kbs-auth-public-key
+  files:
   - kbs.pem
-  name: kbs-auth-public-key
+- name: as-public-key
+  files:
+  - as-public-key.pem
+- name: as-private-key
+  files:
+  - as-private-key.pem
+

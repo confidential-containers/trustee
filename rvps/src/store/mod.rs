@@ -39,16 +39,16 @@ impl StoreType {
 }
 
 /// Interface of a `Store`.
-/// We only provide a simple instance here which implements
-/// Store. In more scenarios, RV should be stored in persistent
-/// storage, like database, file and so on. All of the mentioned
-/// forms will have the same interface as following.
+/// Reference value storage facilities should implement this trait.
 #[async_trait]
 pub trait Store {
     /// Store a reference value. If the given `name` exists,
     /// return the previous `Some<ReferenceValue>`, otherwise return `None`
     async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>>;
 
-    // Retrieve a reference value
+    // Retrieve reference value by name
     async fn get(&self, name: &str) -> Result<Option<ReferenceValue>>;
+
+    // Retrieve reference values
+    async fn get_values(&self) -> Result<Vec<ReferenceValue>>;
 }

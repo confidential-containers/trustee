@@ -2,7 +2,7 @@ insecure_http = true
 insecure_api = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+attestation_token_type = "Ear"
 
 [repository_config]
 type = "LocalFs"

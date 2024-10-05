@@ -1,5 +1,5 @@
 use crate::rvps::RvpsConfig;
-use crate::token::{AttestationTokenBrokerType, AttestationTokenConfig};
+use crate::token::AttestationTokenConfig;
 
 use serde::Deserialize;
 use std::fs::File;
@@ -20,12 +20,6 @@ pub struct Config {
 
     /// Configurations for RVPS.
     pub rvps_config: RvpsConfig,
-
-    /// The Attestation Result Token Broker type.
-    ///
-    /// Possible values:
-    /// * `Simple`
-    pub attestation_token_broker: AttestationTokenBrokerType,
 
     /// The Attestation Result Token Broker Config
     pub attestation_token_config: AttestationTokenConfig,
@@ -54,7 +48,6 @@ impl Default for Config {
             work_dir,
             policy_engine: "opa".to_string(),
             rvps_config: RvpsConfig::default(),
-            attestation_token_broker: AttestationTokenBrokerType::Simple,
             attestation_token_config: AttestationTokenConfig::default(),
         }
     }

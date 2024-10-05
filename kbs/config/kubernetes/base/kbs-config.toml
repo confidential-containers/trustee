@@ -5,15 +5,18 @@ auth_public_key = "/kbs/kbs.pem"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+attestation_token_type = "Ear"
+trusted_certs_paths = ["/kbs/as-public-key.pem"]
 
 [as_config]
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
-attestation_token_broker = "Simple"
 
 [as_config.attestation_token_config]
 duration_min = 5
+
+[as_config.attestation_token_config.signer]
+key_path = "/kbs/as-private-key.pem"
 
 [as_config.rvps_config]
 store_type = "LocalFs"

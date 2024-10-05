@@ -20,7 +20,7 @@ allow {
 
 
 
-    input_tcb.productId == path[1]
+    input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == path[1]
 }
 
 

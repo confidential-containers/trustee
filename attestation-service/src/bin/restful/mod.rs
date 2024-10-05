@@ -41,7 +41,7 @@ pub struct AttestationRequest {
     init_data: Option<Data>,
     runtime_data_hash_algorithm: Option<String>,
     init_data_hash_algorithm: Option<String>,
-    policy_ids: Vec<String>,
+    policy_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,13 +139,6 @@ pub async fn attestation(
         }
     };
 
-    let policy_ids = if request.policy_ids.is_empty() {
-        info!("no policy specified, use `default`");
-        vec!["default".into()]
-    } else {
-        request.policy_ids
-    };
-
     let token = cocoas
         .read()
         .await
@@ -156,7 +149,7 @@ pub async fn attestation(
             runtime_data_hash_algorithm,
             init_data,
             init_data_hash_algorithm,
-            policy_ids,
+            request.policy_id,
         )
         .await
         .context("attestation report evaluate")?;

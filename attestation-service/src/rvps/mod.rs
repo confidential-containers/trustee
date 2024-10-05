@@ -8,6 +8,7 @@ use log::{info, warn};
 use reference_value_provider_service::config::{Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// The interfaces of Reference Value Provider Service
@@ -19,9 +20,8 @@ pub trait RvpsApi {
     /// Verify the given message and register the reference value included.
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
-    /// Get the reference values / golden values / expected digests in hex of the
-    /// given component name.
-    async fn get_digests(&self, name: &str) -> Result<Vec<String>>;
+    /// Get the reference values / golden values / expected digests in hex.
+    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>>;
 }
 
 #[cfg(feature = "rvps-grpc")]

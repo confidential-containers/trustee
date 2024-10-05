@@ -28,10 +28,16 @@ jobs:
       run: |
         cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --features sample_only --release
 
-    - name: Setup Keys
+    - name: Setup Client Keys
       run: | 
         openssl genpkey -algorithm ed25519 > kbs/config/private.key
         openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
+
+    - name: Setup Token Keys
+      run: | 
+        openssl ecparam -name prime256v1 -genkey -noout -out kbs/config/pkey.pem
+        openssl pkcs8 -topk8 -inform PEM -outform PEM -in kbs/config/pkey.pem -nocrypt -out kbs/config/as-private-key.pem
+        openssl ec -in kbs/config/as-private-key.pem -pubout -out kbs/config/as-public-key.pem
 
     - name: Build KBS Cluster
       run: docker compose build

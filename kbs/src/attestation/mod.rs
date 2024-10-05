@@ -15,7 +15,8 @@ use kbs_types::{Challenge, Tee};
 use rand::{thread_rng, Rng};
 
 #[cfg(not(feature = "intel-trust-authority-as"))]
-pub const AS_TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
+pub const AS_TOKEN_TEE_PUBKEY_PATH: &str =
+    "/submods/cpu/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
 #[cfg(feature = "intel-trust-authority-as")]
 pub const AS_TOKEN_TEE_PUBKEY_PATH: &str = "/attester_runtime_data/tee-pubkey";
 

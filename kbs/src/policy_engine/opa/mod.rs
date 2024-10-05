@@ -94,15 +94,24 @@ mod tests {
         }
     }
 
-    fn dummy_input(product_id: &str, svn: u64) -> String {
+    fn dummy_input(product_id: &str, svn: u64, executables: u8, hardware: u8) -> String {
         json!({
-            "tee": "sample",
-            "tee-pubkey": "dummy-key",
-            "tcb-status": {
-                "productId": product_id,
-                "svn": svn
+            "submods": {
+                "cpu": {
+                    "ear.trustworthiness-vector": {
+                        "executables": executables,
+                        "hardware": hardware,
+                    },
+                    "ear.veraison.annotated-evidence": {
+                            "sample" : {
+                                "productId": product_id,
+                                "svn": svn
+                            }
+                        }
+                    }
+                }
             }
-        })
+        )
         .to_string()
     }
 
@@ -189,7 +198,10 @@ mod tests {
         let resource_path = resource_path.to_string();
 
         let res = opa
-            .evaluate(resource_path.clone(), dummy_input(input_name, input_svn))
+            .evaluate(
+                resource_path.clone(),
+                dummy_input(input_name, input_svn, 2, 3),
+            )
             .await;
 
         if let Ok(actual) = res {

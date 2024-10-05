@@ -173,11 +173,6 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             }
         };
 
-        let policy_ids = match request.policy_ids.is_empty() {
-            true => vec!["default".into()],
-            false => request.policy_ids,
-        };
-
         let attestation_token = self
             .read()
             .await
@@ -189,7 +184,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                 runtime_data_hash_algorithm,
                 init_data,
                 init_data_hash_algorithm,
-                policy_ids,
+                request.policy_id,
             )
             .await
             .map_err(|e| Status::aborted(format!("Attestation: {e:?}")))?;

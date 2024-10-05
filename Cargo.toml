@@ -26,6 +26,8 @@ cfg-if = "1.0.0"
 chrono = "0.4.19"
 clap = { version = "4", features = ["derive"] }
 config = "0.13.3"
+#ear = "0.2.0"
+ear = { git = "https://github.com/veraison/rust-ear.git", rev = "13962e36225f85dcc3bad8ac7047a306b1350baf" }
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"

@@ -36,6 +36,6 @@ package policy
 default allow = false
 
 allow {
-	input["tee"] != "sample"
+	not input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["sample"]
 }
 

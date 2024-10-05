@@ -531,9 +531,11 @@ dependencies = [
  "base64 0.22.1",
  "cfg-if",
  "clap 4.5.4",
+ "ear 0.1.2 (git+https://github.com/veraison/rust-ear.git?rev=13962e36225f85dcc3bad8ac7047a306b1350baf)",
  "env_logger 0.10.2",
  "futures",
  "hex",
+ "jsonwebtoken",
  "kbs-types",
  "lazy_static",
  "log",
@@ -551,6 +553,7 @@ dependencies = [
  "sha2",
  "shadow-rs",
  "strum 0.25.0",
+ "tempfile",
  "testing_logger",
  "thiserror",
  "time",
@@ -1595,6 +1598,23 @@ checksum = "0688c2a7f92e427f44895cd63841bff7b29f8d7a1648b9e7e07a4a365b2e1257"
 [[package]]
 name = "ear"
 version = "0.1.2"
+source = "git+https://github.com/veraison/rust-ear.git?rev=13962e36225f85dcc3bad8ac7047a306b1350baf#13962e36225f85dcc3bad8ac7047a306b1350baf"
+dependencies = [
+ "base64 0.22.1",
+ "ciborium",
+ "cose-rust",
+ "hex",
+ "jsonwebtoken",
+ "openssl",
+ "phf",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "ear"
+version = "0.1.2"
 source = "git+https://github.com/veraison/rust-ear?rev=43f7f480d09ea2ebc03137af8fbcd70fe3df3468#43f7f480d09ea2ebc03137af8fbcd70fe3df3468"
 dependencies = [
  "base64 0.21.7",
@@ -1761,9 +1781,9 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
+checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
 
 [[package]]
 name = "ff"
@@ -2667,6 +2687,7 @@ dependencies = [
  "cfg-if",
  "clap 4.5.4",
  "config",
+ "ear 0.1.2 (git+https://github.com/veraison/rust-ear.git?rev=13962e36225f85dcc3bad8ac7047a306b1350baf)",
  "env_logger 0.10.2",
  "jsonwebtoken",
  "jwt-simple 0.11.9",
@@ -2828,7 +2849,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -2867,9 +2888,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.13"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
+checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
 
 [[package]]
 name = "local-channel"
@@ -4404,9 +4425,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.34"
+version = "0.38.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70dc5ec042f7a43c4a73241207cecc9873a06d45debb38b329f8541d85c2730f"
+checksum = "8acb788b847c24f28525660c4d7758620a7210875711f79e7f663cc152726811"
 dependencies = [
  "bitflags 2.5.0",
  "errno",
@@ -5235,9 +5256,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.12.0"
+version = "3.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cbcdd0c794ebb0d4cf35e88edd2f7d2c4c3e9a5a6dab322839b321c6a87a64"
+checksum = "f0f2c9fc62d0beef6951ccffd757e241266a2c833136efbe35af6cd2567dca5b"
 dependencies = [
  "cfg-if",
  "fastrand",
@@ -5923,7 +5944,7 @@ dependencies = [
  "cfg-if",
  "codicon",
  "csv-rs",
- "ear",
+ "ear 0.1.2 (git+https://github.com/veraison/rust-ear?rev=43f7f480d09ea2ebc03137af8fbcd70fe3df3468)",
  "eventlog-rs",
  "hex",
  "intel-tee-quote-verification-rs",

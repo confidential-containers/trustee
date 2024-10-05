@@ -1,8 +1,10 @@
 {
     "work_dir": "/opt/confidential-containers/attestation-service",
     "policy_engine": "opa",
-    "attestation_token_broker": "Simple",
     "attestation_token_config": {
-        "duration_min": 5
+        "duration_min": 5,
+	"signer": {
+		"key_path":"/kbs/as-private-key.pem"
+	}
     }
 }

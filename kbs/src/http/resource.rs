@@ -22,7 +22,8 @@ use super::*;
 #[cfg(feature = "as")]
 const TOKEN_TEE_PUBKEY_PATH: &str = AS_TOKEN_TEE_PUBKEY_PATH;
 #[cfg(not(feature = "as"))]
-const TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
+const TOKEN_TEE_PUBKEY_PATH: &str =
+    "/submods/cpu/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
 
 #[allow(unused_assignments)]
 /// GET /resource/{repository}/{type}/{tag}
