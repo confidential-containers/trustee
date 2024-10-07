@@ -84,11 +84,11 @@ pub enum Error {
 }
 
 /// For example, if we want to raise an error of `MissingCookie`
-/// ```no-run
+/// ```ignore
 /// raise_error!(Error::MissingCookie);
 /// ```
 /// is short for
-/// ```no-run
+/// ```ignore
 /// return Err(Error::MissingCookie);
 /// ```
 #[macro_export]
