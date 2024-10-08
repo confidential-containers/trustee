@@ -1,14 +1,19 @@
+[http_server]
 sockets = ["127.0.0.1:50002"]
-auth_public_key = "./work/kbs.pem"
 insecure_http = true
 
-[attestation_token_config]
-attestation_token_type = "CoCo"
-trusted_certs_paths = ["./work/ca-cert.pem"]
+[admin]
+auth_public_key = "./work/kbs.pem"
 
-[repository_config]
+[attestation_token]
+type = "CoCo"
+trusted_certs_paths = ["./work/ca-cert.pem"]
+insecure_key = false
+
+[policy_engine]
+policy_path = "./work/kbs-policy.rego"
+
+[[plugins]]
+name = "resource"
 type = "LocalFs"
 dir_path = "./work/repository"
-
-[policy_engine_config]
-policy_path = "./work/kbs-policy.rego"

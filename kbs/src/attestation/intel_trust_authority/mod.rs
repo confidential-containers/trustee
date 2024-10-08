@@ -2,11 +2,9 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::Attest;
-use crate::attestation::{generic_generate_challenge, make_nonce};
+use crate::attestation::backend::{generic_generate_challenge, make_nonce};
 use crate::token::{
-    jwk::JwkAttestationTokenVerifier, AttestationTokenVerifier, AttestationTokenVerifierConfig,
-    AttestationTokenVerifierType,
+    jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig, AttestationTokenVerifierType,
 };
 use anyhow::*;
 use async_trait::async_trait;
@@ -16,9 +14,10 @@ use kbs_types::Challenge;
 use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
-use serde_json::from_value;
-use serde_json::json;
+use serde_json::{from_value, json};
 use strum::{AsRefStr, Display, EnumString};
+
+use super::backend::Attest;
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
 const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
@@ -79,7 +78,7 @@ struct ErrorResponse {
     error: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct IntelTrustAuthorityConfig {
     pub base_url: String,
     pub api_key: String,
@@ -190,7 +189,7 @@ impl Attest for IntelTrustAuthority {
             .await
             .context("Failed to verify attestation token")?;
 
-        let claims = serde_json::from_str::<Claims>(&token)
+        let claims = serde_json::from_value::<Claims>(token)
             .context("Failed to deserialize attestation token claims")?;
 
         // check unmatched policy
@@ -287,8 +286,10 @@ impl Attest for IntelTrustAuthority {
 impl IntelTrustAuthority {
     pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
         let token_verifier = JwkAttestationTokenVerifier::new(&AttestationTokenVerifierConfig {
-            attestation_token_type: AttestationTokenVerifierType::Jwk,
-            trusted_certs_paths: vec![config.certs_file.clone()],
+            r#type: AttestationTokenVerifierType::Ita,
+            trusted_certs_paths: vec![],
+            trusted_jwk_sets: vec![config.certs_file.clone()],
+            insecure_key: true,
         })
         .await
         .context("Failed to initialize token verifier")?;

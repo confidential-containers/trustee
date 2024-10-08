@@ -18,7 +18,6 @@ use serde_json::{json, Value};
 
 use crate::token::{AttestationTokenBroker, AttestationTokenConfig};
 
-pub const COCO_AS_ISSUER_NAME: &str = "CoCo-Attestation-Service";
 const RSA_KEY_BITS: u32 = 2048;
 const SIMPLE_TOKEN_ALG: &str = "RS384";
 
@@ -92,6 +91,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         let header_value = json!({
             "typ": "JWT",
             "alg": SIMPLE_TOKEN_ALG,
+            "jwk": serde_json::from_str::<Value>(&self.pubkey_jwks()?)?["keys"][0].clone(),
         });
         let header_string = serde_json::to_string(&header_value)?;
         let header_b64 = URL_SAFE_NO_PAD.encode(header_string.as_bytes());
@@ -109,7 +109,6 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             "iss": self.config.issuer_name.clone(),
             "iat": now.unix_timestamp(),
             "jti": id,
-            "jwk": serde_json::from_str::<Value>(&self.pubkey_jwks()?)?["keys"][0].clone(),
             "nbf": now.unix_timestamp(),
             "exp": exp.unix_timestamp(),
         })
