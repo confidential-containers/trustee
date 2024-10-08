@@ -28,19 +28,6 @@ pub struct ResourceDesc {
     pub resource_tag: String,
 }
 
-impl ResourceDesc {
-    pub fn is_valid(&self) -> bool {
-        if &self.repository_name == "."
-            || &self.repository_name == ".."
-            || &self.resource_type == "."
-            || &self.resource_type == ".."
-        {
-            return false;
-        }
-        true
-    }
-}
-
 impl TryFrom<&str> for ResourceDesc {
     type Error = Error;
 
@@ -60,7 +47,11 @@ impl TryFrom<&str> for ResourceDesc {
             _ => return Err(Error::ParseResourceDescription),
         };
 
-        if !resource_description.is_valid() {
+        if path_parts[0] == "."
+            || path_parts[0] == ".."
+            || path_parts[1] == "."
+            || path_parts[1] == ".."
+        {
             return Err(Error::MalwaredResourceDescription);
         }
 
