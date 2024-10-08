@@ -4,7 +4,7 @@
 
 //! This is a sample to implement a client plugin
 
-use actix_web::{http::Method, HttpResponse};
+use actix_web::http::Method;
 use serde::Deserialize;
 
 use super::{plugin_manager::ClientPlugin, Result};
@@ -30,12 +30,34 @@ impl TryFrom<SampleConfig> for Sample {
 impl ClientPlugin for Sample {
     async fn handle(
         &self,
-        _body: Vec<u8>,
-        _query: String,
-        _path: String,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
         _method: &Method,
-    ) -> Result<HttpResponse> {
-        let response = HttpResponse::Ok().body("sample plugin response");
-        Ok(response)
+    ) -> Result<Vec<u8>> {
+        Ok("sample plugin response".as_bytes().to_vec())
+    }
+
+    async fn validate_auth(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
+        _method: &Method,
+    ) -> Result<bool> {
+        Ok(true)
+    }
+
+    /// Whether the body needs to be encrypted via TEE key pair.
+    /// If returns `Ok(true)`, the KBS server will encrypt the whole body
+    /// with TEE key pair and use KBS protocol's Response format.
+    async fn encrypted(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
+        _method: &Method,
+    ) -> Result<bool> {
+        Ok(false)
     }
 }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 use super::local_fs;
-use super::{Error, Result};
+use super::{ResourceError as Error, ResourceResult as Result};
 
 type RepositoryInstance = Arc<dyn StorageBackend>;
 

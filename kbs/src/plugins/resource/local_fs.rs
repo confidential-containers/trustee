@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Error, ResourceDesc, Result, StorageBackend};
+use super::{ResourceDesc, ResourceError as Error, ResourceResult as Result, StorageBackend};
 use anyhow::Context;
 use serde::Deserialize;
 use std::{

@@ -6,10 +6,10 @@ use log::error;
 use strum::AsRefStr;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type ResourceResult<T> = std::result::Result<T, ResourceError>;
 
 #[derive(Error, AsRefStr, Debug)]
-pub enum Error {
+pub enum ResourceError {
     #[cfg(feature = "aliyun")]
     #[error("Aliyun KMS backend error")]
     AliyunError {
@@ -17,8 +17,14 @@ pub enum Error {
         source: anyhow::Error,
     },
 
+    #[error("Accessed path {path} is illegal")]
+    IllegalAccessedPath { path: String },
+
     #[error("Illegal Resource Description")]
     IllegalResourceDescription,
+
+    #[error("Illegal HTTP method. Only supports `GET` and `POST`")]
+    IllegalHttpMethod,
 
     #[error("Local FS backend error")]
     LocalFs {

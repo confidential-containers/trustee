@@ -4,10 +4,10 @@
 
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
-use actix_web::{http::Method, HttpResponse};
+use actix_web::http::Method;
 use serde::Deserialize;
 
-use super::{sample, Error, Result};
+use super::{sample, Error, RepositoryConfig, ResourceStorage, Result};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -21,11 +21,33 @@ pub trait ClientPlugin: Send + Sync {
     /// body stream.
     async fn handle(
         &self,
-        body: Vec<u8>,
-        query: String,
-        path: String,
+        body: &[u8],
+        query: &str,
+        path: &str,
         method: &Method,
-    ) -> Result<HttpResponse>;
+    ) -> Result<Vec<u8>>;
+
+    /// Whether the concrete request needs to validate the admin auth.
+    /// If returns `Ok(true)`, the KBS server will perform an admin auth
+    /// validation before handle the request.
+    async fn validate_auth(
+        &self,
+        body: &[u8],
+        query: &str,
+        path: &str,
+        method: &Method,
+    ) -> Result<bool>;
+
+    /// Whether the body needs to be encrypted via TEE key pair.
+    /// If returns `Ok(true)`, the KBS server will encrypt the whole body
+    /// with TEE key pair and use KBS protocol's Response format.
+    async fn encrypted(
+        &self,
+        body: &[u8],
+        query: &str,
+        path: &str,
+        method: &Method,
+    ) -> Result<bool>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -33,12 +55,16 @@ pub trait ClientPlugin: Send + Sync {
 pub enum PluginsConfig {
     #[serde(alias = "sample")]
     Sample(sample::SampleConfig),
+
+    #[serde(alias = "resource")]
+    ResourceStorage(RepositoryConfig),
 }
 
 impl Display for PluginsConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
+            PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
         }
     }
 }
@@ -54,7 +80,11 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                         source: e,
                         name: "Sample",
                     })?;
-                Arc::new(sample_plugin)
+                Arc::new(sample_plugin) as _
+            }
+            PluginsConfig::ResourceStorage(repository_config) => {
+                let resource_storage = ResourceStorage::try_from(repository_config)?;
+                Arc::new(resource_storage) as _
             }
         };
 

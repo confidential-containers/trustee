@@ -132,7 +132,7 @@ pub async fn set_attestation_policy(
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/admin/attestation-policy", url);
+    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/attestation-policy", url);
     let post_input = SetPolicyInput {
         r#type: policy_type.unwrap_or("rego".to_string()),
         policy_id: policy_id.unwrap_or("default".to_string()),
@@ -178,7 +178,7 @@ pub async fn set_resource_policy(
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/admin/resource-policy", url);
+    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/resource-policy", url);
     let post_input = ResourcePolicyData {
         policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
@@ -217,7 +217,7 @@ pub async fn set_resource(
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let resource_url = format!("{}/{KBS_URL_PREFIX}/admin/resource/{}", url, path);
+    let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", url, path);
     let res = http_client
         .post(resource_url)
         .header("Content-Type", "application/octet-stream")
