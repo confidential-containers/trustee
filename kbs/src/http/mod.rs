@@ -11,8 +11,6 @@ use crate::policy_engine::PolicyEngine;
 use crate::resource::{set_secret_resource, Repository, ResourceDesc};
 #[cfg(feature = "as")]
 use crate::session::{SessionMap, KBS_SESSION_ID};
-#[cfg(feature = "resource")]
-use crate::token::AttestationTokenVerifier;
 use actix_web::Responder;
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse};
 use jwt_simple::prelude::Ed25519PublicKey;
