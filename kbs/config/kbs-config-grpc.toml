@@ -2,7 +2,7 @@ insecure_http = true
 insecure_api = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+insecure_key = true
 
 [grpc_config]
 as_addr = "http://127.0.0.1:50004"
