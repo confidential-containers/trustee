@@ -2,10 +2,18 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::token::{AttestationTokenVerifier, AttestationTokenVerifierConfig};
-use anyhow::*;
-use async_trait::async_trait;
-use jsonwebtoken::{decode, decode_header, jwk, Algorithm, DecodingKey, Validation};
+use crate::token::AttestationTokenVerifierConfig;
+use anyhow::{anyhow, bail, Context};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
+use jsonwebtoken::jwk::{AlgorithmParameters, Jwk};
+use jsonwebtoken::{decode, decode_header, jwk, Algorithm, DecodingKey, Header, Validation};
+use openssl::bn::BigNum;
+use openssl::pkey::PKey;
+use openssl::stack::Stack;
+use openssl::x509::store::X509StoreBuilder;
+use openssl::x509::X509StoreContext;
+use openssl::{rsa::Rsa, x509::X509};
 use reqwest::{get, Url};
 use serde::Deserialize;
 use serde_json::Value;
@@ -14,6 +22,7 @@ use std::io::BufReader;
 use std::result::Result::Ok;
 use std::str::FromStr;
 use thiserror::Error;
+use tokio::fs;
 
 const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
 
@@ -32,11 +41,14 @@ struct OpenIDConfig {
     jwks_uri: String,
 }
 
+#[derive(Clone)]
 pub struct JwkAttestationTokenVerifier {
-    trusted_certs: jwk::JwkSet,
+    trusted_jwk_sets: jwk::JwkSet,
+    trusted_certs: Vec<X509>,
+    insecure_key: bool,
 }
 
-pub async fn get_jwks_from_file_or_url(p: &str) -> Result<jwk::JwkSet, JwksGetError> {
+async fn get_jwks_from_file_or_url(p: &str) -> Result<jwk::JwkSet, JwksGetError> {
     let mut url = Url::parse(p).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
         "https" => {
@@ -73,37 +85,122 @@ pub async fn get_jwks_from_file_or_url(p: &str) -> Result<jwk::JwkSet, JwksGetEr
 }
 
 impl JwkAttestationTokenVerifier {
-    pub async fn new(config: &AttestationTokenVerifierConfig) -> Result<Self> {
-        let mut trusted_certs = jwk::JwkSet { keys: Vec::new() };
+    pub async fn new(config: &AttestationTokenVerifierConfig) -> anyhow::Result<Self> {
+        let mut trusted_jwk_sets = jwk::JwkSet { keys: Vec::new() };
 
-        for path in config.trusted_certs_paths.iter() {
+        for path in config.trusted_jwk_sets.iter() {
             match get_jwks_from_file_or_url(path).await {
-                Ok(mut jwkset) => trusted_certs.keys.append(&mut jwkset.keys),
+                Ok(mut jwkset) => trusted_jwk_sets.keys.append(&mut jwkset.keys),
                 Err(e) => log::warn!("error getting JWKS: {:?}", e),
             }
         }
 
-        Ok(Self { trusted_certs })
-    }
-}
+        let mut trusted_certs = Vec::new();
+        for path in &config.trusted_certs_paths {
+            let cert_content = fs::read(path).await.map_err(|_| {
+                JwksGetError::AccessFailed(format!("failed to read certificate {path}"))
+            })?;
+            let cert = X509::from_pem(&cert_content)?;
+            trusted_certs.push(cert);
+        }
 
-#[async_trait]
-impl AttestationTokenVerifier for JwkAttestationTokenVerifier {
-    async fn verify(&self, token: String) -> Result<String> {
-        if self.trusted_certs.keys.is_empty() {
+        Ok(Self {
+            trusted_jwk_sets,
+            trusted_certs,
+            insecure_key: config.insecure_key,
+        })
+    }
+
+    fn verify_jwk_endorsement(&self, key: &Jwk) -> anyhow::Result<()> {
+        let AlgorithmParameters::RSA(rsa) = &key.algorithm else {
+            bail!("Only supports RSA JWK now");
+        };
+
+        let n = URL_SAFE_NO_PAD
+            .decode(&rsa.n)
+            .context("decode RSA public key parameter n")?;
+        let n = BigNum::from_slice(&n)?;
+        let e = URL_SAFE_NO_PAD
+            .decode(&rsa.e)
+            .context("decode RSA public key parameter e")?;
+        let e = BigNum::from_slice(&e)?;
+
+        let public_key = Rsa::from_public_components(n, e)?;
+        let public_key = PKey::from_rsa(public_key)?;
+
+        let Some(x5c) = &key.common.x509_chain else {
+            bail!("No x5c extension inside JWK. Malwared public key.")
+        };
+
+        if x5c.is_empty() {
+            bail!("No x5c extension inside JWK. Malwared public key.")
+        }
+
+        let pem = x5c[0].split('\n').collect::<String>();
+        let der = URL_SAFE_NO_PAD.decode(pem).context("Illegal x5c cert")?;
+
+        let leaf_cert = X509::from_der(&der).context("malwared x509 in x5c")?;
+        // verify the public key matches the leaf cert
+        if !public_key.public_eq(leaf_cert.public_key()?.as_ref()) {
+            bail!("jwk does not match x5c");
+        };
+
+        let mut cert_chain = Stack::new()?;
+        for cert in &x5c[1..] {
+            let pem = cert.split('\n').collect::<String>();
+            let der = URL_SAFE_NO_PAD.decode(&pem).context("Illegal x5c cert")?;
+
+            let cert = X509::from_der(&der).context("malwared x509 in x5c")?;
+            cert_chain.push(cert)?;
+        }
+
+        let mut trust_store_builder = X509StoreBuilder::new()?;
+        for cert in &self.trusted_certs {
+            trust_store_builder.add_cert(cert.clone())?;
+        }
+        let trust_store = trust_store_builder.build();
+
+        // verify the cert chain
+        let mut ctx = X509StoreContext::new()?;
+        if !ctx.init(&trust_store, &leaf_cert, &cert_chain, |c| c.verify_cert())? {
+            bail!("The JWK is malwared because no trust anchor can verify it.");
+        }
+        Ok(())
+    }
+
+    fn get_verification_jwk<'a>(&'a self, header: &'a Header) -> anyhow::Result<&'a Jwk> {
+        if let Some(key) = &header.jwk {
+            if self.insecure_key {
+                return Ok(key);
+            }
+            if self.trusted_certs.is_empty() {
+                bail!("Cannot verify token since trusted cert is empty");
+            };
+            self.verify_jwk_endorsement(key)?;
+            return Ok(key);
+        }
+
+        if self.trusted_jwk_sets.keys.is_empty() {
             bail!("Cannot verify token since trusted JWK Set is empty");
         };
 
-        let kid = decode_header(&token)
-            .context("Failed to decode attestation token header")?
+        let kid = header
             .kid
+            .as_ref()
             .ok_or(anyhow!("Failed to decode kid in the token header"))?;
 
         let key = &self
-            .trusted_certs
-            .find(&kid)
+            .trusted_jwk_sets
+            .find(kid)
             .ok_or(anyhow!("Failed to find Jwk with kid {kid} in JwkSet"))?;
 
+        Ok(key)
+    }
+
+    pub async fn verify(&self, token: String) -> anyhow::Result<Value> {
+        let header = decode_header(&token).context("Failed to decode attestation token header")?;
+
+        let key = self.get_verification_jwk(&header)?;
         let key_alg = key
             .common
             .key_algorithm
@@ -116,7 +213,7 @@ impl AttestationTokenVerifier for JwkAttestationTokenVerifier {
         let token_data = decode::<Value>(&token, &dkey, &Validation::new(alg))
             .context("Failed to decode attestation token")?;
 
-        Ok(serde_json::to_string(&token_data.claims)?)
+        Ok(token_data.claims)
     }
 }
 

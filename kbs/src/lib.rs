@@ -22,6 +22,7 @@ use anyhow::{anyhow, bail, Context, Result};
 #[cfg(feature = "as")]
 use attestation::AttestationService;
 use jwt_simple::prelude::Ed25519PublicKey;
+use openssl::ssl::SslAcceptorBuilder;
 #[cfg(feature = "resource")]
 use resource::RepositoryConfig;
 #[cfg(feature = "as")]
@@ -29,12 +30,6 @@ use std::sync::Arc;
 use std::{net::SocketAddr, path::PathBuf};
 #[cfg(feature = "resource")]
 use token::AttestationTokenVerifierConfig;
-
-#[cfg(feature = "rustls")]
-use rustls::ServerConfig;
-
-#[cfg(feature = "openssl")]
-use openssl::ssl::SslAcceptorBuilder;
 
 #[cfg(feature = "as")]
 use crate::session::SessionMap;
@@ -148,45 +143,6 @@ impl ApiServer {
         })
     }
 
-    #[cfg(feature = "rustls")]
-    fn tls_config(&self) -> Result<ServerConfig> {
-        use rustls::{Certificate, PrivateKey};
-        use rustls_pemfile::{certs, read_one, Item};
-        use std::fs::File;
-        use std::io::BufReader;
-
-        let cert_file = &mut BufReader::new(File::open(
-            self.certificate
-                .clone()
-                .ok_or_else(|| anyhow!("Missing certificate"))?,
-        )?);
-
-        let key_file = &mut BufReader::new(File::open(
-            self.private_key
-                .clone()
-                .ok_or_else(|| anyhow!("Missing private key"))?,
-        )?);
-
-        let cert_chain = certs(cert_file)?
-            .iter()
-            .map(|c| Certificate(c.clone()))
-            .collect();
-
-        let key = match read_one(key_file)? {
-            Some(Item::RSAKey(key)) | Some(Item::PKCS8Key(key)) | Some(Item::ECKey(key)) => {
-                Ok(PrivateKey(key))
-            }
-            None | Some(_) => Err(anyhow!("Invalid private key file")),
-        }?;
-
-        ServerConfig::builder()
-            .with_safe_defaults()
-            .with_no_client_auth()
-            .with_single_cert(cert_chain, key)
-            .map_err(anyhow::Error::from)
-    }
-
-    #[cfg(feature = "openssl")]
     fn tls_config(&self) -> Result<SslAcceptorBuilder> {
         use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
@@ -240,7 +196,7 @@ impl ApiServer {
 
         #[cfg(feature = "resource")]
         let token_verifier =
-            crate::token::create_token_verifier(self.attestation_token_config.clone()).await?;
+            crate::token::TokenVerifier::from_config(self.attestation_token_config.clone()).await?;
 
         #[cfg(feature = "policy")]
         let policy_engine = PolicyEngine::new(&self.policy_engine_config).await?;
@@ -306,15 +262,7 @@ impl ApiServer {
         });
 
         if !self.insecure {
-            let tls_server = {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "openssl")] {
-                        http_server.bind_openssl(&self.sockets[..], self.tls_config()?)?
-                    } else {
-                        http_server.bind_rustls(&self.sockets[..], self.tls_config()?)?
-                    }
-                }
-            };
+            let tls_server = http_server.bind_openssl(&self.sockets[..], self.tls_config()?)?;
 
             tls_server.run().await.map_err(anyhow::Error::from)
         } else {
