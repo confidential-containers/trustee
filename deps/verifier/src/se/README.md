@@ -67,7 +67,7 @@ openssl pkey -in kbs.key -pubout -out kbs.pem
 
 - Build KBS
 ```bash
-cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,openssl,resource,opa 
+cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa 
 ```
 
 - Prepare the material retrieved above, similar as:
@@ -101,7 +101,7 @@ auth_public_key = "/kbs/kbs.pem"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+insecure_key = true
 
 [as_config]
 work_dir = "/opt/confidential-containers/attestation-service"
@@ -128,7 +128,7 @@ export SE_SKIP_CERTS_VERIFICATION=true
 ## (Option 2) Launch KBS via docker-compose
 - Build the docker image
 ```
-DOCKER_BUILDKIT=1 docker build --build-arg HTTPS_CRYPTO="openssl" --build-arg ARCH="s390x" -t ghcr.io/confidential-containers/staged-images/kbs:latest . -f kbs/docker/Dockerfile
+DOCKER_BUILDKIT=1 docker build --build-arg --build-arg ARCH="s390x" -t ghcr.io/confidential-containers/staged-images/kbs:latest . -f kbs/docker/Dockerfile
 ```
 
 - Prepare a docker compose file, similar as:

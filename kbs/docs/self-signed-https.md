@@ -72,7 +72,7 @@ auth_public_key = "/etc/public.pub"
 insecure_api = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+insecure_key = true
 
 [repository_config]
 type = "LocalFs"

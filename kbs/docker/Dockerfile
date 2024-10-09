@@ -1,6 +1,5 @@
 FROM rust:slim as builder
 ARG ARCH=x86_64
-ARG HTTPS_CRYPTO=rustls
 ARG ALIYUN=false
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -37,7 +36,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin HTTPS_CRYPTO=${HTTPS_CRYPTO} POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-builtin POLICY_ENGINE=opa ALIYUN=${ALIYUN} && \
     make install-kbs
 
 FROM ubuntu:22.04
