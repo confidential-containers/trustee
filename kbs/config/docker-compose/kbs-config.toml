@@ -3,7 +3,7 @@ auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+insecure_key = true
 
 [grpc_config]
 as_addr = "http://as:50004"

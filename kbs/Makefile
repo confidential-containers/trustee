@@ -1,5 +1,4 @@
 AS_TYPE ?= coco-as
-HTTPS_CRYPTO ?= rustls
 POLICY_ENGINE ?=
 ALIYUN ?= false
 
@@ -39,16 +38,16 @@ build: background-check-kbs
 
 .PHONY: background-check-kbs
 background-check-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(HTTPS_CRYPTO),$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(POLICY_ENGINE),$(FEATURES)
 
 .PHONY: passport-issuer-kbs
 passport-issuer-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),$(HTTPS_CRYPTO),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),$(FEATURES)
 	mv ../target/release/kbs ../target/release/issuer-kbs
 
 .PHONY: passport-resource-kbs
 passport-resource-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(HTTPS_CRYPTO),resource,$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features resource,$(POLICY_ENGINE),$(FEATURES)
 	mv ../target/release/kbs ../target/release/resource-kbs
 
 .PHONY: cli

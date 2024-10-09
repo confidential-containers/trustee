@@ -240,13 +240,27 @@ Adding the following content to JSON config file of gRPC AS:
 
 ### Configure trusted root certificate of KBS
 
-Adding the following content to the config file of Resource KBS to specify trusted root certificate (PEM format),
-which used to verify the trustworthy of the certificate in Attestation Token:
+Attestation Tokens are now all in JWT format.
+
+Adding the following content to the config file of Resource KBS to specify trusted root certificate (PEM format)
+or JWK set which are used to verify the trustworthy of the Attestation Token:
 
 ```toml
 [attestation_token_config]
-attestation_token_type = "CoCo"
+# Path of root certificate used to verify the trustworthy of `x5c` extension in the JWT
 trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
+
+# URL (`path://` or `https://`) of the trusted JWK that can be indexed by `kid` in
+# JWT Header.
+trusted_jwk_sets = ["/url/to/trusted_jwk_set"]
+
+# For Attestation Services like CoCo-AS, the public key to verify the JWT will be given
+# in the token's `jwk` field (with or without the public key cert chain `x5c`).
+#
+# - If this flag is set to `true`, KBS will ignore to verify the trustworthy of the `jwk`.
+# - If this flag is set to `false`, KBS will look up its `trusted_certs_paths` and the `x5c`
+# field to verify the trustworthy of the `jwk`.
+insecure_key = false
 ```
 
 If `trusted_certs_paths` field is not set, KBS will skip the verification of the certificate in Attestation Token.
