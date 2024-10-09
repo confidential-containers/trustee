@@ -58,7 +58,7 @@ jobs:
 
     - name: KBS Build [Built-in CoCo AS, OpenSSL]
       working-directory: kbs
-      run: make HTTPS_CRYPTO=openssl
+      run: make
 
     - name: KBS Build [gRPC CoCo AS, RustTLS]
       working-directory: kbs

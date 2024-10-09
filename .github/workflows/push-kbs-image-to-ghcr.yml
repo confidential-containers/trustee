@@ -25,15 +25,12 @@ jobs:
         include:
           - tag: kbs
             docker_file: kbs/docker/Dockerfile
-            https_crypto: openssl
             name: build-in AS
           - tag: kbs-grpc-as
             docker_file: kbs/docker/coco-as-grpc/Dockerfile
-            https_crypto: rustls
             name: gRPC AS
           - tag: kbs-ita-as
             docker_file: kbs/docker/intel-trust-authority/Dockerfile
-            https_crypto: rustls
             name: Intel Trust Authority AS
 
     runs-on: ${{ matrix.instance }}
@@ -56,12 +53,10 @@ jobs:
       run: |
         commit_sha=${{ github.sha }}
         arch=$(uname -m)
-        https_crypto=${{ matrix.https_crypto }}
-        [ "${arch}" = "s390x" ] && https_crypto=openssl
         DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" --push \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" \
-          --build-arg ARCH="${arch}" --build-arg HTTPS_CRYPTO="${https_crypto}" .
+          --build-arg ARCH="${arch}" .
 
   publish_multi_arch_image:
     needs: build_and_push
