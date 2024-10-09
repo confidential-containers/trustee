@@ -9,7 +9,11 @@ We will see how to deploy KBS (with builtin Attestation Service) on a Kubernetes
 Create a secret that you want to be served using this instance of KBS:
 
 ```bash
-echo "This is my super secret" > overlays/$(uname -m)/key.bin
+echo "This is my super secret" > overlays/key.bin
+```
+or, if deploying on IBM Secure Execution run:
+```bash
+echo "This is my super secret" > overlays/ibm-se/key.bin
 ```
 
 If you have more than one secret, copy them over to the `config/kubernetes/overlays` directory and add those to the `overlays/kustomization.yaml` file after as shown below:
@@ -147,6 +151,10 @@ kbs    ClusterIP   10.0.210.190   <none>        8080/TCP   4s
 
 ## Delete KBS
 
+```bash
+$ kubectl delete -k ${DEPLOYMENT_DIR}/
 ```
-$ kubectl delete -k ${DEPLOYMENT_DIR}/$(uname -m)
+or, if running on IBM Secure Execution run:
+```bash
+$ kubectl delete -k ${DEPLOYMENT_DIR}/ibm-se/ && kubectl delete pv test-local-pv
 ```
