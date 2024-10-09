@@ -3,7 +3,6 @@ auth_public_key = "./work/kbs.pem"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
 trusted_certs_paths = ["./work/ca-cert.pem"]
 
 [repository_config]

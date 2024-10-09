@@ -39,12 +39,26 @@ The following properties can be set under the `attestation_token_config` section
 
 | Property                   | Type         | Description                                                                                                                                              | Required | Default |
 |----------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------|
-| `attestation_token_config` | String       | Attestation token broker type. Valid values: `CoCo`, `Jwk`                                                                                               | Yes      | -       |
-| `trusted_certs_paths`      | String Array | Trusted Certificates file (PEM format) for `CoCo` or a valid Url (`file://` or `https://`) pointing to a JWKSet certificates (local or OpenID) for `Jwk` | No       | -       |
+| `trusted_jwk_sets` | String Array      | Valid Url (`file://` or `https://`) pointing to trusted JWKSets (local or OpenID) for Attestation Tokens trustworthy verification                                                                                             | No      | -       |
+| `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification  | No       | -       |
+| `extra_teekey_paths` | String Array | User defined paths to the tee public key in the JWT body  | No       | -       |
+| `insecure_key` | Boolean | Whether to check the trustworthy of the JWK inside JWT. See comments. | No       | `false`      |
 
+Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of this Key in the JWT.
+Example of `extra_teekey_paths` is `/attester_runtime_data/tee-pubkey` which refers to the key
+`attester_runtime_data.tee-pubkey` inside the JWT body claims. By default CoCo AS Token and Intel TA
+Token TEE Public Key paths are supported.
 
-If `trusted_certs_paths` is set, KBS will forcibly check the validity of the Attestation Token signature public key certificate,
-if not set this field, KBS will skip the verification of the certificate.
+For Attestation Services like CoCo-AS, the public key to verify the JWT will be given
+in the token's `jwk` field (with or without the public key cert chain `x5c`).
+
+- If `insecure_key` is set to `true`, KBS will ignore to verify the trustworthy of the `jwk`.
+- If `insecure_key` is set to `false`, KBS will look up its `trusted_certs_paths` and the `x5c`
+field to verify the trustworthy of the `jwk`.
+
+For Attestation Services like Intel TA, there will only be a `kid` field inside the JWT.
+The `kid` field is used to look up the trusted jwk configured by KBS via `trusted_jwk_sets` to
+verify the integrity and trustworthy of the JWT.
 
 ### Repository Configuration
 
@@ -207,8 +221,7 @@ insecure_http = true
 insecure_api = true
 
 [attestation_token_config]
-attestation_token_type = "Jwk"
-trusted_certs_paths = ["https://portal.trustauthority.intel.com"]
+trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
 
 [repository_config]
 type = "LocalFs"

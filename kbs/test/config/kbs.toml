@@ -5,7 +5,7 @@ private_key = "./work/https.key"
 certificate = "./work/https.crt"
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+trusted_certs_paths = ["./work/token-cert.pem"]
 
 [repository_config]
 type = "LocalFs"
