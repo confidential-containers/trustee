@@ -207,7 +207,7 @@ insecure_http = true
 insecure_api = true
 
 [attestation_token_config]
-attestation_token_type = "Jwk"
+type = "ITA"
 trusted_certs_paths = ["https://portal.trustauthority.intel.com"]
 
 [repository_config]
