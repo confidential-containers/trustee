@@ -1,0 +1,14 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json?raw=true"
+    ],
+    "tekton": {
+        "enabled": true,
+        "automerge": true,
+        "automergeType": "pr",
+        "automergeStrategy": "rebase",
+        "platformAutomerge": true,
+        "ignoreTests": false
+    }
+}
