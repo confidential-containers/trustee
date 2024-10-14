@@ -5133,9 +5133,9 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "superboring"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbde97f499e51ef384f585dc8f8fb6a9c3a71b274b8d12469b516758e6540607"
+checksum = "cee25cd9d145d2c1ef92a52720376eeb510c8870dfa0f84edb371901ec6a12ca"
 dependencies = [
  "getrandom",
  "hmac-sha256",
