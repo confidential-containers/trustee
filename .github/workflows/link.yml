@@ -22,7 +22,7 @@ jobs:
           restore-keys: cache-lychee-
 
       - name: Check links
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: "--cache --max-cache-age 1d ."
           fail: true
