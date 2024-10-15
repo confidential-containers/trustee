@@ -58,10 +58,10 @@ jobs:
           sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
 
       - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
-        run: |
-          rustup update --no-self-update ${{ env.RUSTC_VERSION }}
-          rustup component add --toolchain ${{ env.RUSTC_VERSION }} rustfmt rustc clippy
-          rustup default ${{ env.RUSTC_VERSION }}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUSTC_VERSION }}
+          components: rustfmt, clippy
 
       - name: Build
         working-directory: attestation-service
