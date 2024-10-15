@@ -7,6 +7,7 @@ use std::sync::{Arc, OnceLock};
 use anyhow::{bail, Context, Error, Result};
 use regex::Regex;
 use serde::Deserialize;
+use std::fmt;
 
 use super::local_fs;
 
@@ -57,6 +58,16 @@ impl TryFrom<&str> for ResourceDesc {
     }
 }
 
+impl fmt::Display for ResourceDesc {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}",
+            self.repository_name, self.resource_type, self.resource_tag
+        )
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum RepositoryConfig {
@@ -65,6 +76,10 @@ pub enum RepositoryConfig {
     #[cfg(feature = "aliyun")]
     #[serde(alias = "aliyun")]
     Aliyun(super::aliyun_kms::AliyunKmsBackendConfig),
+
+    #[cfg(feature = "pkcs11")]
+    #[serde(alias = "pkcs11")]
+    Pkcs11(super::pkcs11::Pkcs11Config),
 }
 
 impl Default for RepositoryConfig {
@@ -93,6 +108,13 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
             #[cfg(feature = "aliyun")]
             RepositoryConfig::Aliyun(config) => {
                 let client = super::aliyun_kms::AliyunKmsBackend::new(&config)?;
+                Ok(Self {
+                    backend: Arc::new(client),
+                })
+            }
+            #[cfg(feature = "pkcs11")]
+            RepositoryConfig::Pkcs11(config) => {
+                let client = super::pkcs11::Pkcs11Backend::new(&config)?;
                 Ok(Self {
                     backend: Arc::new(client),
                 })
