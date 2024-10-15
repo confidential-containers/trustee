@@ -15,7 +15,7 @@ use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
 use az_snp_vtpm::vtpm::QuoteError;
-use log::{debug, warn};
+use log::debug;
 use openssl::pkey::PKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,6 +23,7 @@ use sev::firmware::host::{CertTableEntry, CertType};
 use thiserror::Error;
 
 const HCL_VMPL_VALUE: u32 = 0;
+const INITDATA_PCR: usize = 8;
 
 #[derive(Serialize, Deserialize)]
 struct Evidence {
@@ -63,21 +64,24 @@ impl AzSnpVtpm {
     }
 }
 
-pub(crate) fn extend_claim_with_tpm_quote(
-    claim: &mut TeeEvidenceParsedClaim,
-    quote: &Quote,
-) -> Result<()> {
+pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, quote: &Quote) -> Result<()> {
     let Value::Object(ref mut map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
-
+    let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
     let mut tpm_values = serde_json::Map::new();
-    for (i, pcr) in quote.pcrs_sha256().enumerate() {
+    for (i, pcr) in pcrs.iter().enumerate() {
         tpm_values.insert(format!("pcr{:02}", i), Value::String(hex::encode(pcr)));
     }
-    debug!("extending claim with TPM quote: {:#?}", tpm_values);
     map.insert("tpm".to_string(), Value::Object(tpm_values));
-
+    map.insert(
+        "init_data".into(),
+        Value::String(hex::encode(pcrs[INITDATA_PCR])),
+    );
+    map.insert(
+        "report_data".into(),
+        Value::String(hex::encode(quote.nonce()?)),
+    );
     Ok(())
 }
 
@@ -90,6 +94,7 @@ impl Verifier for AzSnpVtpm {
     /// 4. SNP report's report_data field matches hashed HCL variable data
     /// 5. SNP Report is genuine
     /// 6. SNP Report has been issued in VMPL 0
+    /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
     async fn evaluate(
         &self,
         evidence: &[u8],
@@ -99,10 +104,6 @@ impl Verifier for AzSnpVtpm {
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("unexpected empty report data");
         };
-
-        if let InitDataHash::Value(_) = expected_init_data_hash {
-            warn!("Azure SNP vTPM verifier does not support verify init data hash, will ignore the input `init_data_hash`.");
-        }
 
         let evidence = serde_json::from_slice::<Evidence>(evidence)
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
@@ -121,8 +122,11 @@ impl Verifier for AzSnpVtpm {
         let vcek = Vcek::from_pem(&evidence.vcek)?;
         verify_snp_report(&snp_report, &vcek, &self.vendor_certs)?;
 
+        let pcrs: Vec<&[u8; 32]> = evidence.quote.pcrs_sha256().collect();
+        verify_init_data(expected_init_data_hash, &pcrs)?;
+
         let mut claim = parse_tee_evidence(&snp_report);
-        extend_claim_with_tpm_quote(&mut claim, &evidence.quote)?;
+        extend_claim(&mut claim, &evidence.quote)?;
 
         Ok(claim)
     }
@@ -181,6 +185,26 @@ fn verify_snp_report(
         return Err(CertError::VmplIncorrect(HCL_VMPL_VALUE));
     }
 
+    Ok(())
+}
+
+pub(crate) fn verify_init_data(expected: &InitDataHash, pcrs: &[&[u8; 32]]) -> Result<()> {
+    let InitDataHash::Value(expected_init_data_hash) = expected else {
+        debug!("No expected value, skipping init_data verification");
+        return Ok(());
+    };
+
+    debug!("Check the binding of PCR{INITDATA_PCR}");
+
+    // sha256(0x00 * 32 || expected_init_data_hash)
+    let mut input = [0u8; 64];
+    input[32..].copy_from_slice(expected_init_data_hash);
+    let digest = openssl::sha::sha256(&input);
+
+    let init_data_pcr = pcrs[INITDATA_PCR];
+    if &digest != init_data_pcr {
+        bail!("Expected init_data digest is different from the content of PCR{INITDATA_PCR}");
+    }
     Ok(())
 }
 
@@ -319,13 +343,50 @@ mod tests {
     }
 
     #[test]
-    fn test_extend_claim_with_tpm_quote() {
+    fn test_verify_init_data() {
+        let quote = QUOTE.clone();
+        let quote: Quote = bincode::deserialize(&quote).unwrap();
+        let mut init_data_hash = [0u8; 32];
+        hex::decode_to_slice(
+            "8505e4e25e50a27c5dc8147af88efbece627fbea55291911eff832d9ee127781",
+            &mut init_data_hash,
+        )
+        .unwrap();
+
+        // sha256(0x00 * 32 || "8505...") == "bdda..."
+        let mut digest = [0u8; 32];
+        hex::decode_to_slice(
+            "bddaccb9c52249e97a31baea61b7d91be8221a16e703d92148d04fb8e9c1dfdd",
+            &mut digest,
+        )
+        .unwrap();
+
+        let mut pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
+        pcrs[INITDATA_PCR] = &digest;
+
+        verify_init_data(&InitDataHash::Value(&init_data_hash), &pcrs).unwrap();
+    }
+
+    #[test]
+    fn test_verify_init_data_failure() {
+        let quote = QUOTE.clone();
+        let quote: Quote = bincode::deserialize(&quote).unwrap();
+        let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
+        let mut init_data = pcrs[INITDATA_PCR].clone();
+        init_data[0] = init_data[0] ^ 1;
+        let init_data_hash = InitDataHash::Value(&init_data);
+
+        verify_init_data(&init_data_hash, &pcrs).unwrap_err();
+    }
+
+    #[test]
+    fn test_extend_claim() {
         let mut claim = json!({"some": "thing"});
         let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        extend_claim_with_tpm_quote(&mut claim, &quote).unwrap();
+        extend_claim(&mut claim, &quote).unwrap();
 
         let map = claim.as_object().unwrap();
-        assert_eq!(map.len(), 2);
+        assert_eq!(map.len(), 4);
         let tpm_map = map.get("tpm").unwrap().as_object().unwrap();
         assert_eq!(tpm_map.len(), 24);
 
@@ -334,5 +395,10 @@ mod tests {
             let value = tpm_map.get(&key).unwrap().as_str().unwrap();
             assert_eq!(value, hex::encode(pcr));
         }
+        let init_data = map.get("init_data").unwrap().as_str().unwrap();
+        let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
+        assert_eq!(init_data, hex::encode(pcrs[INITDATA_PCR]));
+        let init_data = map.get("report_data").unwrap().as_str().unwrap();
+        assert_eq!(init_data, hex::encode(quote.nonce().unwrap()));
     }
 }
