@@ -5,7 +5,7 @@ auth_public_key = "/kbs/kbs.pem"
 insecure_http = true
 
 [attestation_token_config]
-attestation_token_type = "CoCo"
+insecure_key = true
 
 [as_config]
 work_dir = "/opt/confidential-containers/attestation-service"

@@ -15,14 +15,9 @@ use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use serde::Deserialize;
 use serde_json::{json, Deserializer, Value};
 
-use crate::raise_error;
+use crate::{raise_error, token::TokenVerifier};
 
 use super::*;
-
-#[cfg(feature = "as")]
-const TOKEN_TEE_PUBKEY_PATH: &str = AS_TOKEN_TEE_PUBKEY_PATH;
-#[cfg(not(feature = "as"))]
-const TOKEN_TEE_PUBKEY_PATH: &str = "/customized_claims/runtime_data/tee-pubkey";
 
 #[allow(unused_assignments)]
 /// GET /resource/{repository}/{type}/{tag}
@@ -31,7 +26,7 @@ pub(crate) async fn get_resource(
     request: HttpRequest,
     repository: web::Data<Arc<RwLock<dyn Repository + Send + Sync>>>,
     #[cfg(feature = "as")] map: web::Data<SessionMap>,
-    token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
+    token_verifier: web::Data<TokenVerifier>,
     #[cfg(feature = "policy")] policy_engine: web::Data<PolicyEngine>,
 ) -> Result<HttpResponse> {
     #[allow(unused_mut)]
@@ -45,20 +40,16 @@ pub(crate) async fn get_resource(
         c
     } else {
         debug!("Get pkey from auth header");
-        get_attest_claims_from_header(&request, token_verifier).await?
+        get_attest_claims_from_header(&request, &token_verifier).await?
     };
     let claims: Value = serde_json::from_str(&claims_str).map_err(|e| {
         Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
     })?;
 
-    let pkey_value =
-        claims
-            .pointer(TOKEN_TEE_PUBKEY_PATH)
-            .ok_or(Error::AttestationClaimsParseFailed(String::from(
-                "Failed to find `tee-pubkey` in the attestation claims",
-            )))?;
-    let pubkey = TeePubKey::deserialize(pkey_value).map_err(|e| {
-        Error::AttestationClaimsParseFailed(format!("illegal attestation claims: {e}"))
+    let pubkey = token_verifier.extract_tee_public_key(claims).map_err(|e| {
+        Error::AttestationClaimsParseFailed(format!(
+            "Failed to extract public key in attestation claims: {e:?}"
+        ))
     })?;
 
     let resource_description = ResourceDesc {
@@ -168,7 +159,7 @@ async fn get_attest_claims_from_session(
 
 async fn get_attest_claims_from_header(
     request: &HttpRequest,
-    token_verifier: web::Data<Arc<RwLock<dyn AttestationTokenVerifier + Send + Sync>>>,
+    token_verifier: &web::Data<TokenVerifier>,
 ) -> Result<String> {
     let bearer = Authorization::<Bearer>::parse(request)
         .map_err(|e| Error::InvalidRequest(format!("parse Authorization header failed: {e}")))?
@@ -177,11 +168,11 @@ async fn get_attest_claims_from_header(
     let token = bearer.token().to_string();
 
     let claims = token_verifier
-        .read()
-        .await
         .verify(token)
         .await
-        .map_err(|e| Error::TokenParseFailed(format!("verify token failed: {e}")))?;
+        .map_err(|e| Error::TokenParseFailed(format!("verify token failed: {e:?}")))?;
+    let claims = serde_json::to_string(&claims)
+        .map_err(|_| Error::TokenParseFailed("failed to serialize claims".into()))?;
     Ok(claims)
 }
 
