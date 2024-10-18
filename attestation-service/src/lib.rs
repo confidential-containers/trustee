@@ -30,7 +30,7 @@ use verifier::{InitDataHash, ReportData};
 use crate::utils::flatten_claims;
 
 /// Hash algorithms used to calculate runtime/init data binding
-#[derive(Display, EnumString, AsRefStr)]
+#[derive(Debug, Display, EnumString, AsRefStr)]
 pub enum HashAlgorithm {
     #[strum(ascii_case_insensitive)]
     Sha256,
@@ -66,6 +66,7 @@ impl HashAlgorithm {
 
 /// Runtime/Init Data used to check the binding relationship with report data
 /// in Evidence
+#[derive(Debug)]
 pub enum Data {
     /// This will be used as the expected runtime/init data to check against
     /// the one inside evidence.
