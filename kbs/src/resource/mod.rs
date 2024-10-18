@@ -4,6 +4,7 @@
 
 use anyhow::*;
 use serde::Deserialize;
+use std::fmt;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -13,6 +14,9 @@ mod local_fs;
 
 #[cfg(feature = "aliyun")]
 mod aliyun_kms;
+
+#[cfg(feature = "pkcs11")]
+mod pkcs11;
 
 /// Interface of a `Repository`.
 #[async_trait::async_trait]
@@ -48,6 +52,16 @@ impl ResourceDesc {
     }
 }
 
+impl fmt::Display for ResourceDesc {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}",
+            self.repository_name, self.resource_type, self.resource_tag
+        )
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum RepositoryConfig {
@@ -55,6 +69,9 @@ pub enum RepositoryConfig {
 
     #[cfg(feature = "aliyun")]
     Aliyun(aliyun_kms::AliyunKmsBackendConfig),
+
+    #[cfg(feature = "pkcs11")]
+    Pkcs11(pkcs11::Pkcs11Config),
 }
 
 impl RepositoryConfig {
@@ -81,6 +98,12 @@ impl RepositoryConfig {
             #[cfg(feature = "aliyun")]
             Self::Aliyun(config) => {
                 let client = aliyun_kms::AliyunKmsBackend::new(config)?;
+                Ok(Arc::new(RwLock::new(client)) as Arc<RwLock<dyn Repository + Send + Sync>>)
+            }
+
+            #[cfg(feature = "pkcs11")]
+            Self::Pkcs11(config) => {
+                let client = pkcs11::Pkcs11Backend::new(config)?;
                 Ok(Arc::new(RwLock::new(client)) as Arc<RwLock<dyn Repository + Send + Sync>>)
             }
         }
