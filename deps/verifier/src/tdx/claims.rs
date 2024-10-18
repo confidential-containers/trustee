@@ -49,6 +49,7 @@ use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::{debug, warn};
 use serde_json::{Map, Value};
+use thiserror::Error;
 
 use crate::{eventlog::AAEventlog, tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
 
@@ -239,8 +240,20 @@ fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()>
     Ok(())
 }
 
-const ERR_INVALID_HEADER: &str = "invalid header";
-const ERR_NOT_ENOUGH_DATA: &str = "not enough data after header";
+#[derive(Error, Debug, PartialEq)]
+pub enum PlatformConfigInfoError {
+    #[error("Failed to parse `Descriptor`")]
+    ParseDescriptor,
+
+    #[error("Failed to parse `InfoLength`")]
+    ReadInfoLength,
+
+    #[error("invalid header")]
+    InvalidHeader,
+
+    #[error("not enough data after header")]
+    NotEnoughData,
+}
 
 type Descriptor = [u8; 16];
 type InfoLength = u32;
@@ -254,7 +267,7 @@ pub struct TdShimPlatformConfigInfo<'a> {
 }
 
 impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
-    type Error = anyhow::Error;
+    type Error = PlatformConfigInfoError;
 
     fn try_from(data: &'a [u8]) -> std::result::Result<Self, Self::Error> {
         let descriptor_size = core::mem::size_of::<Descriptor>();
@@ -264,21 +277,24 @@ impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
         let header_size = descriptor_size + info_size;
 
         if data.len() < header_size {
-            bail!(ERR_INVALID_HEADER);
+            return Err(PlatformConfigInfoError::InvalidHeader);
         }
 
-        let descriptor = data[0..descriptor_size].try_into()?;
+        let descriptor = data[0..descriptor_size]
+            .try_into()
+            .map_err(|_| PlatformConfigInfoError::ParseDescriptor)?;
 
-        let info_length = (&data[descriptor_size..header_size]).read_u32::<LittleEndian>()?;
+        let info_length = (&data[descriptor_size..header_size])
+            .read_u32::<LittleEndian>()
+            .map_err(|_| PlatformConfigInfoError::ReadInfoLength)?;
 
         let total_size = header_size + info_length as usize;
 
         let data = data
             .get(header_size..total_size)
-            .ok_or(ERR_NOT_ENOUGH_DATA)
-            .map_err(|e| anyhow!(e))?;
+            .ok_or(PlatformConfigInfoError::NotEnoughData)?;
 
-        Ok(Self {
+        std::result::Result::Ok(Self {
             descriptor,
             info_length,
             data,
@@ -317,12 +333,11 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use serde_json::{json, to_value, Map, Value};
 
-    use crate::tdx::{eventlog::CcEventLog, quote::parse_tdx_quote};
-
-    use super::{
-        generate_parsed_claim, parse_kernel_parameters, TdShimPlatformConfigInfo,
-        ERR_INVALID_HEADER, ERR_NOT_ENOUGH_DATA,
+    use crate::tdx::{
+        claims::PlatformConfigInfoError, eventlog::CcEventLog, quote::parse_tdx_quote,
     };
+
+    use super::{generate_parsed_claim, parse_kernel_parameters, TdShimPlatformConfigInfo};
 
     use rstest::rstest;
 
@@ -528,44 +543,30 @@ mod tests {
 
     #[rstest]
     #[trace]
-    #[case(b"", Err(anyhow!(ERR_INVALID_HEADER)))]
-    #[case(b"0123456789ABCDEF", Err(anyhow!(ERR_INVALID_HEADER)))]
-    #[case(b"0123456789ABCDEF\x00", Err(anyhow!(ERR_INVALID_HEADER)))]
-    #[case(b"0123456789ABCDEF\x00\x00", Err(anyhow!(ERR_INVALID_HEADER)))]
-    #[case(b"0123456789ABCDEF\x00\x00\x00", Err(anyhow!(ERR_INVALID_HEADER)))]
+    #[case(b"", Err(PlatformConfigInfoError::InvalidHeader))]
+    #[case(b"0123456789ABCDEF", Err(PlatformConfigInfoError::InvalidHeader))]
+    #[case(b"0123456789ABCDEF\x00", Err(PlatformConfigInfoError::InvalidHeader))]
+    #[case(
+        b"0123456789ABCDEF\x00\x00",
+        Err(PlatformConfigInfoError::InvalidHeader)
+    )]
+    #[case(
+        b"0123456789ABCDEF\x00\x00\x00",
+        Err(PlatformConfigInfoError::InvalidHeader)
+    )]
     #[case(b"0123456789ABCDEF\x00\x00\x00\x00", Ok(TdShimPlatformConfigInfo{descriptor: *b"0123456789ABCDEF", info_length: 0, data: &[]}))]
     #[case(b"0123456789ABCDEF\x01\x00\x00\x00X", Ok(TdShimPlatformConfigInfo{descriptor: *b"0123456789ABCDEF", info_length: 1, data: b"X"}))]
     #[case(b"0123456789ABCDEF\x03\x00\x00\x00ABC", Ok(TdShimPlatformConfigInfo{descriptor: *b"0123456789ABCDEF", info_length: 3, data: b"ABC"}))]
     #[case(b"0123456789ABCDEF\x04\x00\x00\x00;):)", Ok(TdShimPlatformConfigInfo{descriptor: *b"0123456789ABCDEF", info_length: 4, data: b";):)"}))]
-    #[case(b"0123456789ABCDEF\x01\x00\x00\x00", Err(anyhow!(ERR_NOT_ENOUGH_DATA)))]
+    #[case(
+        b"0123456789ABCDEF\x01\x00\x00\x00",
+        Err(PlatformConfigInfoError::NotEnoughData)
+    )]
     fn test_td_shim_platform_config_info_try_from(
         #[case] data: &[u8],
-        #[case] result: Result<TdShimPlatformConfigInfo>,
+        #[case] result: std::result::Result<TdShimPlatformConfigInfo, PlatformConfigInfoError>,
     ) {
-        let msg = format!(
-            "test: data: {:?}, result: {result:?}",
-            String::from_utf8_lossy(&data.to_vec())
-        );
-
         let actual_result = TdShimPlatformConfigInfo::try_from(data);
-
-        let msg = format!("{msg}: actual result: {actual_result:?}");
-
-        if std::env::var("DEBUG").is_ok() {
-            println!("DEBUG: {msg}");
-        }
-
-        if result.is_err() {
-            let expected_result_str = format!("{result:?}");
-            let actual_result_str = format!("{actual_result:?}");
-
-            assert_eq!(expected_result_str, actual_result_str, "{msg}");
-            return;
-        }
-
-        let actual_result = actual_result.unwrap();
-        let expected_result = result.unwrap();
-
-        assert_eq!(expected_result, actual_result, "{msg}");
+        assert_eq!(actual_result, result);
     }
 }
