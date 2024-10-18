@@ -245,7 +245,7 @@ which used to verify the trustworthy of the certificate in Attestation Token:
 
 ```toml
 [attestation_token_config]
-attestation_token_type = "CoCo"
+type = "CoCo"
 trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
 ```
 

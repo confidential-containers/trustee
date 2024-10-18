@@ -90,11 +90,10 @@ The Makefile supports a number of other configuration parameters.
 
 For example,
 ```shell
-make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?] [ALIYUN=?]
+make background-check-kbs [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?] [ALIYUN=?]
 ```
 
 The parameters
-- `HTTPS_CRYPTO`: either `rustls` or `openssl` can be specified. If not provided, `rustls` is default.
 - `POLICY_ENGINE`: The KBS has a policy engine to facilitate access control. This should not be confused with the policy engine in the AS, which determines whether or not TEE evidence is valid. `POLICY_ENGINE` determines which type of policy engine the KBS will use. Today only `opa` is supported. The KBS can also be built without a policy engine
 if it is not required.
 - `AS_TYPES`: The KBS supports multiple backend attestation services. `AS_TYPES` selects which verifier to use. The options are `coco-as` and `intel-trust-authority-as`.
@@ -103,8 +102,6 @@ if it is not required.
 ## HTTPS Support
 
 The KBS can use HTTPS. This requires a crypto backend.
-`HTTPS_CRYPTO` determines which backend will be used.
-The options are `rustls` and `openssl`. The default is `rustls`.
 
 If you want a self-signed cert for test cases, please refer to [the document](docs/self-signed-https.md).
 
