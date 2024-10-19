@@ -10,6 +10,9 @@ use serde::Deserialize;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
 
+#[cfg(feature = "nebula-ca-plugin")]
+use super::{NebulaCaPlugin, NebulaCaPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -59,6 +62,10 @@ pub enum PluginsConfig {
 
     #[serde(alias = "resource")]
     ResourceStorage(RepositoryConfig),
+
+    #[cfg(feature = "nebula-ca-plugin")]
+    #[serde(alias = "nebula-ca")]
+    NebulaCaPlugin(NebulaCaPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -66,6 +73,8 @@ impl Display for PluginsConfig {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
+            #[cfg(feature = "nebula-ca-plugin")]
+            PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
         }
     }
 }
@@ -84,6 +93,12 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let resource_storage = ResourceStorage::try_from(repository_config)
                     .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
+            }
+            #[cfg(feature = "nebula-ca-plugin")]
+            PluginsConfig::NebulaCaPlugin(nebula_ca_config) => {
+                let nebula_ca = NebulaCaPlugin::try_from(nebula_ca_config)
+                    .context("Initialize 'nebula-ca-plugin' failed")?;
+                Arc::new(nebula_ca) as _
             }
         };
 
