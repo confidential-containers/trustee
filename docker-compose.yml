@@ -14,6 +14,7 @@ services:
       - "8080:8080"
     volumes:
       - ./kbs/data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
+      - ./kbs/data/nebula-ca:/opt/confidential-containers/kbs/nebula-ca:rw
       - ./kbs/config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
       - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
     depends_on:

@@ -250,6 +250,42 @@ This is also called "Repository" in old versions. The properties to be configure
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
+#### Nebula CA Configuration
+
+The Nebula CA plugin can be enabled by adding the following to the KBS config.
+
+```yaml
+[[plugins]]
+name = "nebula-ca"
+```
+
+The properties below can be used to further configure the plugin. They are optional.
+
+| Property               | Type   | Description                       | Default |
+|------------------------|--------|-----------------------------------|----------|
+| `nebula_cert_bin_path` | String | `nebula-cert` binary path | If not provided, `nebula-cert` will be searched in $PATH |
+| `work_dir`             | String | This plugin work directory, it requires `rw` permission | `/opt/confidential-containers/kbs/nebula-ca` |
+| `[plugins.self_signed_ca]` | SubSection | Properties used to create the Nebula CA key and certificate | See table below |
+
+The properties below can be defined under `[plugins.self_signed_ca]` to override their default value. They are optional.
+
+| Property            | Type    | Description                       | Default | Example                                   |
+|---------------------|---------|-----------------------------------|----------|-----------------------------------------------------|
+| `name`              | String  | Name of the certificate authority | `Trustee Nebula CA plugin`        | |
+| `argon_iterations`  | Integer | Argon2 iterations parameter used for encrypted private key passphrase | 1 | |
+| `argon_memory`      | Integer | Argon2 memory parameter (in KiB) used for encrypted private key passphrase | 2097152 | |
+| `argon_parallelism` | Integer | Argon2 parallelism parameter used for encrypted private key passphrase | 4 | |
+| `curve`             | String  | EdDSA/ECDSA Curve (25519, P256) | `25519` | |
+| `duration`          | String  | Amount of time the certificate should be valid for. Valid time units are: <hours>"h"<minutes>"m"<seconds>"s" | `8760h0m0s` | |
+| `groups`            | String  | Comma separated list of groups. This will limit which groups subordinate certs can use | "" | `server,ssh` |
+| `ips`               | String  | Comma separated list of ipv4 address and network in CIDR notation. This will limit which ipv4 addresses and networks subordinate certs can use for ip addresses | "" | `192.168.100.10/24,192.168.100.15/24` |
+| `out_qr`            | String  | Path to write a QR code image (png) of the certificate | | `/opt/confidential-containers/kbs/nebula-ca/ca/ca_qr.crt`|
+| `subnets`           | String  | Comma separated list of ipv4 address and network in CIDR notation. This will limit which ipv4 addresses and networks subordinate certs can use in subnets | "" | `192.168.86.0/24` |
+
+The Nebula CA key and certificate are stored in `${work_dir}/ca/ca.{key,crt}`. If these files were generated in a previous run or [generated out-of-band](https://nebula.defined.net/docs/guides/quick-start/#creating-your-first-certificate-authority), the plugin will just (re-)use them; otherwise, the plugin will generate new ones by calling the `nebula-cert` binary with the `[plugins.self_signed_ca]` properties.
+
+Detailed [documentation](#kbs/docs/plugins/nebula_ca.md).
+
 ## Configuration Examples
 
 Using a built-in CoCo AS:
@@ -336,6 +372,47 @@ policy_path = "/etc/kbs-policy.rego"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+```
+
+Using Nebula CA plugin:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+insecure_http = true
+
+[admin]
+insecure_api = true
+
+[attestation_token]
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/confidential-containers/attestation-service"
+policy_engine = "opa"
+
+    [attestation_service.attestation_token_broker]
+    type = "Ear"
+    duration_min = 5
+
+    [attestation_service.rvps_config]
+    type = "BuiltIn"
+
+    [attestation_service.rvps_config.storage]
+    type = "LocalFs"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[[plugins]]
+name = "nebula-ca"
+# If the Nebula CA key and certificate don't exist yet, the plugin will create them
+# using the default configurations, which can be overriden here,
+# e.g. the duration of the root CA.
+#[plugin.self_signed_ca]
+#duration = "4380hm0s0"
 ```
 
 Distributing resources in Passport mode:
