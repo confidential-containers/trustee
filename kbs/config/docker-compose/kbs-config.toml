@@ -12,3 +12,13 @@ as_addr = "http://as:50004"
 
 [admin]
 auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
+
+[[plugins]]
+name = "nebula_ca"
+type = "SelfSigned"
+config_path = "/etc/self-signed-nebula-ca-config.toml"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"

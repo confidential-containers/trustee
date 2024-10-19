@@ -7,7 +7,10 @@ use std::{collections::HashMap, fmt::Display, sync::Arc};
 use actix_web::http::Method;
 use serde::Deserialize;
 
-use super::{sample, Error, RepositoryConfig, ResourceStorage, Result};
+use super::{
+    nebula_ca::backend::{NebulaCa, NebulaCaConfig},
+    sample, Error, RepositoryConfig, ResourceStorage, Result,
+};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -58,6 +61,9 @@ pub enum PluginsConfig {
 
     #[serde(alias = "resource")]
     ResourceStorage(RepositoryConfig),
+
+    #[serde(alias = "nebula_ca")]
+    NebulaCa(NebulaCaConfig),
 }
 
 impl Display for PluginsConfig {
@@ -65,6 +71,7 @@ impl Display for PluginsConfig {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
+            PluginsConfig::NebulaCa(_) => f.write_str("nebula_ca"),
         }
     }
 }
@@ -85,6 +92,10 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
             PluginsConfig::ResourceStorage(repository_config) => {
                 let resource_storage = ResourceStorage::try_from(repository_config)?;
                 Arc::new(resource_storage) as _
+            }
+            PluginsConfig::NebulaCa(nebula_ca_config) => {
+                let nebula_ca = NebulaCa::try_from(nebula_ca_config)?;
+                Arc::new(nebula_ca) as _
             }
         };
 

@@ -5,6 +5,7 @@
 pub mod error;
 pub mod plugin_manager;
 
+pub mod nebula_ca;
 pub mod resource;
 pub mod sample;
 
