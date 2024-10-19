@@ -35,10 +35,19 @@ enum Commands {
     /// Get confidential resource
     #[clap(arg_required_else_help = true)]
     GetResource {
-        /// KBS Resource path, e.g my_repo/resource_type/123abc
+        /// KBS plugin name, e.g:
+        /// resource
+        /// nebula_ca
+        #[clap(long, value_parser)]
+        plugin_name: String,
+
+        /// KBS plugin resource path, e.g:
+        /// nebula_ca:   credential?ip=10.9.8.1&netbits=21
+        /// resource:    my_repo/resource_type/123abc
+        ///
         /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
         #[clap(long, value_parser)]
-        path: String,
+        resource_path: String,
 
         /// Custom TEE private Key (RSA) file path (PEM format)
         /// Used to protect the Respond Payload
@@ -139,7 +148,8 @@ async fn main() -> Result<()> {
             println!("{token}");
         }
         Commands::GetResource {
-            path,
+            plugin_name,
+            resource_path,
             tee_key_file,
             attestation_token,
         } => {
@@ -158,7 +168,8 @@ async fn main() -> Result<()> {
                 }
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
-                    &path,
+                    &plugin_name,
+                    &resource_path,
                     tee_key.unwrap(),
                     token.unwrap(),
                     kbs_cert.clone(),
@@ -168,7 +179,8 @@ async fn main() -> Result<()> {
             } else {
                 let resource_bytes = kbs_client::get_resource_with_attestation(
                     &cli.url,
-                    &path,
+                    &plugin_name,
+                    &resource_path,
                     tee_key,
                     kbs_cert.clone(),
                 )

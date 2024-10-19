@@ -45,13 +45,15 @@ pub async fn attestation(
 /// Get secret resources with attestation results token
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
+/// - plugin_name: Plugin name.
+/// - path: Resource path.
 /// - tee_key_pem: TEE private key file path (PEM format). This key must consistent with the public key in `token` claims.
 /// - token: Attestation Results Token file path.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn get_resource_with_token(
     url: &str,
-    path: &str,
+    plugin_name: &str,
+    resource_path: &str,
     tee_key_pem: String,
     token: String,
     kbs_root_certs_pem: Vec<String>,
@@ -66,10 +68,17 @@ pub async fn get_resource_with_token(
     }
     let mut client = client_builder.build()?;
 
-    let resource_kbs_uri = format!("kbs:///{path}");
-    let resource_bytes = client
-        .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
-        .await?;
+    let resource_bytes = if plugin_name == "resource" {
+        let resource_kbs_uri = format!("kbs:///{resource_path}");
+        client
+            .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
+            .await?
+    } else {
+        client
+            .get_plugin_resource(plugin_name.to_owned(), resource_path.to_owned())
+            .await?
+    };
+
     Ok(resource_bytes)
 }
 
@@ -81,7 +90,8 @@ pub async fn get_resource_with_token(
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn get_resource_with_attestation(
     url: &str,
-    path: &str,
+    plugin_name: &str,
+    resource_path: &str,
     tee_key_pem: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<Vec<u8>> {
@@ -96,10 +106,17 @@ pub async fn get_resource_with_attestation(
     }
     let mut client = client_builder.build()?;
 
-    let resource_kbs_uri = format!("kbs:///{path}");
-    let resource_bytes = client
-        .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
-        .await?;
+    let resource_bytes = if plugin_name == "resource" {
+        let resource_kbs_uri = format!("kbs:///{resource_path}");
+        client
+            .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
+            .await?
+    } else {
+        client
+            .get_plugin_resource(plugin_name.to_owned(), resource_path.to_owned())
+            .await?
+    };
+
     Ok(resource_bytes)
 }
 
