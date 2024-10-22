@@ -100,3 +100,44 @@ impl Pkcs11Backend {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::plugins::resource::{
+        backend::{ResourceDesc, StorageBackend},
+        pkcs11::{Pkcs11Backend, Pkcs11Config},
+    };
+
+    const TEST_DATA: &[u8] = b"testdata";
+
+    // This will only work if SoftHSM is setup
+    #[ignore]
+    #[tokio::test]
+    async fn write_and_read_resource() {
+        let config = Pkcs11Config {
+            module: "/usr/local/lib/softhsm/libsofthsm2.so".to_string(),
+            slot_index: None,
+            // This pin must be set for SoftHSM
+            pin: "test".to_string(),
+        };
+
+        let backend = Pkcs11Backend::new(&config).unwrap();
+
+        let resource_desc = ResourceDesc {
+            repository_name: "default".into(),
+            resource_type: "test".into(),
+            resource_tag: "test".into(),
+        };
+
+        backend
+            .write_secret_resource(resource_desc.clone(), TEST_DATA)
+            .await
+            .expect("write secret resource failed");
+        let data = backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("read secret resource failed");
+
+        assert_eq!(&data[..], TEST_DATA);
+    }
+}
