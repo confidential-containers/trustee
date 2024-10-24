@@ -39,6 +39,9 @@ intel-trust-authority-as = ["as", "reqwest", "resource", "az-cvm-vtpm"]
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
 
+# Use pkcs11 resource backend to store secrets in an HSM
+pkcs11 = ["cryptoki"]
+
 [dependencies]
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
@@ -50,6 +53,7 @@ base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
+cryptoki = { version = "0.7.0", optional = true }
 env_logger.workspace = true
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 jwt-simple.workspace = true
