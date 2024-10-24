@@ -100,7 +100,7 @@ auth_public_key = "/kbs/kbs.pem"
 # https://cert-manager.io/docs/configuration/acme/
 insecure_http = true
 
-[attestation_token_config]
+[attestation_token]
 insecure_key = true
 
 [as_config]

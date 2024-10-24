@@ -5,7 +5,9 @@
 
 use anyhow::Result;
 use log::{info, warn};
-use reference_value_provider_service::config::{Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE};
+pub use reference_value_provider_service::config::{
+    Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE,
+};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -38,7 +40,7 @@ fn default_store_config() -> Value {
     json!({})
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct RvpsConfig {
     /// Address of remote RVPS. If this field is given, a remote RVPS will be connected to.
     /// If this field is not given, a built-in RVPS will be used.

@@ -6,9 +6,9 @@
 
 pub mod config;
 pub mod policy_engine;
-mod rvps;
-mod token;
-mod utils;
+pub mod rvps;
+pub mod token;
+pub mod utils;
 
 use crate::token::AttestationTokenBroker;
 

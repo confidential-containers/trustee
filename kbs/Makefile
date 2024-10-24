@@ -1,5 +1,4 @@
 AS_TYPE ?= coco-as
-POLICY_ENGINE ?=
 ALIYUN ?= false
 
 ARCH := $(shell uname -m)
@@ -17,9 +16,9 @@ COCO_AS_INTEGRATION_TYPE ?= builtin
 INSTALL_DESTDIR ?= /usr/local/bin
 
 ifeq ($(AS_TYPE), coco-as)
-  AS_FEATURE = $(AS_TYPE)-$(COCO_AS_INTEGRATION_TYPE)
-else
-  AS_FEATURE = $(AS_TYPE)
+  AS_FEATURE += $(AS_TYPE)-$(COCO_AS_INTEGRATION_TYPE),
+else ifneq ($(AS_TYPE), )
+  AS_FEATURE += $(AS_TYPE),
 endif
 
 ifeq ($(ALIYUN), true)
@@ -38,7 +37,7 @@ build: background-check-kbs
 
 .PHONY: background-check-kbs
 background-check-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),resource,$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features $(FEATURES),$(AS_FEATURE)
 
 .PHONY: passport-issuer-kbs
 passport-issuer-kbs:
@@ -47,7 +46,7 @@ passport-issuer-kbs:
 
 .PHONY: passport-resource-kbs
 passport-resource-kbs:
-	cargo build -p kbs --locked --release --no-default-features --features resource,$(POLICY_ENGINE),$(FEATURES)
+	cargo build -p kbs --locked --release --no-default-features --features $(FEATURES),
 	mv ../target/release/kbs ../target/release/resource-kbs
 
 .PHONY: cli

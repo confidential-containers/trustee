@@ -33,7 +33,7 @@ section:
 
 ### Attestation Token Configuration
 
-The following properties can be set under the `attestation_token_config` section.
+The following properties can be set under the `attestation_token` section.
 
 >This section is available only when the `resource` feature is enabled.
 
@@ -220,7 +220,7 @@ Running with Intel Trust Authority attestation service:
 insecure_http = true
 insecure_api = true
 
-[attestation_token_config]
+[attestation_token]
 trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
 
 [repository_config]

@@ -10,7 +10,7 @@ use thiserror::Error;
 const AS_WORK_DIR: &str = "AS_WORK_DIR";
 const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/attestation-service";
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Config {
     /// The location for Attestation Service to store data.
     pub work_dir: PathBuf,
@@ -19,6 +19,7 @@ pub struct Config {
     pub policy_engine: String,
 
     /// Configurations for RVPS.
+    #[serde(default)]
     pub rvps_config: RvpsConfig,
 
     /// The Attestation Result Token Broker type.
@@ -28,6 +29,7 @@ pub struct Config {
     pub attestation_token_broker: AttestationTokenBrokerType,
 
     /// The Attestation Result Token Broker Config
+    #[serde(default)]
     pub attestation_token_config: AttestationTokenConfig,
 }
 

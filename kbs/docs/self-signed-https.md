@@ -71,7 +71,7 @@ auth_public_key = "/etc/public.pub"
 
 insecure_api = true
 
-[attestation_token_config]
+[attestation_token]
 insecure_key = true
 
 [repository_config]
@@ -84,7 +84,7 @@ policy_engine = "opa"
 rvps_store_type = "LocalFs"
 attestation_token_broker = "Simple"
 
-[as_config.attestation_token_config]
+[as_config.attestation_token]
 duration_min = 5
 
 [as_config.rvps_config]
