@@ -67,10 +67,6 @@ pub enum Error {
     #[error("Policy engine error")]
     PolicyEngine(#[from] crate::policy_engine::KbsPolicyEngineError),
 
-    #[cfg(feature = "resource")]
-    #[error("Resource access failed")]
-    ResourceAccessFailed(#[from] crate::resource::Error),
-
     #[error("Serialize/Deserialize failed")]
     SerdeError(#[from] serde_json::Error),
 
