@@ -15,7 +15,6 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
-const DEFAULT_TIMEOUT: i64 = 5;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct HttpServerConfig {
@@ -47,17 +46,13 @@ impl Default for HttpServerConfig {
 /// Contains all configurable KBS properties.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct KbsConfig {
-    /// Resource repository config.
-    #[cfg(feature = "resource")]
-    #[serde(default)]
-    pub repository: crate::resource::RepositoryConfig,
-
     /// Attestation token result broker config.
     #[serde(default)]
     pub attestation_token: AttestationTokenVerifierConfig,
 
     /// Configuration for the Attestation Service.
     #[cfg(feature = "as")]
+    #[serde(default)]
     pub attestation_service: crate::attestation::config::AttestationConfig,
 
     /// Configuration for the KBS Http Server
@@ -72,7 +67,7 @@ pub struct KbsConfig {
     pub policy_engine: PolicyEngineConfig,
 
     #[serde(default)]
-    pub client_plugins: Vec<PluginsConfig>,
+    pub plugins: Vec<PluginsConfig>,
 }
 
 impl TryFrom<&Path> for KbsConfig {
@@ -85,7 +80,6 @@ impl TryFrom<&Path> for KbsConfig {
             .set_default("admin.insecure_api", DEFAULT_INSECURE_API)?
             .set_default("http_server.insecure_http", DEFAULT_INSECURE_HTTP)?
             .set_default("http_server.sockets", vec![DEFAULT_SOCKET])?
-            .set_default("attestation_service.timeout", DEFAULT_TIMEOUT)?
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
 
@@ -110,11 +104,13 @@ mod tests {
 
     use crate::{
         admin::config::AdminConfig,
-        config::{
-            HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP, DEFAULT_SOCKET,
-            DEFAULT_TIMEOUT,
+        config::{HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP, DEFAULT_SOCKET},
+        plugins::{
+            implementations::{
+                resource::local_fs::LocalFsRepoDesc, RepositoryConfig, SampleConfig,
+            },
+            PluginsConfig,
         },
-        plugins::{sample::SampleConfig, PluginsConfig},
         policy_engine::{PolicyEngineConfig, DEFAULT_POLICY_PATH},
         token::AttestationTokenVerifierConfig,
     };
@@ -135,12 +131,6 @@ mod tests {
 
     #[rstest]
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc {
-                dir_path: "/tmp/kbs-resource".into(),
-            },
-        ),
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec!["/etc/ca".into(), "/etc/ca2".into()],
             insecure_key: false,
@@ -171,17 +161,16 @@ mod tests {
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
         },
-        client_plugins: vec![PluginsConfig::Sample(SampleConfig {
+        plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
-        })],
+        }),
+        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
+            LocalFsRepoDesc {
+                dir_path: "/tmp/kbs-resource".into(),
+            },
+        ))],
     })]
     #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc {
-                dir_path: DEFAULT_REPO_DIR_PATH.into(),
-            },
-        ),
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
@@ -208,7 +197,7 @@ mod tests {
                         },
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             sockets: vec![DEFAULT_SOCKET.parse().unwrap()],
@@ -223,15 +212,9 @@ mod tests {
         policy_engine: PolicyEngineConfig {
             policy_path: DEFAULT_POLICY_PATH.into(),
         },
-        client_plugins: vec![],
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc {
-                dir_path: "/tmp/kbs-resource".into(),
-            },
-        ),
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["/etc/ca".into(), "/etc/ca2".into()],
             insecure_key: false,
@@ -249,7 +232,7 @@ mod tests {
                         allow_unmatched_policy: Some(true),
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
@@ -264,13 +247,16 @@ mod tests {
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
         },
-        client_plugins: vec![PluginsConfig::Sample(SampleConfig {
+        plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
-        })],
+        }),
+        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
+            LocalFsRepoDesc {
+                dir_path: "/tmp/kbs-resource".into(),
+            },
+        ))],
     })]
     #[case("test_data/configs/coco-as-grpc-2.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::default(),
         attestation_token: AttestationTokenVerifierConfig {
             ..Default::default()
         },
@@ -283,7 +269,7 @@ mod tests {
                         pool_size: crate::attestation::coco::grpc::DEFAULT_POOL_SIZE,
                     },
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
@@ -296,15 +282,9 @@ mod tests {
             insecure_api: DEFAULT_INSECURE_API,
         },
         policy_engine: PolicyEngineConfig::default(),
-        client_plugins: Vec::default(),
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc {
-                dir_path: DEFAULT_REPO_DIR_PATH.into(),
-            },
-        ),
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
@@ -330,7 +310,7 @@ mod tests {
                         },
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
@@ -343,7 +323,7 @@ mod tests {
             insecure_api: DEFAULT_INSECURE_API,
         },
         policy_engine: PolicyEngineConfig::default(),
-        client_plugins: vec![],
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -363,7 +343,7 @@ mod tests {
                         allow_unmatched_policy: None,
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
@@ -376,15 +356,9 @@ mod tests {
             insecure_api: DEFAULT_INSECURE_API,
         },
         policy_engine: PolicyEngineConfig::default(),
-        client_plugins: vec![],
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc::default(),
-        ),
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::default(),
         attestation_token: AttestationTokenVerifierConfig {
             ..Default::default()
         },
@@ -397,7 +371,7 @@ mod tests {
                         pool_size: 100,
                     },
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             insecure_http: true,
@@ -408,7 +382,7 @@ mod tests {
             ..Default::default()
         },
         policy_engine: PolicyEngineConfig::default(),
-        client_plugins: Vec::default(),
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -428,7 +402,7 @@ mod tests {
                         allow_unmatched_policy: None,
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             insecure_http: true,
@@ -439,19 +413,9 @@ mod tests {
             ..Default::default()
         },
         policy_engine: PolicyEngineConfig::default(),
-        client_plugins: vec![],
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc::default(),
-        ),
+        plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
-        #[cfg(feature = "resource")]
-        repository: crate::resource::RepositoryConfig::LocalFs(
-            crate::resource::local_fs::LocalFsRepoDesc {
-                dir_path: "/opt/confidential-containers/kbs/repository".into(),
-            },
-        ),
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
@@ -477,7 +441,7 @@ mod tests {
                         },
                     }
                 ),
-            timeout: DEFAULT_TIMEOUT,
+            timeout: crate::attestation::config::DEFAULT_TIMEOUT,
         },
         http_server: HttpServerConfig {
             insecure_http: true,
@@ -490,7 +454,12 @@ mod tests {
         policy_engine: PolicyEngineConfig {
             policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
         },
-        client_plugins: vec![],
+        plugins: vec![
+        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
+            LocalFsRepoDesc {
+                dir_path: "/opt/confidential-containers/kbs/repository".into(),
+            },
+        ))],
     })]
     fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
         let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
