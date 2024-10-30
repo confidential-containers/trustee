@@ -7,9 +7,6 @@
 #[cfg(feature = "as")]
 pub mod attestation;
 
-#[cfg(feature = "resource")]
-mod resource;
-
 /// KBS config
 pub mod config;
 pub use config::KbsConfig;

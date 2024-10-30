@@ -1,7 +1,3 @@
-[repository]
-type = "LocalFs"
-dir_path = "/tmp/kbs-resource"
-
 [attestation_token]
 trusted_jwk_sets = ["/etc/ca", "/etc/ca2"]
 
@@ -25,6 +21,11 @@ insecure_api = false
 [policy_engine]
 policy_path = "/etc/kbs-policy.rego"
 
-[[client_plugins]]
+[[plugins]]
 name = "sample"
 item = "value1"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/tmp/kbs-resource"
