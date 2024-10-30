@@ -34,9 +34,12 @@ pub mod builtin;
 fn default_store_type() -> String {
     #[cfg(feature = "rvps-builtin")]
     {
-        return DEFAULT_STORAGE_TYPE.into()
+        DEFAULT_STORAGE_TYPE.into()
     }
-    return "LocalFs".into()
+    #[cfg(not(feature = "rvps-builtin"))]
+    {
+        return "LocalFs".into()
+    }
 }
 
 fn default_store_config() -> Value {
