@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use log::{info, warn};
+#[cfg(feature = "rvps-builtin")]
 use reference_value_provider_service::config::{Config as RvpsCrateConfig, DEFAULT_STORAGE_TYPE};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -31,7 +32,11 @@ pub mod grpc;
 pub mod builtin;
 
 fn default_store_type() -> String {
-    DEFAULT_STORAGE_TYPE.into()
+    #[cfg(feature = "rvps-builtin")]
+    {
+        return DEFAULT_STORAGE_TYPE.into()
+    }
+    return "LocalFs".into()
 }
 
 fn default_store_config() -> Value {
@@ -54,6 +59,7 @@ pub struct RvpsConfig {
     pub store_config: Value,
 }
 
+#[cfg(feature = "rvps-builtin")]
 impl From<RvpsConfig> for RvpsCrateConfig {
     fn from(val: RvpsConfig) -> RvpsCrateConfig {
         RvpsCrateConfig {
@@ -102,7 +108,7 @@ pub async fn initialize_rvps_client(
                         warn!("No RVPS address provided and will launch a built-in rvps");
                         Ok(Box::new(builtin::Rvps::new(config.clone().into())?) as Box<dyn RvpsApi + Send + Sync>)
                     } else {
-                        return RvpsError::FeatureNotEnabled;
+                        return Err(RvpsError::FeatureNotEnabled);
                     }
                 }
             }
