@@ -7,7 +7,9 @@ use anyhow::*;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, VerifierID};
+use ear::{
+    Algorithm, Appraisal, Ear, ExtensionKind, ExtensionValue, Extensions, RawValue, VerifierID,
+};
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
 use log::{debug, info, warn};
@@ -23,6 +25,7 @@ use shadow_rs::concatcp;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::Arc;
+use time::{Duration, OffsetDateTime};
 use verifier::TeeEvidenceParsedClaim;
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
@@ -276,7 +279,14 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         let mut submods = BTreeMap::new();
         submods.insert("cpu".to_string(), appraisal);
 
-        let now = time::OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
+        let exp = now
+            .checked_add(Duration::minutes(self.config.duration_min))
+            .ok_or(anyhow!("Token expiration overflow."))?;
+
+        let mut extensions = Extensions::new();
+        extensions.register("exp", 4, ExtensionKind::Integer)?;
+        extensions.set_by_name("exp", ExtensionValue::Integer(exp.unix_timestamp()))?;
 
         let ear = Ear {
             profile: self.config.profile_name.clone(),
@@ -288,7 +298,7 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             raw_evidence: None,
             nonce: None,
             submods,
-            extensions: Extensions::new(),
+            extensions,
         };
         let mut jwt_header = ear::new_jwt_header(&Algorithm::ES256)?;
         jwt_header.jwk = Some(self.pubkey_jwk()?);

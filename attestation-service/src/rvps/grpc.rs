@@ -1,6 +1,6 @@
 use serde::Deserialize;
-use thiserror::Error;
 use std::collections::HashMap;
+use thiserror::Error;
 use tokio::sync::Mutex;
 
 use self::rvps_api::{
