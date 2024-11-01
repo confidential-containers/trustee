@@ -120,7 +120,7 @@ mod tests {
 
     #[cfg(feature = "coco-as-builtin")]
     use attestation_service::{
-        rvps::{RvpsConfig, DEFAULT_STORAGE_TYPE},
+        rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
         token::{
             AttestationTokenBrokerType, AttestationTokenConfig, COCO_AS_ISSUER_NAME,
             DEFAULT_TOKEN_TIMEOUT,
@@ -186,11 +186,9 @@ mod tests {
                         work_dir: "/opt/coco/attestation-service".into(),
                         policy_engine: "opa".into(),
                         attestation_token_broker: AttestationTokenBrokerType::Simple,
-                        rvps_config: RvpsConfig {
-                            remote_addr: "http://127.0.0.1:50003".into(),
-                            store_type: DEFAULT_STORAGE_TYPE.into(),
-                            store_config: json!({}),
-                        },
+                        rvps_config: RvpsConfig::GrpcRemote(RvpsRemoteConfig {
+                            address: "http://127.0.0.1:50003".into(),
+                        }),
                         attestation_token_config: AttestationTokenConfig {
                             duration_min: DEFAULT_TOKEN_TIMEOUT,
                             issuer_name: COCO_AS_ISSUER_NAME.into(),
@@ -301,11 +299,10 @@ mod tests {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
                         policy_engine: "opa".into(),
                         attestation_token_broker: AttestationTokenBrokerType::Simple,
-                        rvps_config: RvpsConfig {
-                            remote_addr: "".into(),
+                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
                             store_type: "LocalFs".into(),
                             store_config: json!({}),
-                        },
+                        }),
                         attestation_token_config: AttestationTokenConfig {
                             duration_min: 5,
                             ..Default::default()
@@ -434,11 +431,10 @@ mod tests {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
                         policy_engine: "opa".into(),
                         attestation_token_broker: AttestationTokenBrokerType::Simple,
-                        rvps_config: RvpsConfig {
-                            remote_addr: "".into(),
+                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
                             store_type: "LocalFs".into(),
                             ..Default::default()
-                        },
+                        }),
                         attestation_token_config: AttestationTokenConfig {
                             duration_min: 5,
                             ..Default::default()

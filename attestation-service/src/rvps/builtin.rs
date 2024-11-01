@@ -1,5 +1,4 @@
-use super::RvpsApi;
-use anyhow::*;
+use super::{Result, RvpsApi};
 use async_trait::async_trait;
 use core::result::Result::Ok;
 use reference_value_provider_service::{Config, Core};

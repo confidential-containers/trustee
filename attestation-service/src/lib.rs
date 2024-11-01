@@ -2,7 +2,6 @@
 //!
 //! # Features
 //! - `rvps-grpc`: The AS will connect a remote RVPS.
-//! - `rvps-builtin`: The AS will integrate RVPS functionalities itself.
 
 pub mod config;
 pub mod policy_engine;
@@ -273,7 +272,10 @@ impl AttestationService {
 
     /// Registry a new reference value
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
-        self.rvps.verify_and_extract(message).await
+        self.rvps
+            .verify_and_extract(message)
+            .await
+            .context("register reference value")
     }
 
     pub async fn generate_supplemental_challenge(

@@ -87,7 +87,7 @@ attestation_token_broker = "Simple"
     duration_min = 5
 
     [attestation_service.rvps_config]
-    remote_addr = ""
+    type = "BuiltIn"
     store_type = "LocalFs"
 
 [[plugins]]

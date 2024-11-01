@@ -82,7 +82,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 
 | Property                   | Type                        | Description                                          | Default |
 |----------------------------|-----------------------------|-----------------------------------------------------|----------|
-| `timeout`            | Integer                      | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests             |  5       |
+| `timeout`            | Integer                      | The maximum time (in minutes) of the attestation session             |  5       |
 | `work_dir`                 | String                      | The location for Attestation Service to store data. |  First try from env `AS_WORK_DIR`. If no this env, then use `/opt/confidential-containers/attestation-service`       |
 | `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             |  `opa`       |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  |  See [RVPSConfiguration][2]       |
@@ -115,14 +115,40 @@ This section is **optional**. When omitted, an ephemeral RSA key pair is generat
 
 ##### RVPS Configuration
 
-| Property       | Type                    | Description                                           | Default |
-|----------------|-------------------------|------------------------------------------------------|---------|
-| `remote_addr`  | String                  | Remote RVPS' address. If this is specified, will use a remote RVPS. Or a local RVPS will be configured with `store_type` and `store_config`| Empty       |
-| `store_type`   | String                  | Used if `remote_addr` is not set. The underlying storage type of RVPS.                                                                     | `LocalFs`       |
-| `store_config` | JSON Map                | Used if `remote_addr` is not set. The optional configurations to the underlying storage.                                                   | Empty       |
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `type`         | String                  | It can be either `BuiltIn` (Built-In RVPS) or `GrpcRemote` (connect to a remote gRPC RVPS) | No       | `BuiltIn` |
+
+##### BuiltIn RVPS
+
+If `type` is set to `BuiltIn`, the following extra properties can be set
+
+| Property       | Type                    | Description                                                           | Required | Default  |
+|----------------|-------------------------|-----------------------------------------------------------------------|----------|----------|
+| `store_type`   | String                  | The underlying storage type of RVPS. (`LocalFs` or `LocalJson`)       | No       | `LocalFs`|
+| `store_config` | JSON Map                | The optional configurations to the underlying storage.                | No       | Null     |
 
 Different `store_type` will have different `store_config` items.
-See the details of `store_config` in [concrete implementations of storages](../../rvps/src/store/).
+
+For `LocalFs`, the following properties can be set
+
+| Property       | Type                    | Description                                              | Required | Default  |
+|----------------|-------------------------|----------------------------------------------------------|----------|----------|
+| `file_path`    | String                  | The path to the directory storing reference values       | No       | `/opt/confidential-containers/attestation-service/reference_values`|
+
+For `LocalJson`, the following properties can be set
+
+| Property       | Type                    | Description                                              | Required | Default  |
+|----------------|-------------------------|----------------------------------------------------------|----------|----------|
+| `file_path`    | String                  | The path to the file that storing reference values       | No       | `/opt/confidential-containers/attestation-service/reference_values.json`|
+
+##### Remote RVPS
+
+If `type` is set to `GrpcRemote`, the following extra properties can be set
+
+| Property       | Type                    | Description                             | Required | Default          |
+|----------------|-------------------------|-----------------------------------------|----------|------------------|
+| `address`      | String                  | Remote address of the RVPS server       | No       | `127.0.0.1:50003`|
 
 #### gRPC CoCo AS
 
@@ -231,8 +257,8 @@ attestation_token_broker = "Simple"
     duration_min = 5
 
     [attestation_service.rvps_config]
+    type = "BuiltIn"
     store_type = "LocalFs"
-    remote_addr = ""
 
 [[plugins]]
 name = "resource"

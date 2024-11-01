@@ -64,6 +64,8 @@ Then a response will be returned
 
 The value is a base64 encoded JWT. The body of the JWT is showed in the [example.token.json](./example.token.json).
 
+More configuration items please refer to the [document](./config.md).
+
 ## Advanced Topic
 
 ### Building from Source
