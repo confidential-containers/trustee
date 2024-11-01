@@ -14,8 +14,8 @@ attestation_token_broker = "Simple"
 duration_min = 5
 
 [attestation_service.rvps_config]
+type = "BuiltIn"
 store_type = "LocalFs"
-remote_addr = ""
 
 [policy_engine]
 policy_path = "/opa/confidential-containers/kbs/policy.rego"

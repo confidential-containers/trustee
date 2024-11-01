@@ -1,5 +1,5 @@
-use crate::rvps::RvpsError;
-use anyhow::{Context, Result};
+use serde::Deserialize;
+use thiserror::Error;
 use tokio::sync::Mutex;
 
 use self::rvps_api::{
@@ -7,10 +7,31 @@ use self::rvps_api::{
     ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
 };
 
-use super::RvpsApi;
+use super::{Result, RvpsApi};
 
 pub mod rvps_api {
     tonic::include_proto!("reference");
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq)]
+pub struct RvpsRemoteConfig {
+    /// Address of remote RVPS. If this field is given, a remote RVPS will be connected to.
+    /// If this field is not given, a built-in RVPS will be used.
+    #[serde(default = "default_address")]
+    pub address: String,
+}
+
+fn default_address() -> String {
+    "127.0.0.1:50003".into()
+}
+
+#[derive(Error, Debug)]
+pub enum GrpcRvpsError {
+    #[error("Returned status: {0}")]
+    Status(#[from] tonic::Status),
+
+    #[error("tonic transport error: {0}")]
+    TonicTransport(#[from] tonic::transport::Error),
 }
 
 pub struct Agent {
@@ -18,7 +39,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub async fn new(addr: &str) -> Result<Self, RvpsError> {
+    pub async fn new(addr: &str) -> Result<Self> {
         Ok(Self {
             client: Mutex::new(
                 ReferenceValueProviderServiceClient::connect(addr.to_string()).await?,
@@ -37,8 +58,7 @@ impl RvpsApi for Agent {
             .lock()
             .await
             .register_reference_value(req)
-            .await
-            .context("register failed")?;
+            .await?;
         Ok(())
     }
 

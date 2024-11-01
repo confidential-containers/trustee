@@ -13,9 +13,11 @@ const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/attestation-service
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Config {
     /// The location for Attestation Service to store data.
+    #[serde(default = "default_work_dir")]
     pub work_dir: PathBuf,
 
     /// Policy Engine type.
+    #[serde(default = "default_policy_engine")]
     pub policy_engine: String,
 
     /// Configurations for RVPS.
@@ -26,11 +28,20 @@ pub struct Config {
     ///
     /// Possible values:
     /// * `Simple`
+    #[serde(default)]
     pub attestation_token_broker: AttestationTokenBrokerType,
 
     /// The Attestation Result Token Broker Config
     #[serde(default)]
     pub attestation_token_config: AttestationTokenConfig,
+}
+
+fn default_work_dir() -> PathBuf {
+    PathBuf::from(std::env::var(AS_WORK_DIR).unwrap_or_else(|_| DEFAULT_WORK_DIR.to_string()))
+}
+
+fn default_policy_engine() -> String {
+    "opa".to_string()
 }
 
 #[derive(Error, Debug)]
@@ -48,15 +59,11 @@ pub enum ConfigError {
 impl Default for Config {
     // Construct a default instance of `Config`
     fn default() -> Config {
-        let work_dir = PathBuf::from(
-            std::env::var(AS_WORK_DIR).unwrap_or_else(|_| DEFAULT_WORK_DIR.to_string()),
-        );
-
         Config {
-            work_dir,
-            policy_engine: "opa".to_string(),
+            work_dir: default_work_dir(),
+            policy_engine: default_policy_engine(),
             rvps_config: RvpsConfig::default(),
-            attestation_token_broker: AttestationTokenBrokerType::Simple,
+            attestation_token_broker: AttestationTokenBrokerType::default(),
             attestation_token_config: AttestationTokenConfig::default(),
         }
     }
