@@ -4,5 +4,6 @@ work_dir = "/opt/coco/attestation-service"
 policy_engine = "opa"
 attestation_token_broker = "Simple"
 
-    [attestation_service.rvps_config]
-    remote_addr = "http://127.0.0.1:50003"
+[attestation_service.rvps_config]
+type = "GrpcRemote"
+address = "http://127.0.0.1:50003"

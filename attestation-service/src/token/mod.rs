@@ -23,8 +23,9 @@ pub trait AttestationTokenBroker {
     fn pubkey_jwks(&self) -> Result<String>;
 }
 
-#[derive(Deserialize, Debug, Clone, EnumString, Display, PartialEq)]
+#[derive(Deserialize, Debug, Clone, EnumString, Display, Default, PartialEq)]
 pub enum AttestationTokenBrokerType {
+    #[default]
     Simple,
 }
 

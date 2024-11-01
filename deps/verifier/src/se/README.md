@@ -112,8 +112,8 @@ attestation_token_broker = "Simple"
 duration_min = 5
 
 [as_config.rvps_config]
+type = "BuiltIn"
 store_type = "LocalFs"
-remote_addr = ""
 ```
 
 - Launch the KBS program

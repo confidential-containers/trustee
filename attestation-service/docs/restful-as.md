@@ -54,6 +54,9 @@ eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJjdXN0b21pemVkX2NsYWltcyI6eyJ0ZXN0X2tleSI
 
 The value is a base64 encoded JWT. The body of the JWT is showed in the [example.token.json](./example.token.json).
 
+
+More configuration items please refer to the [document](./config.md).
+
 ## Advanced Topics
 
 ### Building from Source
