@@ -180,102 +180,117 @@ impl PolicyEngine for OPA {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use ear::RawValue;
-//     use kbs_types::Tee;
-//     use rstest::rstest;
-//     use serde_json::{json, Value};
-//     use std::collections::BTreeMap;
-//     use crate::transform_claims;
-//     use super::*;
-//     fn dummy_reference(product_id: u64, svn: u64, launch_digest: String) -> String {
-//         json!({
-//             "productId": [product_id.to_string()],
-//             "svn": [svn.to_string()],
-//             "launch_digest": [launch_digest]
-//         })
-//         .to_string()
-//     }
-//     fn dummy_input(product_id: u64, svn: u64, launch_digest: String) -> BTreeMap<String, RawValue> {
-//         let json_claims = json!({
-//             "productId": product_id.to_string(),
-//             "svn": svn.to_string(),
-//             "launch_digest": launch_digest
-//         });
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use serde_json::json;
 
-//         let ear_claims = transform_claims(
-//             json_claims,
-//             Value::String("".to_string()),
-//             Value::String("".to_string()),
-//             Tee::Sample,
-//         )
-//         .unwrap();
-//         ear_claims
-//     }
-//     #[rstest]
-//     #[case(5,5,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,2)]
-//     #[case(5,4,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,97)]
-//     #[case(5,5,1,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,2)]
-//     #[case(5,5,2,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,97)]
-//     #[tokio::test]
-//     async fn test_evaluate(
-//         #[case] pid_a: u64,
-//         #[case] pid_b: u64,
-//         #[case] svn_a: u64,
-//         #[case] svn_b: u64,
-//         #[case] digest_a: String,
-//         #[case] digest_b: String,
-//         #[case] ex_exp: i8,
-//         #[case] hw_exp: i8,
-//     ) {
-//         let opa = OPA {
-//             policy_dir_path: PathBuf::from("./src/policy_engine/opa"),
-//         };
-//         let default_policy_id = "default_policy".to_string();
+    use super::*;
 
-//         let reference_data: HashMap<String, Vec<String>> =
-//             serde_json::from_str(&dummy_reference(pid_a, svn_a, digest_a)).unwrap();
+    const EAR_RULES: [&str; 8] = [
+        "instance_identity",
+        "configuration",
+        "executables",
+        "file_system",
+        "hardware",
+        "runtime_opaque",
+        "storage_opaque",
+        "sourced_data",
+    ];
 
-//         let appraisal = opa
-//             .evaluate(
-//                 reference_data.clone(),
-//                 dummy_input(pid_b, svn_b, digest_b),
-//                 default_policy_id.clone(),
-//             )
-//             .await
-//             .unwrap();
+    fn dummy_reference(product_id: u64, svn: u64, launch_digest: String) -> String {
+        json!({
+            "reference": {
+                "productId": [product_id.to_string()],
+                "svn": [svn.to_string()],
+                "launch_digest": [launch_digest]
+            }
+        })
+        .to_string()
+    }
 
-//         assert_eq!(
-//             hw_exp,
-//             appraisal.trust_vector.by_name("hardware").unwrap().get()
-//         );
-//         assert_eq!(
-//             ex_exp,
-//             appraisal.trust_vector.by_name("executables").unwrap().get()
-//         );
-//     }
+    fn dummy_input(product_id: u64, svn: u64, launch_digest: String) -> String {
+        json!({
+            "sample": {
+                "productId": product_id.to_string(),
+                "svn": svn.to_string(),
+                "launch_digest": launch_digest
+            }
+        })
+        .to_string()
+    }
 
-//     #[tokio::test]
-//     async fn test_policy_management() {
-//         let mut opa = OPA::new(PathBuf::from("tests/tmp")).unwrap();
-//         let policy = "package policy
-// default allow = true"
-//             .to_string();
+    #[rstest]
+    #[case(5,5,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,2)]
+    #[case(5,4,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,97)]
+    #[case(5,5,1,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,2)]
+    #[case(5,5,2,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,97)]
+    #[tokio::test]
+    async fn test_evaluate(
+        #[case] pid_a: u64,
+        #[case] pid_b: u64,
+        #[case] svn_a: u64,
+        #[case] svn_b: u64,
+        #[case] digest_a: String,
+        #[case] digest_b: String,
+        #[case] ex_exp: i8,
+        #[case] hw_exp: i8,
+    ) {
+        let opa = OPA {
+            policy_dir_path: PathBuf::from("./src/token/"),
+        };
+        let default_policy_id = "ear_default_policy".to_string();
 
-//         let get_policy_output = "cGFja2FnZSBwb2xpY3kKZGVmYXVsdCBhbGxvdyA9IHRydWU".to_string();
+        let output = opa
+            .evaluate(
+                &dummy_reference(pid_a, svn_a, digest_a),
+                &dummy_input(pid_b, svn_b, digest_b),
+                &default_policy_id,
+                &EAR_RULES,
+            )
+            .await
+            .unwrap();
 
-//         assert!(opa
-//             .set_policy(
-//                 "test".to_string(),
-//                 base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy)
-//             )
-//             .await
-//             .is_ok());
-//         let policy_list = opa.list_policies().await.unwrap();
-//         assert_eq!(policy_list.len(), 2);
-//         let test_policy = opa.get_policy("test".to_string()).await.unwrap();
-//         assert_eq!(test_policy, get_policy_output);
-//         assert!(opa.list_policies().await.is_ok());
-//     }
-// }
+        assert_eq!(
+            hw_exp,
+            output
+                .rules_result
+                .get("hardware")
+                .unwrap()
+                .as_i8()
+                .unwrap()
+        );
+        assert_eq!(
+            ex_exp,
+            output
+                .rules_result
+                .get("executables")
+                .unwrap()
+                .as_i8()
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_policy_management() {
+        let opa = OPA::new(PathBuf::from("tests/tmp"), "default").unwrap();
+        let policy = "package policy
+default allow = true"
+            .to_string();
+
+        let get_policy_output = "cGFja2FnZSBwb2xpY3kKZGVmYXVsdCBhbGxvdyA9IHRydWU".to_string();
+
+        assert!(opa
+            .set_policy(
+                "test".to_string(),
+                base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy)
+            )
+            .await
+            .is_ok());
+        let policy_list = opa.list_policies().await.unwrap();
+        assert_eq!(policy_list.len(), 2);
+        let test_policy = opa.get_policy("test".to_string()).await.unwrap();
+        assert_eq!(test_policy, get_policy_output);
+        assert!(opa.list_policies().await.is_ok());
+    }
+}
