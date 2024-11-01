@@ -13,12 +13,12 @@ work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
 attestation_token_broker = "Simple"
 
-    [attestation_service.attestation_token_config]
-    duration_min = 5
+[attestation_service.attestation_token_config]
+duration_min = 5
 
-    [attestation_service.rvps_config]
-    store_type = "LocalFs"
-    remote_addr = ""
+[attestation_service.rvps_config]
+type = "BuiltIn"
+store_type = "LocalFs"
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"

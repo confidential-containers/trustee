@@ -19,7 +19,7 @@ coco-as = ["as"]
 coco-as-builtin = ["coco-as", "attestation-service/default"]
 
 # Use built-in CoCo-AS as backend attestation service without verifier
-coco-as-builtin-no-verifier = ["coco-as", "attestation-service/rvps-builtin"]
+coco-as-builtin-no-verifier = ["coco-as"]
 
 # Use remote gRPC CoCo-AS as backend attestation service
 coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-build", "prost"]

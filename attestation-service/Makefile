@@ -12,20 +12,8 @@ VERIFIER ?= all-verifier
 
 RVPS_GRPC := true
 
-# TODO: Remove `RVPS_BUILTIN`
-# when https://github.com/confidential-containers/trustee/pull/553 gets merged
-# Here we also declare another variable `RVPS_FEATURES1` because a blank will
-# be added when doing '+=' operation in Makefile
-RVPS_BUILTIN := true
-
 ifeq ($(RVPS_GRPC), true)
-	RVPS_FEATURES1 := rvps-grpc
-endif
-
-ifeq ($(RVPS_BUILTIN), true)
-	RVPS_FEATURES := $(RVPS_FEATURES1),rvps-builtin
-else
-	RVPS_FEATURES := $(RVPS_FEATURES1)
+	RVPS_FEATURES := rvps-grpc
 endif
 
 ifdef DEBUG

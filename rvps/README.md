@@ -100,8 +100,7 @@ RVPS can be launched with a specified configuration file by `-c` flag. A configu
 
 ### Native Mode (Not Recommend)
 
-In this way RVPS will work as a crate inside AS binary. If AS is built without feature `rvps-grpc`
-and with feature `rvps-builtin`, the RVPS will be built-in AS. 
+In this way RVPS will work as a crate inside AS binary.
 
 ![](./diagrams/rvps-native.svg)
 
