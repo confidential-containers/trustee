@@ -14,6 +14,10 @@ use openssl::{
     sha::sha384,
     x509::{self, X509},
 };
+use reqwest::{
+    blocking::{get, Response as ReqwestResponse},
+    StatusCode,
+};
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
@@ -31,6 +35,10 @@ const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
 const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
 const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
 const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
+
+// KDS URL parameters
+const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
+const KDS_VCEK: &str = "/vcek/v1";
 
 /// Attestation report versions supported 
 const REPORT_VERSION_MIN: u32 = 2;
@@ -88,8 +96,9 @@ impl Verifier for Snp {
             cert_chain,
         } = serde_json::from_slice(evidence).context("Deserialize Quote failed.")?;
 
-        let Some(cert_chain) = cert_chain else {
-            bail!("Cert chain is unset");
+        let cert_chain = match cert_chain {
+            Some(chain) if !chain.is_empty() => chain,
+            _ => fetch_vcek_from_kds(report)?,
         };
 
         verify_report_signature(&report, &cert_chain, &self.vendor_certs)?;
@@ -310,6 +319,36 @@ fn get_common_name(cert: &x509::X509) -> Result<String> {
     }
 
     Ok(e.data().as_utf8()?.to_string())
+}
+
+// Function to request vcek from KDS. Return vcek in der format.
+fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEntry>> {
+    // Use attestation report to get data for URL
+    let hw_id: String = hex::encode(att_report.chip_id);
+
+    let vcek_url: String = format!(
+        "{KDS_CERT_SITE}{KDS_VCEK}/Milan/\
+        {hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
+        att_report.reported_tcb.bootloader,
+        att_report.reported_tcb.tee,
+        att_report.reported_tcb.snp,
+        att_report.reported_tcb.microcode
+    );
+    // VCEK in DER format
+    let vcek_rsp: ReqwestResponse = get(vcek_url).context("Unable to send request for VCEK")?;
+
+    match vcek_rsp.status() {
+        StatusCode::OK => {
+            let vcek_rsp_bytes: Vec<u8> =
+                vcek_rsp.bytes().context("Unable to parse VCEK")?.to_vec();
+            let key = CertTableEntry {
+                cert_type: CertType::VCEK,
+                data: vcek_rsp_bytes,
+            };
+            Ok(vec![key])
+        }
+        status => Err(anyhow!("Unable to fetch VCEK from URL: {status:?}")),
+    }
 }
 
 #[cfg(test)]
