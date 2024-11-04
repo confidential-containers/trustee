@@ -1,5 +1,5 @@
 # Use CentOS Stream to build.
-FROM quay.io/centos/centos:stream9 as builder
+FROM quay.io/centos/centos:stream9 AS builder
 
 # Install build dependencies from CentOS repos.
 RUN dnf -y --setopt=install_weak_deps=0 --enablerepo=crb install \

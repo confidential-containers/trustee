@@ -1,4 +1,4 @@
-FROM rust:slim as builder
+FROM rust:slim AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
