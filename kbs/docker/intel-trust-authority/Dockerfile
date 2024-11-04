@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:latest AS builder
 ARG ALIYUN=false
 
 WORKDIR /usr/src/kbs

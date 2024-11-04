@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM rust:latest as builder
+FROM rust:latest AS builder
 
 WORKDIR /usr/src/rvps
 

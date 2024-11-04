@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:latest AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
