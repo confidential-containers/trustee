@@ -49,6 +49,7 @@ strum.workspace = true
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
 ear = { git = "https://github.com/veraison/rust-ear", rev = "43f7f480d09ea2ebc03137af8fbcd70fe3df3468", optional = true }
 x509-parser = { version = "0.14.0", optional = true }
+reqwest.workspace = true
 
 [build-dependencies]
 shadow-rs.workspace = true

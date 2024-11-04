@@ -2677,7 +2677,7 @@ dependencies = [
  "prost 0.12.6",
  "rand",
  "regorus",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "rsa 0.9.6",
  "rstest",
  "scc",
@@ -2705,7 +2705,7 @@ dependencies = [
  "jwt-simple 0.11.9",
  "kbs_protocol",
  "log",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "tokio",
@@ -2734,7 +2734,7 @@ dependencies = [
  "jwt-simple 0.12.9",
  "kbs-types",
  "log",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "resource_uri",
  "serde",
  "serde_json",
@@ -2762,7 +2762,7 @@ dependencies = [
  "p12",
  "prost 0.11.9",
  "rand",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "resource_uri",
  "ring",
  "serde",
@@ -4172,14 +4172,15 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.8"
+version = "0.12.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f713147fbe92361e52392c73b8c9e48c04c6625bce969ef54dc901e58e042a7b"
+checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
  "cookie 0.18.1",
  "cookie_store",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http 1.1.0",
@@ -5879,6 +5880,7 @@ dependencies = [
  "kbs-types",
  "log",
  "openssl",
+ "reqwest 0.12.9",
  "rstest",
  "s390_pv",
  "scroll 0.11.0",
