@@ -23,7 +23,7 @@ We have a community version of kbs-client on [Github ORAS](https://github.com/co
 Build the client binary with support to the default features as:
 
 ```shell
-make -C ../../ cli
+make -C ../../kbs cli
 ```
 
 By default the client is built with support to the sample attester, apart from the
@@ -32,13 +32,13 @@ require fewer dependencies and so usually handy for CI) then you can pass the
 `sample_only` feature as:
 
 ```shell
-make -C ../../ cli CLI_FEATURES=sample_only
+make -C ../../kbs cli CLI_FEATURES=sample_only
 ```
 
-Find the built binary at `../../../target/release/kbs-client`. You can get it
+Find the built binary at `../../target/release/kbs-client`. You can get it
 installed into the system as:
 ```shell
-sudo make -C ../../ install-cli
+sudo make -C ../../kbs install-cli
 ```
 
 ## Examples
