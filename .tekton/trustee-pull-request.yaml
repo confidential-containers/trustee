@@ -32,19 +32,24 @@ spec:
     value: '{{revision}}'
   - name: build-source-image
     value: "true"
-  - name: enable-amd64-build
-    value: "true"
-  - name: enable-arm64-build
-    value: "false"
-  - name: enable-ppc64le-build
-    value: "false"
-  - name: enable-s390x-build
-    value: "true"
+  - name: build-platforms
+    value:
+      - linux/x86_64
+      - linux/s390x
   pipelineRef:
-    name: multi-arch-build-pipeline
+    resolver: bundles
+    params:
+    - name: name
+      value: docker-build-multi-platform-oci-ta
+    - name: bundle
+      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:615b78b471bde880e94a7caa27cb25ffd9a0962f3bdcaaf4780858cec6093836
+    - name: kind
+      value: pipeline
   taskRunTemplate: {}
   workspaces:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
+  timeouts:
+    pipeline: "2h"
 status: {}
