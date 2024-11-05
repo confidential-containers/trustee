@@ -1,0 +1,22 @@
+name: Publish ghcr packages on trustee release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-ghcr-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run release-helper-ghcr to tag ghcr release packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_USERNAME: ${{ github.actor }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          tag=$(echo $GITHUB_REF | sed 's|refs/tags/||')
+          cd hack
+          ./release-helper-ghcr.sh -u $GH_USERNAME -k $GH_TOKEN -c $GH_SHA -r $tag
