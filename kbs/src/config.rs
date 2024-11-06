@@ -80,6 +80,7 @@ impl TryFrom<&Path> for KbsConfig {
             .set_default("admin.insecure_api", DEFAULT_INSECURE_API)?
             .set_default("http_server.insecure_http", DEFAULT_INSECURE_HTTP)?
             .set_default("http_server.sockets", vec![DEFAULT_SOCKET])?
+            .set_default("attestation_service.policy_ids", Vec::<&str>::new())?
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
 
@@ -230,6 +231,7 @@ mod tests {
                         api_key: "this-is-a-key".into(),
                         certs_file: "file:///etc/ita-cert.pem".into(),
                         allow_unmatched_policy: Some(true),
+                        policy_ids: vec![],
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -341,6 +343,7 @@ mod tests {
                         api_key: "tBfd5kKX2x9ahbodKV1...".into(),
                         certs_file: "https://portal.trustauthority.intel.com".into(),
                         allow_unmatched_policy: None,
+                        policy_ids: vec![],
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -400,6 +403,7 @@ mod tests {
                         api_key: "tBfd5kKX2x9ahbodKV1...".into(),
                         certs_file: "https://portal.trustauthority.intel.com".into(),
                         allow_unmatched_policy: None,
+                        policy_ids: vec![],
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
