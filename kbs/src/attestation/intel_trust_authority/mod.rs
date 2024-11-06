@@ -15,6 +15,7 @@ use kbs_types::{Attestation, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
+use std::result::Result::Ok;
 use strum::{AsRefStr, Display, EnumString};
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
@@ -59,16 +60,13 @@ struct AttestReqData {
     runtime_data: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     user_data: Option<String>,
+    policy_ids: Vec<String>,
+    policy_must_match: bool,
 }
 
 #[derive(Deserialize, Debug)]
 struct AttestRespData {
     token: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Claims {
-    policy_ids_unmatched: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -82,6 +80,7 @@ pub struct IntelTrustAuthorityConfig {
     pub api_key: String,
     pub certs_file: String,
     pub allow_unmatched_policy: Option<bool>,
+    pub policy_ids: Vec<String>,
 }
 
 pub struct IntelTrustAuthority {
@@ -102,6 +101,13 @@ impl Attest for IntelTrustAuthority {
         })
         .to_string();
 
+        let policy_ids = self.config.policy_ids.clone();
+
+        let policy_must_match = match policy_ids.is_empty() {
+            true => false,
+            false => !self.config.allow_unmatched_policy.unwrap_or_default(),
+        };
+
         // construct attest request data and attestation url
         let (req_data, att_url) = match tee {
             Tee::AzTdxVtpm => {
@@ -116,6 +122,8 @@ impl Attest for IntelTrustAuthority {
                     quote: STANDARD.encode(evidence.td_quote),
                     runtime_data: STANDARD.encode(hcl_report.var_data()),
                     user_data: Some(STANDARD.encode(runtime_data)),
+                    policy_ids,
+                    policy_must_match,
                 };
 
                 (req_data, att_url)
@@ -130,6 +138,8 @@ impl Attest for IntelTrustAuthority {
                     quote: evidence.quote,
                     runtime_data: STANDARD.encode(runtime_data),
                     user_data: None,
+                    policy_ids,
+                    policy_must_match,
                 };
 
                 (req_data, att_url)
@@ -186,20 +196,11 @@ impl Attest for IntelTrustAuthority {
             .await
             .context("Failed to deserialize attestation response")?;
 
-        let token = self
+        let _token = self
             .token_verifier
             .verify(resp_data.token.clone())
             .await
             .context("Failed to verify attestation token")?;
-
-        let claims = serde_json::from_value::<Claims>(token)
-            .context("Failed to deserialize attestation token claims")?;
-
-        // check unmatched policy
-        let allow = self.config.allow_unmatched_policy.unwrap_or(false);
-        if !allow && claims.policy_ids_unmatched.is_some() {
-            bail!("Evidence doesn't match policy");
-        }
 
         Ok(resp_data.token.clone())
     }
@@ -473,6 +474,7 @@ mod tests {
             api_key: "".into(),
             certs_file,
             allow_unmatched_policy: None,
+            policy_ids: vec![],
         };
 
         let msg = format!(

@@ -144,13 +144,14 @@ attestation. The following properties can be set.
 
 > Intel Trust Authority AS is available only when the `intel-trust-authority-as` feature is enabled.
 
-| Property                 | Type    | Description                                                                              | Required | Default |
-|--------------------------|---------|------------------------------------------------------------------------------------------|----------|---------|
-| `timeout`                | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests      | No       | 5       |
-| `base_url`               | String  | Intel Trust Authority API URL.                                                           | Yes      | -       |
-| `api_key`                | String  | Intel Trust Authority API key.                                                           | Yes      | -       |
-| `certs_file`             | String  | URL to an Intel Trust Authority portal or path to JWKS file used for token verification. | Yes      | -       |
-| `allow_unmatched_policy` | Boolean | Determines whether to ignore the `policy_ids_unmatched` token claim.                     | No       | false   |
+| Property                 | Type         | Description                                                                              | Required | Default |
+|--------------------------|--------------|------------------------------------------------------------------------------------------|----------|---------|
+| `timeout`                | Integer      | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests      | No       | 5       |
+| `base_url`               | String       | Intel Trust Authority API URL.                                                           | Yes      | -       |
+| `api_key`                | String       | Intel Trust Authority API key.                                                           | Yes      | -       |
+| `certs_file`             | String       | URL to an Intel Trust Authority portal or path to JWKS file used for token verification. | Yes      | -       |
+| `allow_unmatched_policy` | Boolean      | If set and `policy_ids` specified, unset the `request.policy_must_match` setting         | No       | false   |
+| `policy_ids`             | String array | List of one or more quoted and comma-separated policy IDs.                               | No       | `[]`    |
 
 Detailed [documentation](https://docs.trustauthority.intel.com).
 
