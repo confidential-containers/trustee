@@ -169,12 +169,17 @@ impl Attest for IntelTrustAuthority {
             let body = resp
                 .json::<ErrorResponse>()
                 .await
-                .context("Failed to deserialize attestation error response")?;
-            bail!(
-                "Attestation request failed: response status={}, message={}",
-                status,
-                body.error
-            );
+                .context("Failed to deserialize attestation error response");
+
+            // Only inspect the body if there is one.
+            match body {
+                Ok(body) => bail!(
+                    "Attestation request failed: response status={}, message={}",
+                    status,
+                    body.error
+                ),
+                _ => bail!("Attestation request failed: response status={}", status),
+            }
         }
         let resp_data = resp
             .json::<AttestRespData>()
