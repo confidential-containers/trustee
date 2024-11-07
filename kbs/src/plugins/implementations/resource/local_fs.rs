@@ -14,6 +14,7 @@ pub const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/reposi
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct LocalFsRepoDesc {
+    #[serde(default)]
     pub dir_path: String,
 }
 
