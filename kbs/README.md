@@ -120,8 +120,8 @@ The KBS implements and supports a simple, vendor and hardware-agnostic
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
 This API is formally described in its [OpenAPI formatted specification](./docs/kbs.yaml).
 
-### Resource Repository
-The [resource repository](./docs/resource_repository.md) where KBS store resource data.
+### Resource Storage Backend
+The [resource storage backend](./docs/resource_storage_backend.md) where KBS store resource data.
 
 ### Config
 A custom, [JSON-formatted configuration file](./docs/config.md) can be provided to configure KBS.
