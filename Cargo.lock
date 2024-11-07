@@ -362,9 +362,9 @@ dependencies = [
 
 [[package]]
 name = "anstyle"
-version = "1.0.7"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "038dfcf04a5feb68e9c60b21c9625a54c2c0616e79b72b0fd87075a056ae1d1b"
+checksum = "55cc3b69f167a1ef2e161439aa98aed94e6028e5f9a59be9a6ffb47aef1651f9"
 
 [[package]]
 name = "anstyle-parse"
@@ -528,7 +528,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "cfg-if",
- "clap 4.5.4",
+ "clap 4.5.20",
  "env_logger 0.10.2",
  "futures",
  "hex",
@@ -682,7 +682,7 @@ checksum = "49473355e76f066300f14aa56c6df23b1a037bea179dbb1b582ecefc8f6fd37c"
 dependencies = [
  "az-cvm-vtpm",
  "bincode",
- "clap 4.5.4",
+ "clap 4.5.20",
  "openssl",
  "serde",
  "sev 4.0.0",
@@ -1081,9 +1081,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.4"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90bc066a67923782aa8515dbaea16946c5bcc5addbd668bb80af688e53e548a0"
+checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1091,9 +1091,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.2"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae129e2e766ae0ec03484e609954119f123cc1fe650337e155d03b022f24f7b4"
+checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1103,9 +1103,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.4"
+version = "4.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "528131438037fd55894f62d6e9f068b8f45ac57ffa77517819645d10aed04f64"
+checksum = "4ac6a0c7b1a9e9a5186361f67dfa1b88213572f427fb9ab038efb2bd8c582dab"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -2663,7 +2663,7 @@ dependencies = [
  "az-cvm-vtpm",
  "base64 0.22.1",
  "cfg-if",
- "clap 4.5.4",
+ "clap 4.5.20",
  "config",
  "env_logger 0.10.2",
  "jsonwebtoken",
@@ -2701,7 +2701,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "clap 4.5.4",
+ "clap 4.5.20",
  "env_logger 0.10.2",
  "jwt-simple 0.11.9",
  "kbs_protocol",
@@ -4051,7 +4051,7 @@ dependencies = [
  "base64 0.22.1",
  "cfg-if",
  "chrono",
- "clap 4.5.4",
+ "clap 4.5.20",
  "config",
  "env_logger 0.10.2",
  "log",
