@@ -8,6 +8,16 @@ BIN_NAMES := grpc-as restful-as
 DEBUG ?=
 DESTDIR ?= $(PREFIX)/bin
 
+FEATURES ?=
+
+ifdef FEATURES
+	OPTIONAL_FEATURES := ,$(FEATURES)
+	default-features := --no-default-features
+else
+	OPTIONAL_FEATURES :=
+	default-features :=
+endif
+
 ifdef DEBUG
     release :=
     TARGET_DIR := $(TARGET_DIR)/debug
@@ -19,10 +29,10 @@ endif
 build: grpc-as restful-as
 
 grpc-as:
-	cargo build --bin grpc-as $(release) --features grpc-bin
+	cargo build --bin grpc-as $(release) $(default-features) --features grpc-bin$(OPTIONAL_FEATURES)
 
 restful-as:
-	cargo build --bin restful-as $(release) --features restful-bin
+	cargo build --bin restful-as $(release) $(default-features) --features restful-bin$(OPTIONAL_FEATURES)
 
 install:
 	for bin_name in $(BIN_NAMES); do \
