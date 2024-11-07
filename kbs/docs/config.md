@@ -142,7 +142,7 @@ attestation. The following properties can be set.
 When `type` is set to `intel_ta`, KBS will try to connect a remote Intel TA service for
 attestation. The following properties can be set.
 
->gRPC CoCo AS is available only when `coco-as-grpc` feature is enabled.
+> Intel Trust Authority AS is available only when the `intel-trust-authority-as` feature is enabled.
 
 | Property                 | Type    | Description                                                                              | Required | Default |
 |--------------------------|---------|------------------------------------------------------------------------------------------|----------|---------|
