@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Error, Repository, ResourceDesc, Result};
-use anyhow::Context;
+use super::backend::{ResourceDesc, StorageBackend};
+use anyhow::{Context, Result};
 use kms::{plugins::aliyun::AliyunKmsClient, Annotations, Getter};
 use log::info;
 use serde::Deserialize;
@@ -21,7 +21,7 @@ pub struct AliyunKmsBackend {
 }
 
 #[async_trait::async_trait]
-impl Repository for AliyunKmsBackend {
+impl StorageBackend for AliyunKmsBackend {
     async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
         info!(
             "Use aliyun KMS backend. Ignore {}/{}",
@@ -32,8 +32,7 @@ impl Repository for AliyunKmsBackend {
             .client
             .get_secret(&name, &Annotations::default())
             .await
-            .context("failed to get resource from aliyun KMS")
-            .map_err(|e| Error::AliyunError { source: e })?;
+            .context("failed to get resource from aliyun KMS")?;
         Ok(resource_bytes)
     }
 
@@ -54,8 +53,7 @@ impl AliyunKmsBackend {
             &repo_desc.password,
             &repo_desc.cert_pem,
         )
-        .context("create aliyun KMS backend")
-        .map_err(|e| Error::AliyunError { source: e })?;
+        .context("create aliyun KMS backend")?;
         Ok(Self { client })
     }
 }
