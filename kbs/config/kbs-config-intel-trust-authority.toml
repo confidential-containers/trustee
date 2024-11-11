@@ -12,3 +12,8 @@ type = "intel_ta"
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
