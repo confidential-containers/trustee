@@ -11,3 +11,8 @@ pool_size = 200
 
 [admin]
 insecure_api = true
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
