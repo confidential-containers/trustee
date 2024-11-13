@@ -39,7 +39,6 @@ actix-web-httpauth.workspace = true
 aes-gcm = "0.10.1"
 anyhow.workspace = true
 async-trait.workspace = true
-attestation-service = { path = "../attestation-service", default-features = false, optional = true }
 base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
@@ -71,6 +70,16 @@ tonic = { workspace = true, optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 openssl = "0.10.55"
 az-cvm-vtpm = { version = "0.7.0", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "s390x"))'.dependencies]
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "all-verifier",
+], optional = true }
+
+[target.'cfg(target_arch = "s390x")'.dependencies]
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "se-verifier",
+], optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
