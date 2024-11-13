@@ -7,13 +7,15 @@ use cryptoki::context::{CInitializeArgs, Pkcs11};
 use cryptoki::object::{Attribute, AttributeInfo, AttributeType, KeyType, ObjectClass};
 use cryptoki::session::{Session, UserType};
 use cryptoki::types::AuthPin;
+use derivative::Derivative;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::backend::{ResourceDesc, StorageBackend};
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Derivative, Deserialize, Clone, PartialEq)]
+#[derivative(Debug)]
 pub struct Pkcs11Config {
     /// Path to the Pkcs11 module
     module: String,
@@ -23,6 +25,7 @@ pub struct Pkcs11Config {
     slot_index: Option<u8>,
 
     /// The user pin for authenticating the session
+    #[derivative(Debug = "ignore")]
     pin: String,
 }
 
