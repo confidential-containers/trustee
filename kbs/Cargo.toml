@@ -71,6 +71,7 @@ tonic = { workspace = true, optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 openssl = "0.10.55"
 az-cvm-vtpm = { version = "0.7.0", default-features = false, optional = true }
+derivative = "2.2.0"
 
 [dev-dependencies]
 tempfile.workspace = true
