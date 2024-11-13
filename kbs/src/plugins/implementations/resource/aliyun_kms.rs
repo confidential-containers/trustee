@@ -4,14 +4,18 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
+use derivative::Derivative;
 use kms::{plugins::aliyun::AliyunKmsClient, Annotations, Getter};
 use log::info;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Derivative, Deserialize, Clone, PartialEq)]
+#[derivative(Debug)]
 pub struct AliyunKmsBackendConfig {
+    #[derivative(Debug = "ignore")]
     client_key: String,
     kms_instance_id: String,
+    #[derivative(Debug = "ignore")]
     password: String,
     cert_pem: String,
 }
