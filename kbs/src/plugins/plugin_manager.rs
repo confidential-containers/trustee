@@ -23,6 +23,9 @@ use super::{Pkcs11Backend, Pkcs11Config};
 #[cfg(feature = "external-plugin")]
 use super::{ExternalPlugin, ExternalPluginConfig};
 
+#[cfg(feature = "credgen-plugin")]
+use super::{CredGenPlugin, CredGenPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -88,6 +91,10 @@ pub enum PluginsConfig {
 
     #[serde(alias = "provisioner")]
     Provisioner(ProvisionerConfig),
+
+    #[cfg(feature = "credgen-plugin")]
+    #[serde(alias = "credgen")]
+    CredGenPlugin(CredGenPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -102,6 +109,8 @@ impl Display for PluginsConfig {
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
             PluginsConfig::Provisioner(_) => f.write_str("provisioner"),
+            #[cfg(feature = "credgen-plugin")]
+            PluginsConfig::CredGenPlugin(_) => f.write_str("credgen"),
         }
     }
 }
@@ -148,6 +157,13 @@ impl PluginsConfig {
                     .await
                     .context("Initialize 'Provisioner' plugin failed")?;
                 Arc::new(prov) as _
+            }
+            #[cfg(feature = "credgen-plugin")]
+            PluginsConfig::CredGenPlugin(config) => {
+                let plugin = CredGenPlugin::new(config, storage_provider)
+                    .await
+                    .context("Initialize 'credgen' plugin failed")?;
+                Arc::new(plugin) as _
             }
         };
 
