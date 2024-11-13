@@ -11,6 +11,8 @@ pub mod resource;
 pub mod sample;
 #[cfg(feature = "spire-plugin")]
 pub mod spire;
+#[cfg(feature = "credgen-plugin")]
+pub mod credgen;
 
 #[cfg(feature = "external-plugin")]
 pub mod external_plugin;
@@ -24,6 +26,9 @@ pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
 #[cfg(feature = "spire-plugin")]
 pub use spire::{SpirePlugin, SpirePluginConfig};
+#[cfg(feature = "credgen-plugin")]
+pub use credgen::{CredGenPlugin, CredGenPluginConfig};
 
 #[cfg(feature = "external-plugin")]
 pub use external_plugin::{BackendConfig, ExternalPlugin, ExternalPluginConfig};
+
