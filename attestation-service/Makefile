@@ -8,14 +8,24 @@ BIN_NAMES := grpc-as restful-as
 DEBUG ?=
 DESTDIR ?= $(PREFIX)/bin
 
-FEATURES ?=
+VERIFIER ?= all-verifier
 
-ifdef FEATURES
-	OPTIONAL_FEATURES := ,$(FEATURES)
-	default-features := --no-default-features
+RVPS_GRPC := true
+
+# TODO: Remove `RVPS_BUILTIN`
+# when https://github.com/confidential-containers/trustee/pull/553 gets merged
+# Here we also declare another variable `RVPS_FEATURES1` because a blank will
+# be added when doing '+=' operation in Makefile
+RVPS_BUILTIN := true
+
+ifeq ($(RVPS_GRPC), true)
+	RVPS_FEATURES1 := rvps-grpc
+endif
+
+ifeq ($(RVPS_BUILTIN), true)
+	RVPS_FEATURES := $(RVPS_FEATURES1),rvps-builtin
 else
-	OPTIONAL_FEATURES :=
-	default-features :=
+	RVPS_FEATURES := $(RVPS_FEATURES1)
 endif
 
 ifdef DEBUG
@@ -29,10 +39,10 @@ endif
 build: grpc-as restful-as
 
 grpc-as:
-	cargo build --bin grpc-as $(release) $(default-features) --features grpc-bin$(OPTIONAL_FEATURES)
+	cargo build --bin grpc-as $(release) --features grpc-bin,$(VERIFIER),$(RVPS_FEATURES)
 
 restful-as:
-	cargo build --bin restful-as $(release) $(default-features) --features restful-bin$(OPTIONAL_FEATURES)
+	cargo build --bin restful-as $(release) --features restful-bin,$(VERIFIER),$(RVPS_FEATURES)
 
 install:
 	for bin_name in $(BIN_NAMES); do \

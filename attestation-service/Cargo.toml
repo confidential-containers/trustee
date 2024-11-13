@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "restful-bin", "rvps-grpc", "rvps-builtin", "all-verifier" ]
+default = ["restful-bin", "rvps-grpc", "rvps-builtin"]
 all-verifier = [ "verifier/all-verifier" ]
 tdx-verifier = [ "verifier/tdx-verifier" ]
 sgx-verifier = [ "verifier/sgx-verifier" ]
@@ -64,12 +64,7 @@ thiserror = { workspace = true, optional = true }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
-
-[target.'cfg(not(target_arch = "s390x"))'.dependencies]
 verifier = { path = "../deps/verifier", default-features = false }
-
-[target.'cfg(target_arch = "s390x")'.dependencies]
-verifier = { path = "../deps/verifier", default-features = false, features = ["se-verifier"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
