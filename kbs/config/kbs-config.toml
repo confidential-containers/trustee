@@ -54,3 +54,26 @@ storage_backend_type = "kvstorage"
 # path "secret/*" {
 #   capabilities = ["create", "read", "update", "delete", "list"]
 # }
+
+[[plugins]]
+name = "secretprov"
+
+[plugins.secretprov.ca]
+country = "AA"
+state = "Default State"
+locality = "Default City"
+organization = "Default Organization"
+org_unit = "Default Unit"
+common_name = "grpc-tls CA"
+validity_days = 3650
+
+[plugins.secretprov.query]
+# Identity params joined to build the store key, e.g. "pod-abc_default"
+required = ["name", "ns"]
+# Require secret_name + secret_type on every request
+spec_required = true
+
+[plugins.secretprov.limits]
+symmetric_key_size = 32
+rsa_bits = 2048
+supported_types = ["tls", "symmetric", "ed25519", "rsa", "p256"]
