@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     info!("Using config file {}", cli.config_file);
     let kbs_config = KbsConfig::try_from(Path::new(&cli.config_file))?;
 
-    debug!("Config: {:#?}", kbs_config);
+    debug!("Config (sensitive fields are omitted): {:#?}", kbs_config);
 
     let api_server = ApiServer::new(kbs_config).await?;
 
