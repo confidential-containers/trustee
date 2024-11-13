@@ -3078,6 +3078,7 @@ dependencies = [
  "serde_qs",
  "serial_test",
  "strum",
+ "serde_qs",
  "tempfile",
  "thiserror 2.0.12",
  "time",
@@ -5028,7 +5029,11 @@ checksum = "cd34f36fe4c5ba9654417139a9b3a20d2e1de6012ee678ad14d240c22c78d8d6"
 dependencies = [
  "percent-encoding",
  "serde",
+<<<<<<< HEAD
  "thiserror 1.0.69",
+=======
+ "thiserror",
+>>>>>>> cd1ac3e (kbs: Add splitapi plugin)
 ]
 
 [[package]]
