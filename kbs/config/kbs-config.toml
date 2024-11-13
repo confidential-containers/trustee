@@ -27,3 +27,8 @@ insecure_api = true
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+
+[[plugins]]
+name = "splitapi"
+type = "CertManager"
+plugin_dir = "/opt/confidential-containers/kbs/plugin/splitapi"
