@@ -1,12 +1,5 @@
 name: AS/RVPS Container Image Build
 on:
-  push:
-    branches:
-      - "main"
-    paths:
-      - 'attestation-service/**'
-      - '.github/workflows/as-docker-build.yml'
-      - 'Cargo.toml'
   pull_request:
     paths:
       - 'attestation-service/**'
@@ -16,6 +9,5 @@ on:
 
 jobs:
   check_as_image_build:
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
     uses: ./.github/workflows/build-as-image.yml
     secrets: inherit
