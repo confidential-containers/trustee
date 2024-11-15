@@ -6,60 +6,16 @@ on:
       - main
 
 jobs:
-  build_and_push:
+  build_and_push_kbs_image:
     permissions:
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        instance:
-          - ubuntu-latest
-          - s390x
-        tag:
-          - kbs
-          - kbs-grpc-as
-          - kbs-ita-as
-        exclude:
-          - instance: s390x
-            tag: kbs-ita-as
-        include:
-          - tag: kbs
-            docker_file: kbs/docker/Dockerfile
-            name: build-in AS
-          - tag: kbs-grpc-as
-            docker_file: kbs/docker/coco-as-grpc/Dockerfile
-            name: gRPC AS
-          - tag: kbs-ita-as
-            docker_file: kbs/docker/intel-trust-authority/Dockerfile
-            name: Intel Trust Authority AS
-
-    runs-on: ${{ matrix.instance }}
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Login to GHCR Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build Container Image KBS (${{ matrix.name }})
-      run: |
-        commit_sha=${{ github.sha }}
-        arch=$(uname -m)
-        DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" --push \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" \
-          --build-arg ARCH="${arch}" .
+    uses: ./.github/workflows/build-kbs-image.yml
+    with:
+      build_option: --push
+    secrets: inherit
 
   publish_multi_arch_image:
-    needs: build_and_push
+    needs: build_and_push_kbs_image
     strategy:
       fail-fast: false
       matrix:

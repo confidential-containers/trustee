@@ -6,16 +6,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-  ci:
-    runs-on: ubuntu-latest
-    name: Check
-    steps:
-    - name: Code checkout
-      uses: actions/checkout@v4
-
-    - name: Build KBS Container Image
-      run: |
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f kbs/docker/Dockerfile; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-grpc . -f kbs/docker/coco-as-grpc/Dockerfile; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-rhel-ubi . -f kbs/docker/rhel-ubi/Dockerfile; \
-        DOCKER_BUILDKIT=1 docker build -t kbs:coco-as-ita . -f kbs/docker/intel-trust-authority/Dockerfile
+  check_kbs_image_build:
+    uses: ./.github/workflows/build-kbs-image.yml
+    secrets: inherit

@@ -1,4 +1,4 @@
-name: AS & RVPS Container Image Build
+name: AS/RVPS Container Image Build
 on:
   push:
     branches:
@@ -15,25 +15,7 @@ on:
   create:
 
 jobs:
-  basic_ci:
+  check_as_image_build:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
-    name: Check
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-
-    steps:
-    - name: Code checkout
-      uses: actions/checkout@v4
-    
-    - name: Build gRPC AS Container Image
-      run: |
-        DOCKER_BUILDKIT=1 docker build -t attestation-service:latest . -f attestation-service/docker/as-grpc/Dockerfile
-    
-    - name: Build RESTful AS Container Image
-      run: |
-        DOCKER_BUILDKIT=1 docker build -t attestation-service:latest . -f attestation-service/docker/as-restful/Dockerfile
-
-    - name: Build RVPS Container Image
-      run: |
-        Docker_BUILDKIT=1 docker build -t rvps:latest . -f rvps/docker/Dockerfile
+    uses: ./.github/workflows/build-as-image.yml
+    secrets: inherit
