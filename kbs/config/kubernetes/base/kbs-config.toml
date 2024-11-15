@@ -22,3 +22,8 @@ attestation_token_broker = "Simple"
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
