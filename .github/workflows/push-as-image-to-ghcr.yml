@@ -6,85 +6,16 @@ on:
       - main
 
 jobs:
-  build_and_push:
+  build_and_push_as_image:
     permissions:
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        instance:
-          - ubuntu-latest
-          - s390x
-        tag:
-          - coco-as-grpc
-          - coco-as-restful
-          - rvps
-        verifier:
-          - all-verifier
-          - se-verifier
-        include:
-          - docker_file: attestation-service/docker/as-grpc/Dockerfile
-            tag: coco-as-grpc
-            name: gRPC CoCo-AS
-            verifier: all-verifier
-            instance: ubuntu-latest
-          - docker_file: attestation-service/docker/as-grpc/Dockerfile
-            tag: coco-as-grpc
-            name: gRPC CoCo-AS (IBM SE)
-            verifier: se-verifier
-            instance: s390x
-          - docker_file: attestation-service/docker/as-restful/Dockerfile
-            tag: coco-as-restful
-            name: RESTful CoCo-AS
-            verifier: all-verifier
-            instance: ubuntu-latest
-          - docker_file: attestation-service/docker/as-restful/Dockerfile
-            tag: coco-as-restful
-            name: RESTful CoCo-AS (IBM SE)
-            verifier: se-verifier
-            instance: s390x
-          - docker_file: rvps/docker/Dockerfile
-            tag: rvps
-            name: RVPS
-            verifier: all-verifier
-            instance: ubuntu-latest
-          - docker_file: rvps/docker/Dockerfile
-            tag: rvps
-            name: RVPS
-            verifier: se-verifier
-            instance: s390x
-        exclude:
-          - instance: ubuntu-latest
-            verifier: se-verifier
-          - instance: s390x
-            verifier: all-verifier
-    runs-on: ${{ matrix.instance }}
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Login to GHCR Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build ${{ matrix.name }} Container Image
-      run: |
-        commit_sha=${{ github.sha }}
-        arch=$(uname -m)
-        DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" --push --build-arg ARCH="${arch}" \
-          --build-arg VERIFIER="${{ matrix.verifier }}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" .
+    uses: ./.github/workflows/build-as-image.yml
+    with:
+      build_option: --push
+    secrets: inherit
 
   publish_multi_arch_image:
-    needs: build_and_push
+    needs: build_and_push_as_image
     permissions:
       packages: write
     strategy:
