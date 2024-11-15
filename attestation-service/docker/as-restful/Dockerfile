@@ -22,6 +22,7 @@ RUN cargo install --path attestation-service --bin restful-as --features restful
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64
+ARG VERIFIER=all-verifier
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/attestation-service"
 
