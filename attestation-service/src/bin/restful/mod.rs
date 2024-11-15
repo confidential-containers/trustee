@@ -5,7 +5,7 @@ use anyhow::{anyhow, bail, Context};
 use attestation_service::{AttestationService, HashAlgorithm};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::Tee;
-use log::{debug, info};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use strum::AsRefStr;
@@ -22,6 +22,7 @@ impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         let body = format!("{self:#?}");
 
+        error!("{self:#?}");
         let mut res = match self {
             Error::InternalError(_) => HttpResponse::InternalServerError(),
             // _ => HttpResponse::NotImplemented(),
