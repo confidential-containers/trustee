@@ -14,10 +14,7 @@ use openssl::{
     sha::sha384,
     x509::{self, X509},
 };
-use reqwest::{
-    blocking::{get, Response as ReqwestResponse},
-    StatusCode,
-};
+use reqwest::{get, Response as ReqwestResponse, StatusCode};
 use serde_json::json;
 use sev::firmware::guest::AttestationReport;
 use sev::firmware::host::{CertTableEntry, CertType};
@@ -98,7 +95,7 @@ impl Verifier for Snp {
 
         let cert_chain = match cert_chain {
             Some(chain) if !chain.is_empty() => chain,
-            _ => fetch_vcek_from_kds(report)?,
+            _ => fetch_vcek_from_kds(report).await?,
         };
 
         verify_report_signature(&report, &cert_chain, &self.vendor_certs)?;
@@ -321,8 +318,8 @@ fn get_common_name(cert: &x509::X509) -> Result<String> {
     Ok(e.data().as_utf8()?.to_string())
 }
 
-// Function to request vcek from KDS. Return vcek in der format.
-fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEntry>> {
+/// Function to request vcek from KDS asynchronously. Return vcek in der format.
+async fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEntry>> {
     // Use attestation report to get data for URL
     let hw_id: String = hex::encode(att_report.chip_id);
 
@@ -335,12 +332,17 @@ fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEnt
         att_report.reported_tcb.microcode
     );
     // VCEK in DER format
-    let vcek_rsp: ReqwestResponse = get(vcek_url).context("Unable to send request for VCEK")?;
+    let vcek_rsp: ReqwestResponse = get(vcek_url)
+        .await
+        .context("Unable to send request for VCEK")?;
 
     match vcek_rsp.status() {
         StatusCode::OK => {
-            let vcek_rsp_bytes: Vec<u8> =
-                vcek_rsp.bytes().context("Unable to parse VCEK")?.to_vec();
+            let vcek_rsp_bytes: Vec<u8> = vcek_rsp
+                .bytes()
+                .await
+                .context("Unable to parse VCEK")?
+                .to_vec();
             let key = CertTableEntry {
                 cert_type: CertType::VCEK,
                 data: vcek_rsp_bytes,
