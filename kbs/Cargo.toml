@@ -51,7 +51,7 @@ kbs-types.workspace = true
 kms = { workspace = true, default-features = false }
 lazy_static = "1.4.0"
 log.workspace = true
-mobc = { version = "0.8.3", optional = true }
+mobc = { version = "0.8.5", optional = true }
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
 regex = "1.11.1"
