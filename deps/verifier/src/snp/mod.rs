@@ -46,6 +46,9 @@ pub struct Snp {
     vendor_certs: VendorCertificates,
 }
 
+/// Loads the Milan certificate chain and returns a static reference to it.
+/// The chain is loaded lazily using `OnceLock` to ensure it's only initialized once.
+/// Certificates are loaded from a PEM file and must contain exactly three certificates (ASK, ARK, ASVK).
 pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
     static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
     MILAN_CERT_CHAIN.get_or_init(|| {
@@ -64,6 +67,8 @@ pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
 }
 
 impl Snp {
+    /// Creates a new `Snp` instance by loading the Milan certificate chain.
+    /// Returns an error if the certificate chain can not be loaded.
     pub fn new() -> Result<Self> {
         let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
             bail!("Failed to load Milan cert chain");
@@ -82,6 +87,9 @@ pub(crate) struct VendorCertificates {
 
 #[async_trait]
 impl Verifier for Snp {
+    /// Evaluates the provided evidence against the expected report data and initialize data hash.
+    /// Validates the report signature, version, VMPL, and other fields.
+    /// Returns parsed claims if the verification is successful.
     async fn evaluate(
         &self,
         evidence: &[u8],
@@ -139,6 +147,8 @@ impl Verifier for Snp {
     }
 }
 
+/// Retrieves the octet string value for a given OID from a certificate's extensions.
+/// Supports both raw and DER-encoded formats.
 fn get_oid_octets<const N: usize>(
     vcek: &x509_parser::certificate::TbsCertificate,
     oid: Oid,
@@ -163,6 +173,7 @@ fn get_oid_octets<const N: usize>(
         .context("Unexpected data size")
 }
 
+/// Retrieves an integer value for a given OID from a certificate's extensions.
 fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
     let val = cert
         .get_extension_unique(&oid)?
@@ -173,6 +184,7 @@ fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Res
     val_int.as_u8().context("Unexpected data size")
 }
 
+/// Verifies the signature of the attestation report using the provided certificate chain and vendor certificates.
 pub(crate) fn verify_report_signature(
     report: &AttestationReport,
     cert_chain: &[CertTableEntry],
@@ -234,12 +246,15 @@ pub(crate) fn verify_report_signature(
     Ok(())
 }
 
+/// Verifies the signature of a certificate against its issuer's public key.
 fn verify_signature(cert: &X509, issuer: &X509, name: &str) -> Result<()> {
     cert.verify(&(issuer.public_key()? as PKey<Public>))?
         .then_some(())
         .ok_or_else(|| anyhow!("Invalid {name} signature"))
 }
 
+/// Verifies the certificate chain based on the provided VCEK or VLEK.
+/// Ensures the chain is valid by verifying signatures and relationships between certificates.
 fn verify_cert_chain(
     cert_chain: &[CertTableEntry],
     ask: &X509,
@@ -278,6 +293,8 @@ fn verify_cert_chain(
     Ok(decoded_key)
 }
 
+/// Parses the attestation report and extracts the TEE evidence claims.
+/// Returns a JSON-formatted map of parsed claims.
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     let claims_map = json!({
         // policy fields
@@ -305,6 +322,7 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
     claims_map as TeeEvidenceParsedClaim
 }
 
+/// Extracts the common name (CN) from the subject name of a certificate.
 fn get_common_name(cert: &x509::X509) -> Result<String> {
     let mut entries = cert.subject_name().entries_by_nid(Nid::COMMONNAME);
     let Some(e) = entries.next() else {
@@ -318,7 +336,8 @@ fn get_common_name(cert: &x509::X509) -> Result<String> {
     Ok(e.data().as_utf8()?.to_string())
 }
 
-/// Function to request vcek from KDS asynchronously. Return vcek in der format.
+/// Asynchronously fetches the VCEK from the Key Distribution Service (KDS) using the provided attestation report.
+/// Returns the VCEK in DER format as part of a certificate table entry.
 async fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEntry>> {
     // Use attestation report to get data for URL
     let hw_id: String = hex::encode(att_report.chip_id);
