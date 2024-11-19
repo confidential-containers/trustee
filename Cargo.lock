@@ -2506,7 +2506,7 @@ dependencies = [
 [[package]]
 name = "intel-tee-quote-verification-rs"
 version = "0.3.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.21#e945c58bff60bb96e4daca57b73c93f96b14418a"
+source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.22#2562057f6a3149c03f5985826ffaba978ece58c2"
 dependencies = [
  "intel-tee-quote-verification-sys",
 ]
@@ -2893,7 +2893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
