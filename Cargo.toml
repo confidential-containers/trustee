@@ -29,9 +29,9 @@ config = "0.13.3"
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", tag="v0.10.0", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 kbs-types = "0.7.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", tag="v0.10.0", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev="e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 prost = "0.12"
@@ -47,6 +47,6 @@ shadow-rs = "0.19.0"
 strum = { version = "0.25", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"], default-features = false  }
-tempfile = "3.4.0"
+tempfile = "3.14.0"
 tonic = "0.11"
 tonic-build = "0.11"
