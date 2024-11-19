@@ -44,7 +44,7 @@ serde_with = { workspace = true, optional = true }
 sev = { version = "4.0.0", features = ["openssl", "snp"], optional = true }
 sha2.workspace = true 
 tokio = { workspace = true, optional = true }
-intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.21", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.22", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
 ear = { git = "https://github.com/veraison/rust-ear", rev = "43f7f480d09ea2ebc03137af8fbcd70fe3df3468", optional = true }
