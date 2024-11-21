@@ -32,6 +32,10 @@ const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
 const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
 const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
 
+/// Attestation report versions supported 
+const REPORT_VERSION_MIN: u32 = 2;
+const REPORT_VERSION_MAX: u32 = 3;
+
 #[derive(Debug)]
 pub struct Snp {
     vendor_certs: VendorCertificates,
@@ -90,8 +94,9 @@ impl Verifier for Snp {
 
         verify_report_signature(&report, &cert_chain, &self.vendor_certs)?;
 
-        if report.version != 2 {
-            return Err(anyhow!("Unexpected report version"));
+        // See Trustee Issue#589 https://github.com/confidential-containers/trustee/issues/589
+        if report.version < REPORT_VERSION_MIN || report.version > REPORT_VERSION_MAX {
+            return Err(anyhow!("Unexpected attestation report version. Check SNP Firmware ABI specification"));
         }
 
         if report.vmpl != 0 {
