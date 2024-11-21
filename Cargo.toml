@@ -17,7 +17,7 @@ edition = "2021"
 
 [workspace.dependencies]
 actix-web = "4"
-actix-web-httpauth = "0.8.0"
+actix-web-httpauth = "0.8.2"
 anyhow = "1.0"
 assert-json-diff = "2.0.2"
 async-trait = "0.1.31"
