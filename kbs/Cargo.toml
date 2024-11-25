@@ -83,6 +83,7 @@ attestation-service = { path = "../attestation-service", default-features = fals
 ], optional = true }
 
 [dev-dependencies]
+josekit = "0.10.0"
 tempfile.workspace = true
 rstest.workspace = true
 
