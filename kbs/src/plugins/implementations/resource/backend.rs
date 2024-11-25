@@ -38,7 +38,7 @@ impl TryFrom<&str> for ResourceDesc {
     fn try_from(value: &str) -> Result<Self> {
         let regex = CELL.get_or_init(|| {
             Regex::new(
-                r"^((?<repo>[a-zA-Z0-9_\-]+)/)?(?<type>[a-zA-Z0-9_\-]+)/(?<tag>[a-zA-Z0-9_\-]+)$",
+                r"^((?<repo>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/)?(?<type>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/(?<tag>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)$",
             )
             .unwrap()
         });
@@ -168,6 +168,14 @@ mod tests {
         resource_type: "1Abff-_".into(),
         resource_tag: "___-afds44BC".into(),
     }))]
+    #[case("1.ok/2ok./3...", Some(ResourceDesc {
+        repository_name: "1.ok".into(),
+        resource_type: "2ok.".into(),
+        resource_tag: "3...".into(),
+    }))]
+    #[case(".1.ok/2ok./3...", None)]
+    #[case("1.ok/.2ok./3...", None)]
+    #[case("1.ok/2ok./.3...", None)]
     fn parse_resource_desc(#[case] desc: &str, #[case] expected: Option<ResourceDesc>) {
         let parsed = ResourceDesc::try_from(desc);
         if expected.is_none() {
