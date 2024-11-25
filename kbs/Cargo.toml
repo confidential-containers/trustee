@@ -42,12 +42,14 @@ actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
 aes-gcm = "0.10.1"
+aes-kw = "0.2.1"
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
+concat-kdf = "0.1.0"
 cryptoki = { version = "0.8.0", optional = true }
 env_logger.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
@@ -57,6 +59,7 @@ kms = { workspace = true, default-features = false }
 lazy_static = "1.4.0"
 log.workspace = true
 mobc = { version = "0.8.5", optional = true }
+p256 = { workspace = true, features = ["ecdh"] }
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
 regex = "1.11.1"
@@ -96,6 +99,8 @@ attestation-service = { path = "../attestation-service", default-features = fals
 
 
 [dev-dependencies]
+josekit = "0.10.0"
+tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 
