@@ -7,10 +7,6 @@
     },
     "attestation_token_broker": {
 	"type": "Ear",
-        "duration_min": 5,
-        "signer": {
-		"key_path":"/opt/confidential-containers/attestation-service/keys/private_key.pem"
-
-	}
+        "duration_min": 5
     }
 }

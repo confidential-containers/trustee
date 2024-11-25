@@ -86,17 +86,17 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `work_dir`                 | String                      | The location for Attestation Service to store data. |  First try from env `AS_WORK_DIR`. If no this env, then use `/opt/confidential-containers/attestation-service`       |
 | `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             |  `opa`       |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  |  See [RVPSConfiguration][2]       |
-| `attestation_token_broker` | String                      | Type of the attestation result token broker.        |  `Simple`       |
-| `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             |  See [AttestationTokenConfig][1]       |
+| `attestation_token_broker` | [AttestationTokenConfig][1] | Attestation result token configuration.             |  See [AttestationTokenConfig][1]       |
 
 [1]: #attestationtokenconfig
 [2]: #rvps-configuration
 
 
-##### AttestationTokenConfig
+##### AttestationTokenBroker
 
 | Property       | Type                    | Description                                          | Default |
 |----------------|-------------------------|------------------------------------------------------|----------|
+| `type`         | String                  | Type of token to generate (Ear or simple)            | Ear     |
 | `duration_min` | Integer                 | Duration of the attestation result token in minutes. | 5       |
 | `issuer_name`  | String                  | Issure name of the attestation result token.         | `CoCo-Attestation-Service`       |
 | `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | None       |
