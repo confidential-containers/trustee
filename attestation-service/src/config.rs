@@ -63,6 +63,7 @@ impl TryFrom<&Path> for Config {
     ///            "remote_addr": ""
     ///        },
     ///        "attestation_token_broker": {
+    ///            "type": "Ear",
     ///            "duration_min": 5
     ///        }
     ///    }
