@@ -25,8 +25,8 @@ use super::{
 };
 
 static KBS_MAJOR_VERSION: u64 = 0;
-static KBS_MINOR_VERSION: u64 = 1;
-static KBS_PATCH_VERSION: u64 = 1;
+static KBS_MINOR_VERSION: u64 = 2;
+static KBS_PATCH_VERSION: u64 = 0;
 
 lazy_static! {
     static ref VERSION_REQ: VersionReq = {
