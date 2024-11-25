@@ -247,7 +247,7 @@ Adding the following content to the config file of Resource KBS to specify trust
 or JWK set which are used to verify the trustworthy of the Attestation Token:
 
 ```toml
-[attestation_token_config]
+[attestation_token_broker]
 # Path of root certificate used to verify the trustworthy of `x5c` extension in the JWT
 trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
 

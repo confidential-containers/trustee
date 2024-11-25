@@ -18,16 +18,16 @@ section:
 | `work_dir`                 | String                      | The location for Attestation Service to store data. | False      | Firstly try to read from ENV `AS_WORK_DIR`. If not any, use `/opt/confidential-containers/attestation-service`       |
 | `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             | False      | `opa`       |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  | False      | -       |
-| `attestation_token_broker` | String                      | Type of the attestation result token broker. Valid values: `Simple`       | False      | `Simple`       |
-| `attestation_token_config` | [AttestationTokenConfig][1] | Attestation result token configuration.             | False      | -       |
+| `attestation_token_broker` | [AttestationTokeBroker][1]  | Attestation result token configuration.             | False      | -       |
 
 [1]: #attestationtokenconfig
 [2]: #rvps-configuration
 
-#### AttestationTokenConfig
+#### AttestationTokenBroker
 
 | Property       | Type                    | Description                                          | Required | Default |
 |----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `type`         | String                  | Type of token to issue (Ear or Simple)               | No       | `Ear`   |
 | `duration_min` | Integer                 | Duration of the attestation result token in minutes. | No       | `5`     |
 | `issuer_name`  | String                  | Issure name of the attestation result token.         | No       |`CoCo-Attestation-Service`|
 | `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
@@ -97,8 +97,8 @@ Running with a built-in RVPS:
             "file_path": "/var/lib/attestation-service/reference-values"
         }
     },
-    "attestation_token_broker": "Simple",
-    "attestation_token_config": {
+    "attestation_token_broker": {
+        "type": "Ear",
         "duration_min": 5
     }
 }
@@ -114,8 +114,8 @@ Running with a remote RVPS:
         "type": "GrpcRemote",
         "address": "127.0.0.1:50003"
     },
-    "attestation_token_broker": "Simple",
-    "attestation_token_config": {
+    "attestation_token_broker": {
+	"type": "Ear",
         "duration_min": 5
     }
 }
@@ -131,8 +131,8 @@ Configurations for token signer
         "type": "GrpcRemote",
         "address": "127.0.0.1:50003"
     },
-    "attestation_token_broker": "Simple",
-    "attestation_token_config": {
+    "attestation_token_broker": {
+	"type": "Ear",
         "duration_min": 5,
         "issuer_name": "some-body",
         "signer": {
