@@ -22,7 +22,7 @@ pub enum Error {
         source: anyhow::Error,
     },
 
-    #[error("RCAR handshake Auth failed")]
+    #[error("RCAR handshake Auth failed: {source}")]
     RcarAuthFailed {
         #[source]
         source: anyhow::Error,

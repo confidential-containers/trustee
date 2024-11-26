@@ -18,11 +18,11 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
-    #[error("Admin auth error")]
+    #[error("Admin auth error: {0}")]
     AdminAuth(#[from] crate::admin::Error),
 
     #[cfg(feature = "as")]
-    #[error("Attestation error")]
+    #[error("Attestation error: {0}")]
     AttestationError(#[from] crate::attestation::Error),
 
     #[error("HTTP initialization failed")]
