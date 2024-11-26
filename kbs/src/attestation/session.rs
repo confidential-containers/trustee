@@ -6,7 +6,6 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie,
 };
-use anyhow::Result;
 use kbs_types::{Challenge, Request};
 use log::warn;
 use uuid::Uuid;
@@ -49,17 +48,17 @@ macro_rules! impl_member {
 }
 
 impl SessionStatus {
-    pub fn auth(request: Request, timeout: i64, challenge: Challenge) -> Result<Self> {
+    pub fn auth(request: Request, timeout: i64, challenge: Challenge) -> Self {
         let id = Uuid::new_v4().as_simple().to_string();
 
         let timeout = OffsetDateTime::now_utc() + Duration::minutes(timeout);
 
-        Ok(Self::Authed {
+        Self::Authed {
             request,
             challenge,
             id,
             timeout,
-        })
+        }
     }
 
     pub fn cookie<'a>(&self) -> Cookie<'a> {
