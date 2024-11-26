@@ -181,7 +181,7 @@ impl AttestationService {
         let version = Version::parse(&request.version).context("failed to parse KBS version")?;
         if !VERSION_REQ.matches(&version) {
             bail!(
-                "expected version: {}, requested version: {}",
+                "KBS Client Protocol Version Mismatch: expect {} while the request is {}",
                 *VERSION_REQ,
                 request.version
             );
@@ -191,9 +191,9 @@ impl AttestationService {
             .inner
             .generate_challenge(request.tee, request.extra_params.clone())
             .await
-            .context("generate challenge")?;
+            .context("Attestation Service generate challenge failed")?;
 
-        let session = SessionStatus::auth(request, self.timeout, challenge).context("Session")?;
+        let session = SessionStatus::auth(request, self.timeout, challenge);
 
         let response = HttpResponse::Ok()
             .cookie(session.cookie())
