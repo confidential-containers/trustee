@@ -10,6 +10,7 @@ insecure_http = true
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
+timeout = 5
 
 [attestation_service.attestation_token_broker]
 type = "Simple"
@@ -21,3 +22,4 @@ store_type = "LocalFs"
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"
+insecure_api = false
