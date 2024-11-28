@@ -2,15 +2,18 @@
 insecure_http = true
 
 [attestation_token]
+insecure_key = false
 
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
+timeout = 5
 
 [attestation_service.attestation_token_broker]
 type = "Simple"
 duration_min = 5
+policy_dir = "/opt/confidential-containers/attestation-service/simple-policies"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"

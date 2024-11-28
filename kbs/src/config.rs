@@ -429,6 +429,7 @@ mod tests {
                         }),
                         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
                             duration_min: 5,
+                            policy_dir: "/opt/confidential-containers/attestation-service/simple-policies".into(),
                             ..Default::default()
                         }),
                     }
