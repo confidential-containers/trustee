@@ -82,7 +82,7 @@ impl ResponseError for Error {
         let mut detail = String::new();
 
         // The write macro here will only raise error when OOM of the string.
-        write!(&mut detail, "{}", self).expect("written error response failed");
+        write!(&mut detail, "{}", self).expect("Failed to write error");
         let info = ErrorInformation {
             error_type: format!("{ERROR_TYPE_PREFIX}/{}", self.as_ref()),
             detail,
@@ -91,9 +91,9 @@ impl ResponseError for Error {
         // All the fields inside the ErrorInfo are printable characters, so this
         // error cannot happen.
         // A test covering all the possible error types are given to ensure this.
-        let body = serde_json::to_string(&info).expect("serialize error response failed");
+        let body = serde_json::to_string(&info).expect("Failed to serialize error");
 
-        // Due to the definition of KBS attestation protocol, we set the http code.
+        // Per the KBS protocol, errors should yield 401 or 404 reponses
         let mut res = match self {
             Error::IllegalAccessedPath { .. } | Error::PluginNotFound { .. } => {
                 HttpResponse::NotFound()

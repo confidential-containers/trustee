@@ -22,7 +22,7 @@ pub enum Error {
         source: anyhow::Error,
     },
 
-    #[error("Tee public key is not found inside the claims of token")]
+    #[error("Tee public key not found in Attestation Token")]
     NoTeePubKeyClaimFound,
 
     #[error("Failed to parse Tee public key")]
