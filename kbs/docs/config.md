@@ -88,18 +88,36 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  |  See [RVPSConfiguration][2]       |
 | `attestation_token_broker` | [AttestationTokenConfig][1] | Attestation result token configuration.             |  See [AttestationTokenConfig][1]       |
 
-[1]: #attestationtokenconfig
+[1]: #attestationtokenbroker
 [2]: #rvps-configuration
 
 
 ##### AttestationTokenBroker
 
-| Property       | Type                    | Description                                          | Default |
-|----------------|-------------------------|------------------------------------------------------|----------|
-| `type`         | String                  | Type of token to generate (Ear or simple)            | Ear     |
-| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | 5       |
-| `issuer_name`  | String                  | Issure name of the attestation result token.         | `CoCo-Attestation-Service`       |
-| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | None       |
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `type`         | String                  | Type of token to issue (`Ear` or `Simple`)               | No       | `Ear`   |
+
+When `type` field is set to `Ear`, the following extra properties can be set:
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | No       | `5`     |
+| `issuer_name`  | String                  | Issure name of the attestation result token.         | No       |`CoCo-Attestation-Service`|
+| `developer_name`  | String               | The developer name to be used as part of the Verifier ID in the EAR | No       |`https://confidentialcontainers.org`|
+| `build_name`  | String                  | The build name to be used as part of the Verifier ID in the EAR         | No       | Automatically generated from Cargo package and AS version|
+| `profile_name`  | String                  | The Profile that describes the EAR token         | No       |tag:github.com,2024:confidential-containers/Trustee`|
+| `policy_dir`  | String                  | The path to the work directory that contains policies to provision the tokens.        | No       |`/opt/confidential-containers/attestation-service/token/ear/policies`|
+| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
+
+[1]: #tokensignerconfig
+
+When `type` field is set to `Simple`, the following extra properties can be set:
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | No       | `5`     |
+| `issuer_name`  | String                  | Issure name of the attestation result token.         | No       |`CoCo-Attestation-Service`|
+| `policy_dir`  | String                  | The path to the work directory that contains policies to provision the tokens.        | No       |`/opt/confidential-containers/attestation-service/token//simple/policies`|
+| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
 
 [1]: #tokensignerconfig
 

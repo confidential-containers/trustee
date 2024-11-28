@@ -1,7 +1,6 @@
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "/opt/coco/attestation-service"
-policy_engine = "opa"
 timeout = 5
 
 [attestation_service.attestation_token_broker]
