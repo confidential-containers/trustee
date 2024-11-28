@@ -7,6 +7,7 @@ base_url = "example.io"
 api_key = "this-is-a-key"
 certs_file = "file:///etc/ita-cert.pem"
 allow_unmatched_policy = true
+timeout = 5
 
 [http_server]
 sockets = ["0.0.0.0:8080"]

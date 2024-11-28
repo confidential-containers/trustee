@@ -30,4 +30,3 @@ auth_public_key = "/kbs/kbs.pem"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
-

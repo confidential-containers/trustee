@@ -12,6 +12,8 @@ type = "intel_ta"
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
+timeout = 5
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"
+insecure_api = false
