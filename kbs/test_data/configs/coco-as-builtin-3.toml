@@ -7,7 +7,6 @@ insecure_key = false
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
-policy_engine = "opa"
 timeout = 5
 
 [attestation_service.attestation_token_broker]

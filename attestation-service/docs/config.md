@@ -16,20 +16,38 @@ section:
 | Property                   | Type                        | Description                                         | Required | Default |
 |----------------------------|-----------------------------|-----------------------------------------------------|----------|---------|
 | `work_dir`                 | String                      | The location for Attestation Service to store data. | False      | Firstly try to read from ENV `AS_WORK_DIR`. If not any, use `/opt/confidential-containers/attestation-service`       |
-| `policy_engine`            | String                      | Policy engine type. Valid values: `opa`             | False      | `opa`       |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                  | False      | -       |
 | `attestation_token_broker` | [AttestationTokeBroker][1]  | Attestation result token configuration.             | False      | -       |
 
-[1]: #attestationtokenconfig
+[1]: #attestationtokenbroker
 [2]: #rvps-configuration
 
 #### AttestationTokenBroker
 
 | Property       | Type                    | Description                                          | Required | Default |
 |----------------|-------------------------|------------------------------------------------------|----------|---------|
-| `type`         | String                  | Type of token to issue (Ear or Simple)               | No       | `Ear`   |
+| `type`         | String                  | Type of token to issue (`Ear` or `Simple`)               | No       | `Ear`   |
+
+When `type` field is set to `Ear`, the following extra properties can be set:
+
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
 | `duration_min` | Integer                 | Duration of the attestation result token in minutes. | No       | `5`     |
 | `issuer_name`  | String                  | Issure name of the attestation result token.         | No       |`CoCo-Attestation-Service`|
+| `developer_name`  | String               | The developer name to be used as part of the Verifier ID in the EAR | No       |`https://confidentialcontainers.org`|
+| `build_name`  | String                  | The build name to be used as part of the Verifier ID in the EAR         | No       | Automatically generated from Cargo package and AS version|
+| `profile_name`  | String                  | The Profile that describes the EAR token         | No       |tag:github.com,2024:confidential-containers/Trustee`|
+| `policy_dir`  | String                  | The path to the work directory that contains policies to provision the tokens.        | No       |`/opt/confidential-containers/attestation-service/token/ear/policies`|
+| `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
+
+[1]: #tokensignerconfig
+
+When `type` field is set to `Simple`, the following extra properties can be set:
+| Property       | Type                    | Description                                          | Required | Default |
+|----------------|-------------------------|------------------------------------------------------|----------|---------|
+| `duration_min` | Integer                 | Duration of the attestation result token in minutes. | No       | `5`     |
+| `issuer_name`  | String                  | Issure name of the attestation result token.         | No       |`CoCo-Attestation-Service`|
+| `policy_dir`  | String                  | The path to the work directory that contains policies to provision the tokens.        | No       |`/opt/confidential-containers/attestation-service/token//simple/policies`|
 | `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
 
 [1]: #tokensignerconfig
