@@ -31,22 +31,27 @@ pub struct AttestationTokenVerifierConfig {
     /// This field will default to an empty vector.
     pub extra_teekey_paths: Vec<String>,
 
-    /// Trusted Certificates file (PEM format) paths use to verify Attestation
-    /// Token Signature.
+    /// File paths of trusted certificates in PEM format used to verify
+    /// the signature of the Attestation Token.
     #[serde(default)]
     pub trusted_certs_paths: Vec<String>,
 
-    /// Urls (file:// and https:// schemes accepted) pointing to a local JWKSet file
+    /// URLs (file:// and https:// schemes accepted) pointing to a local JWKSet file
     /// or to an OpenID configuration url giving a pointer to JWKSet certificates
     /// (for "Jwk") to verify Attestation Token Signature.
     #[serde(default)]
     pub trusted_jwk_sets: Vec<String>,
 
-    /// Whether a JWK that directly comes from the JWT token is allowed to verify
-    /// the signature. This is insecure as it will not check the endorsement of
-    /// the JWK. If this option is set to false, the JWK will be looked up from
-    /// the key store configured during launching the KBS with kid field in the JWT,
-    /// or be checked against the configured trusted CA certs.
+    /// Whether the token signing key is (not) validated.
+    /// If true, the attestation token can be modified in flight.
+    /// This should only be set to true for testing.
+    /// While the token signature is still validated, the provenance of the
+    /// signing key is not checked and the key could be replaced.
+    ///
+    /// When false, the key must be endorsed by the certificates or JWK sets
+    /// specified above.
+    ///
+    /// Default: false
     #[serde(default = "bool::default")]
     pub insecure_key: bool,
 }
@@ -81,8 +86,10 @@ impl TokenVerifier {
         })
     }
 
-    /// Different attestation service would embed tee public key
-    /// in different parts of the claims.
+    /// Different types of attestation tokens store the tee public key in
+    /// different places.
+    /// Try extracting the key from multiple built-in paths as well as any extras
+    /// specified in the config file.
     pub fn extract_tee_public_key(&self, claim: Value) -> Result<TeePubKey> {
         for path in &self.extra_teekey_paths {
             if let Some(pkey_value) = claim.pointer(path) {
