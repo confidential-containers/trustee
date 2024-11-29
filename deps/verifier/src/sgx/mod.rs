@@ -73,6 +73,10 @@ async fn verify_evidence(
     expected_init_data_hash: &InitDataHash<'_>,
     evidence: SgxEvidence,
 ) -> Result<TeeEvidenceParsedClaim> {
+    if evidence.quote.is_empty() {
+        bail!("SGX Quote is empty.");
+    }
+
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
 
     ecdsa_quote_verification(&quote_bin)
