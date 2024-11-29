@@ -52,6 +52,10 @@ async fn verify_evidence(
     expected_init_data_hash: &InitDataHash<'_>,
     evidence: TdxEvidence,
 ) -> Result<TeeEvidenceParsedClaim> {
+    if evidence.quote.is_empty() {
+        bail!("TDX Quote is empty.");
+    }
+
     // Verify TD quote ECDSA signature.
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
     ecdsa_quote_verification(quote_bin.as_slice()).await?;
@@ -86,7 +90,7 @@ async fn verify_evidence(
     // Verify Integrity of CC Eventlog
     let mut ccel_option = Option::default();
     match &evidence.cc_eventlog {
-        Some(el) => {
+        Some(el) if !el.is_empty() => {
             let ccel_data = base64::engine::general_purpose::STANDARD.decode(el)?;
             let ccel = CcEventLog::try_from(ccel_data)
                 .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
@@ -104,14 +108,14 @@ async fn verify_evidence(
             ccel.integrity_check(rtmr_from_quote)?;
             info!("CCEL integrity check succeeded.");
         }
-        None => {
+        _ => {
             warn!("No CC Eventlog included inside the TDX evidence.");
         }
     }
 
     // Verify Integrity of AA eventlog
     let aael = match &evidence.aa_eventlog {
-        Some(el) => {
+        Some(el) if !el.is_empty() => {
             let aael =
                 AAEventlog::from_str(el).context("failed to parse AA Eventlog from evidence")?;
             // We assume we always use PCR 17, rtmr 3 for the application side events.
@@ -120,7 +124,7 @@ async fn verify_evidence(
             info!("CCEL integrity check succeeded.");
             Some(aael)
         }
-        None => {
+        _ => {
             warn!("No AA Eventlog included inside the TDX evidence.");
             None
         }
