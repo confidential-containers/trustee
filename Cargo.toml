@@ -30,14 +30,21 @@ ear = "0.3.0"
 env_logger = "0.10.0"
 hex = "0.4.3"
 jwt-simple = "0.11"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev="e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 kbs-types = "0.7.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev="e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
-prost = "0.12"
-regorus = { version = "0.2.6", default-features = false, features = ["regex", "base64", "time", "std" ] }
-reqwest = { version = "0.12", default-features = false, features = ["default-tls"] }
+prost = "0.13"
+regorus = { version = "0.2.6", default-features = false, features = [
+    "regex",
+    "base64",
+    "time",
+    "std",
+] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "default-tls",
+] }
 rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.132"
@@ -47,7 +54,7 @@ sha2 = "0.10"
 shadow-rs = "0.19.0"
 strum = { version = "0.25", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1", features = ["full"], default-features = false  }
+tokio = { version = "1", features = ["full"], default-features = false }
 tempfile = "3.14.0"
-tonic = "0.11"
-tonic-build = "0.11"
+tonic = "0.12"
+tonic-build = "0.12"
