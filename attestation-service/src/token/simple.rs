@@ -214,12 +214,12 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         reference_data_map: HashMap<String, Vec<String>>,
         tee: Tee,
     ) -> Result<String> {
-        let claims = flatten_claims(tee, &tcb_claims)?;
+        let flattened_claims = flatten_claims(tee, &tcb_claims)?;
         let reference_data = json!({
             "reference": reference_data_map,
         });
         let reference_data = serde_json::to_string(&reference_data)?;
-        let tcb_claims = serde_json::to_string(&claims)?;
+        let tcb_claims = serde_json::to_string(&flattened_claims)?;
 
         let mut policies = HashMap::new();
         for policy_id in policy_ids {
@@ -298,7 +298,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
                 .to_owned(),
         );
 
-        let claims_value = Value::Object(claims);
+        let claims_value = Value::Object(jwt_claims);
         let claims_string = serde_json::to_string(&claims_value)?;
         let claims_b64 = URL_SAFE_NO_PAD.encode(claims_string.as_bytes());
 
