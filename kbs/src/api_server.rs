@@ -100,7 +100,7 @@ impl ApiServer {
                     .wrap(middleware::Logger::default())
                     .app_data(web::Data::new(api_server))
                     .service(
-                        web::resource([kbs_path!("{plugin}{sub_path:.*}")])
+                        web::resource([kbs_path!("{base_path}{additional_path:.*}")])
                             .route(web::get().to(api))
                             .route(web::post().to(api)),
                     )
@@ -138,22 +138,23 @@ pub(crate) async fn api(
     core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
     let query = request.query_string();
-    let plugin_name = request
+    let base_path = request
         .match_info()
-        .get("plugin")
-        .ok_or(Error::IllegalAccessedPath {
+        .get("base_path")
+        .ok_or(Error::InvalidRequestPath {
             path: request.path().to_string(),
         })?;
-    let sub_path = request
-        .match_info()
-        .get("sub_path")
-        .ok_or(Error::IllegalAccessedPath {
-            path: request.path().to_string(),
-        })?;
+    let additional_path =
+        request
+            .match_info()
+            .get("additional_path")
+            .ok_or(Error::InvalidRequestPath {
+                path: request.path().to_string(),
+            })?;
 
-    let end_point = format!("{plugin_name}{sub_path}");
+    let endpoint = format!("{base_path}{additional_path}");
 
-    match plugin_name {
+    match base_path {
         #[cfg(feature = "as")]
         "auth" if request.method() == Method::POST => core
             .attestation_service
@@ -188,6 +189,8 @@ pub(crate) async fn api(
 
             Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
         }
+        // If the base_path cannot be served by any of the above built-in
+        // functions, try fulfilling the request via the PluginManager.
         plugin_name => {
             let plugin = core
                 .plugin_manager
@@ -198,20 +201,20 @@ pub(crate) async fn api(
 
             let body = body.to_vec();
             if plugin
-                .validate_auth(&body, query, sub_path, request.method())
+                .validate_auth(&body, query, additional_path, request.method())
                 .await
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
-                // Plugin calls needs to be authorized by the admin auth
+                // Plugin calls need to be authorized by the admin auth
                 core.admin_auth.validate_auth(&request)?;
                 let response = plugin
-                    .handle(&body, query, sub_path, request.method())
+                    .handle(&body, query, additional_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
-                // Plugin calls needs to be authorized by the Token and policy
+                // Plugin calls need to be authorized by the Token and policy
                 let token = core
                     .get_attestation_token(&request)
                     .await
@@ -222,16 +225,16 @@ pub(crate) async fn api(
                 let claim_str = serde_json::to_string(&claims)?;
 
                 // TODO: add policy filter support for other plugins
-                if !core.policy_engine.evaluate(&end_point, &claim_str).await? {
+                if !core.policy_engine.evaluate(&endpoint, &claim_str).await? {
                     return Err(Error::PolicyDeny);
                 }
 
                 let response = plugin
-                    .handle(&body, query, sub_path, request.method())
+                    .handle(&body, query, additional_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
                 if plugin
-                    .encrypted(&body, query, sub_path, request.method())
+                    .encrypted(&body, query, additional_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
