@@ -37,8 +37,8 @@ pub enum Error {
         source: anyhow::Error,
     },
 
-    #[error("Accessed path {path} is illegal")]
-    IllegalAccessedPath { path: String },
+    #[error("Request path {path} is invalid")]
+    InvalidRequestPath { path: String },
 
     #[error("JWE failed")]
     JweError {
@@ -95,7 +95,7 @@ impl ResponseError for Error {
 
         // Per the KBS protocol, errors should yield 401 or 404 reponses
         let mut res = match self {
-            Error::IllegalAccessedPath { .. } | Error::PluginNotFound { .. } => {
+            Error::InvalidRequestPath { .. } | Error::PluginNotFound { .. } => {
                 HttpResponse::NotFound()
             }
             _ => HttpResponse::Unauthorized(),
@@ -114,7 +114,7 @@ mod tests {
     use super::Error;
 
     #[rstest]
-    #[case(Error::IllegalAccessedPath{path: "test".into()})]
+    #[case(Error::InvalidRequestPath{path: "test".into()})]
     #[case(Error::PluginNotFound{plugin_name: "test".into()})]
     fn into_error_response(#[case] err: Error) {
         let _ = actix_web::ResponseError::error_response(&err);
