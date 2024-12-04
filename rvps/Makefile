@@ -1,6 +1,6 @@
 PREFIX := /usr/local
 
-TARGET_DIR := ../../target/release
+TARGET_DIR := ../target/release
 DESTDIR ?= $(PREFIX)/bin
 BIN_NAMES := rvps rvps-tool
 
