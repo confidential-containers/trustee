@@ -33,4 +33,7 @@ pub enum KbsPolicyEngineError {
 
     #[error("Set Policy request is illegal for {0}")]
     IllegalSetPolicyRequest(&'static str),
+
+    #[error("Failed to set policy, illegal policy: {0}")]
+    InvalidPolicy(#[source] anyhow::Error),
 }
