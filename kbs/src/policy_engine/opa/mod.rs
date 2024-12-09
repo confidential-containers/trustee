@@ -61,6 +61,16 @@ impl PolicyEngineInterface for Opa {
     async fn set_policy(&mut self, policy: &str) -> Result<(), KbsPolicyEngineError> {
         let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(policy)?;
 
+        // Check if the policy is valid
+        {
+            let policy_content = String::from_utf8(policy_bytes.clone())
+                .map_err(|e| KbsPolicyEngineError::InvalidPolicy(e.into()))?;
+            let mut engine = regorus::Engine::new();
+            engine
+                .add_policy(String::from("default"), policy_content)
+                .map_err(KbsPolicyEngineError::InvalidPolicy)?;
+        }
+
         tokio::fs::write(&self.policy_path, policy_bytes).await?;
 
         Ok(())
@@ -153,6 +163,13 @@ mod tests {
             res.err().unwrap(),
             KbsPolicyEngineError::IOError(_)
         ));
+
+        // Illegal policy
+        let res = set_policy_from_file(&mut opa, "test/data/policy_invalid_1.rego").await;
+        assert!(matches!(
+            res.err().unwrap(),
+            KbsPolicyEngineError::InvalidPolicy(_)
+        ));
     }
 
     #[rstest]
@@ -166,13 +183,6 @@ mod tests {
         "",
         1,
         Err(KbsPolicyEngineError::ResourcePathError)
-    )]
-    #[case(
-        "test/data/policy_invalid_1.rego",
-        "my_repo/Alice/key",
-        "Alice",
-        1,
-        Err(KbsPolicyEngineError::PolicyLoadError)
     )]
     #[case(
         "test/data/policy_invalid_2.rego",
