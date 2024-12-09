@@ -122,6 +122,16 @@ impl PolicyEngine for OPA {
             return Err(PolicyError::InvalidPolicyId);
         }
 
+        // Check if the policy is valid
+        {
+            let policy_content = String::from_utf8(policy_bytes.clone())
+                .map_err(|e| PolicyError::InvalidPolicy(e.into()))?;
+            let mut engine = regorus::Engine::new();
+            engine
+                .add_policy(policy_id.clone(), policy_content)
+                .map_err(PolicyError::InvalidPolicy)?;
+        }
+
         let mut policy_file_path = PathBuf::from(
             &self
                 .policy_dir_path

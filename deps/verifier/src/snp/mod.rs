@@ -37,7 +37,7 @@ const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
 const KDS_VCEK: &str = "/vcek/v1";
 
-/// Attestation report versions supported 
+/// Attestation report versions supported
 const REPORT_VERSION_MIN: u32 = 2;
 const REPORT_VERSION_MAX: u32 = 3;
 
@@ -110,7 +110,9 @@ impl Verifier for Snp {
 
         // See Trustee Issue#589 https://github.com/confidential-containers/trustee/issues/589
         if report.version < REPORT_VERSION_MIN || report.version > REPORT_VERSION_MAX {
-            return Err(anyhow!("Unexpected attestation report version. Check SNP Firmware ABI specification"));
+            return Err(anyhow!(
+                "Unexpected attestation report version. Check SNP Firmware ABI specification"
+            ));
         }
 
         if report.vmpl != 0 {
