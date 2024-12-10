@@ -61,6 +61,15 @@ impl PolicyEngineInterface for Opa {
     async fn set_policy(&mut self, policy: &str) -> Result<(), KbsPolicyEngineError> {
         let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(policy)?;
 
+        // Check if the policy is valid
+        let policy_content = String::from_utf8(policy_bytes)
+            .map_err(|e| KbsPolicyEngineError::InvalidPolicy(e.into()))?;
+        let mut engine = regorus::Engine::new();
+        engine
+            .add_policy(String::from("default"), policy_content)
+            .map_err(|e| KbsPolicyEngineError::InvalidPolicy(e))?;
+        drop(engine);
+
         tokio::fs::write(&self.policy_path, policy_bytes).await?;
 
         Ok(())

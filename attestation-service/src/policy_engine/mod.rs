@@ -35,6 +35,8 @@ pub enum PolicyError {
     Base64DecodeFailed(#[from] base64::DecodeError),
     #[error("Illegal policy id. Only support alphabet, numeric, `-` or `_`")]
     InvalidPolicyId,
+    #[error("Illegal policy: {0}")]
+    InvalidPolicy(#[source] anyhow::Error),
     #[error("Failed to load reference data: {0}")]
     LoadReferenceDataFailed(#[source] anyhow::Error),
     #[error("Failed to set input data: {0}")]
