@@ -34,6 +34,7 @@ aliyun = ["kms/aliyun"]
 pkcs11 = ["cryptoki"]
 
 [dependencies]
+actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
 aes-gcm = "0.10.1"
