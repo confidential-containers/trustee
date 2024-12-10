@@ -104,7 +104,7 @@ uninstall:
 	rm -rf $(INSTALL_DESTDIR)/kbs $(INSTALL_DESTDIR)/kbs-client $(INSTALL_DESTDIR)/issuer-kbs $(INSTALL_DESTDIR)/resource-kbs
 
 check:
-	cargo test -p kbs -p kbs-client
+	cargo test -p kbs -p kbs-client -p integration-tests
 
 lint:
 	cargo clippy -p kbs -p kbs-client -- -D warnings
