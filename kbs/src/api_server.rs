@@ -129,6 +129,51 @@ impl ApiServer {
             .await
             .map_err(|e| Error::HTTPFailed { source: e.into() })
     }
+
+    /// Setup API server
+    pub fn server(self) -> Result<actix_web::dev::Server> {
+        info!(
+            "Starting HTTP{} server at {:?}",
+            if !self.config.http_server.insecure_http {
+                "S"
+            } else {
+                ""
+            },
+            self.config.http_server.sockets
+        );
+
+        let http_config = self.config.http_server.clone();
+        let http_server = HttpServer::new({
+            move || {
+                let api_server = self.clone();
+                App::new()
+                    .wrap(middleware::Logger::default())
+                    .app_data(web::Data::new(api_server))
+                    .service(
+                        web::resource([kbs_path!("{base_path}{additional_path:.*}")])
+                            .route(web::get().to(api))
+                            .route(web::post().to(api)),
+                    )
+            }
+        });
+
+        if !http_config.insecure_http {
+            let tls_server = http_server
+                .bind_openssl(
+                    &http_config.sockets[..],
+                    crate::http::tls_config(&http_config)
+                        .map_err(|e| Error::HTTPSFailed { source: e })?,
+                )
+                .map_err(|e| Error::HTTPSFailed { source: e.into() })?;
+
+            return Ok(tls_server.run());
+        }
+
+        Ok(http_server
+            .bind(&http_config.sockets[..])
+            .map_err(|e| Error::HTTPFailed { source: e.into() })?
+            .run())
+    }
 }
 
 /// APIs

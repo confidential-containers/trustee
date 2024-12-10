@@ -1,0 +1,24 @@
+[package]
+name = "integration-tests"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies] 
+kbs = { path = "../kbs" }
+attestation-service = { path = "../attestation-service" }
+kbs-client = { path = "../tools/kbs-client" }
+
+actix-web = "4.9.0"
+actix-rt = "2.10.0"
+anyhow = "1.0.94"
+env_logger = "0.11.5"
+log = "0.4.22"
+openssl = "0.10.68"
+rstest.workspace = true
+serde_json = "1.0.133"
+serial_test = { version = "3.2.0", features = ["async"]}
+tempfile = "3.14.0"
+tokio = { version = "1.42.0", features = ["full"] }
