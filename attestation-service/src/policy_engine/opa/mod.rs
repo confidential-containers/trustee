@@ -208,10 +208,9 @@ mod tests {
         "sourced_data",
     ];
 
-    fn dummy_reference(product_id: u64, svn: u64, launch_digest: String) -> String {
+    fn dummy_reference(svn: u64, launch_digest: String) -> String {
         json!({
             "reference": {
-                "productId": [product_id.to_string()],
                 "svn": [svn.to_string()],
                 "launch_digest": [launch_digest]
             }
@@ -219,10 +218,9 @@ mod tests {
         .to_string()
     }
 
-    fn dummy_input(product_id: u64, svn: u64, launch_digest: String) -> String {
+    fn dummy_input(svn: u64, launch_digest: String) -> String {
         json!({
             "sample": {
-                "productId": product_id.to_string(),
                 "svn": svn.to_string(),
                 "launch_digest": launch_digest
             }
@@ -231,14 +229,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case(5,5,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,2)]
-    #[case(5,4,1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,97)]
-    #[case(5,5,1,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,2)]
-    #[case(5,5,2,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,97)]
+    #[case(1,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,2)]
+    #[case(2,1,"aac43bb3".to_string(),"aac43bb3".to_string(),3,97)]
+    #[case(1,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,2)]
+    #[case(2,1,"aac43bb4".to_string(),"aac43bb3".to_string(),33,97)]
     #[tokio::test]
     async fn test_evaluate(
-        #[case] pid_a: u64,
-        #[case] pid_b: u64,
         #[case] svn_a: u64,
         #[case] svn_b: u64,
         #[case] digest_a: String,
@@ -253,8 +249,8 @@ mod tests {
 
         let output = opa
             .evaluate(
-                &dummy_reference(pid_a, svn_a, digest_a),
-                &dummy_input(pid_b, svn_b, digest_b),
+                &dummy_reference(svn_a, digest_a),
+                &dummy_input(svn_b, digest_b),
                 &default_policy_id,
                 &EAR_RULES,
             )
