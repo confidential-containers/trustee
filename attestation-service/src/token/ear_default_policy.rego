@@ -78,10 +78,6 @@ sample_executables := 3 if {
 #  verifications needed to demonstrate that these are genuine/
 #  supported.
 sample_hardware := 2 if {
-	# The sample attester does not report any productId.
-	# This is an exmple of how a real platform might identify the hardware
-	# that is running.
-	input.sample.productId in data.reference.productId
 	input.sample.svn in data.reference.svn
 }
 
