@@ -510,7 +510,7 @@ dependencies = [
  "config",
  "const_format",
  "crypto",
- "kbs-types",
+ "kbs-types 0.7.0",
  "log",
  "serde",
  "serde_json",
@@ -538,7 +538,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.9.1",
  "lazy_static",
  "log",
  "openssl",
@@ -581,7 +581,7 @@ dependencies = [
  "hex",
  "hyper 0.14.31",
  "hyper-tls 0.5.0",
- "kbs-types",
+ "kbs-types 0.7.0",
  "log",
  "occlum_dcap",
  "s390_pv",
@@ -1327,7 +1327,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "ctr",
- "kbs-types",
+ "kbs-types 0.7.0",
  "rand",
  "rsa",
  "serde",
@@ -2840,7 +2840,7 @@ dependencies = [
  "env_logger 0.10.2",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.9.1",
  "kms",
  "lazy_static",
  "log",
@@ -2895,6 +2895,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-types"
+version = "0.9.1"
+source = "git+https://github.com/virtee/kbs-types.git?rev=a704036#a70403665bfaa61c0984ae05654df0ad72591e96"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.3",
+]
+
+[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/guest-components.git?rev=e6999a3c0fd877dae9e68ea78b8b483062db32b8#e6999a3c0fd877dae9e68ea78b8b483062db32b8"
@@ -2905,7 +2916,7 @@ dependencies = [
  "base64 0.22.1",
  "crypto",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.7.0",
  "log",
  "reqwest 0.12.9",
  "resource_uri",
@@ -3007,7 +3018,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -5895,7 +5906,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.9.1",
  "log",
  "openssl",
  "reqwest 0.12.9",
