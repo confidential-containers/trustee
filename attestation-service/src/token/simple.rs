@@ -40,8 +40,6 @@ const SIMPLE_TOKEN_ALG: &str = "RS384";
 
 const DEFAULT_POLICY_DIR: &str = concatcp!(DEFAULT_TOKEN_WORK_DIR, "/simple/policies");
 
-const RULES: &str = "allow";
-
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct TokenSignerConfig {
     pub key_path: String,
@@ -221,11 +219,13 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         let reference_data = serde_json::to_string(&reference_data)?;
         let tcb_claims = serde_json::to_string(&flattened_claims)?;
 
+        let rules = vec!["allow".to_string()];
+
         let mut policies = HashMap::new();
         for policy_id in policy_ids {
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims, &policy_id, &[RULES])
+                .evaluate(&reference_data, &tcb_claims, &policy_id, rules.clone())
                 .await?;
 
             // TODO add policy allowlist

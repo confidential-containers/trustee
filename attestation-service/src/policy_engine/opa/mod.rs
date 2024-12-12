@@ -55,7 +55,7 @@ impl PolicyEngine for OPA {
         data: &str,
         input: &str,
         policy_id: &str,
-        evaluation_rules: &[&str],
+        evaluation_rules: Vec<String>,
     ) -> Result<EvaluationResult, PolicyError> {
         let policy_dir_path = self
             .policy_dir_path
@@ -192,21 +192,11 @@ impl PolicyEngine for OPA {
 
 #[cfg(test)]
 mod tests {
+    use ear::TrustVector;
     use rstest::rstest;
     use serde_json::json;
 
     use super::*;
-
-    const EAR_RULES: [&str; 8] = [
-        "instance_identity",
-        "configuration",
-        "executables",
-        "file_system",
-        "hardware",
-        "runtime_opaque",
-        "storage_opaque",
-        "sourced_data",
-    ];
 
     fn dummy_reference(svn: u64, launch_digest: String) -> String {
         json!({
@@ -247,12 +237,17 @@ mod tests {
         };
         let default_policy_id = "ear_default_policy".to_string();
 
+        let ear_rules = TrustVector::new()
+            .into_iter()
+            .map(|c| c.tag().to_string())
+            .collect();
+
         let output = opa
             .evaluate(
                 &dummy_reference(svn_a, digest_a),
                 &dummy_input(svn_b, digest_b),
                 &default_policy_id,
-                &EAR_RULES,
+                ear_rules,
             )
             .await
             .unwrap();
