@@ -8,12 +8,36 @@ use aes_gcm::{aead::AeadMutInPlace, Aes256Gcm, KeyInit, Nonce};
 use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
+use openssl::bn::BigNum;
+use openssl::{
+    encrypt,
+    pkey::PKey,
+    rsa::{self, Rsa},
+};
 use rand::{rngs::OsRng, Rng};
-use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 
-// TODO: Use RSA-OEAP rather than PKCS1v15
-const RSA_ALGORITHM: &str = "RSA1_5";
+const RSA_ALGORITHM: &str = "RSA-OAEP";
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
+
+fn encrypt_plain(
+    k_mod: &[u8],
+    k_exp: &[u8],
+    plain: &[u8],
+) -> Result<Vec<u8>, openssl::error::ErrorStack> {
+    let n = BigNum::from_slice(k_mod)?;
+    let e = BigNum::from_slice(k_exp)?;
+    let rsa_pubkey = Rsa::from_public_components(n, e)?;
+    let pkey = PKey::from_rsa(rsa_pubkey)?;
+
+    let mut encrypter = encrypt::Encrypter::new(&pkey)?;
+    encrypter.set_rsa_padding(rsa::Padding::PKCS1_OAEP)?;
+    let buffer_len = encrypter.encrypt_len(plain)?;
+    let mut encrypted = vec![0; buffer_len];
+    let encrypted_len = encrypter.encrypt(plain, &mut encrypted)?;
+    encrypted.truncate(encrypted_len);
+
+    Ok(encrypted.to_vec())
+}
 
 pub fn jwe(tee_pub_key: TeePubKey, mut payload_data: Vec<u8>) -> Result<Response> {
     let TeePubKey::RSA { alg, k_mod, k_exp } = tee_pub_key else {
@@ -45,17 +69,11 @@ pub fn jwe(tee_pub_key: TeePubKey, mut payload_data: Vec<u8>) -> Result<Response
     let k_mod = URL_SAFE_NO_PAD
         .decode(k_mod)
         .context("base64 decode k_mod failed")?;
-    let n = BigUint::from_bytes_be(&k_mod);
     let k_exp = URL_SAFE_NO_PAD
         .decode(k_exp)
         .context("base64 decode k_exp failed")?;
-    let e = BigUint::from_bytes_be(&k_exp);
-
-    let rsa_pub_key =
-        RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
-    let encrypted_key = rsa_pub_key
-        .encrypt(&mut rng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
-        .context("RSA encrypt sym key failed")?;
+    let encrypted_key = encrypt_plain(&k_mod, &k_exp, &aes_sym_key)
+        .context("Encrypting AES key with RSA key failed")?;
 
     Ok(Response {
         protected,
@@ -72,7 +90,7 @@ mod tests {
     use core::assert_eq;
 
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-    use josekit::jwe::{alg::rsaes::RsaesJweAlgorithm::Rsa1_5, JweContext, JweHeader};
+    use josekit::jwe::{alg::rsaes::RsaesJweAlgorithm::RsaOaep, JweContext, JweHeader};
     use kbs_types::TeePubKey;
     use openssl::rsa::Rsa;
 
@@ -87,7 +105,7 @@ mod tests {
         let k_mod = URL_SAFE_NO_PAD.encode(rsa_key.n().to_vec());
         let k_exp = URL_SAFE_NO_PAD.encode(rsa_key.e().to_vec());
         let tee_key = TeePubKey::RSA {
-            alg: "RSA1_5".into(),
+            alg: crate::jwe::RSA_ALGORITHM.into(),
             k_mod,
             k_exp,
         };
@@ -97,7 +115,7 @@ mod tests {
         let response_string = serde_json::to_string(&response).unwrap();
 
         // Decrypt with josekit crate
-        let decrypter = Rsa1_5
+        let decrypter = RsaOaep
             .decrypter_from_pem(rsa_key.private_key_to_pem().unwrap())
             .unwrap();
         let mut header = JweHeader::new();
@@ -110,7 +128,9 @@ mod tests {
         assert_eq!(decrypted_data, test_data);
 
         let mut jwe_header = JweHeader::new();
-        jwe_header.set_claim("alg", Some("RSA1_5".into())).unwrap();
+        jwe_header
+            .set_claim("alg", Some("RSA-OAEP".into()))
+            .unwrap();
         jwe_header.set_claim("enc", Some("A256GCM".into())).unwrap();
         assert_eq!(header, jwe_header);
     }
