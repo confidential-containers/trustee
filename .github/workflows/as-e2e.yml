@@ -28,7 +28,7 @@ jobs:
     name: TEE=${{ matrix.restful_tee_enum }} Generate Evidence Dynamically=${{ matrix.generate_evidence }}
     runs-on: ${{ matrix.runner }}
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.83.0
       GRPC_TEE_ENUM: ${{ matrix.grpc_tee_enum }}
       RESTFUL_TEE_ENUM: ${{ matrix.restful_tee_enum }}
     steps:
