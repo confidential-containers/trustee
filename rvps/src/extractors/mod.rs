@@ -22,7 +22,7 @@ use super::{Message, ReferenceValue};
 /// reference value (degest, s.t. hash value and name of the artifact)
 /// from the provenance. If the verification fails, no reference value
 /// will be extracted.
-
+///
 /// `Extractors` defines the interfaces of Extractors.
 pub trait Extractors {
     /// Process the message, e.g. verifying
