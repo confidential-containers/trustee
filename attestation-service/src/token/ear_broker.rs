@@ -8,7 +8,8 @@ use anyhow::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ear::{
-    Algorithm, Appraisal, Ear, ExtensionKind, ExtensionValue, Extensions, RawValue, VerifierID,
+    Algorithm, Appraisal, Ear, ExtensionKind, ExtensionValue, Extensions, RawValue, TrustVector,
+    VerifierID,
 };
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
@@ -38,17 +39,6 @@ pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/T
 pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
 
 const DEFAULT_POLICY_DIR: &str = concatcp!(DEFAULT_TOKEN_WORK_DIR, "/ear/policies");
-
-const RULES: [&str; 8] = [
-    "instance_identity",
-    "configuration",
-    "executables",
-    "file_system",
-    "hardware",
-    "runtime_opaque",
-    "storage_opaque",
-    "sourced_data",
-];
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct TokenSignerConfig {
@@ -244,14 +234,13 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             bail!("No policy is given for EAR token generation.");
         }
 
+        let rules = TrustVector::new()
+            .into_iter()
+            .map(|c| c.tag().to_string())
+            .collect();
         let policy_results = self
             .policy_engine
-            .evaluate(
-                &reference_data,
-                &tcb_claims_json,
-                &policy_ids[0],
-                &RULES[..],
-            )
+            .evaluate(&reference_data, &tcb_claims_json, &policy_ids[0], rules)
             .await?;
 
         let mut appraisal = Appraisal::new();

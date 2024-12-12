@@ -97,7 +97,7 @@ pub trait PolicyEngine: Send + Sync {
         data: &str,
         input: &str,
         policy_id: &str,
-        evaluation_rules: &[&str],
+        evaluation_rules: Vec<String>,
     ) -> Result<EvaluationResult, PolicyError>;
 
     async fn set_policy(&self, policy_id: String, policy: String) -> Result<(), PolicyError>;
