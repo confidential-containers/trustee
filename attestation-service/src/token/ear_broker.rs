@@ -299,6 +299,27 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
 
         Ok(signed_ear)
     }
+
+    async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
+        self.policy_engine
+            .set_policy(policy_id, policy)
+            .await
+            .map_err(Error::from)
+    }
+
+    async fn list_policies(&self) -> Result<HashMap<String, String>> {
+        self.policy_engine
+            .list_policies()
+            .await
+            .map_err(Error::from)
+    }
+
+    async fn get_policy(&self, policy_id: String) -> Result<String> {
+        self.policy_engine
+            .get_policy(policy_id)
+            .await
+            .map_err(Error::from)
+    }
 }
 
 impl EarAttestationTokenBroker {
