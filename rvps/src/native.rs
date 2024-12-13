@@ -7,35 +7,31 @@ use anyhow::{bail, Context, Result};
 use log::{info, warn};
 use std::collections::HashMap;
 
-use crate::{store::StoreType, Config};
-
 use super::{
+    config::Config,
     extractors::{Extractors, ExtractorsImpl},
     pre_processor::{PreProcessor, PreProcessorAPI},
-    Message, Store, MESSAGE_VERSION,
+    Message, ReferenceValueStorage, MESSAGE_VERSION,
 };
 
 /// The core of the RVPS, s.t. componants except communication componants.
 pub struct Core {
     pre_processor: PreProcessor,
     extractors: ExtractorsImpl,
-    store: Box<dyn Store + Send + Sync>,
+    storage: Box<dyn ReferenceValueStorage + Send + Sync>,
 }
 
 impl Core {
     /// Instantiate  a new RVPS Core
     pub fn new(config: Config) -> Result<Self> {
         let pre_processor = PreProcessor::default();
-
         let extractors = ExtractorsImpl::default();
-
-        let store_type = StoreType::try_from(&config.store_type[..])?;
-        let store = store_type.to_store(config.store_config)?;
+        let storage = config.storage.to_storage()?;
 
         Ok(Core {
             pre_processor,
             extractors,
-            store,
+            storage,
         })
     }
 
@@ -61,7 +57,7 @@ impl Core {
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
-            let old = self.store.set(v.name().to_string(), v.clone()).await?;
+            let old = self.storage.set(v.name().to_string(), v.clone()).await?;
             if let Some(old) = old {
                 info!("Old Reference value of {} is replaced.", old.name());
             }
@@ -72,7 +68,7 @@ impl Core {
 
     pub async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
         let mut rv_map = HashMap::new();
-        let reference_values = self.store.get_values().await?;
+        let reference_values = self.storage.get_values().await?;
 
         for rv in reference_values {
             if rv.expired() {

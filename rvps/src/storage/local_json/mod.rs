@@ -1,12 +1,11 @@
 use std::{fs, path::PathBuf};
 
-use super::Store;
+use super::ReferenceValueStorage;
 use crate::ReferenceValue;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::debug;
 use serde::Deserialize;
-use serde_json::Value;
 use tokio::sync::RwLock;
 
 const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values.json";
@@ -20,16 +19,22 @@ fn default_file_path() -> String {
     FILE_PATH.to_string()
 }
 
-#[derive(Deserialize, Default)]
-struct Config {
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct Config {
     #[serde(default = "default_file_path")]
-    file_path: String,
+    pub file_path: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            file_path: default_file_path(),
+        }
+    }
 }
 
 impl LocalJson {
-    pub fn new(config: Value) -> Result<Self> {
-        let config: Config = serde_json::from_value(config)?;
-
+    pub fn new(config: Config) -> Result<Self> {
         let mut path = PathBuf::new();
         path.push(&config.file_path);
 
@@ -46,7 +51,7 @@ impl LocalJson {
 }
 
 #[async_trait]
-impl Store for LocalJson {
+impl ReferenceValueStorage for LocalJson {
     async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
         let _ = self.lock.write().await;
         let file = tokio::fs::read(&self.file_path).await?;

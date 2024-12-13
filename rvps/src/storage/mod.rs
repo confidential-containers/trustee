@@ -8,8 +8,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::Value;
-use strum::EnumString;
+use strum::Display;
 
 use self::local_fs::LocalFs;
 use self::local_json::LocalJson;
@@ -19,29 +18,36 @@ use super::ReferenceValue;
 pub mod local_fs;
 pub mod local_json;
 
-#[derive(Deserialize, Debug, Clone, EnumString)]
-pub enum StoreType {
-    LocalFs,
-    LocalJson,
+#[derive(Clone, Debug, Deserialize, Display, PartialEq)]
+#[serde(tag = "type")]
+pub enum ReferenceValueStorageConfig {
+    LocalFs(local_fs::Config),
+    LocalJson(local_json::Config),
 }
 
-impl StoreType {
-    pub fn to_store(&self, config: Value) -> Result<Box<dyn Store + Send + Sync>> {
+impl Default for ReferenceValueStorageConfig {
+    fn default() -> Self {
+        ReferenceValueStorageConfig::LocalFs(local_fs::Config::default())
+    }
+}
+
+impl ReferenceValueStorageConfig {
+    pub fn to_storage(&self) -> Result<Box<dyn ReferenceValueStorage + Send + Sync>> {
         match self {
-            StoreType::LocalFs => {
-                Ok(Box::new(LocalFs::new(config)?) as Box<dyn Store + Send + Sync>)
-            }
-            StoreType::LocalJson => {
-                Ok(Box::new(LocalJson::new(config)?) as Box<dyn Store + Send + Sync>)
+            ReferenceValueStorageConfig::LocalFs(cfg) => Ok(Box::new(LocalFs::new(cfg.clone())?)
+                as Box<dyn ReferenceValueStorage + Send + Sync>),
+            ReferenceValueStorageConfig::LocalJson(cfg) => {
+                Ok(Box::new(LocalJson::new(cfg.clone())?)
+                    as Box<dyn ReferenceValueStorage + Send + Sync>)
             }
         }
     }
 }
 
-/// Interface of a `Store`.
+/// Interface for `ReferenceValueStorage`.
 /// Reference value storage facilities should implement this trait.
 #[async_trait]
-pub trait Store {
+pub trait ReferenceValueStorage {
     /// Store a reference value. If the given `name` exists,
     /// return the previous `Some<ReferenceValue>`, otherwise return `None`
     async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>>;
