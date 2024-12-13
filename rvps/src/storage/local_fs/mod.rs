@@ -8,17 +8,16 @@
 use anyhow::*;
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::Value;
 
 use crate::ReferenceValue;
 
-use super::Store;
+use super::ReferenceValueStorage;
 
 /// Local directory path to store the reference values,
 /// which is created by sled engine.
 const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values";
 
-/// `LocalFs` implements [`Store`] trait. And
+/// `LocalFs` implements [`ReferenceValueStorage`] trait. And
 /// it uses rocksdb inside.
 pub struct LocalFs {
     engine: sled::Db,
@@ -28,23 +27,30 @@ fn default_file_path() -> String {
     FILE_PATH.to_string()
 }
 
-#[derive(Deserialize, Default)]
-struct Config {
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct Config {
     #[serde(default = "default_file_path")]
-    file_path: String,
+    pub file_path: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            file_path: default_file_path(),
+        }
+    }
 }
 
 impl LocalFs {
     /// Create a new [`LocalFs`] with given config
-    pub fn new(config: Value) -> Result<Self> {
-        let config: Config = serde_json::from_value(config)?;
+    pub fn new(config: Config) -> Result<Self> {
         let engine = sled::open(config.file_path)?;
         Ok(Self { engine })
     }
 }
 
 #[async_trait]
-impl Store for LocalFs {
+impl ReferenceValueStorage for LocalFs {
     async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
         let rv_serde = serde_json::to_vec(&rv)?;
         let res = match self
@@ -86,12 +92,11 @@ impl Store for LocalFs {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
     use serial_test::serial;
 
-    use crate::{ReferenceValue, Store};
+    use crate::{ReferenceValue, ReferenceValueStorage};
 
-    use super::LocalFs;
+    use super::{Config, LocalFs};
 
     const KEY: &str = "test1";
 
@@ -103,13 +108,11 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let store = LocalFs::new(json!({
-                "file_path": dir_str
-            }))
-            .expect("create local fs store failed.");
+            let storage =
+                LocalFs::new(Config { file_path: dir_str }).expect("create local fs store failed.");
             let rv = ReferenceValue::new().expect("create ReferenceValue failed.");
             assert!(
-                store
+                storage
                     .set(KEY.to_owned(), rv.clone())
                     .await
                     .expect("set rv failed.")
@@ -117,7 +120,7 @@ mod tests {
                 "the storage has previous key of {}",
                 KEY
             );
-            let got = store
+            let got = storage
                 .get(KEY)
                 .await
                 .expect("get rv failed.")
@@ -134,10 +137,8 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let store = LocalFs::new(json!({
-                "file_path": dir_str
-            }))
-            .expect("create local fs store failed.");
+            let storage =
+                LocalFs::new(Config { file_path: dir_str }).expect("create local fs store failed.");
             let rv_old = ReferenceValue::new()
                 .expect("create ReferenceValue failed.")
                 .set_name("old");
@@ -147,7 +148,7 @@ mod tests {
                 .set_name("new");
 
             assert!(
-                store
+                storage
                     .set(KEY.to_owned(), rv_old.clone())
                     .await
                     .expect("set rv failed.")
@@ -156,7 +157,7 @@ mod tests {
                 KEY
             );
 
-            let got = store
+            let got = storage
                 .set(KEY.to_owned(), rv_new)
                 .await
                 .expect("get rv failed.")
@@ -175,21 +176,19 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("create tempdir failed");
         let dir_str = temp_dir.path().to_string_lossy().to_string();
         {
-            let store = LocalFs::new(json!({
-                "file_path": dir_str
-            }))
+            let storage = LocalFs::new(Config {
+                file_path: dir_str.clone(),
+            })
             .expect("create local fs store failed.");
-            store
+            storage
                 .set(KEY.to_owned(), rv.clone())
                 .await
                 .expect("set rv failed.");
         }
         {
-            let store = LocalFs::new(json!({
-                "file_path": dir_str
-            }))
-            .expect("create local fs store failed.");
-            let got = store
+            let storage =
+                LocalFs::new(Config { file_path: dir_str }).expect("create local fs store failed.");
+            let got = storage
                 .get(KEY)
                 .await
                 .expect("get rv failed.")

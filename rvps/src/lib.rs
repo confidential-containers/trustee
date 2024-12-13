@@ -7,7 +7,7 @@ pub mod config;
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
-pub mod store;
+pub mod storage;
 
 pub use config::Config;
 
@@ -17,7 +17,7 @@ pub use native::Core;
 use serde::{Deserialize, Serialize};
 
 pub use reference_value::{ReferenceValue, TrustedDigest};
-pub use store::Store;
+pub use storage::ReferenceValueStorage;
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";
