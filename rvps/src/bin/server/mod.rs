@@ -15,8 +15,6 @@ use crate::rvps_api::{
     ReferenceValueRegisterResponse,
 };
 
-pub mod config;
-
 pub struct RVPSServer {
     rvps: Arc<Mutex<Core>>,
 }
