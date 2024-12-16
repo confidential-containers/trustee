@@ -124,8 +124,9 @@ mod tests {
         token::{simple, AttestationTokenConfig, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
     };
 
+    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
+
     use rstest::rstest;
-    use serde_json::json;
 
     #[rstest]
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
@@ -293,9 +294,10 @@ mod tests {
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     attestation_service::config::Config {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
-                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-                            store_type: "LocalFs".into(),
-                            store_config: json!({}),
+                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig{
+                            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config{
+                                file_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
+                            }),
                         }),
                         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration{
                             duration_min: 5,
@@ -423,10 +425,7 @@ mod tests {
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     attestation_service::config::Config {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
-                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-                            store_type: "LocalFs".into(),
-                            ..Default::default()
-                        }),
+                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
                         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
                             duration_min: 5,
                             policy_dir: "/opt/confidential-containers/attestation-service/simple-policies".into(),
