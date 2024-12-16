@@ -13,6 +13,7 @@ pub(crate) mod jwk;
 pub use error::*;
 
 pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/attester_runtime_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/attester_user_data/tee-pubkey";
 pub const TOKEN_TEE_PUBKEY_PATH_COCO: &str = "/customized_claims/runtime_data/tee-pubkey";
 pub const TOKEN_TEE_PUBKEY_PATH_EAR: &str =
     "/submods/cpu/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
@@ -77,6 +78,7 @@ impl TokenVerifier {
 
         let mut extra_teekey_paths = config.extra_teekey_paths;
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_ITA.into());
+        extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_ITA_VTPM.into());
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_COCO.into());
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_EAR.into());
 
