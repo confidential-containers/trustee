@@ -2,8 +2,9 @@
     "work_dir": "/var/lib/attestation-service/",
     "rvps_config": {
 	"type": "BuiltIn",
-        "store_type": "LocalFs",
-        "remote_addr": ""
+	"storage": {
+            "type": "LocalFs"
+	}
     },
     "attestation_token_broker": {
         "type": "Simple",
