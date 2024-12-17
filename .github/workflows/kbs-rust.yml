@@ -52,11 +52,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
-    - name: KBS Build [Default]
-      working-directory: kbs
-      run: make
-
-    - name: KBS Build [Built-in CoCo AS]
+    - name: KBS Build [Default/Built-in CoCo AS]
       working-directory: kbs
       run: make
 
