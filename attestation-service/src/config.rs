@@ -58,9 +58,10 @@ impl TryFrom<&Path> for Config {
     ///        "work_dir": "/var/lib/attestation-service/",
     ///        "policy_engine": "opa",
     ///        "rvps_config": {
-    ///            "store_type": "LocalFs",
+    ///            "storage": {
+    ///                "type": "LocalFs"
+    ///            }
     ///            "store_config": {},
-    ///            "remote_addr": ""
     ///        },
     ///        "attestation_token_broker": {
     ///            "type": "Ear",
@@ -76,10 +77,8 @@ impl TryFrom<&Path> for Config {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use rstest::rstest;
-    use serde_json::json;
+    use std::path::PathBuf;
 
     use super::Config;
     use crate::rvps::RvpsCrateConfig;
@@ -87,13 +86,13 @@ mod tests {
         rvps::RvpsConfig,
         token::{ear_broker, simple, AttestationTokenConfig},
     };
+    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     #[rstest]
     #[case("./tests/configs/example1.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            store_type: "LocalFs".into(),
-            store_config: json!({}),
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -105,8 +104,7 @@ mod tests {
     #[case("./tests/configs/example2.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            store_type: "LocalFs".into(),
-            store_config: json!({}),
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -122,8 +120,7 @@ mod tests {
     #[case("./tests/configs/example3.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            store_type: "LocalFs".into(),
-            store_config: json!({}),
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,
@@ -138,8 +135,7 @@ mod tests {
     #[case("./tests/configs/example4.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            store_type: "LocalFs".into(),
-            store_config: json!({}),
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,

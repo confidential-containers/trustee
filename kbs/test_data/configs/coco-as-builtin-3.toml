@@ -16,7 +16,9 @@ policy_dir = "/opt/confidential-containers/attestation-service/simple-policies"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-store_type = "LocalFs"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
 
 [policy_engine]
 policy_path = "/opa/confidential-containers/kbs/policy.rego"

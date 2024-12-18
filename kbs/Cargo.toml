@@ -82,9 +82,11 @@ attestation-service = { path = "../attestation-service", default-features = fals
     "se-verifier",
 ], optional = true }
 
+
 [dev-dependencies]
 tempfile.workspace = true
 rstest.workspace = true
+reference-value-provider-service.path = "../rvps"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }

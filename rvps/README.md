@@ -77,7 +77,7 @@ cd .. && docker build -t rvps -f rvps/docker/Dockerfile .
 
 Run
 ```bash
-docker run -d -p 50003:50003 rvps
+docker run -d -p 50003:50003 rvps --address 0.0.0.0:50003
 ```
 
 ### Configuration file
@@ -85,14 +85,12 @@ docker run -d -p 50003:50003 rvps
 RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks lile
 ```json
 {
-    "address": "0.0.0.0:50003",
-    "store_type": "LocalFs",
-    "store_config": {
+    "storage": {
+	"type": "LocalFs",
         "file_path": "/opt/confidential-containers/attestation-service/reference_values"
     }
 }
 ```
-- `address`: socket listening to requests.
 - `store_type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
 - `store_config`: optional extra parameters for different kinds of `store_type`. This is also a JSON map object. The concrete content is different due to different `store_type`.
 
@@ -126,7 +124,7 @@ A client tool helps to perform as a client to rvps. It can
 Run RVPS in docker or the following commands
 ```bash
 RVPS_ADDR=127.0.0.1:50003
-rvps --socket $RVPS_ADDR
+rvps --address $RVPS_ADDR
 ```
 
 Edit an test message in [sample format](./src/extractors/extractor_modules/sample/README.md)

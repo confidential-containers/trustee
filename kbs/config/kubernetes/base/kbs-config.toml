@@ -20,7 +20,6 @@ key_path = "/kbs/as-private-key.pem"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-store_type = "LocalFs"
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"

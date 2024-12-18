@@ -17,7 +17,9 @@ duration_min = 5
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-store_type = "LocalFs"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
 
 [admin]
 auth_public_key = "/kbs/kbs.pem"
