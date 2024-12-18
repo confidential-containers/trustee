@@ -2842,6 +2842,7 @@ dependencies = [
  "openssl",
  "prost",
  "rand",
+ "reference-value-provider-service",
  "regex",
  "regorus",
  "reqwest 0.12.9",

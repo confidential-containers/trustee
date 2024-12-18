@@ -103,17 +103,19 @@ insecure_http = true
 [attestation_token]
 insecure_key = true
 
-[as_config]
+[attestation_service]
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
 
-[as_config.attestation_token_broker]
+[attestation_service.attestation_token_broker]
 type = "Ear"
 duration_min = 5
 
-[as_config.rvps_config]
+[attestation_service.rvps_config]
 type = "BuiltIn"
-store_type = "LocalFs"
+
+[attestation_service.rvps_config]
+type = "LocalFs"
 ```
 
 - Launch the KBS program

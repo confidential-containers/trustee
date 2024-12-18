@@ -74,10 +74,9 @@ If `type` is set to `BuiltIn`, the following extra properties can be set
 
 | Property       | Type                    | Description                                                           | Required | Default  |
 |----------------|-------------------------|-----------------------------------------------------------------------|----------|----------|
-| `store_type`   | String                  | The underlying storage type of RVPS. (`LocalFs` or `LocalJson`)       | No       | `LocalFs`|
-| `store_config` | JSON Map                | The optional configurations to the underlying storage.                | No       | Null     |
+| `storage`   | ReferenceValueStorageConfig | Configuration of storage for reference values (`LocalFs` or `LocalJson`)       | No       | `LocalFs`|
 
-Different `store_type` will have different `store_config` items.
+`ReferenceValueStorageConfig` can contain either a `LocalFs` configuration or a `LocalJson` configuration.
 
 For `LocalFs`, the following properties can be set
 
@@ -110,8 +109,8 @@ Running with a built-in RVPS:
     "policy_engine": "opa",
     "rvps_config": {
         "type": "BuiltIn",
-        "store_type": "LocalFs",
-        "store_config": {
+        "storage": {
+            "type": "LocalFs"
             "file_path": "/var/lib/attestation-service/reference-values"
         }
     },
