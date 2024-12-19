@@ -191,6 +191,7 @@ payload that follows the [JSON Web Encryption](https://www.rfc-editor.org/rfc/rf
 {
     "protected": "$jose_header",
     "encrypted_key": "$encrypted_key",
+    "aad": "$aad",
     "iv": "$iv",
     "ciphertext": "$ciphertext",
     "tag": "$tag"
@@ -204,6 +205,7 @@ The above JWE JSON fields are defined as follows:
 let jose_header_string = format!(r#"{{"alg": "{}","enc": "{}"}}"#, alg, enc);
 let jose_header = base64_url::encode(&jose_header_string);
 let encrypted_key = base64_url::encode(enc_kbs_symkey);
+let aad = base64_url::encode(additional_authenticated_data);
 let iv = base64_url::encode(initialization_vector);
 let ciphertext = base64_url::encode(response_output);
 
@@ -212,13 +214,13 @@ tag = base64_url::encode(authentication_tag);
 
 ```
 
-- `alg`
+- `protected.alg`
 
 Algorithm used to encrypt the encryption key at `encrypted_key`.
 Since the key is encrypted using the HW-TEE public key, `alg` must be the same
 value as described in the [`Attestation`](#attestation)'s `tee-pubkey` field.
 
-- `enc`
+- `protected.enc`
 
 Encryption algorithm used to encrypt the output of the KBS service API.
 
@@ -226,6 +228,12 @@ Encryption algorithm used to encrypt the output of the KBS service API.
 
 The output of the KBS service API. It must be encrypted with the KBS-generated
 ephemeral key.
+
+- `aad` (Required if AEAD is used)
+
+An input to an AEAD operation that is integrity protected but not encrypted.
+Due to [JSON Web Encryption](https://www.rfc-editor.org/rfc/rfc7516), AAD field
+should be calculated by `ASCII(BASE64URL(UTF8(JWE Protected Header)))`
 
 - `iv`
 
@@ -238,6 +246,11 @@ blank.
 The encrypted symmetric key is used to encrypt `ciphertext`.
 This key is encrypted with the HW-TEE's public key, using the algorithm defined
 in `alg`.
+
+- `tag`
+
+The authentication tag is used to authenticate the ciphertext. If the algorithm
+described by `enc` used does not need it, this field is left blank.
 
 ## Key Format
 
