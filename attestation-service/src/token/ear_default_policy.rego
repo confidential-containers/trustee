@@ -84,7 +84,7 @@ sample_hardware := 2 if {
 ##### SNP
 snp_executables := 3 if {
 	# In the future, we might calculate this measurement here various components
-	input.sample.launch_measurement in data.reference.snp_launch_measurement
+	input.snp.launch_measurement in data.reference.snp_launch_measurement
 }
 
 snp_hardware := 2 if {
