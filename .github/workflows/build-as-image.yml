@@ -35,14 +35,17 @@ jobs:
         # add instance and verifier flag to target
         - target_arch: x86_64
           target_platform: linux/amd64
+          build_platform: linux/amd64
           instance: ubuntu-latest
           verifier: all-verifier
         - target_arch: s390x
           target_platform: linux/s390x
+          build_platform: linux/s390x
           instance: s390x
           verifier: se-verifier
         - target_arch: aarch64
           target_platform: linux/arm64
+          build_platform: linux/amd64
           instance: ubuntu-latest
           verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
@@ -66,6 +69,7 @@ jobs:
         commit_sha=${{ github.sha }}
         docker buildx build --platform "${{ matrix.target_platform }}" \
           -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
+          --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
           --build-arg ARCH="${{ matrix.target_arch }}" \
           --build-arg VERIFIER="${{ matrix.verifier }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \

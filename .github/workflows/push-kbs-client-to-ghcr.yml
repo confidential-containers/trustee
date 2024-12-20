@@ -14,13 +14,6 @@ jobs:
           - x86_64
           - s390x
           - aarch64
-        include:
-          - arch: x86_64
-            platform: linux/amd64
-          - arch: s390x
-            platform: linux/s390x
-          - arch: aarch64
-            platform: linux/arm64
     runs-on: ${{ matrix.arch == 's390x' && 's390x' || 'ubuntu-22.04' }}
     permissions:
       contents: read
@@ -42,8 +35,7 @@ jobs:
 
     - name: Build a statically linked kbs-client for ${{ matrix.arch }} linux
       run: |
-        docker buildx build --platform "${{ matrix.platform }}" \
-          -f kbs/docker/kbs-client/Dockerfile \
+        docker buildx build -f kbs/docker/kbs-client/Dockerfile \
           --build-arg ARCH="${{ matrix.arch }}" --output ./ .
 
     - name: Push to ghcr.io
