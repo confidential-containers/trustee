@@ -13,9 +13,8 @@ jobs:
         arch:
           - x86_64
           - s390x
-    env:
-      RUSTC_VERSION: 1.76.0
-    runs-on: ${{ matrix.arch == 'x86_64' && 'ubuntu-22.04' || 's390x' }}
+          - aarch64
+    runs-on: ${{ matrix.arch == 's390x' && 's390x' || 'ubuntu-22.04' }}
     permissions:
       contents: read
       packages: write
@@ -24,11 +23,8 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
 
-    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: ${{ env.RUSTC_VERSION }}
-        components: rustfmt, clippy
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Log in to ghcr.io
       uses: docker/login-action@v3
@@ -38,17 +34,16 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build a statically linked kbs-client for ${{ matrix.arch }} linux
-      working-directory: kbs
       run: |
-        make cli-static-linux
+        docker buildx build -f kbs/docker/kbs-client/Dockerfile \
+          --build-arg ARCH="${{ matrix.arch }}" --output ./ .
 
     - name: Push to ghcr.io
-      working-directory: target/${{ matrix.arch }}-unknown-linux-gnu/release
       run: |
         commit_sha=${{ github.sha }}
         oras push \
           ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${{ matrix.arch }}-linux-gnu-${commit_sha},latest-${{ matrix.arch }} \
           kbs-client
-        if [ "$(uname -m)" = "x86_64" ]; then
+        if [ "${{ matrix.arch }}" = "x86_64" ]; then
           oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client
         fi

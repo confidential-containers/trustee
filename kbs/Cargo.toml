@@ -72,7 +72,7 @@ openssl = "0.10.55"
 az-cvm-vtpm = { version = "0.7.0", default-features = false, optional = true }
 derivative = "2.2.0"
 
-[target.'cfg(not(target_arch = "s390x"))'.dependencies]
+[target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
     "all-verifier",
 ], optional = true }
@@ -80,6 +80,11 @@ attestation-service = { path = "../attestation-service", default-features = fals
 [target.'cfg(target_arch = "s390x")'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
     "se-verifier",
+], optional = true }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "cca-verifier",
 ], optional = true }
 
 
