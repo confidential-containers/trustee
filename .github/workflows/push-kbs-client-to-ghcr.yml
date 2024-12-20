@@ -14,7 +14,7 @@ jobs:
           - x86_64
           - s390x
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.83.0
     runs-on: ${{ matrix.arch == 'x86_64' && 'ubuntu-22.04' || 's390x' }}
     permissions:
       contents: read
