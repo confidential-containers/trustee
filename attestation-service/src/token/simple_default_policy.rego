@@ -28,10 +28,11 @@
 package policy
 
 import future.keywords.every
+import future.keywords.if
 
-default allow = false
+default allow := false
 
-allow {
+allow if {
 	every k, v in input {
 		# `judge_field`: Traverse each key value pair in the input and make policy judgments on it.
 		#
@@ -44,7 +45,7 @@ allow {
 	}
 }
 
-judge_field(input_key, input_value) {
+judge_field(input_key, input_value) if {
 	has_key(data.reference, input_key)
 	reference_value := data.reference[input_key]
 
@@ -57,16 +58,16 @@ judge_field(input_key, input_value) {
 	match_value(reference_value, input_value)
 }
 
-judge_field(input_key, input_value) {
+judge_field(input_key, input_value) if {
 	not has_key(data.reference, input_key)
 }
 
-match_value(reference_value, input_value) {
+match_value(reference_value, input_value) if {
 	not is_array(reference_value)
 	input_value == reference_value
 }
 
-match_value(reference_value, input_value) {
+match_value(reference_value, input_value) if {
 	is_array(reference_value)
 
 	# `array_include`: judge the input value with the values in the array.
@@ -78,16 +79,16 @@ match_value(reference_value, input_value) {
 	array_include(reference_value, input_value)
 }
 
-array_include(reference_value_array, input_value) {
+array_include(reference_value_array, input_value) if {
 	reference_value_array == []
 }
 
-array_include(reference_value_array, input_value) {
+array_include(reference_value_array, input_value) if {
 	reference_value_array != []
 	some i
 	reference_value_array[i] == input_value
 }
 
-has_key(m, k) {
+has_key(m, k) if {
 	_ = m[k]
 }
