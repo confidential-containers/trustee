@@ -2,7 +2,8 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM rust:latest AS builder
+FROM --platform=$BUILDPLATFORM rust:latest AS builder
+ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier
 
@@ -18,7 +19,16 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/
     apt-get update && apt-get install -y libsgx-dcap-quote-verify-dev; fi
 
 # Build and Install RESTful attestation-service
-RUN cargo install --path attestation-service --bin restful-as --features restful-bin,${VERIFIER} --locked
+RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
+    export GCC_PACKAGE="gcc-${ARCH}-linux-gnu"; \
+    export GCC_COMPILER="${ARCH}-linux-gnu-gcc"; \
+    export RUSTC_TARGET="${ARCH}-unknown-linux-gnu"; \
+    export TARGET_FLAG="--target ${RUSTC_TARGET}"; \
+    export RUSTFLAGS_ARGS=" -C linker=${GCC_COMPILER}"; \
+    export RUSTFLAGS="${RUSTFLAGS_ARGS}"; \
+    apt-get install -y ${GCC_PACKAGE}; \
+    rustup target add ${RUSTC_TARGET}; fi; \
+    cargo install --path attestation-service --bin restful-as --features restful-bin,${VERIFIER} --locked ${TARGET_FLAG}
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64

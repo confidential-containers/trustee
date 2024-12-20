@@ -1,4 +1,5 @@
-FROM rust:slim AS builder
+FROM --platform=$BUILDPLATFORM rust:slim AS builder
+ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
@@ -9,7 +10,8 @@ RUN apt-get update && \
     curl \
     gpg \
     gnupg-agent \
-    git
+    git \
+    sudo
 
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
@@ -36,8 +38,8 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin ALIYUN=${ALIYUN} && \
-    make install-kbs
+RUN cd kbs && make AS_FEATURE=coco-as-builtin ALIYUN=${ALIYUN} ARCH=${ARCH} && \
+    make ARCH=${ARCH} install-kbs
 
 FROM ubuntu:22.04
 ARG ARCH=x86_64
