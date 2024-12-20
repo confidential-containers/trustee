@@ -3,7 +3,7 @@ ALIYUN ?= false
 
 ARCH := $(shell uname -m)
 # Check if ARCH is supported, otehrwise return error
-ifeq ($(filter $(ARCH),x86_64 s390x),)
+ifeq ($(filter $(ARCH),x86_64 s390x aarch64),)
 	$(error "Unsupported architecture: $(ARCH)")
 endif
 

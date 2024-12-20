@@ -13,20 +13,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        instance:
-          - ubuntu-latest
+        target_arch:
+          - x86_64
           - s390x
+          - aarch64
         tag:
           - kbs
           - kbs-grpc-as
           - kbs-ita-as
           - rhel-ubi
         exclude:
-          - instance: s390x
+          - target_arch: s390x
             tag: kbs-ita-as
-          - instance: s390x
+          - target_arch: s390x
+            tag: rhel-ubi
+          - target_arch: aarch64
+            tag: kbs-ita-as
+          - target_arch: aarch64
             tag: rhel-ubi
         include:
+          # add docker_file + name to each tag
           - tag: kbs
             docker_file: kbs/docker/Dockerfile
             name: build-in AS
@@ -39,6 +45,16 @@ jobs:
           - tag: rhel-ubi
             docker_file: kbs/docker/rhel-ubi/Dockerfile
             name: RHEL UBI AS
+          # add instance flag to target
+          - target_arch: x86_64
+            target_platform: linux/amd64
+            instance: ubuntu-latest
+          - target_arch: s390x
+            target_platform: linux/s390x
+            instance: s390x
+          - target_arch: aarch64
+            target_platform: linux/arm64
+            instance: ubuntu-latest
 
     runs-on: ${{ matrix.instance }}
 
@@ -59,8 +75,8 @@ jobs:
     - name: Build Container Image KBS (${{ matrix.name }})
       run: |
         commit_sha=${{ github.sha }}
-        arch=$(uname -m)
-        DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" \
-          --build-arg ARCH="${arch}" .
+        docker buildx build --platform "${{ matrix.target_platform }}" \
+          -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" \
+          --build-arg ARCH="${{ matrix.target_arch }}" .

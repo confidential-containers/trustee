@@ -39,9 +39,11 @@ jobs:
         commit_sha=${{ github.sha }}
         docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:${commit_sha}" \
           --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:${commit_sha}-x86_64" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:${commit_sha}-aarch64" \
           --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:${commit_sha}-s390x"
         docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:${commit_sha}"
         docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:latest" \
           --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:latest-x86_64" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:latest-aarch64" \
           --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:latest-s390x"
         docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.image }}:latest"
