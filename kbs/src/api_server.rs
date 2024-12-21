@@ -82,6 +82,14 @@ impl ApiServer {
 
     /// Start the HTTP server and serve API requests.
     pub async fn serve(self) -> Result<()> {
+        actix::spawn(self.server()?)
+            .await
+            .map_err(|e| Error::HTTPFailed { source: e.into() })?
+            .map_err(|e| Error::HTTPFailed { source: e.into() })
+    }
+
+    /// Setup API server
+    pub fn server(self) -> Result<actix_web::dev::Server> {
         info!(
             "Starting HTTP{} server at {:?}",
             if !self.config.http_server.insecure_http {
@@ -116,18 +124,13 @@ impl ApiServer {
                 )
                 .map_err(|e| Error::HTTPSFailed { source: e.into() })?;
 
-            return tls_server
-                .run()
-                .await
-                .map_err(|e| Error::HTTPSFailed { source: e.into() });
+            return Ok(tls_server.run());
         }
 
-        http_server
+        Ok(http_server
             .bind(&http_config.sockets[..])
             .map_err(|e| Error::HTTPFailed { source: e.into() })?
-            .run()
-            .await
-            .map_err(|e| Error::HTTPFailed { source: e.into() })
+            .run())
     }
 }
 
