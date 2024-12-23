@@ -13,9 +13,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        instance:
-        - ubuntu-latest
+        target_arch:
+        - x86_64
         - s390x
+        - aarch64
         name:
         - RESTful CoCo-AS
         - gRPC CoCo-AS
@@ -31,11 +32,22 @@ jobs:
         - name: RVPS
           docker_file: rvps/docker/Dockerfile
           tag: rvps
-        # add verifier flag to arch
-        - instance: ubuntu-latest
+        # add instance and verifier flag to target
+        - target_arch: x86_64
+          target_platform: linux/amd64
+          build_platform: linux/amd64
+          instance: ubuntu-latest
           verifier: all-verifier
-        - instance: s390x
+        - target_arch: s390x
+          target_platform: linux/s390x
+          build_platform: linux/s390x
+          instance: s390x
           verifier: se-verifier
+        - target_arch: aarch64
+          target_platform: linux/arm64
+          build_platform: linux/amd64
+          instance: ubuntu-latest
+          verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
 
     steps:
@@ -55,8 +67,10 @@ jobs:
     - name: Build ${{ matrix.name }} Container Image
       run: |
         commit_sha=${{ github.sha }}
-        arch=$(uname -m)
-        DOCKER_BUILDKIT=1 docker build -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} --build-arg ARCH="${arch}" \
+        docker buildx build --platform "${{ matrix.target_platform }}" \
+          -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
+          --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
+          --build-arg ARCH="${{ matrix.target_arch }}" \
           --build-arg VERIFIER="${{ matrix.verifier }}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}" .
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" .
