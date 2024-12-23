@@ -67,7 +67,7 @@ jobs:
     - name: Build ${{ matrix.name }} Container Image
       run: |
         commit_sha=${{ github.sha }}
-        docker buildx build --platform "${{ matrix.target_platform }}" \
+        docker buildx build --platform "${{ matrix.target_platform }}" --provenance false \
           -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
           --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
           --build-arg ARCH="${{ matrix.target_arch }}" \
