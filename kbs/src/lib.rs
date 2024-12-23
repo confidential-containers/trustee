@@ -10,7 +10,7 @@ pub mod attestation;
 /// KBS config
 pub mod config;
 pub use config::KbsConfig;
-mod token;
+pub mod token;
 
 /// Resource Policy Engine
 pub mod policy_engine;
