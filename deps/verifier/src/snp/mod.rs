@@ -4,7 +4,7 @@ use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
-use asn1_rs::{oid, Integer, OctetString, Oid};
+use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
 use openssl::{
     ec::EcKey,
