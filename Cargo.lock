@@ -1803,9 +1803,9 @@ dependencies = [
 
 [[package]]
 name = "eventlog-rs"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91edfc8fc097ee0f2b61f8d5abad0cc0b684cb8b9e34dcfd64467de8e9ceda08"
+checksum = "2f63e89ae20606137075d874615efe9b6c1beb82c5b86d438e0bf2bb11b60519"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -3002,7 +3002,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
