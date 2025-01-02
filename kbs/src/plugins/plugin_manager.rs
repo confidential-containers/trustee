@@ -8,7 +8,10 @@ use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
 use serde::Deserialize;
 
-use super::{sample, RepositoryConfig, ResourceStorage};
+use super::{
+    splitapi::{SplitAPI, SplitAPIConfig},
+    sample, RepositoryConfig, ResourceStorage
+};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -59,6 +62,9 @@ pub enum PluginsConfig {
 
     #[serde(alias = "resource")]
     ResourceStorage(RepositoryConfig),
+
+    #[serde(alias = "splitapi")]
+    SplitAPI(SplitAPIConfig),
 }
 
 impl Display for PluginsConfig {
@@ -66,6 +72,7 @@ impl Display for PluginsConfig {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
+            PluginsConfig::SplitAPI(_) => f.write_str("splitapi"),
         }
     }
 }
@@ -84,6 +91,11 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let resource_storage = ResourceStorage::try_from(repository_config)
                     .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
+            }
+            PluginsConfig::SplitAPI(splitapi_config) => {
+                let splitapi_plugin =
+                    SplitAPI::try_from(splitapi_config).context("Initialize 'SplitAPI' plugin failed")?;
+                Arc::new(splitapi_plugin) as _
             }
         };
 
