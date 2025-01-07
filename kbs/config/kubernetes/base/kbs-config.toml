@@ -15,9 +15,6 @@ work_dir = "/opt/confidential-containers/attestation-service"
 type = "Ear"
 duration_min = 5
 
-[attestation_service.attestation_token_broker.signer]
-key_path = "/kbs/as-private-key.pem"
-
 [attestation_service.rvps_config]
 type = "BuiltIn"
 
