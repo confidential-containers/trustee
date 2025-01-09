@@ -93,7 +93,7 @@ impl JwkAttestationTokenVerifier {
         for path in config.trusted_jwk_sets.iter() {
             match get_jwks_from_file_or_url(path).await {
                 Ok(mut jwkset) => trusted_jwk_sets.keys.append(&mut jwkset.keys),
-                Err(e) => log::warn!("error getting JWKS: {:?}", e),
+                Err(e) => bail!("error getting JWKS: {:?}", e),
             }
         }
 
