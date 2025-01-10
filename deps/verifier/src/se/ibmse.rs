@@ -90,7 +90,7 @@ pub struct SeAttestationResponse {
 pub struct SeAttestationClaims {
     #[serde_as(as = "Hex")]
     cuid: ConfigUid,
-    user_data: String,
+    report_data: String,
     version: u32,
     #[serde_as(as = "Hex")]
     image_phkh: Vec<u8>,
@@ -217,7 +217,7 @@ impl SeVerifierImpl {
 
         let claims = SeAttestationClaims {
             cuid: se_response.cuid,
-            user_data: String::from_utf8(se_response.user_data.clone())?,
+            report_data: String::from_utf8(se_response.user_data.clone())?,
             version: AttestationVersion::One as u32,
             image_phkh: image_phkh.to_vec(),
             attestation_phkh: attestation_phkh.to_vec(),
