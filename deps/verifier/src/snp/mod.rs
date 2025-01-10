@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use base64::Engine;
+use base64::{Engine, engine::general_purpose::STANDARD};
 use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
@@ -318,7 +318,10 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "platform_smt_enabled": format!("{}", report.plat_info.smt_enabled()),
 
         // measurement
-        "measurement": format!("{}", base64::engine::general_purpose::STANDARD.encode(report.measurement)),
+        "measurement": format!("{}", STANDARD.encode(report.measurement)),
+
+        // report data
+        "report_data": format!("{}", STANDARD.encode(report.report_data)),
     });
 
     claims_map as TeeEvidenceParsedClaim
