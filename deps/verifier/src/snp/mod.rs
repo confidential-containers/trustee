@@ -317,11 +317,10 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "platform_tsme_enabled": format!("{}", report.plat_info.tsme_enabled()),
         "platform_smt_enabled": format!("{}", report.plat_info.smt_enabled()),
 
-        // measurement
+        // measurements
         "measurement": format!("{}", STANDARD.encode(report.measurement)),
-
-        // report data
         "report_data": format!("{}", STANDARD.encode(report.report_data)),
+        "init_data": format!("{}", STANDARD.encode(report.host_data)),
     });
 
     claims_map as TeeEvidenceParsedClaim
