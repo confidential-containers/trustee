@@ -13,7 +13,7 @@ pub use config::Config;
 pub use reference_value::{ReferenceValue, TrustedDigest};
 pub use storage::ReferenceValueStorage;
 
-use extractors::{Extractors, ExtractorsImpl};
+use extractors::Extractors;
 use pre_processor::{PreProcessor, PreProcessorAPI};
 
 use anyhow::{bail, Context, Result};
@@ -48,7 +48,7 @@ fn default_version() -> String {
 /// The core of the RVPS, s.t. componants except communication componants.
 pub struct Rvps {
     pre_processor: PreProcessor,
-    extractors: ExtractorsImpl,
+    extractors: Extractors,
     storage: Box<dyn ReferenceValueStorage + Send + Sync>,
 }
 
@@ -56,7 +56,7 @@ impl Rvps {
     /// Instantiate a new RVPS
     pub fn new(config: Config) -> Result<Self> {
         let pre_processor = PreProcessor::default();
-        let extractors = ExtractorsImpl::default();
+        let extractors = Extractors::default();
         let storage = config.storage.to_storage()?;
 
         Ok(Rvps {
