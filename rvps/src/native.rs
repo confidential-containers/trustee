@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use super::{
     config::Config,
-    extractors::{Extractors, ExtractorsImpl},
+    extractors::Extractors,
     pre_processor::{PreProcessor, PreProcessorAPI},
     Message, ReferenceValueStorage, MESSAGE_VERSION,
 };
@@ -17,7 +17,7 @@ use super::{
 /// The core of the RVPS, s.t. componants except communication componants.
 pub struct Core {
     pre_processor: PreProcessor,
-    extractors: ExtractorsImpl,
+    extractors: Extractors,
     storage: Box<dyn ReferenceValueStorage + Send + Sync>,
 }
 
@@ -25,7 +25,7 @@ impl Core {
     /// Instantiate  a new RVPS Core
     pub fn new(config: Config) -> Result<Self> {
         let pre_processor = PreProcessor::default();
-        let extractors = ExtractorsImpl::default();
+        let extractors = Extractors::default();
         let storage = config.storage.to_storage()?;
 
         Ok(Core {
