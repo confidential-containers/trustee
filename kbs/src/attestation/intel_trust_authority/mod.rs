@@ -2,8 +2,11 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+mod ita_event_log_parser;
+
 use crate::{
     attestation::backend::{generic_generate_challenge, make_nonce, Attest},
+    attestation::intel_trust_authority::ita_event_log_parser::CcEventLogParser,
     token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
 };
 use anyhow::*;
@@ -44,8 +47,8 @@ pub enum HashAlgorithm {
 
 #[derive(Deserialize, Debug)]
 struct ItaTeeEvidence {
-    #[serde(skip)]
-    _cc_eventlog: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cc_eventlog: Option<String>,
     quote: String,
 }
 
@@ -63,6 +66,8 @@ struct AttestReqData {
     user_data: Option<String>,
     policy_ids: Vec<String>,
     policy_must_match: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    event_log: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -127,6 +132,7 @@ impl Attest for IntelTrustAuthority {
                     user_data: Some(STANDARD.encode(runtime_data)),
                     policy_ids,
                     policy_must_match,
+                    event_log: None,
                 };
 
                 (req_data, att_url)
@@ -143,6 +149,10 @@ impl Attest for IntelTrustAuthority {
                     user_data: None,
                     policy_ids,
                     policy_must_match,
+                    event_log: evidence
+                        .cc_eventlog
+                        .map(CcEventLogParser::handle)
+                        .transpose()?,
                 };
 
                 (req_data, att_url)

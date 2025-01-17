@@ -1817,6 +1817,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "eventlog-rs"
+version = "0.1.6"
+source = "git+https://github.com/pawelpros/eventlog-rs.git?rev=0c74ee6a732a69811929219485c9747bb1ee0c59#0c74ee6a732a69811929219485c9747bb1ee0c59"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "env_logger 0.8.4",
+ "hex",
+ "lazy_static",
+ "log",
+ "sha2",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2832,6 +2846,8 @@ dependencies = [
  "cryptoki",
  "derivative",
  "env_logger 0.10.2",
+ "eventlog-rs 0.1.6",
+ "hex",
  "jsonwebtoken",
  "jwt-simple",
  "kbs-types",
@@ -5851,7 +5867,7 @@ dependencies = [
  "codicon",
  "csv-rs",
  "ear 0.1.2",
- "eventlog-rs",
+ "eventlog-rs 0.1.5",
  "hex",
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
