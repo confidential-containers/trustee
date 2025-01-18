@@ -1,163 +1,148 @@
-// Copyright (c) 2024 by IBM Corporation
+// Copyright (c) 2025 by IBM Corporation
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Context, Result};
-use std::{sync::Arc};
-use serde::Deserialize;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+    sync::Arc,
 };
-use std::sync::Mutex;
-use lazy_static::lazy_static;
+use tempfile::tempdir_in;
+use tokio::sync::RwLock;
 
-use super::backend::{SplitAPIBackend, SandboxParams};
-use super::mapper::{SandboxDirectoryMapper, SandboxDirectoryInfo};
-use super::generator::{CredentialBundle, ServerCredential};
+use super::backend::{SandboxParams, SplitAPIBackend};
+use super::generator::{CertificateDetails, CredentialGenerator};
 
-
-pub const DEFAULT_PLUGIN_DIR: &str = "/opt/confidential-containers/kbs/plugin/splitapi";
-pub const SANDBOX_DIRECTORY_MAPPING_FILENAME: &str = "sandbox-credential-mapping.json";
-
-
-// Use lazy_static to initialize the SANDBOX_DIRECTORY_MANAGER only once
-lazy_static! {
-    static ref SANDBOX_DIRECTORY_MAPPER: Arc<Mutex<Option<SandboxDirectoryMapper>>> = Arc::new(Mutex::new(None));
+/// Credentials (keys and certs for CA, server, and client)
+/// ncessary for the SplitAPI work
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Credentials {
+    pub ca_crt: Vec<u8>,
+    pub client_key: Vec<u8>,
+    pub client_crt: Vec<u8>,
+    pub server_key: Vec<u8>,
+    pub server_crt: Vec<u8>,
 }
 
-// Initialize the singleton with the provided file path
-fn init_sandbox_directory_mapper(file_path: PathBuf) -> std::io::Result<()> {
-    let mut mapper = SANDBOX_DIRECTORY_MAPPER.lock().unwrap();
-    
-    // Attempt to load the DirectoryManager from the file
-    match SandboxDirectoryMapper::load_from_file(file_path) {
-        Ok(loaded_mapper) => {
-            *mapper = Some(loaded_mapper);
-        }
-        Err(_e) => {
-            // Initialize a new manager
-            *mapper = Some(SandboxDirectoryMapper::new());
-
-            // TODO: check specific errors (file not found or something else) 
-            // and handle those specific errors
-            // bail if there's relevant condition
-        }
-    }
-
-    Ok(())
+/// Credentials necessary for SplitAPI proxy server
+#[derive(Debug, serde::Serialize)]
+pub struct ServerCredentials {
+    pub key: Vec<u8>,
+    pub crt: Vec<u8>,
+    pub ca_crt: Vec<u8>,
 }
 
-// Get a reference to the singleton
-fn get_sandbox_directory_mapper() -> Arc<Mutex<Option<SandboxDirectoryMapper>>> {
-    Arc::clone(&SANDBOX_DIRECTORY_MAPPER)
-}
-
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct SplitAPIRepoDesc {
-    #[serde(default)]
-    pub plugin_dir: String,
-}
-
-impl Default for SplitAPIRepoDesc {
-    fn default() -> Self {
-        Self {
-            plugin_dir: DEFAULT_PLUGIN_DIR.into(),
-        }
-    }
-}
-
-
+/// Manages the credentials generation, handling requests
+/// from backend, and credentials persistence storage
 pub struct CertManager {
-    pub plugin_dir: String,
-    pub mapping_filename: String,
-    mapper: Arc<Mutex<Option<SandboxDirectoryMapper>>>,
+    pub plugin_dir: PathBuf,
+    pub certificate_details: CertificateDetails,
+    pub credblob_file: PathBuf, //String,
+    pub state: Arc<RwLock<HashMap<String, Credentials>>>,
+    credential_loaded_from_file: AtomicBool,
 }
-
 
 impl CertManager {
-    pub fn new(repo_desc: &SplitAPIRepoDesc) -> anyhow::Result<Self> {
-        // Create splitapi_res work dir.
-        if !Path::new(&repo_desc.plugin_dir).exists() {
-            fs::create_dir_all(&repo_desc.plugin_dir)?;
-
-            log::info!("Splitapi plugin directory created = {}", repo_desc.plugin_dir);
+    pub fn new(
+        plugin_dir: PathBuf,
+        blob_file: String,
+        cert_details: &CertificateDetails,
+    ) -> anyhow::Result<Self> {
+        if !plugin_dir.exists() {
+            fs::create_dir_all(&plugin_dir)?;
+            log::info!("plugin dir created = {}", plugin_dir.display());
         }
 
-        // Initialize directory manager with the content from a file
-        let mapping_file: PathBuf = PathBuf::from(&repo_desc.plugin_dir)
-            .as_path()
-            .join(SANDBOX_DIRECTORY_MAPPING_FILENAME
-        );
-        init_sandbox_directory_mapper(mapping_file.clone())?;
-        log::info!("Directory manager loaded the data from file: {}", mapping_file.display());
+        let cblob_file = plugin_dir.as_path().join(blob_file);
 
-        // Initialize the manager
+        // Initialize the credential manager
         Ok(Self {
-            plugin_dir: repo_desc.plugin_dir.clone(),
-            mapping_filename: SANDBOX_DIRECTORY_MAPPING_FILENAME.into(),
-            mapper: get_sandbox_directory_mapper(),
+            plugin_dir,
+            certificate_details: cert_details.clone(),
+            credblob_file: cblob_file,
+            state: Arc::new(RwLock::new(HashMap::new())),
+            credential_loaded_from_file: AtomicBool::new(false),
         })
+    }
+
+    async fn load_credentials(&self, key: &str) -> Option<Credentials> {
+        // Check if the credential is not loaded. If not, load them
+        if !self.credential_loaded_from_file.load(Ordering::SeqCst) {
+            if let Err(e) = self.load_from_file(&self.credblob_file).await {
+                log::warn!("Failed to load credentials from file: {}", e);
+                return None;
+            }
+
+            // Update the flag, this is a one-time load until kbs restarts
+            self.credential_loaded_from_file
+                .store(true, Ordering::SeqCst);
+        }
+
+        // Return the item from hashmap
+        let state = self.state.read().await;
+        state.get(key).cloned()
+    }
+
+    async fn load_from_file(&self, path: &PathBuf) -> Result<()> {
+        let data = tokio::fs::read_to_string(&path).await?;
+        let deserialized: HashMap<String, Credentials> = serde_json::from_str(&data)?;
+        let mut state = self.state.write().await;
+        *state = deserialized;
+        Ok(())
+    }
+
+    async fn save_to_file(&self, path: &PathBuf) -> Result<()> {
+        let state = self.state.read().await;
+        let serialized = serde_json::to_string(&*state)?;
+        tokio::fs::write(path, serialized).await?;
+        Ok(())
     }
 }
 
 #[async_trait::async_trait]
 impl SplitAPIBackend for CertManager {
     async fn get_server_credential(&self, params: &SandboxParams) -> Result<Vec<u8>> {
-        // Try locking the sandbox directory mapper
-        let mut mapper_guard = self.mapper.lock().map_err(|e| {
-            anyhow!("Failed to lock sandbox directory mapper: {}", e)
-        })?;
+        // Return the server credential if the credential presents in the hashmap
+        let key = format!("{}_{}_{}", &params.name, &params.ip, &params.id);
+        if let Some(credentials) = self.load_credentials(&key).await {
+            log::info!("Returning already existed credentials!");
 
-        if let Some(mapper) = mapper_guard.as_mut() {
-            let sandbox_dir_info: SandboxDirectoryInfo;
-
-            if let Some(existing_dir) = mapper.get_directory(&params.name) {
-            
-                log::info!("Found existing directory: {:?}", existing_dir.sandbox_dir());
-                sandbox_dir_info = existing_dir.clone();
-
-                //TODO: check if the credentails are already in there
-                // send the existing credentials if they are not expired
-            } else {
-                let new_dir_info = mapper.create_directory(
-                    Path::new(&self.plugin_dir), 
-                    &params
-                )?;
-                log::info!("New directory created: {:?}", new_dir_info);
-                
-                let mapping_file = PathBuf::from(&self.plugin_dir)
-                    .as_path()
-                    .join(&self.mapping_filename);
-
-                mapper.write_to_file(
-                    &new_dir_info, 
-                    &mapping_file
-                )?;
-            
-                sandbox_dir_info = new_dir_info;
-            }
-
-            // Generate the credentials (keys and certs for ca, server, and client)
-            let cred_bundle = CredentialBundle::new(sandbox_dir_info.sandbox_dir())?;
-            cred_bundle.generate(params)?;
-
-            // Return the server specific credentials
-            let resource = ServerCredential {
-                key: fs::read(cred_bundle.server_key().as_path())
-                    .with_context(|| format!("read {}", cred_bundle.server_key().display()))?,
-                crt: fs::read(cred_bundle.server_crt().as_path())
-                    .with_context(|| format!("read {}", cred_bundle.server_crt().display()))?,
-                ca_crt: fs::read(cred_bundle.ca_crt().as_path())
-                    .with_context(|| format!("read {}", cred_bundle.ca_crt().display()))?,
+            let resource = ServerCredentials {
+                key: credentials.server_key,
+                crt: credentials.server_crt,
+                ca_crt: credentials.ca_crt,
             };
-    
-            Ok(serde_json::to_vec(&resource)?)
 
-        } else {
-            // Handle the case where the manager is None
-            Err(anyhow!("Directory manager is uninitialized"))
+            return Ok(serde_json::to_vec(&resource)?);
+        };
+
+        // Generate the credentials (keys and certs for ca, server, and client)
+        let credential_dir = tempdir_in(self.plugin_dir.as_path())?;
+        let generator = CredentialGenerator::new(&credential_dir)?;
+        let credentials = generator.generate(&self.certificate_details)?;
+
+        log::info!("Credentials are generated!");
+
+        // Aquire the write lock and write the credential into the hashmap
+        {
+            let mut state = self.state.write().await;
+            state.insert(key, credentials.clone());
         }
+
+        // Write the hashmap to file for a persistence copy
+        self.save_to_file(&self.credblob_file).await?;
+
+        // Return the server credentials to respond the request
+        let resource = ServerCredentials {
+            key: credentials.server_key.clone(),
+            crt: credentials.server_crt.clone(),
+            ca_crt: credentials.ca_crt.clone(),
+        };
+
+        Ok(serde_json::to_vec(&resource)?)
     }
 }

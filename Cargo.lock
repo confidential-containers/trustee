@@ -3079,6 +3079,7 @@ dependencies = [
  "serial_test",
  "strum",
  "serde_qs",
+ "strum",
  "tempfile",
  "thiserror 2.0.12",
  "time",

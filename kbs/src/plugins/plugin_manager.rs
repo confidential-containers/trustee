@@ -12,6 +12,8 @@ use super::{sample, RepositoryConfig, ResourceStorage};
 
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
+#[cfg(feature = "splitapi-plugin")]
+use super::splitapi::{SplitAPI, SplitAPIConfig};
 
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
@@ -73,6 +75,9 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
+    #[cfg(feature = "splitapi-plugin")]
+    #[serde(alias = "splitapi")]
+    SplitAPI(SplitAPIConfig),
 }
 
 impl Display for PluginsConfig {
@@ -84,6 +89,8 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
+            #[cfg(feature = "splitapi-plugin")]
+            PluginsConfig::SplitAPI(_) => f.write_str("splitapi"),
         }
     }
 }
@@ -108,6 +115,11 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let nebula_ca = NebulaCaPlugin::try_from(nebula_ca_config)
                     .context("Initialize 'nebula-ca-plugin' failed")?;
                 Arc::new(nebula_ca) as _
+            #[cfg(feature = "splitapi-plugin")]
+            PluginsConfig::SplitAPI(splitapi_config) => {
+                let splitapi_plugin = SplitAPI::try_from(splitapi_config)
+                    .context("Initialize 'SplitAPI' plugin failed")?;
+                Arc::new(splitapi_plugin) as _
             }
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(pkcs11_config) => {
