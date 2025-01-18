@@ -6,8 +6,12 @@
 pub mod nebula_ca;
 pub mod resource;
 pub mod sample;
+#[cfg(feature = "splitapi-plugin")]
+pub mod splitapi;
 
 #[cfg(feature = "nebula-ca-plugin")]
 pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
+#[cfg(feature = "splitapi-plugin")]
+pub use splitapi::{SplitAPI, SplitAPIConfig};
