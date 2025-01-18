@@ -3286,6 +3286,7 @@ dependencies = [
  "sha2",
  "strum",
  "serde_qs",
+ "strum",
  "tempfile",
  "thiserror 2.0.17",
  "time",

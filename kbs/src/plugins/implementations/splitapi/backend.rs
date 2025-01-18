@@ -1,21 +1,20 @@
-// Copyright (c) 2024 by IBM Corporation
+// Copyright (c) 2025 by IBM Corporation
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{Context, Result};
-use std::{ffi::OsString, sync::Arc};
+use anyhow::Result;
 use serde::Deserialize;
+use std::{path::PathBuf, sync::Arc};
 
+use super::generator::CertificateDetails;
 use super::manager;
 
-
-pub const PLUGIN_NAME: &str = "splitapi";
-
+pub const CREDENTIALS_BLOB_FILE: &str = "certificates.json";
 
 /// Services supported by the SplitAPI plugin
 #[async_trait::async_trait]
 pub trait SplitAPIBackend: Send + Sync {
-    /// Generate and obtain the credential for API Proxy server
+    /// Returns credentials for API Proxy server, generates if not exist
     async fn get_server_credential(&self, params: &SandboxParams) -> Result<Vec<u8>>;
 }
 
@@ -25,13 +24,21 @@ pub struct SplitAPI {
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
-pub enum SplitAPIConfig {
-    CertManager(manager::SplitAPIRepoDesc),
+pub struct SplitAPIConfig {
+    pub plugin_dir: String,
+    #[serde(default)]
+    pub credential_blob_filename: String,
+    #[serde(default)]
+    pub certificate_details: CertificateDetails,
 }
 
 impl Default for SplitAPIConfig {
     fn default() -> Self {
-        Self::CertManager(manager::SplitAPIRepoDesc::default())
+        Self {
+            plugin_dir: String::from(""),
+            credential_blob_filename: CREDENTIALS_BLOB_FILE.into(),
+            certificate_details: CertificateDetails::default(),
+        }
     }
 }
 
@@ -39,39 +46,38 @@ impl TryFrom<SplitAPIConfig> for SplitAPI {
     type Error = anyhow::Error;
 
     fn try_from(config: SplitAPIConfig) -> anyhow::Result<Self> {
-        match config {
-            SplitAPIConfig::CertManager(desc) => {
-                let backend = manager::CertManager::new(&desc)
-                    .context("Failed to initialize Resource Storage")?;
-                Ok(Self {
-                    backend: Arc::new(backend),
-                })
-            }
-        }
+        let backend = manager::CertManager::new(
+            PathBuf::from(&config.plugin_dir),
+            config.credential_blob_filename,
+            &config.certificate_details,
+        )?;
+
+        Ok(Self {
+            backend: Arc::new(backend),
+        })
     }
 }
 
-/// Parameters taken by the "splitapi" plugin to store the certificates
-/// generated for the sandbox by combining the IP address, sandbox name,
-/// sandbox ID to create an unique directory for the sandbox
+/// Parameters for the credential request
+///
+/// These parameters are provided in the request via URL query string.
+/// Parameters taken by the "splitapi" plugin to generate a unique key
+/// for a sandbox store and retrieve credentials specific to the sandbox.
 #[derive(Debug, PartialEq, serde::Deserialize)]
 pub struct SandboxParams {
+    /// Required: ID of a sandbox or pod
     pub id: String,
+    // Required: IP of a sandbox or pod
     pub ip: String,
+    // Required: name of a sandbox or pod
     pub name: String,
 }
 
-impl From<&SandboxParams> for Vec<OsString> {
-    fn from(params: &SandboxParams) -> Self {
-        let mut v: Vec<OsString> = Vec::new();
+impl TryFrom<&str> for SandboxParams {
+    type Error = anyhow::Error;
 
-        v.push("-id".into());
-        v.push((&params.id).into());
-        v.push("-name".into());
-        v.push((&params.name).into());
-        v.push("-ip".into());
-        v.push((&params.ip.to_string()).into());
-
-        v
+    fn try_from(query: &str) -> Result<Self> {
+        let params: SandboxParams = serde_qs::from_str(query)?;
+        Ok(params)
     }
 }
