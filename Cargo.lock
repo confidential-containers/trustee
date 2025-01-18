@@ -2900,8 +2900,8 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "strum",
  "serde_qs",
+ "strum",
  "tempfile",
  "thiserror 2.0.3",
  "time",
@@ -4776,7 +4776,7 @@ checksum = "cd34f36fe4c5ba9654417139a9b3a20d2e1de6012ee678ad14d240c22c78d8d6"
 dependencies = [
  "percent-encoding",
  "serde",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

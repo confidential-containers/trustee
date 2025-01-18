@@ -8,10 +8,10 @@ use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
 use serde::Deserialize;
 
-use super::{
-    splitapi::{SplitAPI, SplitAPIConfig},
-    sample, RepositoryConfig, ResourceStorage
-};
+use super::{sample, RepositoryConfig, ResourceStorage};
+
+#[cfg(feature = "splitapi-plugin")]
+use super::splitapi::{SplitAPI, SplitAPIConfig};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -63,6 +63,7 @@ pub enum PluginsConfig {
     #[serde(alias = "resource")]
     ResourceStorage(RepositoryConfig),
 
+    #[cfg(feature = "splitapi-plugin")]
     #[serde(alias = "splitapi")]
     SplitAPI(SplitAPIConfig),
 }
@@ -72,6 +73,7 @@ impl Display for PluginsConfig {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
+            #[cfg(feature = "splitapi-plugin")]
             PluginsConfig::SplitAPI(_) => f.write_str("splitapi"),
         }
     }
@@ -92,9 +94,10 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                     .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
             }
+            #[cfg(feature = "splitapi-plugin")]
             PluginsConfig::SplitAPI(splitapi_config) => {
-                let splitapi_plugin =
-                    SplitAPI::try_from(splitapi_config).context("Initialize 'SplitAPI' plugin failed")?;
+                let splitapi_plugin = SplitAPI::try_from(splitapi_config)
+                    .context("Initialize 'SplitAPI' plugin failed")?;
                 Arc::new(splitapi_plugin) as _
             }
         };
