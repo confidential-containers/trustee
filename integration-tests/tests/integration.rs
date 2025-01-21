@@ -130,29 +130,6 @@ impl TestHarness {
         })
     }
 
-    async fn run(&self) -> Result<()> {
-        let api_server = ApiServer::new(self.kbs_config.clone()).await?;
-
-        let kbs_server = api_server.server()?;
-        let kbs_handle = kbs_server.handle();
-
-        actix_web::rt::spawn(kbs_server);
-
-        self.wait().await;
-        self.set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
-            .await?;
-        self.set_policy(PolicyType::AllowAll).await?;
-
-        let secret = self.get_secret(SECRET_PATH.to_string()).await?;
-
-        assert_eq!(secret, SECRET_BYTES);
-        info!("TEST: test completed succesfully");
-
-        kbs_handle.stop(true).await;
-
-        Ok(())
-    }
-
     async fn set_policy(&self, policy: PolicyType) -> Result<()> {
         info!("TEST: Setting Resource Policy");
 
@@ -208,11 +185,28 @@ impl TestHarness {
 #[case::simple_allow_all(TestParameters{attestation_token_type: "Simple".to_string() })]
 #[serial]
 #[actix_rt::test]
-async fn integration(#[case] test_parameters: TestParameters) -> Result<()> {
+async fn get_secret_allow_all(#[case] test_parameters: TestParameters) -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
-
     let harness = TestHarness::new(test_parameters)?;
-    harness.run().await?;
+
+    let api_server = ApiServer::new(harness.kbs_config.clone()).await?;
+
+    let kbs_server = api_server.server()?;
+    let kbs_handle = kbs_server.handle();
+
+    actix_web::rt::spawn(kbs_server);
+
+    harness.wait().await;
+    harness.set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
+        .await?;
+    harness.set_policy(PolicyType::AllowAll).await?;
+
+    let secret = harness.get_secret(SECRET_PATH.to_string()).await?;
+
+    assert_eq!(secret, SECRET_BYTES);
+    info!("TEST: test completed succesfully");
+
+    kbs_handle.stop(true).await;
 
     Ok(())
 }
