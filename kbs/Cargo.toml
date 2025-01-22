@@ -90,9 +90,12 @@ attestation-service = { path = "../attestation-service", default-features = fals
 
 
 [dev-dependencies]
+actix-rt = "2.10.0"
+kbs-client = { path = "../tools/kbs-client" }
 tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
+serial_test.workspace = true
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
