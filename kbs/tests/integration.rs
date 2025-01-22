@@ -29,7 +29,7 @@ use serial_test::serial;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
-const KBS_URL: &str = "http://127.0.0.1:8080";
+const KBS_URL: &str = "http://127.0.0.1:8085";
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
 const WAIT_TIME: u64 = 3000;
@@ -104,7 +104,7 @@ impl TestHarness {
                 timeout: 5,
             },
             http_server: HttpServerConfig {
-                sockets: vec!["127.0.0.1:8080".parse()?],
+                sockets: vec!["127.0.0.1:8085".parse()?],
                 private_key: None,
                 certificate: None,
                 insecure_http: true,
@@ -136,7 +136,7 @@ impl TestHarness {
         let kbs_server = api_server.server()?;
         let kbs_handle = kbs_server.handle();
 
-        actix_web::rt::spawn(kbs_server);
+        tokio::spawn(kbs_server);
 
         self.wait().await;
         self.set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
@@ -207,7 +207,7 @@ impl TestHarness {
 #[case::ear_allow_all(TestParameters{attestation_token_type: "Ear".to_string() })]
 #[case::simple_allow_all(TestParameters{attestation_token_type: "Simple".to_string() })]
 #[serial]
-#[actix_rt::test]
+#[tokio::test]
 async fn integration(#[case] test_parameters: TestParameters) -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
