@@ -473,7 +473,7 @@ A POST request with the content of resource to `/kbs/v0/resource/<repository>/<t
 Authenticated attesters can also receive an attestation token from the KBS in the response body of `/kbs/v0/attest`.
 Attesters can use the attestation result token to request additional resources from external services, a.k.a. relying parties. 
 
-The provided attestation results token follows the [JSON web token](https://jwt.io/) standard and format.
+The provided attestation results token follows the [JSON web token](https://datatracker.ietf.org/doc/html/rfc7519) standard and format.
 
 ##### Header
 
