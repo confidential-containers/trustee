@@ -1,29 +1,29 @@
 use super::{Result, RvpsApi};
 use async_trait::async_trait;
 use core::result::Result::Ok;
-use reference_value_provider_service::{Config, Core};
+use reference_value_provider_service::{Config, Rvps};
 use std::collections::HashMap;
 
-pub struct Rvps {
-    core: Core,
+pub struct BuiltinRvps {
+    rvps: Rvps,
 }
 
-impl Rvps {
+impl BuiltinRvps {
     pub fn new(config: Config) -> Result<Self> {
-        let core = Core::new(config)?;
-        Ok(Self { core })
+        let rvps = Rvps::new(config)?;
+        Ok(Self { rvps })
     }
 }
 
 #[async_trait]
-impl RvpsApi for Rvps {
+impl RvpsApi for BuiltinRvps {
     async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
-        self.core.verify_and_extract(message).await?;
+        self.rvps.verify_and_extract(message).await?;
         Ok(())
     }
 
     async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
-        let hashes = self.core.get_digests().await?;
+        let hashes = self.rvps.get_digests().await?;
 
         Ok(hashes)
     }
