@@ -46,20 +46,20 @@ fn default_version() -> String {
 }
 
 /// The core of the RVPS, s.t. componants except communication componants.
-pub struct Core {
+pub struct Rvps {
     pre_processor: PreProcessor,
     extractors: ExtractorsImpl,
     storage: Box<dyn ReferenceValueStorage + Send + Sync>,
 }
 
-impl Core {
-    /// Instantiate  a new RVPS Core
+impl Rvps {
+    /// Instantiate a new RVPS
     pub fn new(config: Config) -> Result<Self> {
         let pre_processor = PreProcessor::default();
         let extractors = ExtractorsImpl::default();
         let storage = config.storage.to_storage()?;
 
-        Ok(Core {
+        Ok(Rvps {
             pre_processor,
             extractors,
             storage,
