@@ -249,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_digest() {
+    fn test_query_digest_tdshim() {
         let ccel_bin = fs::read("./test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
 
@@ -266,6 +266,33 @@ mod tests {
         assert_eq!(
             kernel_params_hash.unwrap(),
             "64ed1e5a47e8632f80faf428465bd987af3e8e4ceb10a5a9f387b6302e30f4993bded2331f0691c4a38ad34e4cbbc627".to_string()
+        );
+    }
+
+    #[test]
+    fn test_query_digest_ovmf() {
+        let ccel_bin = fs::read("./test_data/CCEL_data_ovmf").expect("open test data");
+        let ccel = CcEventLog::try_from(ccel_bin).expect("parse CCEL eventlog");
+
+        let kernel_hash = ccel.query_digest(MeasuredEntity::TdvfKernel);
+        let kernel_params_hash = ccel.query_digest(MeasuredEntity::TdvfKernelParams);
+        let initrd_hash = ccel.query_digest(MeasuredEntity::TdvfInitrd);
+
+        assert!(kernel_hash.is_some());
+        assert!(kernel_params_hash.is_some());
+        assert!(initrd_hash.is_some());
+
+        assert_eq!(
+            kernel_hash.unwrap(),
+            "a2ccae1e7d6c668ca325bb09c882d8ce44d26d714ba6f58d2e8083fe291a704646afe24a2368bca3341728d78ec80a80".to_string()
+        );
+        assert_eq!(
+            initrd_hash.unwrap(),
+            "b15af9286108d3d8c9f794a51409e55bad6334f5d96a1e4469f8df2d75fd69aac648d939e13daf6800e82e6c1f6628c4".to_string()
+        );
+        assert_eq!(
+            kernel_params_hash.unwrap(),
+            "4230f84885a6f3f305e91a1955045398bd9edd8ffd2aaf2aab8ad3ac53476c4ac82a3675ef559c4ae949a06e84119fc2".to_string()
         );
     }
 }
