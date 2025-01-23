@@ -232,6 +232,32 @@ fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()>
         }
     }
 
+    // Digest of kernel cmdline using TDVF
+    match ccel.query_digest(MeasuredEntity::TdvfKernelParams) {
+        Some(cmdline_digest) => {
+            ccel_map.insert(
+                "cmdline".to_string(),
+                serde_json::Value::String(cmdline_digest),
+            );
+        }
+        _ => {
+            warn!("No tdvf kernel cmdline hash in CCEL");
+        }
+    }
+
+    // Digest of initrd using TDVF
+    match ccel.query_digest(MeasuredEntity::TdvfInitrd) {
+        Some(initrd_digest) => {
+            ccel_map.insert(
+                "initrd".to_string(),
+                serde_json::Value::String(initrd_digest),
+            );
+        }
+        _ => {
+            warn!("No tdvf initrd hash in CCEL");
+        }
+    }
+
     // Map of Kernel Parameters
     match ccel.query_event_data(MeasuredEntity::TdShimKernelParams) {
         Some(config_info) => {
@@ -245,7 +271,7 @@ fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()>
             );
         }
         _ => {
-            warn!("No kernel parameters in CCEL");
+            warn!("No td-shim kernel parameters in CCEL");
         }
     }
 
