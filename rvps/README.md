@@ -80,6 +80,17 @@ Run
 docker run -d -p 50003:50003 rvps --address 0.0.0.0:50003
 ```
 
+Or we can build RVPS as a podman image
+
+```bash
+cd .. && podman build -t rvps -f rvps/podman/Containerfile .
+```
+
+Run
+```bash
+podman run -d -p 50003:50003 --net host rvps
+```
+
 ### Configuration file
 
 RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks lile
