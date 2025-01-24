@@ -172,13 +172,14 @@ Then it will say something like
 [2023-03-09T04:44:11Z INFO  rvps_client] Register provenance succeeded.
 ```
 
-Let's then query the reference value
+Let's then query the reference values
 ```bash
-rvps-tool query --name test-binary-1 --addr http://$RVPS_ADDR
+rvps-tool query --addr http://$RVPS_ADDR
 ```
 
 Then the reference values will be output
 ```
-[2023-03-09T05:13:50Z INFO  rvps_client] Get reference values succeeded:
-    ["reference-value-1","reference-value-2"]
+[2025-01-24T06:04:41Z INFO  rvps_tool] Get reference values succeeded:
+     {"test-binary-1":["reference-value-1","reference-value-2"],
+      "test-binary-2":["reference-value-3","reference-value-4"]}
 ```
