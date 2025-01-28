@@ -108,6 +108,22 @@ docker build \
   . 
 ```
 
+Or you can run the binary in a podman container:
+```shell
+# Build the restful-as container image
+podman build \
+    -t restful-as \
+    -f attestation-service/podman/restful-as/Containerfile \
+    .
+
+# Run the restful-as container
+podman run \
+    -d \
+    -p 50004:50004 \
+    --net host \
+    restful-as
+```
+
 ### HTTPS support
 
 Generate self-signed cert (Optional)
