@@ -79,9 +79,9 @@ Build and install binary
 git clone https://github.com/confidential-containers/trustee
 cd trustee/attestation-service
 WORKDIR=$(pwd)
-make ATTESTER=all-attester && make install
+make VERIFIER=all-verifier && make install
 
-# You can use different attester by changing the value of ATTESTER
+# You can use different verifier by changing the value of VERIFIER
 ```
 
 - For help information, run:
@@ -113,7 +113,7 @@ cd trustee
 docker build \
   -t coco-as:grpc \
   -f attestation-service/docker/as-grpc/Dockerfile \
-  --build-arg ATTESTER=all-attester \
+  --build-arg VERIFIER=all-verifier \
   . 
 ```
 
