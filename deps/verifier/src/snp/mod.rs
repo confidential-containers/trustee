@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use base64::{Engine, engine::general_purpose::STANDARD};
+use base64::{engine::general_purpose::STANDARD, Engine};
 use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
