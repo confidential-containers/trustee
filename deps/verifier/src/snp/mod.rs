@@ -27,6 +27,18 @@ pub struct SnpEvidence {
     cert_chain: Option<Vec<CertTableEntry>>,
 }
 
+impl SnpEvidence {
+    pub fn new(
+        attestation_report: AttestationReport,
+        cert_chain: Option<Vec<CertTableEntry>>,
+    ) -> Self {
+        Self {
+            attestation_report,
+            cert_chain,
+        }
+    }
+}
+
 const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
 const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
 const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
