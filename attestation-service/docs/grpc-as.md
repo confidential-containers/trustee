@@ -104,6 +104,22 @@ If you want to see the runtime log, run:
 RUST_LOG=debug grpc-as --socket 127.0.0.1:50004
 ```
 
+Or you can run the binary in a podman container:
+```shell
+# Build the grpc-as container image
+podman build \
+    -t grpc-as \
+    -f attestation-service/podman/as-grpc/Containerfile \
+    .
+
+# Run the grpc-as container
+podman run \
+    -d \
+    -p 50004:50004 \
+    --net host \
+    grpc-as
+```
+
 #### Image Build
 
 Build and run container image
