@@ -32,7 +32,8 @@ async fn get_secret_allow_all(#[case] test_parameters: TestParameters) -> Result
     actix_web::rt::spawn(kbs_server);
 
     harness.wait().await;
-    harness.set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
         .await?;
     harness.set_policy(PolicyType::AllowAll).await?;
 
@@ -63,14 +64,18 @@ async fn get_secret_deny_all(#[case] test_parameters: TestParameters) -> Result<
     actix_web::rt::spawn(kbs_server);
 
     harness.wait().await;
-    harness.set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
         .await?;
     harness.set_policy(PolicyType::DenyAll).await?;
 
     let secret = harness.get_secret(SECRET_PATH.to_string()).await;
 
     assert!(secret.is_err());
-    assert_eq!(secret.unwrap_err().to_string(), "request unauthorized".to_string());
+    assert_eq!(
+        secret.unwrap_err().to_string(),
+        "request unauthorized".to_string()
+    );
     info!("TEST: test completed succesfully");
 
     kbs_handle.stop(true).await;
