@@ -10,14 +10,14 @@ use kbs::policy_engine::PolicyEngineConfig;
 use kbs::token::AttestationTokenVerifierConfig;
 
 use kbs::plugins::{
-        implementations::{resource::local_fs::LocalFsRepoDesc, RepositoryConfig},
-            PluginsConfig,
+    implementations::{resource::local_fs::LocalFsRepoDesc, RepositoryConfig},
+    PluginsConfig,
 };
 
 use attestation_service::{
-        config::Config,
-            rvps::{RvpsConfig, RvpsCrateConfig},
-                token::{ear_broker, simple, AttestationTokenConfig},
+    config::Config,
+    rvps::{RvpsConfig, RvpsCrateConfig},
+    token::{ear_broker, simple, AttestationTokenConfig},
 };
 
 use anyhow::{bail, Result};
