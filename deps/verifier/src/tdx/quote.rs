@@ -314,6 +314,7 @@ impl Quote {
     body_field!(rtmr_1);
     body_field!(rtmr_2);
     body_field!(rtmr_3);
+    body_field!(td_attributes);
 }
 
 impl fmt::Display for Quote {
