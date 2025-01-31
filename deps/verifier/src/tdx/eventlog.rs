@@ -105,7 +105,7 @@ impl CcEventLog {
                 // Defined in TCG PC Client Platform Firmware Profile Specification section
                 // 'UEFI_PLATFORM_FIRMWARE_BLOB Structure Definition'
                 let entity_name = entity.to_string();
-                event_desc_prefix = vec![entity_name.as_bytes().len() as u8];
+                event_desc_prefix = vec![entity_name.len() as u8];
                 event_desc_prefix.extend_from_slice(entity_name.as_bytes());
             }
             MeasuredEntity::TdvfKernel => {
