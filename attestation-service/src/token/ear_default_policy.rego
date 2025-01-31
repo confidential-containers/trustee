@@ -106,10 +106,8 @@ hardware := 2 if {
 }
 
 configuration := 2 if {
-	# Check the TD has the expected attributes (e.g., debug not enabled)
-	# and features.
-	# TODO: split td_attribute bits to their own claims
-	input.tdx.quote.body.td_attributes in data.reference.td_attributes
+	# Check the TD has the expected attributes (e.g., debug not enabled) and features.
+	input.tdx.td_attributes.debug == false
 	input.tdx.quote.body.xfam in data.reference.xfam
 }
 
