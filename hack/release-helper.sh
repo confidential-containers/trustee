@@ -107,7 +107,7 @@ function tag_and_push_packages() {
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
         docker manifest push ${ghcr_repo}/${release_pkg_name}:${release_tag_full}
 
-        docker manifest create ${ghcr_repo}/${release_pkg_name}:${release_tag_full} \
+        docker manifest create ${ghcr_repo}/${release_pkg_name}:latest \
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-x86_64 \
             --amend ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-s390x
         docker manifest push ${ghcr_repo}/${release_pkg_name}:latest
