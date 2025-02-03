@@ -8,7 +8,7 @@ on:
         required: true
       runs-on:
         type: string
-        default: '["ubuntu-22.04"]'
+        default: '["ubuntu-24.04"]'
         description: JSON representation of runner labels
       tarball:
         type: string
@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   build-binaries:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       RUSTC_VERSION: 1.76.0
     steps:
