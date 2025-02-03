@@ -1,4 +1,4 @@
-FROM rust:latest AS builder
+FROM docker.io/library/rust:latest AS builder
 ARG ALIYUN=false
 
 WORKDIR /usr/src/kbs
