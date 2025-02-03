@@ -32,9 +32,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install OPA command line tool
-        run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
-          chmod 755 ./opa && cp opa /usr/local/bin
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
 
       - name: OPA policy.rego fmt and check
         run: |
