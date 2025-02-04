@@ -17,6 +17,7 @@ mappings:
 ```
 staged-images/kbs:latest -> key-broker-service:built-in-as-v0.8.2
 staged-images/kbs-grpc-as:latest -> key-broker-service:v0.8.2
+staged-images/kbs-client:latest -> kbs-client:v0.8.2
 staged-images/kbs-ita-as:latest -> key-broker-service:ita-as-v0.8.2
 staged-images/rvps:latest -> reference-value-provider-service:v0.8.2
 staged-images/coco-as-grpc:latest -> attestation-service:v0.8.2
