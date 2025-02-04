@@ -11,13 +11,18 @@ declare -g release_tag
 declare -A staged_to_release=(
     ["staged-images/kbs"]="key-broker-service"
     ["staged-images/kbs-grpc-as"]="key-broker-service"
+    ["staged-images/kbs-client"]="kbs-client"
     ["staged-images/rvps"]="reference-value-provider-service"
     ["staged-images/coco-as-grpc"]="attestation-service"
     ["staged-images/coco-as-restful"]="attestation-service"
 )
 declare -A staged_to_release_tag_prefix=(
     ["staged-images/kbs"]="built-in-as-"
+    ["staged-images/kbs-client"]="sample_only-"
     ["staged-images/coco-as-restful"]="rest-"
+)
+declare -A staged_to_staged_tag_prefix=(
+    ["staged-images/kbs-client"]="sample_only-"
 )
 
 function usage_and_exit() {
@@ -82,7 +87,14 @@ function tag_and_push_packages() {
     for staged_pkg_name in ${!staged_to_release[@]}; do
         release_pkg_name=${staged_to_release[${staged_pkg_name}]}
 
-        # set tag prefix (if needed)
+        # set staged tag prefix (if needed)
+        staged_tag_prefix=
+        if [[ -v staged_to_staged_tag_prefix[${staged_pkg_name}] ]]; then
+            staged_tag_prefix=${staged_to_staged_tag_prefix[${staged_pkg_name}]}
+        fi
+        staged_tag_full=${staged_tag_prefix}${release_candidate_sha}
+
+        # set release tag prefix (if needed)
         release_tag_prefix=
         if [[ -v staged_to_release_tag_prefix[${staged_pkg_name}] ]]; then
             release_tag_prefix=${staged_to_release_tag_prefix[${staged_pkg_name}]}
@@ -91,10 +103,10 @@ function tag_and_push_packages() {
 
         for arch in x86_64 s390x; do
             # pull the staged package
-            docker pull ${ghcr_repo}/${staged_pkg_name}:${release_candidate_sha}-${arch}
+            docker pull ${ghcr_repo}/${staged_pkg_name}:${staged_tag_full}-${arch}
 
             # tag it
-            docker tag ${ghcr_repo}/${staged_pkg_name}:${release_candidate_sha}-${arch} \
+            docker tag ${ghcr_repo}/${staged_pkg_name}:${staged_tag_full}-${arch} \
                 ${ghcr_repo}/${release_pkg_name}:${release_tag_full}-${arch}
 
             # push it (i.e. release it)
