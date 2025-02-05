@@ -24,7 +24,7 @@ jobs:
   build-binaries:
     runs-on: ubuntu-24.04
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.83.0
     steps:
     - name: Download artifacts
       uses: actions/download-artifact@v4

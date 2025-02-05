@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.83.0
     runs-on: ubuntu-24.04
 
     steps:
@@ -52,11 +52,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
 
-    - name: KBS Build [Default]
-      working-directory: kbs
-      run: make
-
-    - name: KBS Build [Built-in CoCo AS]
+    - name: KBS Build [Default/Built-in CoCo AS]
       working-directory: kbs
       run: make
 
