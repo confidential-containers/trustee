@@ -20,6 +20,11 @@ jobs:
       packages: write
 
     steps:
+    - name: Install ORAS
+      uses: oras-project/setup-oras@v1
+      with:
+        version: 1.0.0
+
     - name: Check out code
       uses: actions/checkout@v4
 
