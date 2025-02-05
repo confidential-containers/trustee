@@ -1,5 +1,6 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
+SPLITAPI_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -46,6 +47,10 @@ endif
 
 ifeq ($(ALIYUN), true)
   FEATURES += aliyun
+endif
+
+ifeq ($(SPLITAPI_PLUGIN), true)
+  FEATURES += splitapi-plugin
 endif
 
 ifndef CLI_FEATURES
