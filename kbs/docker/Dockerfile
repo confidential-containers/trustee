@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:slim AS builder
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:slim AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
