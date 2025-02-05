@@ -3,7 +3,7 @@ use log::{debug, info};
 use reference_value_provider_service::{Config, Rvps};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -16,11 +16,11 @@ use crate::rvps_api::{
 };
 
 pub struct RVPSServer {
-    rvps: Arc<Mutex<Rvps>>,
+    rvps: Arc<RwLock<Rvps>>,
 }
 
 impl RVPSServer {
-    pub fn new(rvps: Arc<Mutex<Rvps>>) -> Self {
+    pub fn new(rvps: Arc<RwLock<Rvps>>) -> Self {
         Self { rvps }
     }
 }
@@ -33,7 +33,7 @@ impl ReferenceValueProviderService for RVPSServer {
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let rvs = self
             .rvps
-            .lock()
+            .read()
             .await
             .get_digests()
             .await
@@ -58,7 +58,7 @@ impl ReferenceValueProviderService for RVPSServer {
         debug!("registry reference value: {}", request.message);
 
         self.rvps
-            .lock()
+            .write()
             .await
             .verify_and_extract(&request.message)
             .await
@@ -71,7 +71,7 @@ impl ReferenceValueProviderService for RVPSServer {
 
 pub async fn start(socket: SocketAddr, config: Config) -> Result<()> {
     let service = Rvps::new(config)?;
-    let inner = Arc::new(Mutex::new(service));
+    let inner = Arc::new(RwLock::new(service));
     let rvps_server = RVPSServer::new(inner.clone());
 
     Server::builder()
