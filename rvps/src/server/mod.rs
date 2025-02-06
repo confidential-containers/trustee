@@ -16,18 +16,18 @@ use crate::rvps_api::{
     ReferenceValueRegisterResponse,
 };
 
-pub struct RVPSServer {
+pub struct RvpsServer {
     rvps: Arc<RwLock<Rvps>>,
 }
 
-impl RVPSServer {
+impl RvpsServer {
     pub fn new(rvps: Arc<RwLock<Rvps>>) -> Self {
         Self { rvps }
     }
 }
 
 #[tonic::async_trait]
-impl ReferenceValueProviderService for RVPSServer {
+impl ReferenceValueProviderService for RvpsServer {
     async fn query_reference_value(
         &self,
         _request: Request<ReferenceValueQueryRequest>,
@@ -73,7 +73,7 @@ impl ReferenceValueProviderService for RVPSServer {
 pub async fn start(socket: SocketAddr, config: Config) -> Result<()> {
     let service = Rvps::new(config)?;
     let inner = Arc::new(RwLock::new(service));
-    let rvps_server = RVPSServer::new(inner.clone());
+    let rvps_server = RvpsServer::new(inner.clone());
 
     Server::builder()
         .add_service(ReferenceValueProviderServiceServer::new(rvps_server))
