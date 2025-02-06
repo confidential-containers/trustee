@@ -8,6 +8,7 @@ pub mod config;
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
+pub mod server;
 pub mod storage;
 
 pub use config::Config;
