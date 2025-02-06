@@ -80,6 +80,9 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
         "svn": quote.svn,
         "report_data": quote.report_data,
         "init_data": quote.init_data,
+
+        // Generally TCB claims should originate from the attester.
+        "launch_digest": "abcde",
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
