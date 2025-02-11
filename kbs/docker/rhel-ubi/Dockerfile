@@ -17,6 +17,7 @@ WORKDIR /usr/src/kbs
 COPY . .
 ARG KBS_FEATURES=coco-as-builtin
 RUN \
+export OPENSSL_NO_VENDOR=1  && \
 cargo install --locked --root /usr/local/ --path kbs --bin kbs --no-default-features --features ${KBS_FEATURES} && \
 # Collect linked files necessary for the binary to run.
 mkdir -p /root/trustee/lib64 && \
