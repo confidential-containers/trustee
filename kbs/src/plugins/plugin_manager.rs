@@ -8,7 +8,7 @@ use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
 use serde::Deserialize;
 
-use super::{sample, RepositoryConfig, ResourceStorage};
+use super::{sample, IdKey, IdKeyConfig, RepositoryConfig, ResourceStorage};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -59,6 +59,9 @@ pub enum PluginsConfig {
 
     #[serde(alias = "resource")]
     ResourceStorage(RepositoryConfig),
+
+    #[serde(alias = "id-key")]
+    IdKey(IdKeyConfig),
 }
 
 impl Display for PluginsConfig {
@@ -66,6 +69,7 @@ impl Display for PluginsConfig {
         match self {
             PluginsConfig::Sample(_) => f.write_str("sample"),
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
+            PluginsConfig::IdKey(_) => f.write_str("id-key"),
         }
     }
 }
@@ -84,6 +88,10 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let resource_storage = ResourceStorage::try_from(repository_config)
                     .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
+            }
+            PluginsConfig::IdKey(cfg) => {
+                let id_key = IdKey::try_from(cfg).context("Initialize 'ID_KEY' plugin failed")?;
+                Arc::new(id_key) as _
             }
         };
 
