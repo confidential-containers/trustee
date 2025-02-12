@@ -4,6 +4,10 @@
 
 pub mod resource;
 pub mod sample;
+#[cfg(feature = "splitapi-plugin")]
+pub mod splitapi;
 
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
+#[cfg(feature = "splitapi-plugin")]
+pub use splitapi::{SplitAPI, SplitAPIConfig};
