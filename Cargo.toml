@@ -1,11 +1,10 @@
 [workspace]
 members = [
-    "kbs/src/kbs",
-    "kbs/src/api",
-    "kbs/tools/client",
-    "attestation-service/attestation-service",
-    "attestation-service/verifier",
-    "attestation-service/rvps",
+    "kbs",
+    "attestation-service",
+    "rvps",
+    "tools/kbs-client",
+    "deps/verifier",
 ]
 resolver = "2"
 
@@ -18,33 +17,46 @@ edition = "2021"
 
 [workspace.dependencies]
 actix-web = "4"
-actix-web-httpauth = "0.8.0"
+actix-web-httpauth = "0.8.2"
 anyhow = "1.0"
-api-server = { path = "kbs/src/api", default-features = false }
 assert-json-diff = "2.0.2"
 async-trait = "0.1.31"
-base64 = "0.21"
+base64 = "0.22.1"
 cfg-if = "1.0.0"
 chrono = "0.4.19"
 clap = { version = "4", features = ["derive"] }
 config = "0.13.3"
+ear = "0.3.0"
 env_logger = "0.10.0"
 hex = "0.4.3"
-kbs-types = "0.6.0"
+jwt-simple = { version = "0.12", default-features = false, features = [
+    "pure-rust",
+] }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
+kbs-types = "0.7.0"
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
-prost = "0.11.0"
-regorus = { version = "0.1.5", default-features = false, features = ["regex", "base64", "time"] }
+prost = "0.13"
+regorus = { version = "0.2.6", default-features = false, features = [
+    "regex",
+    "base64",
+    "time",
+    "std",
+] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "default-tls",
+] }
 rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.89"
+serde_json = "1.0.132"
 serde_with = { version = "1.11.0", features = ["base64", "hex"] }
 serial_test = "0.9.0"
 sha2 = "0.10"
 shadow-rs = "0.19.0"
-strum = { version = "0.25", features = ["derive"] }
-thiserror = "1.0"
-tokio = { version = "1.23.0", features = ["full"] }
-tempfile = "3.4.0"
-tonic = "0.8.1"
-tonic-build = "0.8.0"
+strum = { version = "0.26", features = ["derive"] }
+thiserror = "2.0"
+tokio = { version = "1", features = ["full"], default-features = false }
+tempfile = "3.14.0"
+tonic = "0.12"
+tonic-build = "0.12"

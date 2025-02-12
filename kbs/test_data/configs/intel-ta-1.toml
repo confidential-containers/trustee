@@ -1,0 +1,32 @@
+[attestation_token]
+trusted_jwk_sets = ["/etc/ca", "/etc/ca2"]
+
+[attestation_service]
+type = "intel_ta"
+base_url = "example.io"
+api_key = "this-is-a-key"
+certs_file = "file:///etc/ita-cert.pem"
+allow_unmatched_policy = true
+timeout = 5
+
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+insecure_http = false
+
+[admin]
+auth_public_key = "/etc/kbs-admin.pub"
+insecure_api = false
+
+[policy_engine]
+policy_path = "/etc/kbs-policy.rego"
+
+[[plugins]]
+name = "sample"
+item = "value1"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/tmp/kbs-resource"

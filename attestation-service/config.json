@@ -1,12 +1,13 @@
 {
     "work_dir": "/var/lib/attestation-service/",
-    "policy_engine": "opa",
     "rvps_config": {
-        "store_type": "LocalFs",
-        "remote_addr": ""
+        "type": "BuiltIn",
+        "storage": {
+            "type": "LocalFs"
+	}
     },
-    "attestation_token_broker": "Simple",
-    "attestation_token_config": {
+    "attestation_token_broker": {
+        "type": "Simple",
         "duration_min": 5
     }
 }

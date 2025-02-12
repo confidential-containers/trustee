@@ -1,0 +1,97 @@
+name: KBS e2e
+
+on:
+  workflow_call:
+    inputs:
+      tee:
+        type: string
+        required: true
+      runs-on:
+        type: string
+        default: '["ubuntu-22.04"]'
+        description: JSON representation of runner labels
+      tarball:
+        type: string
+        description: Artifact containing checked out source from a prior job
+        required: true
+
+# Self-hosted runners do not set -o pipefail otherwise
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-binaries:
+    runs-on: ubuntu-22.04
+    env:
+      RUSTC_VERSION: 1.76.0
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Extract tarball
+      run: tar xzf ./artifact/${{ inputs.tarball }}
+
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: ${{ env.RUSTC_VERSION }}
+        components: rustfmt, clippy
+        rustflags: ""
+
+    - name: Set up rust build cache
+      uses: actions/cache@v4
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          target/
+        key: rust-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Build bins
+      working-directory: kbs/test
+      run: |
+        make install-dev-dependencies
+        make bins
+
+    - name: Archive test folder
+      run: tar czf test.tar.gz kbs/test
+
+    - uses: actions/upload-artifact@v4
+      with:
+        path: test.tar.gz
+        overwrite: true
+        name: artifacts-${{ inputs.tee }}
+
+  e2e-test:
+    needs: build-binaries
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: artifacts-${{ inputs.tee }}
+
+    - name: Extract test folder
+      run: tar xzf ./test.tar.gz
+
+    - name: Set up SGX/TDX certificates cache
+      uses: actions/cache@v4
+      with:
+        path: /root/.dcap-qcnl
+        key: ${{ runner.os }}-dcap-qcnl
+
+    - name: Install dependencies
+      working-directory: kbs/test
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y make --no-install-recommends
+        sudo make install-dependencies
+    
+    - name: Run e2e test
+      working-directory: kbs/test
+      env:
+        TEE: ${{ inputs.tee }}
+        RUST_LOG: warn
+      run: sudo -E make e2e-test

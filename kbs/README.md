@@ -4,7 +4,7 @@ The Confidential Containers Key Broker Service (KBS) facilitates remote attestat
 The KBS is an implementation of a [Relying Party](https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html).
 The KBS itself does not validate attestation evidence. Instead, it supports different external components to verify TEE evidence in the form of plug-ins, including
 - [CoCo Attestation-Service (CoCo AS)](../attestation-service/) ([All plugins](../attestation-service/README.md#attestation-service) supported)
-- [Intel Trust Authority (ITA)](src/api/src/attestation/intel_trust_authority/) (Only supports SGX/TDX)
+- [Intel Trust Authority (ITA)](src/attestation/intel_trust_authority/) (Only supports SGX/TDX)
 
 # Quick Start
 
@@ -90,23 +90,25 @@ The Makefile supports a number of other configuration parameters.
 
 For example,
 ```shell
-make background-check-kbs [HTTPS_CRYPTO=?] [POLICY_ENGINE=?] [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?]
+make background-check-kbs [AS_TYPES=?] [COCO_AS_INTEGRATION_TYPE=?] [ALIYUN=?]
 ```
 
 The parameters
-- `HTTPS_CRYPTO`: either `rustls` or `openssl` can be specified. If not provided, `rustls` is default.
-- `POLICY_ENGINE`: The KBS has a policy engine to facilitate access control. This should not be confused with the policy engine in the AS, which determines whether or not TEE evidence is valid. `POLICY_ENGINE` determines which type of policy engine the KBS will use. Today only `opa` is supported. The KBS can also be built without a policy engine
-if it is not required.
 - `AS_TYPES`: The KBS supports multiple backend attestation services. `AS_TYPES` selects which verifier to use. The options are `coco-as` and `intel-trust-authority-as`.
 - `COCO_AS_INTEGRATION_TYPE`:  The KBS can connect to the CoCo AS in multiple ways. `COCO_AS_INTEGRATION_TYPE` can be set either to `grpc` or `builtin`. With `grpc` the KBS will make a remote connection to the AS. If you are manually building and configuring the components, you'll need to set them up so that this connection can be established. Similar to passport mode, the remote AS can be useful if secret provisioning and attestation verification are not in the same scope. With `builtin` the KBA uses the AS as a crate. This is recommended if you want to avoid the complexity of a remote connection.
-
+- `ALIYUN`: The kbs support aliyun KMS as secret storage backend. `true` to enable building this feature. By default it is `false`.
 ## HTTPS Support
 
-The KBS can use HTTPS. This requires a crypto backend.
-`HTTPS_CRYPTO` determines which backend will be used.
-The options are `rustls` and `openssl`. The default is `rustls`.
+The KBS can use HTTPS. This is facilitated by openssl crypto backend.
 
 If you want a self-signed cert for test cases, please refer to [the document](docs/self-signed-https.md).
+
+## Storage Backend
+
+The KBS can use different backend storage. `LocalFs` will always be builtin.
+`ALIYUN` determines whether aliyun kms support will be built. The options
+are `true` or `false` (by defult). Please refer to [the document](docs/config.md#repository-configuration)
+for more details.
 
 ## References
 
@@ -118,8 +120,8 @@ The KBS implements and supports a simple, vendor and hardware-agnostic
 KBS implements an HTTP-based, [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) compliant API.
 This API is formally described in its [OpenAPI formatted specification](./docs/kbs.yaml).
 
-### Resource Repository
-The [resource repository](./docs/resource_repository.md) where KBS store resource data.
+### Resource Storage Backend
+The [resource storage backend](./docs/resource_storage_backend.md) where KBS store resource data.
 
 ### Config
 A custom, [JSON-formatted configuration file](./docs/config.md) can be provided to configure KBS.
@@ -127,4 +129,4 @@ A custom, [JSON-formatted configuration file](./docs/config.md) can be provided 
 ## Related Tools
 
 ### KBS Client
-We provide a [KBS client](./tools/client/README.md) rust SDK and binary cmdline tool.
+We provide a [KBS client](../tools/kbs-client//README.md) rust SDK and binary cmdline tool.

@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: coco-tenant
+
+resources:
+- ../../base
+- pvc.yaml
+
+patches:
+- path: patch.yaml
+  target:
+    kind: Deployment
+    name: kbs
+
+# Store keys that KBS will release to workloads after attestation:
+# kbs:///reponame/workload_key/key.bin
+secretGenerator:
+- files:
+  - key.bin
+  name: keys

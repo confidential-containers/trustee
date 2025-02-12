@@ -1,0 +1,14 @@
+name: AS/RVPS Container Image Build
+on:
+  pull_request:
+    paths:
+      - 'attestation-service/**'
+      - '.github/workflows/as-docker-build.yml'
+      - '.github/workflows/build-as-image.yml'
+      - 'Cargo.toml'
+  create:
+
+jobs:
+  check_as_image_build:
+    uses: ./.github/workflows/build-as-image.yml
+    secrets: inherit

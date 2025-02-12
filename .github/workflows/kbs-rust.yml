@@ -1,4 +1,4 @@
-name: kbs rust tests
+name: KBS Rust Suites
 
 on:
   push:
@@ -19,6 +19,7 @@ env:
 
 jobs:
   ci:
+    name: Check
     strategy:
       fail-fast: false
     env:
@@ -29,14 +30,11 @@ jobs:
     - name: Code checkout
       uses: actions/checkout@v4
 
-    - name: Rust toolchain installation
-      uses: actions-rs/toolchain@v1
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        profile: minimal
         toolchain: ${{ env.RUSTC_VERSION }}
-        override: true
         components: rustfmt, clippy
-        target: x86_64-unknown-linux-gnu
 
     - name: Building dependencies installation
       run: |
@@ -58,11 +56,11 @@ jobs:
       working-directory: kbs
       run: make
 
-    - name: KBS Build [Built-in CoCo AS, OpenSSL]
+    - name: KBS Build [Built-in CoCo AS]
       working-directory: kbs
-      run: make HTTPS_CRYPTO=openssl
+      run: make
 
-    - name: KBS Build [gRPC CoCo AS, RustTLS]
+    - name: KBS Build [gRPC CoCo AS]
       working-directory: kbs
       run: make COCO_AS_INTEGRATE_TYPE=grpc
 

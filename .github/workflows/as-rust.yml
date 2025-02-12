@@ -1,0 +1,83 @@
+name: CoCo-AS Rust Suites
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - 'attestation-service/**'
+      - 'rvps'
+      - 'deps/verifier'
+      - '.github/workflows/as_rust.yml'
+      - 'Cargo.toml'
+  pull_request:
+    paths:
+      - 'attestation-service/**'
+      - 'rvps'
+      - 'deps/verifier'
+      - '.github/workflows/as_rust.yml'
+      - 'Cargo.toml'
+  create:
+
+jobs:
+  basic_ci:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    name: Check
+    runs-on: ubuntu-22.04
+    env:
+      RUSTC_VERSION: 1.76.0
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install OPA command line tool
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod 755 ./opa && cp opa /usr/local/bin
+
+      - name: OPA policy.rego fmt and check
+        run: |
+          opa fmt -d attestation-service/src/token/ear_default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check attestation-service/src/token/ear_default_policy.rego
+          opa fmt -d attestation-service/src/token/simple_default_policy.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
+          opa check attestation-service/src/token/simple_default_policy.rego
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: Install TPM build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libtss2-dev
+      
+      - name: Install TDX build dependencies
+        run: |
+          sudo curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+          sudo echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          sudo apt-get update
+          sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
+
+      - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUSTC_VERSION }}
+          components: rustfmt, clippy
+
+      - name: Build
+        working-directory: attestation-service
+        run: |
+          make
+
+      - name: Run cargo test
+        run: |
+          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier
+
+      - name: Run cargo fmt check
+        run: |
+          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service --check
+
+      - name: Run rust lint check
+        run: |
+          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -- -D warnings -A clippy::derive_partial_eq_without_eq

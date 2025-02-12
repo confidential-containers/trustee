@@ -1,0 +1,62 @@
+[package]
+name = "verifier"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = [ "all-verifier" ]
+all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "az-tdx-vtpm-verifier", "csv-verifier", "cca-verifier", "se-verifier" ]
+tdx-verifier = [ "eventlog-rs", "scroll", "intel-tee-quote-verification-rs" ]
+sgx-verifier = [ "scroll", "intel-tee-quote-verification-rs" ]
+az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev", "snp-verifier" ]
+az-tdx-vtpm-verifier = [ "az-tdx-vtpm", "openssl", "tdx-verifier" ]
+snp-verifier = [ "asn1-rs", "openssl", "sev", "x509-parser" ]
+csv-verifier = [ "openssl", "csv-rs", "codicon" ]
+cca-verifier = [ "ear", "jsonwebtoken", "veraison-apiclient" ]
+se-verifier = [ "openssl", "pv", "serde_with", "tokio/sync" ]
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+asn1-rs = { version = "0.6.2", optional = true }
+async-trait.workspace = true
+az-snp-vtpm = { version = "0.7.0", default-features = false, features = ["verifier"], optional = true }
+az-tdx-vtpm = { version = "0.7.0", default-features = false, features = ["verifier"], optional = true }
+base64 = "0.22.1"
+bincode = "1.3.3"
+byteorder = "1"
+cfg-if = "1.0.0"
+codicon = { version = "3.0", optional = true }
+# TODO: change it to "0.1", once released.
+csv-rs = { git = "https://github.com/openanolis/csv-rs", rev = "3045440", optional = true }
+eventlog-rs = { version = "0.1.5", optional = true }
+hex.workspace = true
+jsonwebkey = "0.3.5"
+jsonwebtoken = { workspace = true, default-features = false, optional = true }
+kbs-types.workspace = true
+log.workspace = true
+openssl = { version = "0.10.55", optional = true }
+pv = { version = "0.10.0", package = "s390_pv", optional = true }
+scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
+serde.workspace = true
+serde_json.workspace = true
+serde_with = { workspace = true, optional = true }
+sev = { version = "4.0.0", features = ["openssl", "snp"], optional = true }
+sha2.workspace = true 
+tokio = { workspace = true, optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.22", optional = true }
+strum.workspace = true
+veraison-apiclient = { git = "https://github.com/chendave/rust-apiclient", branch = "token", optional = true }
+ear = { git = "https://github.com/veraison/rust-ear", rev = "43f7f480d09ea2ebc03137af8fbcd70fe3df3468", optional = true }
+x509-parser = { version = "0.16.0", optional = true }
+reqwest.workspace = true
+
+[build-dependencies]
+shadow-rs.workspace = true
+tonic-build.workspace = true
+
+[dev-dependencies]
+assert-json-diff.workspace = true
+rstest.workspace = true
+serial_test.workspace = true
+tokio.workspace = true

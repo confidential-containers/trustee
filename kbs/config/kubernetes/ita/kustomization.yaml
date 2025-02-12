@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: coco-tenant
+
+images:
+- name: ghcr.io/confidential-containers/key-broker-service:built-in-as-v0.10.1
+  newTag: ita-as-v0.10.1
+
+resources:
+- ../nodeport/
+
+configMapGenerator:
+- name: kbs-config
+  behavior: replace
+  files:
+  - kbs-config.toml
+- name: policy-config
+  behavior: replace
+  files:
+  - policy.rego

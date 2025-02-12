@@ -54,6 +54,9 @@ eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJjdXN0b21pemVkX2NsYWltcyI6eyJ0ZXN0X2tleSI
 
 The value is a base64 encoded JWT. The body of the JWT is showed in the [example.token.json](./example.token.json).
 
+
+More configuration items please refer to the [document](./config.md).
+
 ## Advanced Topics
 
 ### Building from Source
@@ -67,7 +70,9 @@ Build and install binary
 git clone https://github.com/confidential-containers/trustee
 cd trustee/attestation-service
 WORKDIR=$(pwd)
-make && make install
+make ATTESTER=all-attester && make install
+
+# You can use different attester by changing the value of ATTESTER
 ```
 
 - For help information, run:
@@ -96,7 +101,11 @@ Build and run container image
 ```shell
 git clone https://github.com/confidential-containers/trustee
 cd trustee
-docker build -t coco-as:restful -f attestation-service/Dockerfile.as-restful .
+docker build \
+  -t coco-as:restful \
+  -f attestation-service/docker/as-restful/Dockerfile \
+  --build-arg ATTESTER=all-attester \
+  . 
 ```
 
 ### HTTPS support

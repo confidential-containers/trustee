@@ -1,0 +1,26 @@
+[http_server]
+sockets = ["0.0.0.0:8080"]
+# Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
+# https://cert-manager.io/docs/configuration/acme/
+insecure_http = true
+
+[attestation_token]
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/confidential-containers/attestation-service"
+timeout = 5
+
+[attestation_service.attestation_token_broker]
+type = "Simple"
+duration_min = 5
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
+
+[admin]
+auth_public_key = "/kbs/kbs.pem"
+insecure_api = false

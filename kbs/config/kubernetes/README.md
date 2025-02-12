@@ -9,7 +9,11 @@ We will see how to deploy KBS (with builtin Attestation Service) on a Kubernetes
 Create a secret that you want to be served using this instance of KBS:
 
 ```bash
-echo "This is my super secert" > overlays/key.bin
+echo "This is my super secret" > overlays/key.bin
+```
+or, if deploying on IBM Secure Execution run:
+```bash
+echo "This is my super secret" > overlays/ibm-se/key.bin
 ```
 
 If you have more than one secret, copy them over to the `config/kubernetes/overlays` directory and add those to the `overlays/kustomization.yaml` file after as shown below:
@@ -91,6 +95,36 @@ Deploy KBS by running the following command:
 ./deploy-kbs.sh
 ```
 
+When deploying trustee on an [IBM Secure Execution](https://www.ibm.com/docs/en/linux-on-systems?topic=management-secure-execution)
+enabled environment, where the IBM SE verifier verifier is needed,
+an environment variable `IBM_SE_CREDS_DIR` is needed that points to a directory containing extra files required for
+attestation on IBM Secure Execution:
+
+```
+$ export IBM_SE_CREDS_DIR=/path/to/your/directory
+$ tree $IBM_SE_CREDS_DIR
+/path/to/your/directory
+├── certs
+│   ├── DigiCertCA.crt
+│   └── ibm-z-host-key-signing-gen2.crt
+├── crls
+│   └── ibm-z-host-key-gen2.crl
+├── hdr
+│   └── hdr.bin
+├── hkds
+│   └── HKD-3931-0275D38.crt
+└── rsa
+    ├── encrypt_key.pem
+    └── encrypt_key.pub
+5 directories, 7 files
+```
+
+Please check out the [documentation](https://github.com/confidential-containers/trustee/tree/main/deps/verifier/src/se) for details.
+
+> [!NOTE]
+> For running trustee on non-TEE s390x environment using the sample verifier for non-production environments, this extra
+> `IBM_SE_CREDS_DIR` environment variable is not required.
+
 ## Check deployment
 
 Run the following command to check if the KBS is deployed successfully:
@@ -113,4 +147,14 @@ A Kuberentes service is also deployed as a part of this deployment, you can reac
 $ kubectl -n coco-tenant get service
 NAME   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
 kbs    ClusterIP   10.0.210.190   <none>        8080/TCP   4s
+```
+
+## Delete KBS
+
+```bash
+$ kubectl delete -k ${DEPLOYMENT_DIR}/
+```
+or, if running on IBM Secure Execution run:
+```bash
+$ kubectl delete -k ${DEPLOYMENT_DIR}/ibm-se/ && kubectl delete pv test-local-pv
 ```

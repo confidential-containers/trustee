@@ -2,10 +2,11 @@
     "work_dir": "/opt/confidential-containers/attestation-service",
     "policy_engine": "opa",
     "rvps_config": {
-	    "remote_addr":"http://rvps:50003"
+        "type": "GrpcRemote",
+        "address": "http://rvps:50003"
     },
-    "attestation_token_broker": "Simple",
-    "attestation_token_config": {
+    "attestation_token_broker": {
+	"type": "Ear",
         "duration_min": 5
     }
 }

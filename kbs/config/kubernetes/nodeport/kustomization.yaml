@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: coco-tenant
 
 resources:
-- ../overlays
+- ../overlays/
 
 patches:
 - path: patch.yaml

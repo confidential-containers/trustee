@@ -34,10 +34,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions-rs/toolchain@v1
+    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        profile: minimal
         toolchain: ${{ env.RUSTC_VERSION }}
+        components: rustfmt, clippy
 
     - uses: actions/setup-go@v5
       with:

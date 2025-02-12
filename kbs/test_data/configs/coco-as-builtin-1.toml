@@ -1,0 +1,22 @@
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/coco/attestation-service"
+timeout = 5
+
+[attestation_service.attestation_token_broker]
+type = "Simple"
+issuer_name = "CoCo-Attestation-Service"
+
+[attestation_service.rvps_config]
+type = "GrpcRemote"
+address = "http://127.0.0.1:50003"
+
+[http_server]
+sockets = ["127.0.0.1:8080"]
+insecure_http = false
+
+[admin]
+insecure_api = false
+
+[policy_engine]
+policy_path = "/opt/confidential-containers/kbs/policy.rego"

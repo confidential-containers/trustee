@@ -1,0 +1,59 @@
+name: Build and Push CoCoAS / RVPS Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_push_as_image:
+    permissions:
+      packages: write
+    uses: ./.github/workflows/build-as-image.yml
+    with:
+      build_option: --push
+    secrets: inherit
+
+  publish_multi_arch_image:
+    needs: build_and_push_as_image
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        tag:
+          - coco-as-grpc
+          - coco-as-restful
+          - rvps
+        include:
+          - tag: coco-as-grpc
+            name: gRPC CoCo-AS
+          - tag: coco-as-restful
+            name: RESTful CoCo-AS
+          - tag: rvps
+            name: RVPS
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GHCR Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish Multi-arch Image for ${{ matrix.name }}
+      run: |
+        commit_sha=${{ github.sha }}
+        docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-s390x" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-aarch64" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-x86_64"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}"
+        docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-s390x" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-aarch64" \
+          --amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-x86_64"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest"

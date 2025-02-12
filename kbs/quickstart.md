@@ -48,7 +48,7 @@ and pass it to the KBS server through startup parameters.
 
 Build KBS in Background Check mode:
 ```shell
-make background-check-kbs POLICY_ENGINE=opa
+make background-check-kbs
 sudo make install-kbs
 ```
 
@@ -112,7 +112,7 @@ issuer-kbs --socket 127.0.0.1:50001 --insecure-http --auth-public-key config/pub
 
 Build and start KBS for resource distribution:
 ```shell
-make passport-resource-kbs POLICY_ENGINE=opa
+make passport-resource-kbs
 make install-resource-kbs
 resource-kbs --socket 127.0.0.1:50002 --insecure-http --auth-public-key config/public.pub
 ```
@@ -199,7 +199,7 @@ Where `/path/to/policy` should be replaced by the real path to your policy file.
 
 Resource policy also needs to be the `rego` syntax defined by [Open Policy Agent](https://www.openpolicyagent.org/).
 
-You can read the notes of [default resource policy file](./src/api/src/policy_engine/opa/default_policy.rego) for more details of resource policy.
+You can read the notes of [default resource policy file](src/policy_engine/opa/default_policy.rego) for more details of resource policy.
 
 ## Attestation Token Certificate
 
@@ -214,7 +214,7 @@ which both should be PEM format.
 
 Adding the following content to TOML config file of KBS itself:
 ```toml
-[as_config.attestation_token_config.signer]
+[as_config.attestation_token_broker.signer]
 key_path = "/path/to/token-key.pem"
 cert_path = "/path/to/token-cert-chain.pem"
 ```
@@ -228,7 +228,8 @@ Adding the following content to JSON config file of gRPC AS:
 {
     ...
 
-    "attestation_token_config": {
+    "attestation_token_broker": {
+	"type": "Ear",
         "duration_min": 5,
 		"signer": {
 			"key_path": "/path/to/token-key.pem",
@@ -240,13 +241,27 @@ Adding the following content to JSON config file of gRPC AS:
 
 ### Configure trusted root certificate of KBS
 
-Adding the following content to the config file of Resource KBS to specify trusted root certificate (PEM format),
-which used to verify the trustworthy of the certificate in Attestation Token:
+Attestation Tokens are now all in JWT format.
+
+Adding the following content to the config file of Resource KBS to specify trusted root certificate (PEM format)
+or JWK set which are used to verify the trustworthy of the Attestation Token:
 
 ```toml
-[attestation_token_config]
-attestation_token_type = "CoCo"
+[attestation_token_broker]
+# Path of root certificate used to verify the trustworthy of `x5c` extension in the JWT
 trusted_certs_paths = ["/path/to/trusted_cacert.pem"]
+
+# URL (`path://` or `https://`) of the trusted JWK that can be indexed by `kid` in
+# JWT Header.
+trusted_jwk_sets = ["/url/to/trusted_jwk_set"]
+
+# For Attestation Services like CoCo-AS, the public key to verify the JWT will be given
+# in the token's `jwk` field (with or without the public key cert chain `x5c`).
+#
+# - If this flag is set to `true`, KBS will ignore to verify the trustworthy of the `jwk`.
+# - If this flag is set to `false`, KBS will look up its `trusted_certs_paths` and the `x5c`
+# field to verify the trustworthy of the `jwk`.
+insecure_key = false
 ```
 
 If `trusted_certs_paths` field is not set, KBS will skip the verification of the certificate in Attestation Token.

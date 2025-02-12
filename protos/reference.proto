@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package reference;
+
+message ReferenceValueQueryRequest {}
+
+message ReferenceValueQueryResponse {
+    string reference_value_results = 1;
+}
+
+message ReferenceValueRegisterRequest {
+    string message = 1;
+}
+
+message ReferenceValueRegisterResponse {}
+
+service ReferenceValueProviderService {
+    rpc QueryReferenceValue(ReferenceValueQueryRequest) returns (ReferenceValueQueryResponse) {};
+    rpc RegisterReferenceValue(ReferenceValueRegisterRequest) returns (ReferenceValueRegisterResponse) {};
+}

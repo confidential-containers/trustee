@@ -182,6 +182,7 @@ attributes, but we select only `mr_config_id` for such use.
 - AMD SNP: `hostdata`, 32 bytes.
 - Arm CCA: `CCA_REALM_PERSONALIZATION_VALUE`, 64 bytes.
 - Intel SGX: `CONFIGID`, 64 bytes.
+- IBM SE: `user_data`, 256 bytes.
 
 When users want to deploy a TEE, they need to prepare an initdata. The host
 (probably untrusted) SHOULD start TEE instance with initdata digest as TEE initdata.
@@ -239,6 +240,8 @@ producer side and consumer side use the same encoding.
 Confidential Containers (CoCo) leverages Initdata to inject configurations like
 [kata-agent's policy](https://github.com/kata-containers/kata-containers/blob/main/docs/how-to/how-to-use-the-kata-agent-policy.md),
 configurations for [guest components](https://github.com/confidential-containers/guest-components).
+
+Approach in [Confidential Containers PeerPod](https://github.com/confidential-containers/cloud-api-adaptor/blob/main/src/cloud-api-adaptor/docs/initdata.md)
 
 The encoding of initdata is TOML.
 

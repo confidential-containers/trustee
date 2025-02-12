@@ -1,10 +1,19 @@
+[http_server]
 insecure_http = true
+
+[admin]
 insecure_api = true
 
-[attestation_token_config]
-attestation_token_type = "CoCo"
+[attestation_token]
+trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
 
-[intel_trust_authority_config]
+[attestation_service]
+type = "intel_ta"
 base_url = "https://api.trustauthority.intel.com"
 api_key = "tBfd5kKX2x9ahbodKV1..."
-certs_file = "/etc/intel-trust-authority-certs.txt"
+certs_file = "https://portal.trustauthority.intel.com"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"

@@ -1,0 +1,13 @@
+[http_server]
+sockets = ["0.0.0.0:8080"]
+insecure_http = true
+
+[attestation_token]
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://as:50004"
+timeout = 5
+
+[admin]
+auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"

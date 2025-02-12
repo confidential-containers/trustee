@@ -1,10 +1,9 @@
-version: '3.2'
 services:
   kbs:
     build:
       context: .
-      dockerfile: ./kbs/docker/Dockerfile.coco-as-grpc
-    #image: ghcr.io/confidential-containers/key-broker-service:latest
+      dockerfile: kbs/docker/coco-as-grpc/Dockerfile
+    image: ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest
     command: [
         "/usr/local/bin/kbs",
         "--config-file",
@@ -23,8 +22,8 @@ services:
   as:
     build:
       context: .
-      dockerfile: ./attestation-service/Dockerfile.as-grpc
-    #image: ghcr.io/confidential-containers/attestation-service:latest
+      dockerfile: attestation-service/docker/as-grpc/Dockerfile
+    image: ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest
     ports:
     - "50004:50004"
     restart: always
@@ -43,16 +42,21 @@ services:
     - rvps
 
   rvps:
-    #image: ghcr.io/confidential-containers/reference-value-provider-service:latest
     build:
       context: .
-      dockerfile: ./attestation-service/rvps/Dockerfile
+      dockerfile: rvps/docker/Dockerfile
+    image: ghcr.io/confidential-containers/staged-images/rvps:latest
     restart: always # keep the server running
     ports:
       - "50003:50003"
     volumes:
       - ./kbs/data/reference-values:/opt/confidential-containers/attestation-service/reference_values:rw
       - ./kbs/config/rvps.json:/etc/rvps.json:rw
+    command: [
+      "rvps",
+      "--address",
+      "0.0.0.0:50003"
+    ]
 
   keyprovider:
     image: ghcr.io/confidential-containers/coco-keyprovider:latest
