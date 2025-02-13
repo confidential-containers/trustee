@@ -7,10 +7,13 @@ use qvl::{
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
 };
 use scroll::Pread;
+use std::ffi::CStr;
 use std::mem;
+use std::os::raw::c_char;
 use std::time::{Duration, SystemTime};
 
 use intel_tee_quote_verification_rs as qvl;
+use serde_json::{Map, Value};
 
 pub const QUOTE_HEADER_SIZE: usize = 48;
 
@@ -395,7 +398,7 @@ pub fn parse_tdx_quote(quote_bin: &[u8]) -> Result<Quote> {
     }
 }
 
-pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
+pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
     let mut supp_data_desc = tee_supp_data_descriptor_t {
         major_version: 0,
@@ -454,7 +457,6 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
     };
 
     // set current time. This is only for sample purposes, in production mode a trusted time should be used.
-    //
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
@@ -479,24 +481,19 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
 
     // check verification result
     match quote_verification_result {
-        sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => {
-            // check verification collateral expiration status
-            // this value should be considered in your own attestation/verification policy
-            if collateral_expiration_status == 0 {
-                debug!("Verification completed successfully.");
-            } else {
-                warn!("Verification completed, but collateral is out of date based on 'expiration_check_date' you provided.");
-            }
-        }
-        sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED
+        sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK
+        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED => {
-            warn!(
-                "Verification completed with Non-terminal result: {:x}",
-                quote_verification_result as u32
+            let claims_map = prepare_custom_claims_map(
+                &mut supp_data,
+                collateral_expiration_status,
+                quote_verification_result,
             );
+
+            Ok(claims_map)
         }
         _ => {
             bail!(
@@ -505,8 +502,71 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
             );
         }
     }
+}
 
-    Ok(())
+fn prepare_custom_claims_map(
+    supp_data: &mut sgx_ql_qv_supplemental_t,
+    collateral_expiration_status: u32,
+    quote_verification_result: sgx_ql_qv_result_t,
+) -> Map<String, Value> {
+    let mut claims_map = Map::new();
+
+    let tcb_status_desc = SgxQlQvResultWrapper(quote_verification_result).as_str();
+
+    let advisory_ids: Vec<Value> = get_sa_list(&supp_data.sa_list)
+        .iter()
+        .map(|s| Value::String(s.to_string()))
+        .collect();
+
+    claims_map.insert(
+        "tcb_status".to_string(),
+        Value::String(tcb_status_desc.to_string()),
+    );
+    claims_map.insert(
+        "collateral_expiration_status".to_string(),
+        Value::String(collateral_expiration_status.to_string()),
+    );
+    claims_map.insert("advisory_ids".to_string(), Value::Array(advisory_ids));
+    claims_map
+}
+
+pub struct SgxQlQvResultWrapper(pub sgx_ql_qv_result_t);
+
+impl SgxQlQvResultWrapper {
+    pub fn as_str(&self) -> &'static str {
+        match self.0 {
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => "OK",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_MIN => "Min",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE => "OutOfDate",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED => {
+                "OutOfDateConfigurationNeeded"
+            }
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_INVALID_SIGNATURE => "InvalidSignature",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_REVOKED => "Revoked",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_UNSPECIFIED => "Unspecified",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED => "SoftwareHardeningNeeded",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED => {
+                "ConfigurationAndSoftwareHardeningNeeded"
+            }
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED => "TdRelaunchAdvised",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
+                "TdRelaunchAdvisedConfigurationNeeded"
+            }
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_MAX => "Max",
+        }
+    }
+}
+
+fn get_sa_list(sa_list: &[c_char; 320]) -> Vec<String> {
+    let c_str = unsafe { CStr::from_ptr(sa_list.as_ptr()) };
+
+    let advisory_ids = c_str.to_string_lossy();
+
+    if advisory_ids.is_empty() {
+        return vec![];
+    }
+
+    advisory_ids.split(',').map(|s| s.to_string()).collect()
 }
 
 #[cfg(test)]
@@ -555,13 +615,26 @@ mod tests {
     #[rstest]
     #[ignore]
     #[tokio::test]
-    #[case("./test_data/tdx_quote_4.dat")]
+    #[case(
+        "./test_data/tdx_quote_4.dat",
+        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986"],"collateral_expiration_status":"0","tcb_status":"OutOfDate"}"#
+    )]
     #[ignore]
     #[tokio::test]
-    #[case("./test_data/tdx_quote_5.dat")]
-    async fn test_verify_tdx_quote(#[case] quote: &str) {
+    #[case(
+        "./test_data/tdx_quote_5.dat",
+        r#"{"advisory_ids":[],"collateral_expiration_status":"1","tcb_status":"OK"}"#
+    )]
+    async fn test_verify_tdx_quote(#[case] quote: &str, #[case] expected_output: &str) {
         let quote_bin = fs::read(quote).unwrap();
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
         assert!(res.is_ok(), "{res:?}");
+
+        let claims = serde_json::to_string(&res.unwrap()).expect("Custom claims are available.");
+
+        assert_eq!(
+            claims, expected_output,
+            "Unexpected verification output for {quote}"
+        );
     }
 }
