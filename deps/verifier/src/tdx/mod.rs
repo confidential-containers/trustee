@@ -11,6 +11,7 @@ use base64::Engine;
 use eventlog::{CcEventLog, Rtmr};
 use quote::{ecdsa_quote_verification, parse_tdx_quote};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 pub(crate) mod claims;
 pub mod eventlog;
@@ -58,7 +59,7 @@ async fn verify_evidence(
 
     // Verify TD quote ECDSA signature.
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
-    ecdsa_quote_verification(quote_bin.as_slice()).await?;
+    let custom_claims = ecdsa_quote_verification(quote_bin.as_slice()).await?;
 
     info!("Quote DCAP check succeeded.");
 
@@ -131,7 +132,21 @@ async fn verify_evidence(
     };
 
     // Return Evidence parsed claim
-    generate_parsed_claim(quote, ccel_option, aael)
+    let mut claim = generate_parsed_claim(quote, ccel_option, aael)?;
+    extend_using_custom_claims(&mut claim, custom_claims)?;
+
+    Ok(claim)
+}
+
+pub(crate) fn extend_using_custom_claims(
+    claim: &mut TeeEvidenceParsedClaim,
+    custom: Map<String, Value>,
+) -> Result<()> {
+    let Value::Object(ref mut map) = claim else {
+        bail!("failed to extend the claim, not an object");
+    };
+    map.extend(custom);
+    Ok(())
 }
 
 #[cfg(test)]
