@@ -103,6 +103,22 @@ hardware := 2 if {
 	input.tdx.quote.body.mr_seam in data.reference.mr_seam
 	input.tdx.quote.body.tcb_svn in data.reference.tcb_svn
 	input.tdx.quote.body.mr_td in data.reference.mr_td
+	# Check TCB status
+	# input.tdx.tcb_status == "OK"
+
+	# Check collateral expiration status
+	# input.tdx.collateral_expiration_status == "0"
+
+	# Check against allowed advisory ids
+	# allowed_advisory_ids := {"INTEL-SA-00837"}
+	# attester_advisory_ids := {id | id := input.attester_advisory_ids[_]}
+	# object.subset(allowed_advisory_ids, attester_advisory_ids)
+
+	# Check against disallowed advisory ids
+	# disallowed_advisory_ids := {"INTEL-SA-00837"}
+	# attester_advisory_ids := {id | id := input.tdx.advisory_ids[_]} # convert array to set
+	# intersection := attester_advisory_ids & disallowed_advisory_ids
+	# count(intersection) == 0
 }
 
 configuration := 2 if {
