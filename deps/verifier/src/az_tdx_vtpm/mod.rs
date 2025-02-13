@@ -7,6 +7,7 @@ use super::az_snp_vtpm::{extend_claim, verify_init_data};
 use super::tdx::claims::generate_parsed_claim;
 use super::tdx::quote::{ecdsa_quote_verification, parse_tdx_quote, Quote as TdQuote};
 use super::{TeeEvidenceParsedClaim, Verifier};
+use crate::tdx::extend_using_custom_claims;
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -55,7 +56,7 @@ impl Verifier for AzTdxVtpm {
 
         verify_pcrs(&evidence.tpm_quote)?;
 
-        ecdsa_quote_verification(&evidence.td_quote).await?;
+        let custom_claims = ecdsa_quote_verification(&evidence.td_quote).await?;
         let td_quote = parse_tdx_quote(&evidence.td_quote)?;
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
@@ -65,6 +66,7 @@ impl Verifier for AzTdxVtpm {
 
         let mut claim = generate_parsed_claim(td_quote, None, None)?;
         extend_claim(&mut claim, &evidence.tpm_quote)?;
+        extend_using_custom_claims(&mut claim, custom_claims)?;
 
         Ok(claim)
     }
