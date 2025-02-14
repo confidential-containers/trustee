@@ -250,6 +250,39 @@ This is also called "Repository" in old versions. The properties to be configure
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
+#### Nebula CA Configuration
+
+The `name` field is `nebula-ca` to enable this plugin.
+
+The table below describes the properties supported to configure the plugin, they are all optional.
+
+| Property               | Type   | Description                       | Default |
+|------------------------|--------|-----------------------------------|----------|
+| `nebula_cert_bin_path` | String | `nebula-cert` binary path | If not provided, `nebula-cert` will be searched in $PATH |
+| `work_dir`             | String | This plugin work directory, it requires `rw` permission | `/opt/confidential-containers/kbs/nebula-ca` |
+| `[plugins.self_signed_ca]` | SubSection | Nebula CA credential properties | See table below |
+
+The properties supported under `[plugins.self_signed_ca]` are described in the table below. They are all optional.
+
+When the KBS is starting, the plugin will try to load the CA credential from `${work_dir}/ca/ca.{key,crt}`, otherwise, it will create a new self-signed CA credential based on the `[plugins.self_signed_ca]` properties provided. The default value will be considered if a `[plugins.self_signed_ca]` property is not provided.
+
+| Property            | Type    | Description                       | Default | Example                                   |
+|---------------------|---------|-----------------------------------|----------|-----------------------------------------------------|
+| `name`              | String  | Name of the certificate authority | `Trustee Nebula CA plugin`        | |
+| `argon_iterations`  | Integer | Argon2 iterations parameter used for encrypted private key passphrase | 1 | |
+| `argon_memory`      | Integer | Argon2 memory parameter (in KiB) used for encrypted private key passphrase | 2097152 | |
+| `argon_parallelism` | Integer | Argon2 parallelism parameter used for encrypted private key passphrase | 4 | |
+| `curve`             | String  | EdDSA/ECDSA Curve (25519, P256) | `25519` | |
+| `duration`          | String  | Amount of time the certificate should be valid for. Valid time units are: <hours>"h"<minutes>"m"<seconds>"s" | `8760h0m0s` | |
+| `groups`            | String  | Comma separated list of groups. This will limit which groups subordinate certs can use | "" | `server,ssh` |
+| `ips`               | String  | Comma separated list of ipv4 address and network in CIDR notation. This will limit which ipv4 addresses and networks subordinate certs can use for ip addresses | "" | `192.168.100.10/24,192.168.100.15/24` |
+| `out_qr`            | String  | Path to write a QR code image (png) of the certificate | | `/opt/confidential-containers/kbs/nebula_ca/ca_qr.crt`|
+| `subnets`           | String  | Comma separated list of ipv4 address and network in CIDR notation. This will limit which ipv4 addresses and networks subordinate certs can use in subnets | "" | `192.168.86.0/24` |
+
+A simple [configuration example](#configuration-examples).
+
+Further [documentation](./plugins/nebula_ca.md).
+
 ## Configuration Examples
 
 Using a built-in CoCo AS:
@@ -283,6 +316,13 @@ policy_engine = "opa"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+
+[[plugins]]
+name = "nebula-ca"
+# This sub-section is optional. In this example, we just
+# want to show how to customize the Nebula CA.
+[plugin.self_signed_ca]
+duration = "4380hm0s0"
 ```
 
 Using a remote CoCo AS:
@@ -302,6 +342,13 @@ as_addr = "http://127.0.0.1:50004"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+
+[[plugins]]
+name = "nebula-ca"
+nebula_cert_bin_path = "/usr/local/bin/nebula-cert"
+work_dir = "/opt/confidential-containers/kbs/nebula-ca"
+    [plugins.settings]
+    name = "Nebula CA for Trustee KBS"
 ```
 
 Running with Intel Trust Authority attestation service:
