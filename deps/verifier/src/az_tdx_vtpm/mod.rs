@@ -5,9 +5,9 @@
 
 use super::az_snp_vtpm::{extend_claim, verify_init_data};
 use super::tdx::claims::generate_parsed_claim;
-use super::tdx::quote::{ecdsa_quote_verification, parse_tdx_quote, Quote as TdQuote};
+use super::tdx::quote::{parse_tdx_quote, Quote as TdQuote};
 use super::{TeeEvidenceParsedClaim, Verifier};
-use crate::tdx::extend_using_custom_claims;
+use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
