@@ -16,14 +16,14 @@ spec:
       - command:
         - sh
         - -c
-        - cp -r /config/$(dirname $(readlink /config/policy.rego))/* /opa/confidential-containers/kbs/
+        - cp -r /config/$(dirname $(readlink /config/policy.rego))/* /opt/confidential-containers/kbs/
         image: quay.io/prometheus/busybox:latest
         imagePullPolicy: Always
         name: copy-config
         volumeMounts:
         - mountPath: /config
           name: config-volume
-        - mountPath: /opa/confidential-containers/kbs
+        - mountPath: /opt/confidential-containers/kbs
           name: policy-volume
       containers:
       - name: kbs
@@ -41,7 +41,7 @@ spec:
         - name: kbs-config
           mountPath: /etc/kbs/
         - name: policy-volume
-          mountPath: /opa/confidential-containers/kbs/
+          mountPath: /opt/confidential-containers/kbs/
       volumes:
       - name: kbs-auth-public-key
         secret:
