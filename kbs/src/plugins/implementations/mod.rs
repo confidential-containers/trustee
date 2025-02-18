@@ -5,5 +5,8 @@
 pub mod resource;
 pub mod sample;
 
+pub mod id_key;
+
+pub use id_key::{IdKey, IdKeyConfig};
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
