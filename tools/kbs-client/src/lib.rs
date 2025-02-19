@@ -12,6 +12,7 @@ use kbs_protocol::evidence_provider::NativeEvidenceProvider;
 use kbs_protocol::token_provider::TestTokenProvider;
 use kbs_protocol::KbsClientBuilder;
 use kbs_protocol::KbsClientCapabilities;
+use kbs_protocol::ResourceUri;
 use serde::Serialize;
 
 const KBS_URL_PREFIX: &str = "kbs/v0";
@@ -216,6 +217,10 @@ pub async fn set_resource(
     let token = auth_private_key.sign(claims)?;
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
+
+    // verify 'path'
+    let resource_kbs_uri = format!("kbs:///{path}");
+    serde_json::from_str::<ResourceUri>(&format!("\"{resource_kbs_uri}\""))?;
 
     let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", url, path);
     let res = http_client
