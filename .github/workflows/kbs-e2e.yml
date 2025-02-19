@@ -8,7 +8,7 @@ on:
         required: true
       runs-on:
         type: string
-        default: '["ubuntu-24.04"]'
+        default: '["ubuntu-22.04"]'
         description: JSON representation of runner labels
       tarball:
         type: string
@@ -22,9 +22,10 @@ defaults:
 
 jobs:
   build-binaries:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     env:
       RUSTC_VERSION: 1.80.0
+      OS_VERSION: ubuntu-22.04
     steps:
     - name: Download artifacts
       uses: actions/download-artifact@v4
@@ -38,6 +39,7 @@ jobs:
         toolchain: ${{ env.RUSTC_VERSION }}
         components: rustfmt, clippy
         rustflags: ""
+        cache: false
 
     - name: Set up rust build cache
       uses: actions/cache@v4
@@ -47,7 +49,7 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           target/
-        key: rust-${{ hashFiles('./Cargo.lock') }}
+        key: rust-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
 
     - name: Build bins
       working-directory: kbs/test
