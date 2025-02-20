@@ -7,10 +7,7 @@ use anyhow::*;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ear::{
-    Algorithm, Appraisal, Ear, ExtensionKind, ExtensionValue, Extensions, RawValue, TrustVector,
-    VerifierID,
-};
+use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, TrustVector, VerifierID};
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
 use log::{debug, info, warn};
@@ -39,6 +36,7 @@ pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/T
 pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
 
 const DEFAULT_POLICY_DIR: &str = concatcp!(DEFAULT_TOKEN_WORK_DIR, "/ear/policies");
+const TCB_CLAIMS_EXTENSION: &str = "ear.trustee.tcb_claims";
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct TokenSignerConfig {
@@ -245,6 +243,10 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
 
         let mut appraisal = Appraisal::new();
 
+        appraisal
+            .extensions
+            .register(TCB_CLAIMS_EXTENSION, -41121, ear::RawValueKind::Map)?;
+
         for (k, v) in &policy_results.rules_result {
             let claim_value = v.as_i8().context("Policy claim value not i8")?;
 
@@ -260,7 +262,9 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         }
 
         appraisal.update_status_from_trust_vector();
-        appraisal.annotated_evidence = tcb_claims;
+        appraisal
+            .extensions
+            .set_by_name(TCB_CLAIMS_EXTENSION, RawValue::Map(tcb_claims))?;
         appraisal.policy_id = Some(policy_ids[0].clone());
 
         // For now, create only one submod, called `cpu`.
@@ -274,8 +278,8 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             .ok_or(anyhow!("Token expiration overflow."))?;
 
         let mut extensions = Extensions::new();
-        extensions.register("exp", 4, ExtensionKind::Integer)?;
-        extensions.set_by_name("exp", ExtensionValue::Integer(exp.unix_timestamp()))?;
+        extensions.register("exp", 4, RawValueKind::Integer)?;
+        extensions.set_by_name("exp", RawValue::Integer(exp.unix_timestamp()))?;
 
         let ear = Ear {
             profile: self.config.profile_name.clone(),
@@ -399,8 +403,8 @@ pub fn transform_claims(
     init_data_claims: Value,
     runtime_data_claims: Value,
     tee: Tee,
-) -> Result<BTreeMap<String, RawValue>> {
-    let mut output_claims = BTreeMap::new();
+) -> Result<Vec<(RawValue, RawValue)>> {
+    let mut output_claims: Vec<(RawValue, RawValue)> = vec![];
 
     // If the verifier produces an init_data claim (meaning that
     // it has validated the init_data hash), add the JSON init_data_claims,
@@ -410,31 +414,40 @@ pub fn transform_claims(
     // They will also end up in the EAR token as part of the annotated evidence.
     if let Some(claims_map) = input_claims.as_object_mut() {
         if let Some(init_data) = claims_map.remove("init_data") {
-            output_claims.insert(
-                "init_data".to_string(),
-                RawValue::Text(init_data.as_str().unwrap().to_string()),
-            );
+            output_claims.push((
+                RawValue::String("init_data".to_string()),
+                RawValue::String(init_data.as_str().unwrap().to_string()),
+            ));
 
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&init_data_claims)?)?;
-            output_claims.insert("init_data_claims".to_string(), transformed_claims);
+            output_claims.push((
+                RawValue::String("init_data_claims".to_string()),
+                transformed_claims,
+            ));
         }
 
         if let Some(report_data) = claims_map.remove("report_data") {
-            output_claims.insert(
-                "report_data".to_string(),
-                RawValue::Text(report_data.as_str().unwrap().to_string()),
-            );
+            output_claims.push((
+                RawValue::String("report_data".to_string()),
+                RawValue::String(report_data.as_str().unwrap().to_string()),
+            ));
 
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&runtime_data_claims)?)?;
-            output_claims.insert("runtime_data_claims".to_string(), transformed_claims);
+            output_claims.push((
+                RawValue::String("runtime_data_claims".to_string()),
+                transformed_claims,
+            ));
         }
     }
 
     let transformed_claims: RawValue =
         serde_json::from_str(&serde_json::to_string(&input_claims)?)?;
-    output_claims.insert(to_variant_name(&tee)?.to_string(), transformed_claims);
+    output_claims.push((
+        RawValue::String(to_variant_name(&tee)?.to_string()),
+        transformed_claims,
+    ));
 
     Ok(output_claims)
 }
