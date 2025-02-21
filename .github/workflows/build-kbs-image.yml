@@ -57,13 +57,22 @@ jobs:
           - target_arch: aarch64
             target_platform: linux/arm64
             build_platform: linux/amd64
-            instance: ubuntu-24.04
+            instance: ubuntu-22.04
 
     runs-on: ${{ matrix.instance }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    # TODO: remove this when https://github.com/actions/runner-images/issues/11471
+    # is fully resolved
+    - name: Set up QEMU v8 for Arm
+      if: matrix.target_arch == 'aarch64'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/arm64
+        image: tonistiigi/binfmt:qemu-v7.0.0-28
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3

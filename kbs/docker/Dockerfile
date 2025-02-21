@@ -13,6 +13,8 @@ RUN apt-get update && \
     git \
     sudo
 
+RUN if ["${ARCH}" = "aarch64" ]; then apt-get install -y libc-bin; fi
+
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | \
