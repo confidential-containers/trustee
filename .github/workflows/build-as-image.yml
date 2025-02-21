@@ -46,7 +46,7 @@ jobs:
         - target_arch: aarch64
           target_platform: linux/arm64
           build_platform: linux/amd64
-          instance: ubuntu-24.04
+          instance: ubuntu-22.04
           verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
 
