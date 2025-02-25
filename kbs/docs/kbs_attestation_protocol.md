@@ -467,7 +467,6 @@ Where the URL path parameters are:
 - `<repository>`: This is similar to the concept of container image repository (`docker.io/{repository}/{image_name}:{tag}`), 
 which is used to facilitate users to manage different resource groups.
 Its name should be completely set by users.
-This parameter can be empty to use the default repository of KBS.
 - `<type>`: To distinguish different resource types.
 - `<tag>`: To distinguish different resource instances.
 
