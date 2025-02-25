@@ -109,10 +109,10 @@ paths:
           required: false
         - name: repository
           in: path
-          description: A parent path of resource, can be empty to use the default repository.
+          description: A parent path of resource.
           schema:
             type: string
-          required: false
+          required: true
         - name: type
           in: path
           description: Resource type name
