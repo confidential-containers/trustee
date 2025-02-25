@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+pub mod client;
 pub mod config;
 pub mod extractors;
 pub mod pre_processor;
 pub mod reference_value;
+pub mod server;
 pub mod storage;
 
 pub use config::Config;
@@ -20,6 +22,10 @@ use anyhow::{bail, Context, Result};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+pub mod rvps_api {
+    tonic::include_proto!("reference");
+}
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";
