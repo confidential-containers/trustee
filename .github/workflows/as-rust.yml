@@ -24,7 +24,7 @@ jobs:
     name: Check
     runs-on: ubuntu-24.04
     env:
-      RUSTC_VERSION: 1.83.0
+      RUSTC_VERSION: 1.80.0
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
