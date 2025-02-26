@@ -3,7 +3,7 @@ ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -37,7 +37,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
     libtdx-attest-dev; fi
 
 # Build and Install KBS
-WORKDIR /usr/src/kbs
+WORKDIR /usr/src/trustee
 COPY . .
 
 RUN cd kbs && make AS_FEATURE=coco-as-builtin ALIYUN=${ALIYUN} ARCH=${ARCH} && \
