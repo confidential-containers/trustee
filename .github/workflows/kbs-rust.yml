@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
     env:
-      RUSTC_VERSION: 1.83.0
+      RUSTC_VERSION: 1.80.0
     runs-on: ubuntu-24.04
 
     steps:
