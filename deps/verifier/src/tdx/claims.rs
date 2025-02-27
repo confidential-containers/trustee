@@ -52,7 +52,7 @@
 //!}
 //! ```
 
-use anyhow::*;
+use anyhow::Result;
 use bitflags::{bitflags, Flags};
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::{debug, warn};
