@@ -52,7 +52,7 @@ impl ClientPlugin for Sample {
     /// Whether the body needs to be encrypted via TEE key pair.
     /// If returns `Ok(true)`, the KBS server will encrypt the whole body
     /// with TEE key pair and use KBS protocol's Response format.
-    async fn encrypted(
+    async fn response_encrypted(
         &self,
         _body: &[u8],
         _query: &str,
