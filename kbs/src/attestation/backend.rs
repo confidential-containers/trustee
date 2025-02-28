@@ -275,12 +275,15 @@ impl AttestationService {
             .ok_or(anyhow!("session not found"))?;
         let session = session.get_mut();
 
+        session.attest(&token)?;
+
+        let public_key = session.public_key()?;
+
         let body = serde_json::to_string(&json!({
             "token": token,
+            "public_key": public_key
         }))
         .context("Serialize token failed")?;
-
-        session.attest(token);
 
         Ok(HttpResponse::Ok()
             .cookie(session.cookie())

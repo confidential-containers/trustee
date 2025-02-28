@@ -6,8 +6,11 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie,
 };
-use kbs_types::{Challenge, Request};
+use anyhow::{bail, Context, Result};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use kbs_types::{Challenge, Request, TeePubKey};
 use log::warn;
+use openssl::{pkey::Private, rsa::Rsa};
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
@@ -25,6 +28,7 @@ pub(crate) enum SessionStatus {
         token: String,
         id: String,
         timeout: OffsetDateTime,
+        req_key: Rsa<Private>,
     },
 }
 
@@ -83,18 +87,36 @@ impl SessionStatus {
         *self.timeout() < OffsetDateTime::now_utc()
     }
 
-    pub fn attest(&mut self, token: String) {
+    pub fn attest(&mut self, token: &String) -> Result<()> {
         match self {
             SessionStatus::Authed { id, timeout, .. } => {
+                let req_key = Rsa::generate(4096).context("unable to generate server TEE key")?;
+
                 *self = SessionStatus::Attested {
-                    token,
+                    token: token.to_string(),
                     id: id.clone(),
                     timeout: *timeout,
+                    req_key,
                 };
             }
             SessionStatus::Attested { .. } => {
                 warn!("session already attested.");
             }
+        }
+
+        Ok(())
+    }
+
+    pub fn public_key(&self) -> Result<TeePubKey> {
+        match self {
+            SessionStatus::Authed { .. } => {
+                bail!("session not attested");
+            }
+            SessionStatus::Attested { req_key, .. } => Ok(TeePubKey::RSA {
+                alg: "RSA-OAEP-256".to_string(),
+                k_mod: URL_SAFE_NO_PAD.encode(req_key.n().to_vec()),
+                k_exp: URL_SAFE_NO_PAD.encode(req_key.e().to_vec()),
+            }),
         }
     }
 }
