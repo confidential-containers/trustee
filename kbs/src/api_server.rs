@@ -237,7 +237,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
                 if plugin
-                    .encrypted(&body, query, additional_path, request.method())
+                    .response_encrypted(&body, query, additional_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {

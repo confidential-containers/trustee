@@ -57,7 +57,7 @@ impl ClientPlugin for ResourceStorage {
         Ok(false)
     }
 
-    async fn encrypted(
+    async fn response_encrypted(
         &self,
         _body: &[u8],
         _query: &str,
