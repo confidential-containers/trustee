@@ -56,7 +56,6 @@ install-dev-dependencies: install-dependencies
 		clang \
 		libsgx-dcap-quote-verify-dev \
 		libssl-dev \
-		libtdx-attest-dev \
 		libtss2-dev \
 		pkg-config \
 		protobuf-compiler
@@ -71,7 +70,6 @@ install-dependencies:
 		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify \
 		libsgx-urts \
-		libtdx-attest \
 		libtss2-esys-3.0.2-0 \
 		libtss2-tctildr0 \
 		openssl && \
