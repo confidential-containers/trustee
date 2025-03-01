@@ -30,7 +30,7 @@ intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
 
-# Use pkcs11 resource backend to store secrets in an HSM
+# Use pkcs11 plugin
 pkcs11 = ["cryptoki"]
 
 # Use Nebula Certificate Authority plugin to provide CA services to nodes

@@ -7,9 +7,6 @@ pub mod local_fs;
 #[cfg(feature = "aliyun")]
 pub mod aliyun_kms;
 
-#[cfg(feature = "pkcs11")]
-mod pkcs11;
-
 use actix_web::http::Method;
 use anyhow::{bail, Context, Result};
 
