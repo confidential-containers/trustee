@@ -55,6 +55,17 @@ pub trait ClientPlugin: Send + Sync {
         path: &str,
         method: &Method,
     ) -> Result<bool>;
+
+    /// Whether the request body needs to be encrypted via server's TEE key pair.
+    /// If returns `Ok(true)`, the KBS server will decrypt the request's body
+    /// with the TEE key pair generated for the session upon successful attestation.
+    async fn request_encrypted(
+        &self,
+        body: &[u8],
+        query: &str,
+        path: &str,
+        method: &Method,
+    ) -> Result<bool>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
