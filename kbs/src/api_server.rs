@@ -9,6 +9,7 @@ use actix_web::{
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use log::info;
+use openssl::rsa::Padding;
 
 use crate::{
     admin::Admin, config::KbsConfig, jwe::jwe, plugins::PluginManager, policy_engine::PolicyEngine,
@@ -202,7 +203,7 @@ pub(crate) async fn api(
                     plugin_name: plugin_name.to_string(),
                 })?;
 
-            let body = body.to_vec();
+            let mut body = body.to_vec();
             if plugin
                 .validate_auth(&body, query, additional_path, request.method())
                 .await
@@ -230,6 +231,29 @@ pub(crate) async fn api(
                 // TODO: add policy filter support for other plugins
                 if !core.policy_engine.evaluate(&endpoint, &claim_str).await? {
                     return Err(Error::PolicyDeny);
+                }
+
+                #[cfg(feature = "as")]
+                if plugin
+                    .request_encrypted(&body, query, additional_path, request.method())
+                    .await
+                    .unwrap()
+                {
+                    let req_key = core
+                        .attestation_service
+                        .get_tee_key_from_session(&request)
+                        .await
+                        .unwrap();
+
+                    let mut decrypted = vec![0u8; req_key.size() as usize];
+
+                    let len =
+                        match req_key.private_decrypt(&body, &mut decrypted, Padding::PKCS1_OAEP) {
+                            Ok(l) => l,
+                            Err(e) => return Err(Error::PluginInternalError { source: e.into() }),
+                        };
+
+                    body = decrypted[..len].to_vec();
                 }
 
                 let response = plugin
