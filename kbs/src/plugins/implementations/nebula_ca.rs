@@ -448,6 +448,16 @@ impl ClientPlugin for NebulaCaPlugin {
     ) -> Result<bool> {
         Ok(true)
     }
+
+    async fn request_encrypted(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
+        _method: &Method,
+    ) -> Result<bool> {
+        Ok(false)
+    }
 }
 
 #[cfg(test)]

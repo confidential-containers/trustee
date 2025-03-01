@@ -61,4 +61,14 @@ impl ClientPlugin for Sample {
     ) -> Result<bool> {
         Ok(false)
     }
+
+    async fn request_encrypted(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
+        _method: &Method,
+    ) -> Result<bool> {
+        Ok(false)
+    }
 }
