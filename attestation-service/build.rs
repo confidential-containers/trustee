@@ -8,11 +8,13 @@ fn real_main() -> Result<(), String> {
     Ok(())
 }
 
-fn main() -> shadow_rs::SdResult<()> {
+fn main() {
     if let Err(e) = real_main() {
         eprintln!("ERROR: {e}");
         exit(1);
     }
 
-    shadow_rs::new()
+    shadow_rs::ShadowBuilder::builder()
+    .build_pattern(shadow_rs::BuildPattern::RealTime)
+    .build().unwrap();
 }
