@@ -33,7 +33,11 @@ pub mod cca;
 #[cfg(feature = "se-verifier")]
 pub mod se;
 
-#[cfg(any(feature = "az-tdx-vtpm-verifier", feature = "tdx-verifier", feature = "sgx-verifier"))]
+#[cfg(any(
+    feature = "az-tdx-vtpm-verifier",
+    feature = "tdx-verifier",
+    feature = "sgx-verifier"
+))]
 pub mod intel_dcap;
 
 pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
