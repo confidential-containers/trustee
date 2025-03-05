@@ -390,8 +390,8 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use std::fs;
     use crate::intel_dcap::ecdsa_quote_verification;
+    use std::fs;
 
     #[rstest]
     #[case("./test_data/tdx_quote_4.dat")]
