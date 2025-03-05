@@ -12,8 +12,9 @@ use super::{sample, RepositoryConfig, ResourceStorage};
 
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
-#[cfg(feature = "splitapi-plugin")]
-use super::splitapi::{SplitAPI, SplitAPIConfig};
+
+#[cfg(feature = "pki-vault-plugin")]
+use super::{PKIVaultPlugin, PKIVaultPluginConfig};
 
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
@@ -75,9 +76,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
-    #[cfg(feature = "splitapi-plugin")]
-    #[serde(alias = "splitapi")]
-    SplitAPI(SplitAPIConfig),
+
+    #[cfg(feature = "pki-vault-plugin")]
+    #[serde(alias = "pki_vault")]
+    PKIVaultPlugin(PKIVaultPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -91,6 +93,8 @@ impl Display for PluginsConfig {
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
             #[cfg(feature = "splitapi-plugin")]
             PluginsConfig::SplitAPI(_) => f.write_str("splitapi"),
+            #[cfg(feature = "pki-vault-plugin")]
+            PluginsConfig::PKIVaultPlugin(_) => f.write_str("pki_vault"),
         }
     }
 }
@@ -115,11 +119,12 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let nebula_ca = NebulaCaPlugin::try_from(nebula_ca_config)
                     .context("Initialize 'nebula-ca-plugin' failed")?;
                 Arc::new(nebula_ca) as _
-            #[cfg(feature = "splitapi-plugin")]
-            PluginsConfig::SplitAPI(splitapi_config) => {
-                let splitapi_plugin = SplitAPI::try_from(splitapi_config)
-                    .context("Initialize 'SplitAPI' plugin failed")?;
-                Arc::new(splitapi_plugin) as _
+            }
+            #[cfg(feature = "pki-vault-plugin")]
+            PluginsConfig::PKIVaultPlugin(pkivault_config) => {
+                let pkivault_plugin = PKIVaultPlugin::try_from(pkivault_config)
+                    .context("Initialize 'PKI_Vault' plugin failed")?;
+                Arc::new(pkivault_plugin) as _
             }
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(pkcs11_config) => {

@@ -36,8 +36,10 @@ pkcs11 = ["cryptoki"]
 # Use Nebula Certificate Authority plugin to provide CA services to nodes
 # that want to join a Nebula overlay network
 nebula-ca-plugin = []
-# Use SplitAPI plugin to provide credentials for sandbox (pods) to initiate API proxy server
-splitapi-plugin = []
+
+# Use PKI Vault plugin to provide credentials for mutual TLS communication
+# between a server running in the sandbox (pod) and a client (admin or owner)
+pki-vault-plugin = []
 
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]

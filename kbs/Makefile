@@ -3,6 +3,7 @@ ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= false
 SPLITAPI_PLUGIN ?= false
+PKI_VAULT_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -55,8 +56,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   FEATURES += nebula-ca-plugin
-ifeq ($(SPLITAPI_PLUGIN), true)
-  FEATURES += splitapi-plugin
+endif
+
+ifeq ($(PKI_VAULT_PLUGIN), true)
+  FEATURES += pki-vault-plugin
 endif
 
 ifeq ($(VAULT), true)
