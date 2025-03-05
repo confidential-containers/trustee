@@ -1,3 +1,4 @@
+use crate::TeeEvidenceParsedClaim;
 use anyhow::{anyhow, bail};
 use intel_tee_quote_verification_rs::{
     quote3_error_t, sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, sgx_ql_request_policy_t,
@@ -10,7 +11,6 @@ use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
 use std::time::{Duration, SystemTime};
-use crate::TeeEvidenceParsedClaim;
 
 pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
@@ -89,10 +89,9 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
         None,
         p_supplemental_data,
     )
-        .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
+    .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
 
     debug!("tee_verify_quote successfully returned.");
-
 
     match quote_verification_result {
         sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK
