@@ -51,7 +51,7 @@ const KDS_VCEK: &str = "/vcek/v1";
 
 /// Attestation report versions supported
 const REPORT_VERSION_MIN: u32 = 2;
-const REPORT_VERSION_MAX: u32 = 3;
+const REPORT_VERSION_MAX: u32 = 4;
 
 #[derive(Debug)]
 pub struct Snp {
