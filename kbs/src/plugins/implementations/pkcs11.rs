@@ -7,6 +7,7 @@ use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
     context::{CInitializeArgs, Pkcs11},
+    mechanism::Mechanism,
     object::{Attribute, AttributeInfo, AttributeType, KeyType, ObjectClass},
     session::{Session, UserType},
     types::AuthPin,
@@ -15,6 +16,7 @@ use derivative::Derivative;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use super::super::plugin_manager::ClientPlugin;
 
@@ -35,6 +37,7 @@ pub struct Pkcs11Config {
 
 pub struct Pkcs11Backend {
     session: Arc<Mutex<Session>>,
+    wrapkey_id: Uuid,
 }
 
 impl TryFrom<Pkcs11Config> for Pkcs11Backend {
@@ -50,11 +53,18 @@ impl TryFrom<Pkcs11Config> for Pkcs11Backend {
             bail!("Slot index out of range");
         }
 
-        let session = pkcs11.open_rw_session(slots[slot_index])?;
+        let mut session = pkcs11.open_rw_session(slots[slot_index])?;
         session.login(UserType::User, Some(&AuthPin::new(config.pin.clone())))?;
+
+        // Generate a UUID to for the wrapping keypair.
+        let wrapkey_id = Uuid::new_v4();
+
+        // Create the HSM wrapping keypair.
+        Pkcs11Backend::wrap_key_new(&mut session, &wrapkey_id)?;
 
         Ok(Self {
             session: Arc::new(Mutex::new(session)),
+            wrapkey_id,
         })
     }
 }
@@ -72,10 +82,15 @@ impl ClientPlugin for Pkcs11Backend {
             .strip_prefix('/')
             .context("accessed path is illegal, should start with '/'")?;
 
-        let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
-        match action {
-            "resource" => self.resource_handle(params, body, method).await,
-            _ => bail!("invalid path"),
+        match desc {
+            "wrap-key" => self.wrap_key_handle(body, method).await,
+            _ => {
+                let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
+                match action {
+                    "resource" => self.resource_handle(params, body, method).await,
+                    _ => bail!("invalid path"),
+                }
+            }
         }
     }
 
@@ -171,6 +186,87 @@ impl Pkcs11Backend {
             _ => bail!("Illegal HTTP method. Only supports `GET` and `POST`"),
         }
     }
+
+    async fn wrap_key_handle(&self, body: &[u8], method: &Method) -> Result<Vec<u8>> {
+        match *method {
+            Method::POST => self.wrapkey_wrap(body).await,
+            Method::GET => self.wrapkey_unwrap(body).await,
+            _ => bail!("invalid method"),
+        }
+    }
+
+    fn wrap_key_new(session: &mut Session, label: &Uuid) -> Result<()> {
+        let public_template = vec![
+            Attribute::Token(true),
+            Attribute::Private(false),
+            Attribute::KeyType(KeyType::RSA),
+            Attribute::Class(ObjectClass::PUBLIC_KEY),
+            Attribute::ModulusBits(4096.into()),
+            Attribute::Label(format!("{}-public", label).into()),
+        ];
+
+        let private_template = vec![
+            Attribute::Token(true),
+            Attribute::Private(true),
+            Attribute::KeyType(KeyType::RSA),
+            Attribute::Class(ObjectClass::PRIVATE_KEY),
+            Attribute::Label(format!("{}-private", label).into()),
+        ];
+
+        let (_, _) = session
+            .generate_key_pair(
+                &Mechanism::RsaPkcsKeyPairGen,
+                &public_template,
+                &private_template,
+            )
+            .context("unable to generate RSA wrap key pair")?;
+
+        Ok(())
+    }
+
+    async fn wrapkey_wrap(&self, body: &[u8]) -> Result<Vec<u8>> {
+        let pubkey_template = vec![Attribute::Label(
+            format!("{}-public", self.wrapkey_id).into(),
+        )];
+
+        let mut pubkey = self
+            .session
+            .lock()
+            .await
+            .find_objects(&pubkey_template)
+            .context("unable to find public wrap key in PKCS11 module")?;
+
+        let encrypted = self
+            .session
+            .lock()
+            .await
+            .encrypt(&Mechanism::RsaPkcs, pubkey.remove(0), body)
+            .context("unable to encrypt HTTP body with public wrap key")?;
+
+        Ok(encrypted)
+    }
+
+    async fn wrapkey_unwrap(&self, body: &[u8]) -> Result<Vec<u8>> {
+        let privkey_template = vec![Attribute::Label(
+            format!("{}-private", self.wrapkey_id).into(),
+        )];
+
+        let mut privkey = self
+            .session
+            .lock()
+            .await
+            .find_objects(&privkey_template)
+            .context("unable to find private wrap key in PKCS11 module")?;
+
+        let decrypted = self
+            .session
+            .lock()
+            .await
+            .decrypt(&Mechanism::RsaPkcs, privkey.remove(0), body)
+            .context("unable to decrypt HTTP body with private wrap key")?;
+
+        Ok(decrypted)
+    }
 }
 
 #[cfg(test)]
@@ -179,12 +275,14 @@ mod tests {
         pkcs11::{Pkcs11Backend, Pkcs11Config},
         resource::backend::{ResourceDesc, StorageBackend},
     };
+    use serial_test::serial;
 
     const TEST_DATA: &[u8] = b"testdata";
 
     // This will only work if SoftHSM is setup accordingly.
     #[ignore]
     #[tokio::test]
+    #[serial]
     async fn write_and_read_resource() {
         let config = Pkcs11Config {
             module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
@@ -211,5 +309,30 @@ mod tests {
             .expect("read secret resource failed");
 
         assert_eq!(&data[..], TEST_DATA);
+    }
+
+    // This will only work is SoftHsm is setup accordingly.
+    #[ignore]
+    #[tokio::test]
+    #[serial]
+    async fn wrap_and_unwrap_data() {
+        let config = Pkcs11Config {
+            module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
+            slot_index: Some(1),
+            // This pin must be set for SoftHSM
+            pin: "test".to_string(),
+        };
+
+        let backend = Pkcs11Backend::try_from(config).unwrap();
+
+        let data = "TEST";
+
+        let wrapped = backend.wrapkey_wrap(data.as_bytes()).await.unwrap();
+
+        assert_ne!(data.as_bytes(), wrapped);
+
+        let unwrapped = backend.wrapkey_unwrap(&wrapped).await.unwrap();
+
+        assert_eq!(data.as_bytes(), unwrapped);
     }
 }
