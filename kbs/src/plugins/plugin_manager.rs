@@ -13,6 +13,9 @@ use super::{sample, RepositoryConfig, ResourceStorage};
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 
+#[cfg(feature = "pkcs11")]
+use super::{Pkcs11Backend, Pkcs11Config};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -66,6 +69,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "nebula-ca-plugin")]
     #[serde(alias = "nebula-ca")]
     NebulaCaPlugin(NebulaCaPluginConfig),
+
+    #[cfg(feature = "pkcs11")]
+    #[serde(alias = "pkcs11")]
+    Pkcs11(Pkcs11Config),
 }
 
 impl Display for PluginsConfig {
@@ -75,6 +82,8 @@ impl Display for PluginsConfig {
             PluginsConfig::ResourceStorage(_) => f.write_str("resource"),
             #[cfg(feature = "nebula-ca-plugin")]
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
+            #[cfg(feature = "pkcs11")]
+            PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
         }
     }
 }
@@ -99,6 +108,12 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let nebula_ca = NebulaCaPlugin::try_from(nebula_ca_config)
                     .context("Initialize 'nebula-ca-plugin' failed")?;
                 Arc::new(nebula_ca) as _
+            }
+            #[cfg(feature = "pkcs11")]
+            PluginsConfig::Pkcs11(pkcs11_config) => {
+                let pkcs11 = Pkcs11Backend::try_from(pkcs11_config)
+                    .context("Initialize 'pkcs11' plugin failed")?;
+                Arc::new(pkcs11) as _
             }
         };
 

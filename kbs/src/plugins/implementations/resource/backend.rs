@@ -72,10 +72,6 @@ pub enum RepositoryConfig {
     #[cfg(feature = "aliyun")]
     #[serde(alias = "aliyun")]
     Aliyun(super::aliyun_kms::AliyunKmsBackendConfig),
-
-    #[cfg(feature = "pkcs11")]
-    #[serde(alias = "pkcs11")]
-    Pkcs11(super::pkcs11::Pkcs11Config),
 }
 
 impl Default for RepositoryConfig {
@@ -104,13 +100,6 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
             #[cfg(feature = "aliyun")]
             RepositoryConfig::Aliyun(config) => {
                 let client = super::aliyun_kms::AliyunKmsBackend::new(&config)?;
-                Ok(Self {
-                    backend: Arc::new(client),
-                })
-            }
-            #[cfg(feature = "pkcs11")]
-            RepositoryConfig::Pkcs11(config) => {
-                let client = super::pkcs11::Pkcs11Backend::new(&config)?;
                 Ok(Self {
                     backend: Arc::new(client),
                 })
