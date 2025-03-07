@@ -103,6 +103,7 @@ josekit = "0.10.0"
 tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
+serial_test = "3.0"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
