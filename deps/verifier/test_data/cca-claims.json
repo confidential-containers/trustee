@@ -30,5 +30,7 @@
     "cca-realm-hash-algo-id": "sha-256",
     "cca-realm-public-key": "BIL70TKptcOWh5+7FTQNkFCXjlXHnVJ5oroOlYVPN+IM0vZPO3K1cLvXc+7iznaEJe31Re2+if+v4OlrvUbicPIHlsRIuY2vRqdk0nRC5ubthPjOyBfm7ManHTo959Z+zQ==",
     "cca-realm-public-key-hash-algo-id": "sha-512"
-  }
+  },
+  "init_data": "QURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBRA==",
+  "report_data": "QUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQg=="
 }
