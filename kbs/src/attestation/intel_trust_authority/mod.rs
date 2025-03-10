@@ -44,8 +44,8 @@ pub enum HashAlgorithm {
 
 #[derive(Deserialize, Debug)]
 struct ItaTeeEvidence {
-    #[serde(skip)]
-    _cc_eventlog: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cc_eventlog: Option<String>,
     quote: String,
 }
 
@@ -63,6 +63,8 @@ struct AttestReqData {
     user_data: Option<String>,
     policy_ids: Vec<String>,
     policy_must_match: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    event_log: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -127,6 +129,7 @@ impl Attest for IntelTrustAuthority {
                     user_data: Some(STANDARD.encode(runtime_data)),
                     policy_ids,
                     policy_must_match,
+                    event_log: None,
                 };
 
                 (req_data, att_url)
@@ -143,6 +146,7 @@ impl Attest for IntelTrustAuthority {
                     user_data: None,
                     policy_ids,
                     policy_must_match,
+                    event_log: evidence.cc_eventlog,
                 };
 
                 (req_data, att_url)
@@ -298,8 +302,8 @@ impl IntelTrustAuthority {
             trusted_jwk_sets: vec![config.certs_file.clone()],
             insecure_key: true,
         })
-        .await
-        .context("Failed to initialize token verifier")?;
+            .await
+            .context("Failed to initialize token verifier")?;
 
         Ok(Self {
             config: config.clone(),
