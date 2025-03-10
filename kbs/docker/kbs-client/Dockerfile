@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.78.0 AS builder
+FROM docker.io/library/rust:1.80.0 AS builder
 ARG ARCH=x86_64
 
 WORKDIR /usr/src/kbs
