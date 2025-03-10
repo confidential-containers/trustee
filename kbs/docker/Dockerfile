@@ -33,8 +33,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
     cmake \
     libtss2-dev && \
     if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
-    libsgx-dcap-quote-verify-dev \
-    libtdx-attest-dev; fi
+    libsgx-dcap-quote-verify-dev; fi
 
 # Build and Install KBS
 WORKDIR /usr/src/trustee

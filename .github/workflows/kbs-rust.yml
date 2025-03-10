@@ -50,7 +50,7 @@ jobs:
         curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
         echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
         sudo apt-get update
-        sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
+        sudo apt-get install -y libsgx-dcap-quote-verify-dev
 
     - name: KBS Build [Default/Built-in CoCo AS]
       working-directory: kbs
