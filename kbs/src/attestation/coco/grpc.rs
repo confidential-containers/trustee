@@ -92,7 +92,7 @@ impl Attest for GrpcClientPool {
         Ok(())
     }
 
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
+    async fn verify(&self, tees: Vec<Tee>, nonce: &str, attestation: &str) -> Result<String> {
         let attestation: Attestation = serde_json::from_str(attestation)?;
 
         // TODO: align with the guest-components/kbs-protocol side.
@@ -100,13 +100,18 @@ impl Attest for GrpcClientPool {
         let runtime_data_plaintext = serde_json::to_string(&runtime_data_plaintext)
             .context("CoCo AS client: serialize runtime data failed")?;
 
-        let tee = serde_json::to_string(&tee)
-            .context("CoCo AS client: serialize tee type failed.")?
-            .trim_end_matches('"')
-            .trim_start_matches('"')
-            .to_string();
+        let tees = tees
+            .iter()
+            .map(|t| {
+                serde_json::to_string(&t)
+                    .unwrap()
+                    .trim_end_matches('"')
+                    .trim_start_matches('"')
+                    .to_string()
+            })
+            .collect();
         let req = tonic::Request::new(AttestationRequest {
-            tee,
+            tees,
             evidence: URL_SAFE_NO_PAD.encode(attestation.tee_evidence.to_string()),
             runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
             init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),

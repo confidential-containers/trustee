@@ -36,7 +36,7 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AttestationRequest {
-    tee: String,
+    tees: Vec<String>,
     evidence: String,
     runtime_data: Option<Data>,
     init_data: Option<Data>,
@@ -106,7 +106,11 @@ pub async fn attestation(
         .decode(&request.evidence)
         .context("base64 decode evidence")?;
 
-    let tee = to_tee(&request.tee)?;
+    let tees = &request
+        .tees
+        .iter()
+        .map(|t| to_tee(t).unwrap())
+        .collect::<Vec<Tee>>();
 
     let runtime_data = request
         .runtime_data
@@ -151,7 +155,7 @@ pub async fn attestation(
         .await
         .evaluate(
             evidence,
-            tee,
+            tees.clone(),
             runtime_data,
             runtime_data_hash_algorithm,
             init_data,

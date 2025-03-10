@@ -27,12 +27,12 @@ pub trait AttestationTokenBroker: Send + Sync {
     /// Return base64 encoded Json Web Token.
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        tcb_claims: Vec<(Tee, String, TeeEvidenceParsedClaim)>,
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
+        tees: Vec<Tee>,
     ) -> Result<String>;
 
     async fn set_policy(&self, _policy_id: String, _policy: String) -> Result<()> {

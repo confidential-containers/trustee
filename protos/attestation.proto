@@ -4,7 +4,7 @@ package attestation;
 
 message AttestationRequest {
     // TEE enum. Specify the evidence type
-    string tee = 1;
+    repeated string tees = 1;
 
     // Base64 encoded evidence. The alphabet is URL_SAFE_NO_PAD.
     // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
