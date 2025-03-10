@@ -139,7 +139,6 @@ impl Default for Configuration {
 pub struct EarAttestationTokenBroker {
     config: Configuration,
     private_key: EcKey<Private>,
-    //private_key_bytes: Vec<u8>,
     cert_url: Option<String>,
     cert_chain: Option<Vec<X509>>,
     policy_engine: Arc<dyn PolicyEngine>,
@@ -149,9 +148,10 @@ impl EarAttestationTokenBroker {
     pub fn new(config: Configuration) -> Result<Self> {
         let policy_engine = PolicyEngineType::OPA.to_policy_engine(
             Path::new(&config.policy_dir),
-            include_str!("ear_default_policy.rego"),
+            include_str!("ear_default_policy_cpu.rego"),
+            "default_cpu.rego",
         )?;
-        info!("Loading default AS policy \"ear_default_policy.rego\"");
+        info!("Loading default AS policy \"default_cpu.rego\"");
 
         if config.signer.is_none() {
             log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
@@ -204,22 +204,14 @@ impl EarAttestationTokenBroker {
 impl AttestationTokenBroker for EarAttestationTokenBroker {
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        all_tcb_claims: Vec<(Tee, String, TeeEvidenceParsedClaim)>,
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
+        _tees: Vec<Tee>,
     ) -> Result<String> {
-        let tcb_claims = transform_claims(
-            tcb_claims,
-            init_data_claims.clone(),
-            runtime_data_claims.clone(),
-            tee,
-        )?;
-        debug!("tcb_claims: {:#?}", tcb_claims);
-
-        let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
+        debug!("all_tcb_claims: {:#?}", all_tcb_claims);
 
         let reference_data = json!({
             "reference": reference_data_map,
@@ -234,41 +226,60 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             bail!("No policy is given for EAR token generation.");
         }
 
-        let rules = TrustVector::new()
-            .into_iter()
-            .map(|c| c.tag().to_string().replace("-", "_"))
-            .collect();
-        let policy_results = self
-            .policy_engine
-            .evaluate(&reference_data, &tcb_claims_json, &policy_ids[0], rules)
-            .await?;
-
-        debug!("policy results: {:#?}", policy_results);
-
-        let mut appraisal = Appraisal::new();
-
-        for (k, v) in &policy_results.rules_result {
-            let claim_value = v.as_i8().context("Policy claim value not i8")?;
-
-            appraisal
-                .trust_vector
-                .mut_by_name(k)
-                .unwrap()
-                .set(claim_value);
-        }
-
-        if !appraisal.trust_vector.any_set() {
-            bail!("At least one policy claim must be set.");
-        }
-
-        appraisal.update_status_from_trust_vector();
-        appraisal.annotated_evidence = tcb_claims;
-        appraisal.policy_id = Some(policy_ids[0].clone());
-
-        // For now, create only one submod, called `cpu`.
-        // We can create more when we support attesting multiple devices at once.
+        let mut tee_class_indices: HashMap<String, u8> = HashMap::new();
         let mut submods = BTreeMap::new();
-        submods.insert("cpu".to_string(), appraisal);
+
+        // Create an appraisal for each device
+        for (tee, tee_class, tcb_claims) in all_tcb_claims {
+            let mut appraisal = Appraisal::new();
+
+            let tcb_claims = transform_claims(
+                tcb_claims,
+                init_data_claims.clone(),
+                runtime_data_claims.clone(),
+                tee,
+                )?;
+
+            let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
+
+            let rules = TrustVector::new()
+                .into_iter()
+                .map(|c| c.tag().to_string())
+                .collect();
+
+            // There is a policy for each tee class.
+            // The cpu tee class is loaded as the default.
+            let policy_id = format!("{}_{}", policy_ids[0], tee_class);
+            let policy_results = self
+                .policy_engine
+                .evaluate(&reference_data, &tcb_claims_json, &policy_id, rules)
+                .await?;
+
+            for (k, v) in &policy_results.rules_result {
+                let claim_value = v.as_i8().context("Policy claim value not i8")?;
+
+                appraisal
+                    .trust_vector
+                    .mut_by_name(k)
+                    .unwrap()
+                    .set(claim_value);
+            }
+
+            if !appraisal.trust_vector.any_set() {
+                bail!("At least one policy claim must be set.");
+            }
+
+            appraisal.update_status_from_trust_vector();
+            appraisal.annotated_evidence = tcb_claims;
+            appraisal.policy_id = Some(policy_ids[0].clone());
+
+            tee_class_indices.entry(tee_class.clone()).or_insert(0);
+            let tee_class_index = *tee_class_indices.get_mut(&tee_class).unwrap();
+            tee_class_indices.insert(tee_class.clone(), tee_class_index + 1);
+
+            let submod_name = format!("{}{}", tee_class, tee_class_index.clone());
+            submods.insert(submod_name, appraisal);
+        }
 
         let now = OffsetDateTime::now_utc();
         let exp = now
@@ -338,7 +349,7 @@ impl EarAttestationTokenBroker {
                 }
                 Ok(chain)
             })
-            .transpose()?;
+        .transpose()?;
 
         let common = jwk::CommonParameters {
             key_algorithm: Some(jwk::KeyAlgorithm::ES256),
@@ -374,10 +385,10 @@ fn generate_ec_keys() -> Result<(EcKey<Private>, Vec<u8>, Vec<u8>)> {
     let pkey = PKey::from_ec_key(ec_key.clone())?;
 
     Ok((
-        ec_key,
-        pkey.private_key_to_pem_pkcs8()?,
-        pkey.public_key_to_pem()?,
-    ))
+            ec_key,
+            pkey.private_key_to_pem_pkcs8()?,
+            pkey.public_key_to_pem()?,
+            ))
 }
 
 /// This function does three things.
@@ -401,7 +412,7 @@ pub fn transform_claims(
     init_data_claims: Value,
     runtime_data_claims: Value,
     tee: Tee,
-) -> Result<BTreeMap<String, RawValue>> {
+    ) -> Result<BTreeMap<String, RawValue>> {
     let mut output_claims = BTreeMap::new();
 
     // If the verifier produces an init_data claim (meaning that
@@ -415,7 +426,7 @@ pub fn transform_claims(
             output_claims.insert(
                 "init_data".to_string(),
                 RawValue::Text(init_data.as_str().unwrap().to_string()),
-            );
+                );
 
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&init_data_claims)?)?;
@@ -426,7 +437,7 @@ pub fn transform_claims(
             output_claims.insert(
                 "report_data".to_string(),
                 RawValue::Text(report_data.as_str().unwrap().to_string()),
-            );
+                );
 
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&runtime_data_claims)?)?;
@@ -459,9 +470,7 @@ mod tests {
 
         let _token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![(Tee::Sample, "cpu".to_string(), json!({"claim":"claim1"}))],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"
@@ -470,7 +479,7 @@ mod tests {
                     "runtime_data": "111"
                 }),
                 HashMap::new(),
-                Tee::Sample,
+                vec![Tee::Sample],
             )
             .await
             .unwrap();
@@ -494,9 +503,7 @@ mod tests {
         let broker = EarAttestationTokenBroker::new(config).unwrap();
         let token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![(Tee::Sample, "cpu".to_string(), json!({"claim":"claim1"}))],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"
@@ -505,7 +512,7 @@ mod tests {
                     "runtime_data": "111"
                 }),
                 HashMap::new(),
-                Tee::Sample,
+                vec![Tee::Sample],
             )
             .await
             .unwrap();
