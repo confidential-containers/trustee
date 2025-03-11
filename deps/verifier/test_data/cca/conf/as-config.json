@@ -1,0 +1,14 @@
+{
+  "work_dir": "/opt/confidential-containers/attestation-service",
+  "policy_engine": "opa",
+  "rvps_config": {
+    "type": "GrpcRemote",
+    "address": "http://rvps:50003"
+  },
+  "attestation_token_broker": {
+    "type": "Simple"
+  },
+  "attestation_token_config": {
+    "duration_min": 5
+  }
+}

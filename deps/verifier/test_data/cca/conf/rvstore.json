@@ -1,0 +1,88 @@
+{
+  "platform": [
+    {
+      "implementation-id": "7f454c4602010100000000000000000003003e00010000005058000000000000",
+      "sw-components": [
+        {
+          "measurement-value": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "RSE_BL1_2"
+        },
+        {
+          "measurement-value": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "RSE_BL2"
+        },
+        {
+          "measurement-value": "1121cfccd5913f0a63fec40a6ffd44ea64f9dc135c66634ba001d10bcf4302a2",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "RSE_S"
+        },
+        {
+          "measurement-value": "1571b5ec78bd68512bf7830bb6a2a44b2047c7df57bce79eb8a1c0e5bea0a501",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "AP_BL1"
+        },
+        {
+          "measurement-value": "10159baf262b43a92d95db59dae1f72c645127301661e0a3ce4e38b295a97c58",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "AP_BL2"
+        },
+        {
+          "measurement-value": "10122e856b3fcd49f063636317476149cb730a1aa1cfaad818552b72f56d6f68",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "SCP_BL1"
+        },
+        {
+          "measurement-value": "aa67a169b0bba217aa0aa88a65346920c84c42447c36ba5f7ea65f422c1fe5d8",
+          "signer-id": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56",
+          "component-type": "SCP_BL2"
+        },
+        {
+          "measurement-value": "2e6d31a5983a91251bfae5aefa1c0a19d8ba3cf601d0e8a706b4cfa9661a6b8a",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "AP_BL31"
+        },
+        {
+          "measurement-value": "a1fb50e6c86fae1679ef3351296fd6713411a08cf8dd1790a4fd05fae8688164",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "RMM"
+        },
+        {
+          "measurement-value": "1a252402972f6057fa53cc172b52b9ffca698e18311facd0f3b06ecaaef79e17",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "HW_CONFIG"
+        },
+        {
+          "measurement-value": "9a92adbc0cee38ef658c71ce1b1bf8c65668f166bfb213644c895ccb1ad07a25",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "FW_CONFIG"
+        },
+        {
+          "measurement-value": "238903180cc104ec2c5d8b3f20c5bc61b389ec0a967df8cc208cdc7cd454174f",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "TB_FW_CONFIG"
+        },
+        {
+          "measurement-value": "e6c21e8d260fe71882debdb339d2402a2ca7648529bc2303f48649bce0380017",
+          "signer-id": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+          "component-type": "SOC_FW_CONFIG"
+        }
+      ],
+      "platform-configuration": "cfcfcfcf"
+    }
+  ],
+  "realm": [
+    {
+      "initial-measurement": "ae87fbf7f105e71a7827cb6f0896889c73d2beaf4830d4f9cb05e3e96c3fc7b4faa04caf36a26bd094cf9c7b738617e4c189aaee184dedda5d7a03c39dbdac7c",
+      "rak-hash-algorithm": "sha-256",
+      "extensible-measurements": [
+        "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "personalization-value": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "pkey": {
+      "crv": "P-384",
+      "kty": "EC",
+      "x": "IShnxS4rlQiwpCCpBWDzlNLfqiG911FP8akBr-fh94uxHU5m-Kijivp2r2oxxN6M",
+      "y": "hM4tr8mWQli1P61xh3T0ViDREbF26DGOEYfbAjWjGNN7pZf-6A4OTHYqEryz6m7U"
+    },
+    "implementation-id": "7f454c4602010100000000000000000003003e00010000005058000000000000",
+    "instance-id": "0107060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
+  }
+]
