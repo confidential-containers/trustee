@@ -1,0 +1,6 @@
+{
+  "local-verifier": {
+    "ta-store": "/opt/confidential-containers/attestation-service/cca/tastore.json",
+    "rv-store": "/opt/confidential-containers/attestation-service/cca/rvstore.json"
+  }
+}
