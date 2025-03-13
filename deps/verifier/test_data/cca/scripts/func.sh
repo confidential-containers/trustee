@@ -1,4 +1,6 @@
-if [ $(uname) == "Darwin" ]
+#!/bin/bash
+
+if [ "$(uname)" == "Darwin" ]
 then
   _base64="base64"
   _sed="gsed"
@@ -23,7 +25,7 @@ function mac_tokenise() {
 function linux_tokenise() {
   local token="$1"
 
-  od -v -w1 -t u1 ${token} \
+  od -v -w1 -t u1 "${token}" \
     | cut -c9- \
     | ${_sed} -e 's/$/,/' \
     | ${_sed} '$d' \

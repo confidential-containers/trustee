@@ -22,7 +22,7 @@ make -C kbs build AS_TYPE=coco-as-grpc
 ```sh
 TRUSTEE_WDIR="/opt/confidential-containers"
 
-sudo mkdir -p "${TRUSTEE_WDIR}/attestation-service/cca"
+sudo mkdir -p "${TRUSTEE_WDIR}/attestation-service/cca/opa"
 sudo chown -R $(id -un):$(id -gn) "${TRUSTEE_WDIR}"
 ```
 
@@ -39,6 +39,13 @@ cp ${TRUSTEE_SRC}/deps/verifier/test_data/cca/conf/tastore.json "${TRUSTEE_WDIR}
 cp ${TRUSTEE_SRC}/deps/verifier/test_data/cca/conf/rvstore.json "${TRUSTEE_WDIR}/attestation-service/cca/"
 ```
 
+* CCA OPA policy
+
+```sh
+cp ${TRUSTEE_SRC}/deps/verifier/test_data/cca/conf/default.rego "${TRUSTEE_WDIR}/attestation-service/cca/opa/"
+```
+
+
 # Run
 
 ## `kbs`
@@ -53,6 +60,13 @@ RUST_LOG=debug ${TRUSTEE_SRC}/target/release/kbs -c ${TRUSTEE_SRC}/kbs/conf/kbs-
 
 ```sh
 RUST_LOG=debug ${TRUSTEE_SRC}/target/release/rvps -c ${TRUSTEE_SRC}/kbs/conf/rvps.json
+```
+
+Once `rvps` is started, to configure the needed reference values, do:
+
+```sh
+( cd ${TRUSTEE_SRC}/deps/verifier/test_data/cca/scripts && \
+  RIM="rof79/EF5xp4J8tvCJaInHPSvq9IMNT5ywXj6Ww/x7T6oEyvNqJr0JTPnHtzhhfkwYmq7hhN7dpdegPDnb2sfA==" ./endorse-rim.sh )
 ```
 
 ## `as`
