@@ -6,7 +6,8 @@
     "address": "http://rvps:50003"
   },
   "attestation_token_broker": {
-    "type": "Simple"
+    "type": "Ear",
+    "policy_dir": "/opt/confidential-containers/attestation-service/cca"
   },
   "attestation_token_config": {
     "duration_min": 5
