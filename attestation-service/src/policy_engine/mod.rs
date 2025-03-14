@@ -72,6 +72,7 @@ impl PolicyEngineType {
 
 type PolicyDigest = String;
 
+#[derive(Debug)]
 pub struct EvaluationResult {
     pub rules_result: HashMap<String, Value>,
     pub policy_hash: String,
