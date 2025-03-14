@@ -6,6 +6,7 @@ use kbs_types::Tee;
 use log::debug;
 
 pub mod sample;
+pub mod sample_device;
 
 pub mod eventlog;
 
@@ -82,6 +83,8 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
             }
         }
         Tee::Sample => Ok(Box::<sample::Sample>::default() as Box<dyn Verifier + Send + Sync>),
+        Tee::SampleDevice => Ok(Box::<sample_device::SampleDeviceVerifier>::default()
+            as Box<dyn Verifier + Send + Sync>),
         Tee::Sgx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "sgx-verifier")] {
