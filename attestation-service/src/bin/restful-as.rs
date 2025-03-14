@@ -31,12 +31,12 @@ pub struct Cli {
 
     /// Path to the public key cert for HTTPS. Both public key cert and
     /// private key are provided then HTTPS will be enabled.
-    #[arg(short, long)]
+    #[arg(short = 'u', long)]
     pub https_pubkey_cert: Option<String>,
 
     /// Path to the private key for HTTPS. Both public key cert and
     /// private key are provided then HTTPS will be enabled.
-    #[arg(short, long)]
+    #[arg(short = 'r', long)]
     pub https_prikey: Option<String>,
 }
 
