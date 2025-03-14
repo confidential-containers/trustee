@@ -110,6 +110,7 @@ impl SimpleAttestationTokenBroker {
         let policy_engine = PolicyEngineType::OPA.to_policy_engine(
             Path::new(&config.policy_dir),
             include_str!("simple_default_policy.rego"),
+            "default.rego",
         )?;
         info!("Loading default AS policy \"simple_default_policy.rego\"");
 
@@ -205,14 +206,20 @@ impl SimpleAttestationTokenBroker {
 impl AttestationTokenBroker for SimpleAttestationTokenBroker {
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        tcb_claims: Vec<(Tee, String, TeeEvidenceParsedClaim)>,
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
+        tees: Vec<Tee>,
     ) -> Result<String> {
-        let flattened_claims = flatten_claims(tee, &tcb_claims)?;
+        // Take claims from all verifiers, flatten them and add them to one map.
+        // This may cause conflicts if more than one verifier defines an
+        // init data or report data claim.
+        let mut flattened_claims: Map<String, Value> = Map::new();
+        for (tee, _class, evidence) in tcb_claims {
+            flattened_claims.append(&mut flatten_claims(tee, &evidence)?);
+        }
         let reference_data = json!({
             "reference": reference_data_map,
         });
@@ -254,7 +261,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             .collect();
 
         let token_claims = json!({
-            "tee": to_variant_name(&tee)?,
+            "tees": tees.iter().map(|t| to_variant_name(t).unwrap().to_string()).collect::<Vec<String>>(),
             "evaluation-reports": policies,
             "tcb-status": tcb_claims,
             "customized_claims": {
@@ -445,9 +452,7 @@ mod tests {
 
         let _token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![(Tee::Sample, "cpu".to_string(), json!({"claim":"claim1"}))],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"
@@ -456,7 +461,7 @@ mod tests {
                     "runtime_data": "111"
                 }),
                 HashMap::new(),
-                Tee::Sample,
+                vec![Tee::Sample],
             )
             .await
             .unwrap();
