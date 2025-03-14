@@ -11,6 +11,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, Request, Tee};
 use lazy_static::lazy_static;
 use log::{debug, info};
+use openssl::{pkey::Private, rsa::Rsa};
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
@@ -275,12 +276,15 @@ impl AttestationService {
             .ok_or(anyhow!("session not found"))?;
         let session = session.get_mut();
 
+        session.attest(&token)?;
+
+        let public_key = session.public_key()?;
+
         let body = serde_json::to_string(&json!({
             "token": token,
+            "public_key": public_key
         }))
         .context("Serialize token failed")?;
-
-        session.attest(token);
 
         Ok(HttpResponse::Ok()
             .cookie(session.cookie())
@@ -316,6 +320,34 @@ impl AttestationService {
         };
 
         Ok(token.to_owned())
+    }
+
+    pub async fn get_tee_key_from_session(
+        &self,
+        request: &HttpRequest,
+    ) -> anyhow::Result<Rsa<Private>> {
+        let cookie = request
+            .cookie(KBS_SESSION_ID)
+            .context("KBS session cookie not found")?;
+
+        let session = self
+            .session_map
+            .sessions
+            .get_async(cookie.value())
+            .await
+            .context("session not found")?;
+
+        let session = session.get();
+
+        if session.is_expired() {
+            bail!("The session is expired");
+        }
+
+        let SessionStatus::Attested { req_key, .. } = session else {
+            bail!("The session is not authorized");
+        };
+
+        Ok(req_key.clone())
     }
 }
 
