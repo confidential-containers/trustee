@@ -1,0 +1,6 @@
+{
+  "cca-verifier": {
+    "type": "remote",
+    "address": "https://veraison.test.linaro.org:8443"
+  }
+}
