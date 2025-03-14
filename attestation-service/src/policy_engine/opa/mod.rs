@@ -241,7 +241,7 @@ mod tests {
 
         let ear_rules = TrustVector::new()
             .into_iter()
-            .map(|c| c.tag().to_string())
+            .map(|c| c.tag().to_string().replace("-", "_"))
             .collect();
 
         let output = opa
