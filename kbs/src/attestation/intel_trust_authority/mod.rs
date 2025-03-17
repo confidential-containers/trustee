@@ -94,10 +94,25 @@ pub struct IntelTrustAuthority {
 
 #[async_trait]
 impl Attest for IntelTrustAuthority {
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        // get quote
+    async fn verify(&self, tees: Vec<Tee>, nonce: &str, attestation: &str) -> Result<String> {
+        // Multi-device attestation not yet supported with ITA.
+        // Match statement below will catch cases where the first
+        // attester is not a supported device.
+        let tee = tees[0];
+        let tee_string = serde_json::to_string(&tee)?;
+        let tee_string_trimmed = tee_string.trim_end_matches('"').trim_start_matches('"');
+
         let attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation request")?;
+
+        // Extract evidence from the first attester
+        let tee_evidence = attestation
+            .tee_evidence
+            .get(tee_string_trimmed)
+            .ok_or(anyhow!("Could not find tee evidence"))?;
+        let tee_evidence = tee_evidence
+            .get(1)
+            .ok_or(anyhow!("Malformed tee evidence"))?;
 
         let runtime_data = json!({
             "tee-pubkey": attestation.tee_pubkey,
@@ -117,7 +132,7 @@ impl Attest for IntelTrustAuthority {
             Tee::AzTdxVtpm => {
                 let att_url = format!("{}{AZURE_TDXVM_ADDR}", &self.config.base_url);
 
-                let evidence = from_value::<AzItaTeeEvidence>(attestation.tee_evidence)
+                let evidence = from_value::<AzItaTeeEvidence>(tee_evidence.clone())
                     .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
 
                 let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
@@ -136,7 +151,7 @@ impl Attest for IntelTrustAuthority {
             Tee::Tdx | Tee::Sgx => {
                 let att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
 
-                let evidence = from_value::<ItaTeeEvidence>(attestation.tee_evidence)
+                let evidence = from_value::<ItaTeeEvidence>(tee_evidence.clone())
                     .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
 
                 let req_data = AttestReqData {
