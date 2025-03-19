@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package reference;
 
-message ReferenceValueQueryRequest {}
+message ReferenceValueQueryRequest {
+    bytes init_data = 1;
+}
 
 message ReferenceValueQueryResponse {
     string reference_value_results = 1;

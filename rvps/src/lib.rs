@@ -103,7 +103,7 @@ impl Rvps {
         Ok(())
     }
 
-    pub async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+    pub async fn get_digests(&self, _init_data: Vec<u8>) -> Result<HashMap<String, Vec<String>>> {
         let mut rv_map = HashMap::new();
         let reference_values = self.storage.get_values().await?;
 

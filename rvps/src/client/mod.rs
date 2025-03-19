@@ -20,9 +20,9 @@ pub async fn register(address: String, message: String) -> Result<()> {
     Ok(())
 }
 
-pub async fn query(address: String) -> Result<String> {
+pub async fn query(address: String, init_data: Vec<u8>) -> Result<String> {
     let mut client = ReferenceValueProviderServiceClient::connect(address).await?;
-    let req = tonic::Request::new(ReferenceValueQueryRequest {});
+    let req = tonic::Request::new(ReferenceValueQueryRequest { init_data });
 
     let rvs = client
         .query_reference_value(req)

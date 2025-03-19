@@ -22,8 +22,11 @@ impl RvpsApi for BuiltinRvps {
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
-        let hashes = self.rvps.get_digests().await?;
+    async fn get_digests(
+        &self,
+        init_data: Option<Vec<u8>>,
+    ) -> Result<HashMap<String, Vec<String>>> {
+        let hashes = self.rvps.get_digests(init_data.unwrap_or_default()).await?;
 
         Ok(hashes)
     }
