@@ -60,7 +60,7 @@ impl ClientPlugin for ResourceStorage {
         Ok(false)
     }
 
-    async fn encrypted(
+    async fn response_encrypted(
         &self,
         _body: &[u8],
         _query: &str,
@@ -71,6 +71,16 @@ impl ClientPlugin for ResourceStorage {
             return Ok(true);
         }
 
+        Ok(false)
+    }
+
+    async fn request_encrypted(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        _path: &str,
+        _method: &Method,
+    ) -> Result<bool> {
         Ok(false)
     }
 }
