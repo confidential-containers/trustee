@@ -20,6 +20,8 @@ const SECRET_PATH: &str = "default/test/secret";
 #[case::simple_deny_all(TestParameters{attestation_token_type: "Simple".to_string(), rvps_type: RvpsType::Builtin }, "deny_all".to_string())]
 #[case::contraindicated(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Builtin }, "contraindicated".to_string())]
 #[case::not_contraindicated(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Remote }, "not_contraindicated".to_string())]
+#[case::not_contraindicated_device(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Remote }, "not_contraindicated_device".to_string())]
+#[case::contraindicated_device(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Remote }, "contraindicated_device".to_string())]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
 async fn run_test(
@@ -35,9 +37,12 @@ async fn run_test(
         "deny_all" => get_secret_deny_all(&harness).await,
         "contraindicated" => get_secret_contraindicated(&harness).await,
         "not_contraindicated" => get_secret_not_contraindicated(&harness).await,
+        "contraindicated_device" => get_secret_contraindicated_device(&harness).await,
+        "not_contraindicated_device" => get_secret_not_contraindicated_device(&harness).await,
         _ => bail!("unkown test case"),
     };
 
+    unsafe { std::env::remove_var("ENABLE_SAMPLE_DEVICE") };
     harness.cleanup().await?;
     test_result
 }
@@ -83,7 +88,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
 }
 ";
 
@@ -128,6 +133,117 @@ async fn get_secret_not_contraindicated(harness: &TestHarness) -> Result<()> {
     let secret = harness.get_secret(SECRET_PATH.to_string()).await?;
 
     assert_eq!(secret, SECRET_BYTES);
+    info!("TEST: test completed succesfully");
+
+    Ok(())
+}
+
+const CHECK_CONTRAINDICATED_DEVICE_POLICY: &str = "
+package policy
+import rego.v1
+
+default allow = false
+
+allow if {
+    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
+}
+";
+
+const DEVICE_AS_POLICY: &str = "
+package policy
+import rego.v1
+
+default hardware := 97
+
+hardware := 2 if {
+    input.sampledevice.svn in data.reference.device_svn
+}
+";
+
+async fn get_secret_not_contraindicated_device(harness: &TestHarness) -> Result<()> {
+    harness.wait().await;
+
+    // setting env vars is unsafe because it can effect other threads and processes
+    // we are running the tests in serial here, so it should be fine, but be sure to
+    // unset this in the wrapper function to not mess up the next test.
+    // The specific value of this env var does not matter.
+    unsafe { std::env::set_var("ENABLE_SAMPLE_DEVICE", "YES") };
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
+        .await?;
+    harness
+        .set_policy(PolicyType::Custom(
+            CHECK_CONTRAINDICATED_DEVICE_POLICY.to_string(),
+        ))
+        .await?;
+
+    harness
+        .set_attestation_policy(DEVICE_AS_POLICY.to_string(), "default_gpu".to_string())
+        .await?;
+
+    // cpu reference values
+    harness
+        .set_reference_value("svn".to_string(), "1".to_string())
+        .await?;
+    harness
+        .set_reference_value("launch_digest".to_string(), "abcde".to_string())
+        .await?;
+
+    // device reference values
+    harness
+        .set_reference_value("device_svn".to_string(), "2".to_string())
+        .await?;
+
+    let secret = harness.get_secret(SECRET_PATH.to_string()).await?;
+
+    assert_eq!(secret, SECRET_BYTES);
+    info!("TEST: test completed succesfully");
+
+    Ok(())
+}
+
+async fn get_secret_contraindicated_device(harness: &TestHarness) -> Result<()> {
+    harness.wait().await;
+
+    // setting env vars is unsafe because it can effect other threads and processes
+    // we are running the tests in serial here, so it should be fine, but be sure to
+    // unset this in the wrapper function to not mess up the next test.
+    // The specific value of this env var does not matter.
+    unsafe { std::env::set_var("ENABLE_SAMPLE_DEVICE", "YES") };
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.as_ref().to_vec())
+        .await?;
+    harness
+        .set_policy(PolicyType::Custom(
+            CHECK_CONTRAINDICATED_DEVICE_POLICY.to_string(),
+        ))
+        .await?;
+
+    harness
+        .set_attestation_policy(DEVICE_AS_POLICY.to_string(), "default_gpu".to_string())
+        .await?;
+
+    // cpu reference values
+    harness
+        .set_reference_value("svn".to_string(), "1".to_string())
+        .await?;
+    harness
+        .set_reference_value("launch_digest".to_string(), "abcde".to_string())
+        .await?;
+
+    // device reference values (wrong ones)
+    harness
+        .set_reference_value("device_svn".to_string(), "3".to_string())
+        .await?;
+
+    let secret = harness.get_secret(SECRET_PATH.to_string()).await;
+
+    assert!(secret.is_err());
+    assert_eq!(
+        secret.unwrap_err().to_string(),
+        "request unauthorized".to_string()
+    );
     info!("TEST: test completed succesfully");
 
     Ok(())
