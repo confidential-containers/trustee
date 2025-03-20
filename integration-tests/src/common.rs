@@ -128,7 +128,6 @@ impl TestHarness {
                 storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                     file_path: rv_path,
                 }),
-                ..Default::default()
             }),
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
@@ -136,7 +135,6 @@ impl TestHarness {
                     storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                         file_path: rv_path,
                     }),
-                    ..Default::default()
                 })?;
                 let inner = Arc::new(RwLock::new(service));
                 let rvps_server = RvpsServer::new(inner.clone());
@@ -225,6 +223,20 @@ impl TestHarness {
             policy_bytes,
             // Optional HTTPS certs for KBS
             vec![],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_attestation_policy(&self, policy: String, policy_id: String) -> Result<()> {
+        kbs_client::set_attestation_policy(
+            KBS_URL,
+            self.auth_privkey.clone(),
+            policy.as_bytes().to_vec(),
+            None, // Policy type (default is rego)
+            Some(policy_id),
+            vec![], // Optional HTTPS certs for KBS
         )
         .await?;
 
