@@ -74,7 +74,7 @@ serde_json.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
-time = { version = "0.3.37", features = ["std"] }
+time = { version = "0.3.40", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
