@@ -231,6 +231,20 @@ impl TestHarness {
         Ok(())
     }
 
+    pub async fn set_attestation_policy(&self, policy: String, policy_id: String) -> Result<()> {
+        kbs_client::set_attestation_policy(
+            KBS_URL,
+            self.auth_privkey.clone(),
+            policy.as_bytes().to_vec(),
+            None, // Policy type (default is rego)
+            Some(policy_id),
+            vec![], // Optional HTTPS certs for KBS
+        )
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn set_secret(&self, secret_path: String, secret_bytes: Vec<u8>) -> Result<()> {
         info!("TEST: Setting Secret");
         kbs_client::set_resource(
