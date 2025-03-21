@@ -22,7 +22,7 @@ async fn register(addr: &str, provenance_path: &str) -> Result<()> {
 }
 
 async fn query(addr: &str) -> Result<()> {
-    let rvs = client::query(addr.to_string()).await?;
+    let rvs = client::query(addr.to_string(), vec![]).await?;
     info!("Get reference values succeeded:\n {rvs}");
     Ok(())
 }

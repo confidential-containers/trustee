@@ -63,8 +63,13 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {});
+    async fn get_digests(
+        &self,
+        init_data: Option<Vec<u8>>,
+    ) -> Result<HashMap<String, Vec<String>>> {
+        let req = tonic::Request::new(ReferenceValueQueryRequest {
+            init_data: init_data.unwrap_or_default(),
+        });
         let res = self
             .client
             .lock()

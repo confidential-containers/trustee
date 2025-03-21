@@ -191,7 +191,7 @@ impl AttestationService {
 
         let reference_data_map = self
             .rvps
-            .get_digests()
+            .get_digests(None)
             .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
         debug!("reference_data_map: {:#?}", reference_data_map);
