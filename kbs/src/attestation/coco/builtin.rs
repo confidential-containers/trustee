@@ -25,7 +25,7 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
+    async fn verify(&self, tees: Vec<Tee>, nonce: &str, attestation: &str) -> Result<String> {
         let attestation: Attestation = serde_json::from_str(attestation)?;
 
         // TODO: align with the guest-components/kbs-protocol side.
@@ -36,7 +36,7 @@ impl Attest for BuiltInCoCoAs {
             .await
             .evaluate(
                 attestation.tee_evidence.to_string().into_bytes(),
-                tee,
+                tees,
                 Some(Data::Structured(runtime_data_plaintext)),
                 HashAlgorithm::Sha384,
                 None,
