@@ -250,9 +250,11 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         for (k, v) in &policy_results.rules_result {
             let claim_value = v.as_i8().context("Policy claim value not i8")?;
 
+            let k = k.replace("_", "-");
+
             appraisal
                 .trust_vector
-                .mut_by_name(k)
+                .mut_by_name(&k)
                 .unwrap()
                 .set(claim_value);
         }
