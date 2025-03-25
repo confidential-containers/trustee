@@ -10,11 +10,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - x86_64
-          - s390x
-          - aarch64
-    runs-on: ${{ matrix.arch == 's390x' && 's390x' || 'ubuntu-24.04' }}
+        include:
+          - arch: x86_64
+            instance: ubuntu-24.04
+          - arch: s390x
+            instance: s390x
+          - arch: aarch64
+            instance: ubuntu-24.04-arm
+    runs-on: ${{ matrix.instance }}
     permissions:
       contents: read
       packages: write
