@@ -5,7 +5,7 @@ NEBULA_CA_PLUGIN ?= false
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
 # Check if ARCH is supported, otehrwise return error
-ifeq ($(filter $(ARCH),x86_64 s390x aarch64),)
+ifeq ($(filter $(ARCH),x86_64 s390x aarch64 arm64),)
 	$(error "Unsupported architecture: $(ARCH)")
 endif
 
