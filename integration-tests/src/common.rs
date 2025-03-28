@@ -173,6 +173,7 @@ impl TestHarness {
                 private_key: None,
                 certificate: None,
                 insecure_http: true,
+                payload_request_size: 2,
             },
             admin: AdminConfig {
                 auth_public_key: None,

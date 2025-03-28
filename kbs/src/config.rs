@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
+const DEFAULT_PAYLOAD_REQUEST_SIZE: u32 = 2;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct HttpServerConfig {
@@ -30,6 +31,9 @@ pub struct HttpServerConfig {
     /// Insecure HTTP.
     /// WARNING: Using this option makes the HTTP connection insecure.
     pub insecure_http: bool,
+
+    /// Request payload size in MB
+    pub payload_request_size: u32,
 }
 
 impl Default for HttpServerConfig {
@@ -39,6 +43,7 @@ impl Default for HttpServerConfig {
             private_key: None,
             certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         }
     }
 }
@@ -80,6 +85,10 @@ impl TryFrom<&Path> for KbsConfig {
             .set_default("admin.insecure_api", DEFAULT_INSECURE_API)?
             .set_default("http_server.insecure_http", DEFAULT_INSECURE_HTTP)?
             .set_default("http_server.sockets", vec![DEFAULT_SOCKET])?
+            .set_default(
+                "http_server.payload_request_size",
+                DEFAULT_PAYLOAD_REQUEST_SIZE,
+            )?
             .set_default("attestation_service.policy_ids", Vec::<&str>::new())?
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
@@ -105,7 +114,10 @@ mod tests {
 
     use crate::{
         admin::config::AdminConfig,
-        config::{HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP, DEFAULT_SOCKET},
+        config::{
+            HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP,
+            DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
+        },
         plugins::{
             implementations::{
                 resource::local_fs::LocalFsRepoDesc, RepositoryConfig, SampleConfig,
@@ -152,6 +164,7 @@ mod tests {
             private_key: Some("/etc/kbs-private.key".into()),
             certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
@@ -200,6 +213,7 @@ mod tests {
             private_key: None,
             certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: None,
@@ -236,6 +250,7 @@ mod tests {
             private_key: Some("/etc/kbs-private.key".into()),
             certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
@@ -273,6 +288,7 @@ mod tests {
             private_key: None,
             certificate: None,
             insecure_http: true,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: Some(PathBuf::from("/opt/confidential-containers/kbs/user-keys/public.pub")),
@@ -312,6 +328,7 @@ mod tests {
             private_key: None,
             certificate: None,
             insecure_http: true,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: Some("/kbs/kbs.pem".into()),
@@ -346,6 +363,7 @@ mod tests {
             private_key: None,
             certificate: None,
             insecure_http: true,
+            payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
             auth_public_key: Some("/kbs/kbs.pem".into()),
