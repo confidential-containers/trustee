@@ -8,8 +8,6 @@ edition.workspace = true
 
 [dependencies] 
 kbs = { path = "../kbs" }
-attestation-service = { path = "../attestation-service" }
-kbs-client = { path = "../tools/kbs-client" }
 reference-value-provider-service = { path = "../rvps" }
 
 actix-web.workspace = true
@@ -25,3 +23,15 @@ serial_test.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true
+
+[target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
+attestation-service = { path = "../attestation-service"  }
+kbs-client = { path = "../tools/kbs-client"  }
+
+[target.'cfg(target_arch = "s390x")'.dependencies]
+attestation-service = { path = "../attestation-service", default-features = false, features = [ "se-verifier", ] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "se-attester", ] }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+attestation-service = { path = "../attestation-service", default-features = false, features = [ "cca-verifier", ] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "cca-attester", ] }
