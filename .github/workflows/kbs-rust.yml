@@ -22,9 +22,15 @@ jobs:
     name: Check
     strategy:
       fail-fast: false
+      matrix:
+        include:
+        - instance: ubuntu-24.04
+          test_features: ""
+        - instance: ubuntu-24.04-arm
+          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,sample_only,cca-attester"
     env:
       RUSTC_VERSION: 1.80.0
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.instance }}
 
     steps:
     - name: Code checkout
@@ -46,6 +52,7 @@ jobs:
         sudo apt-get install -y libtss2-dev
 
     - name: Install TDX dependencies
+      if: ${{ matrix.instance == 'ubuntu-24.04' }}
       run: |
         curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
         echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
@@ -66,7 +73,7 @@ jobs:
 
     - name: Lint
       working-directory: kbs
-      run: make lint
+      run: make lint TEST_FEATURES=${{ matrix.test_features }}
 
     - name: Format
       working-directory: kbs
@@ -74,4 +81,4 @@ jobs:
 
     - name: Test
       working-directory: kbs
-      run: make check
+      run: make check TEST_FEATURES=${{ matrix.test_features }}
