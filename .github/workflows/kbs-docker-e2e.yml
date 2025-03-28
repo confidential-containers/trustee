@@ -11,7 +11,21 @@ env:
 
 jobs:
   e2e-test:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        instance:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+        include:
+          - instance: ubuntu-24.04
+            build_platform: linux/amd64
+            target_arch: x86_64
+            verifier: all-verifier
+          - instance: ubuntu-24.04-arm
+            build_platform: linux/arm64
+            target_arch: aarch64
+            verifier: cca-verifier
+    runs-on: ${{ matrix.instance }}
     env:
       RUSTC_VERSION: 1.80.0
     steps:
@@ -34,7 +48,7 @@ jobs:
         openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
 
     - name: Build KBS Cluster
-      run: docker compose build
+      run: docker compose build --build-arg BUILDPLATFORM=${{ matrix.build_platform }} --build-arg ARCH=${{ matrix.target_arch }} --build-arg VERIFIER=${{ matrix.verifier }}
 
     - name: Start KBS cluster
       run: docker compose up -d
