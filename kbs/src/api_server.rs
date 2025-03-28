@@ -107,6 +107,9 @@ impl ApiServer {
                 App::new()
                     .wrap(middleware::Logger::default())
                     .app_data(web::Data::new(api_server))
+                    .app_data(web::PayloadConfig::new(
+                        (1024 * 1024 * http_config.payload_request_size) as usize,
+                    ))
                     .service(
                         web::resource([kbs_path!("{base_path}{additional_path:.*}")])
                             .route(web::get().to(api))
