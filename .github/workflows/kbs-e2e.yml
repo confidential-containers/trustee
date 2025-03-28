@@ -14,6 +14,10 @@ on:
         type: string
         description: Artifact containing checked out source from a prior job
         required: true
+      kbs-client-features:
+        type: string
+        default: ""
+        description: features for kbs-client
 
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
@@ -22,7 +26,7 @@ defaults:
 
 jobs:
   build-binaries:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     env:
       RUSTC_VERSION: 1.80.0
       OS_VERSION: ubuntu-22.04
@@ -55,7 +59,7 @@ jobs:
       working-directory: kbs/test
       run: |
         make install-dev-dependencies
-        make bins
+        make bins TEST_FEATURES=${{ inputs.kbs-client-features }}
 
     - name: Archive test folder
       run: tar czf test.tar.gz kbs/test
