@@ -47,7 +47,7 @@ package policy
 default allow = false
 
 allow {
-	input["submods"]["cpu"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef
 export TEE_POLICY_REGO
