@@ -2966,6 +2966,7 @@ dependencies = [
  "jwt-simple",
  "kbs_protocol",
  "log",
+ "reference-value-provider-service",
  "reqwest 0.12.12",
  "serde",
  "serde_json",
