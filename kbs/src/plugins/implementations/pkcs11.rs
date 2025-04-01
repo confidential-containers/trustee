@@ -108,7 +108,7 @@ impl ClientPlugin for Pkcs11Backend {
         }
     }
 
-    async fn encrypted(
+    async fn response_encrypted(
         &self,
         _body: &[u8],
         _query: &str,
@@ -116,6 +116,20 @@ impl ClientPlugin for Pkcs11Backend {
         _method: &Method,
     ) -> Result<bool> {
         Ok(true)
+    }
+
+    async fn request_encrypted(
+        &self,
+        _body: &[u8],
+        _query: &str,
+        path: &str,
+        method: &Method,
+    ) -> Result<bool> {
+        if path.contains("wrap-key") && *method == Method::GET {
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 }
 
