@@ -6,7 +6,7 @@
 
 use anyhow::*;
 
-use crate::rvps_api::{
+use crate::rvps_api::reference::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
     ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
 };

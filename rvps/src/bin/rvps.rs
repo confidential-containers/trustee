@@ -3,10 +3,6 @@ use clap::Parser;
 use log::{info, warn};
 use shadow_rs::shadow;
 
-pub mod rvps_api {
-    tonic::include_proto!("reference");
-}
-
 use reference_value_provider_service::config::Config;
 use reference_value_provider_service::server;
 
