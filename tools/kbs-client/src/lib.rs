@@ -5,7 +5,7 @@
 //! KBS client SDK.
 
 use anyhow::{anyhow, bail, Result};
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair, EdDSAKeyPairLike};
 use kbs_protocol::evidence_provider::NativeEvidenceProvider;
@@ -13,6 +13,9 @@ use kbs_protocol::token_provider::TestTokenProvider;
 use kbs_protocol::KbsClientBuilder;
 use kbs_protocol::KbsClientCapabilities;
 use serde::Serialize;
+use serde_json::json;
+
+use reference_value_provider_service::client as rvps_client;
 
 const KBS_URL_PREFIX: &str = "kbs/v0";
 
@@ -231,6 +234,28 @@ pub async fn set_resource(
             bail!("Request Failed, Response: {:?}", res.text().await?)
         }
     }
+}
+
+/// Set a reference value in the RVPS at <url>
+/// RVPS must be configured with the non-secure sample extractor
+/// The RVPS-tool should be used in production environments
+pub async fn set_sample_rv(url: String, key: String, value: String) -> Result<()> {
+    let provenance = json!({key: [value]}).to_string();
+    let provenance = STANDARD.encode(provenance);
+
+    let message = json!({
+        "version": "0.1.0",
+        "type": "sample",
+        "payload": provenance
+    });
+
+    rvps_client::register(url, message.to_string()).await?;
+    Ok(())
+}
+
+pub async fn get_rvs(url: String) -> Result<String> {
+    let rvs = rvps_client::query(url).await?;
+    Ok(rvs)
 }
 
 fn build_http_client(kbs_root_certs_pem: Vec<String>) -> Result<reqwest::Client> {

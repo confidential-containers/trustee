@@ -21,6 +21,7 @@ jwt-simple.workspace = true
 kbs_protocol = { workspace = true, default-features = false }
 log.workspace = true
 reqwest = { workspace = true, default-features = false, features = ["cookies", "json"] }
+reference-value-provider-service.path = "../../rvps"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio.workspace = true
