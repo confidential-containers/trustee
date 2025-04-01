@@ -11,6 +11,8 @@ bin = [ "clap", "config", "env_logger", "prost", "shadow-rs", "tokio", "tonic" ]
 # Support in-toto provenance (not ready)
 in-toto =[ "path-clean", "sha2" ]
 
+rebuild-grpc-protos = []
+
 [[bin]]
 name = "rvps"
 required-features = [ "bin" ]

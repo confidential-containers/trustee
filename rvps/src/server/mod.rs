@@ -8,10 +8,10 @@ use tonic::{Request, Response, Status};
 
 use crate::{Config, Rvps};
 
-use crate::rvps_api::reference_value_provider_service_server::{
+use crate::rvps_api::reference::reference_value_provider_service_server::{
     ReferenceValueProviderService, ReferenceValueProviderServiceServer,
 };
-use crate::rvps_api::{
+use crate::rvps_api::reference::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
     ReferenceValueRegisterResponse,
 };
