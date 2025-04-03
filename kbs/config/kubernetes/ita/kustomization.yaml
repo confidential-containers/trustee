@@ -3,8 +3,8 @@ kind: Kustomization
 namespace: coco-tenant
 
 images:
-- name: ghcr.io/confidential-containers/key-broker-service:built-in-as-v0.10.1
-  newTag: ita-as-v0.10.1
+- name: ghcr.io/confidential-containers/key-broker-service:built-in-as-v0.12.0
+  newTag: ita-as-v0.12.0
 
 resources:
 - ../nodeport/
