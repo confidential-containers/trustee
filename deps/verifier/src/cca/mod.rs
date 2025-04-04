@@ -1,4 +1,5 @@
 // Copyright (c) 2023 Arm Ltd.
+// Copyright (c) 2025 Linaro Ltd.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -6,18 +7,22 @@
 use super::*;
 use anyhow::anyhow;
 use async_trait::async_trait;
+use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use core::result::Result::Ok;
 use ear::{Ear, RawValue};
-use jsonwebtoken::{self as jwt};
-use log::{debug, error, info};
+use log::debug;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::{collections::BTreeMap, str};
 use veraison_apiclient::*;
 
-const VERAISON_ADDR: &str = "VERAISON_ADDR";
-const DEFAULT_VERAISON_ADDR: &str = "localhost:8080";
-const MEDIA_TYPE: &str = "application/eat-collection; profile=http://arm.com/CCA-SSD/1.0.0";
+mod config;
+use config::{Config, DEFAULT_CCA_CONFIG};
+mod local;
+mod remote;
+
+const CCA_CONFIG_FILE: &str = "CCA_CONFIG_FILE";
 
 #[derive(Debug, Default)]
 pub struct CCA {}
@@ -27,15 +32,16 @@ pub struct CCA {}
 pub struct SwComponent {
     pub measurement_type: String,
     pub measurement_value: String,
-    pub version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     pub signer_id: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CcaPlatformClaims {
-    pub cca_platform_challenge: String,
-    pub cca_platform_sw_components: Vec<SwComponent>,
+    pub cca_platform_instance_id: String,
+    pub cca_platform_implementation_id: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -45,30 +51,33 @@ pub struct RealmClaims {
     pub cca_realm_initial_measurement: String,
     pub cca_realm_extensible_measurements: Vec<String>,
     pub cca_realm_hash_algo_id: String,
-    pub cca_realm_public_key_hash_algo_id: String,
+    pub cca_realm_challenge: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-struct Evidence {
+struct EvidenceClaimsSet {
     realm: RealmClaims,
     platform: CcaPlatformClaims,
+    report_data: String,
+    init_data: String,
 }
 
 #[derive(Serialize, Deserialize)]
 struct CcaEvidence {
-    /// CCA token
+    /// CCA token bytes
     token: Vec<u8>,
 }
 
-fn my_evidence_builder(
-    nonce: &[u8],
-    accept: &[String],
-    token: Vec<u8>,
-) -> Result<(Vec<u8>, String), veraison_apiclient::Error> {
-    info!("server challenge: {:?}", nonce);
-    info!("acceptable media types: {:#?}", accept);
-    // TODO: Get the CCA media type from the slice of `accept`.
-    Ok((token, MEDIA_TYPE.to_string()))
+fn unwrap_evidence(wrapped_evidence: &[u8]) -> Result<String> {
+    // The value of the request's "tee-evidence" is a string containing the
+    // JSON-encoded CcaEvidence, such as:
+    //      "{ \"token\": [ 217, ... ] }"
+    // We need to remove the surrounding quotes and unescape the JSON key
+    // before passing it to serde.
+    let s = str::from_utf8(&wrapped_evidence[1..wrapped_evidence.len() - 1])?;
+    let u = s.replace("\\", "");
+
+    Ok(u)
 }
 
 #[async_trait]
@@ -79,71 +88,47 @@ impl Verifier for CCA {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
+        let config_file =
+            std::env::var(CCA_CONFIG_FILE).unwrap_or_else(|_| DEFAULT_CCA_CONFIG.to_string());
+
+        let config = Config::try_from(Path::new(&config_file))
+            .map_err(|e| anyhow!("parsing {config_file}: {e}"))?;
+
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("CCA verifier must provide report data field!");
         };
 
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "CCA");
 
-        let evidence = serde_json::from_slice::<CcaEvidence>(evidence)
+        let evidence = unwrap_evidence(evidence)?;
+        let evidence = serde_json::from_str::<CcaEvidence>(&evidence)
             .context("Deserialize CCA Evidence failed.")?;
 
-        let host_url =
-            std::env::var(VERAISON_ADDR).unwrap_or_else(|_| DEFAULT_VERAISON_ADDR.to_string());
-
-        let discovery = Discovery::from_base_url(format!("http://{:}", host_url))?;
-
-        let verification_api = discovery.get_verification_api().await?;
-
-        let relative_endpoint = verification_api
-            .get_api_endpoint("newChallengeResponseSession")
-            .context("Failed to discover the verification endpoint details.")?;
-
-        let api_endpoint = format!("http://{:}{}", host_url, relative_endpoint);
-
-        // create a ChallengeResponse object
-        let cr = ChallengeResponseBuilder::new()
-            .with_new_session_url(api_endpoint)
-            .build()?;
-
-        let token = evidence.token;
-        let n = Nonce::Value(expected_report_data.clone());
-        let result = match cr.run(n, my_evidence_builder, token.clone()).await {
-            Err(e) => {
-                error!("Error: {}", e);
-                bail!("CCA Attestation failed with error: {:?}", e);
+        let ear: Ear = match config.cca_verifier {
+            config::CcaVerifierConfig::Remote { .. } => {
+                remote::verify(config, &evidence.token, &expected_report_data).await?
             }
-            Ok(attestation_result) => attestation_result,
+            config::CcaVerifierConfig::Local { .. } => {
+                local::verify(config, &evidence.token, &expected_report_data)?
+            }
         };
 
-        // Get back the pub key to decrypt the ear which holds raw evidence and the session nonce
-        let public_key_pem = verification_api.ear_verification_key_as_pem()?;
-        let dk = jwt::DecodingKey::from_ec_pem(public_key_pem.as_bytes())
-            .context("get the decoding key from the pem public key")?;
-        let plain_ear = Ear::from_jwt(result.as_str(), jwt::Algorithm::ES256, &dk)
-            .context("decrypt the ear with the decoding key")?;
+        let realm_mod = match ear.submods.get("CCA_REALM") {
+            Some(value) => value,
+            None => bail!("no entry found for CCA_REALM"),
+        };
+        let realm_claims = &realm_mod.annotated_evidence;
 
-        let ear_nonce = plain_ear.nonce.context("get nonce from ear")?;
-        let nonce_byte = base64::engine::general_purpose::STANDARD
-            .decode(ear_nonce.to_string())
-            .context("decode nonce byte from ear")?;
-
-        if expected_report_data != nonce_byte {
-            bail!("report data is different from that in ear's session nonce");
-        }
-
-        let cca_mod = match plain_ear.submods.get("CCA_SSD_PLATFORM") {
+        let platform_mod = match ear.submods.get("CCA_SSD_PLATFORM") {
             Some(value) => value,
             None => bail!("no entry found for CCA_SSD_PLATFORM"),
         };
-        let evidence = &cca_mod.annotated_evidence;
+        let platform_claims = &platform_mod.annotated_evidence;
 
-        // NOTE: CCA validation by the Verasion has some overlapping with the RVPS, the similar validation has been done by the Verasion already.
-        // The generation of CCA evidence here is to align with other verifier, e.g. TDX, to support initdata mechanism and RVPS if that is the case of future planning.
-        let tcb = parse_cca_evidence(evidence)?;
+        let tcb = assemble_cca_evidence(realm_claims, platform_claims)?;
 
         if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
-            debug!("Check the binding of init data.");
+            debug!("Check the binding of init data");
             if *expected_init_data_hash
                 != base64::engine::general_purpose::STANDARD
                     .decode(&tcb.realm.cca_realm_personalization_value)
@@ -227,27 +212,37 @@ impl Verifier for CCA {
 ///    }
 /// }
 /// NOTE: each of the value are base64 encoded hex value.
-fn parse_cca_evidence(evidence_map: &BTreeMap<String, RawValue>) -> Result<Evidence> {
-    let mut evidence = Evidence::default();
-    let platfrom = evidence_map
-        .get("platform")
-        .context("get platform evidence from the cca evidence map")?;
-    let output = serde_json::to_string(platfrom)?;
+fn assemble_cca_evidence(
+    realm_claims: &BTreeMap<String, RawValue>,
+    platform_claims: &BTreeMap<String, RawValue>,
+) -> Result<EvidenceClaimsSet> {
+    let mut evidence = EvidenceClaimsSet::default();
+
+    let output = serde_json::to_string(platform_claims)?;
     let p: CcaPlatformClaims = serde_json::from_str(output.as_str())?;
     evidence.platform = p;
 
-    let realm = evidence_map
-        .get("realm")
-        .context("get realm evidence from the cca evidence map")?;
-    let output = serde_json::to_string(realm)?;
+    let output = serde_json::to_string(realm_claims)?;
     let r: RealmClaims = serde_json::from_str(output.as_str())?;
     evidence.realm = r;
+
+    // Populate the init_data and report_data claims with the expected values
+    evidence.init_data = b642hex(&evidence.realm.cca_realm_personalization_value)?;
+    evidence.report_data = b642hex(&evidence.realm.cca_realm_challenge)?;
 
     Ok(evidence)
 }
 
-fn cca_generate_parsed_claim(tcb: Evidence) -> Result<TeeEvidenceParsedClaim> {
-    let v = serde_json::to_value(tcb).context("build json value from the cca evidence")?;
+fn b642hex(b64: &String) -> Result<String> {
+    let buf = BASE64_STANDARD.decode(b64)?;
+    Ok(hex::encode(&buf))
+}
+
+fn cca_generate_parsed_claim(tcb: EvidenceClaimsSet) -> Result<TeeEvidenceParsedClaim> {
+    let v = serde_json::to_value(tcb).context("serializing CCA evidence claims into JSON")?;
+
+    debug!("CCA claims-set: {v}");
+
     Ok(v as TeeEvidenceParsedClaim)
 }
 
@@ -260,7 +255,7 @@ mod tests {
     fn test_cca_generate_parsed_claim() {
         let s = fs::read("./test_data/cca-claims.json").unwrap();
         let evidence = String::from_utf8_lossy(&s);
-        let tcb = serde_json::from_str::<Evidence>(&evidence).unwrap();
+        let tcb = serde_json::from_str::<EvidenceClaimsSet>(&evidence).unwrap();
         let parsed_claim = cca_generate_parsed_claim(tcb);
         assert!(parsed_claim.is_ok());
         let _ = fs::write(
