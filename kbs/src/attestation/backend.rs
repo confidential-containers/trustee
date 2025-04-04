@@ -25,7 +25,7 @@ use super::{
 };
 
 static KBS_MAJOR_VERSION: u64 = 0;
-static KBS_MINOR_VERSION: u64 = 2;
+static KBS_MINOR_VERSION: u64 = 3;
 static KBS_PATCH_VERSION: u64 = 0;
 
 lazy_static! {
@@ -80,7 +80,12 @@ pub trait Attest: Send + Sync {
 
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> anyhow::Result<String>;
+    async fn verify(
+        &self,
+        tees: Vec<Tee>,
+        nonce: &str,
+        attestation: &str,
+    ) -> anyhow::Result<String>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -187,9 +192,12 @@ impl AttestationService {
             );
         }
 
+        // For now just use the first TEE to get the challenge.
+        // Currently the only platform that requires its own challenge
+        // is s390x, which does not yet require attestation of devices.
         let challenge = self
             .inner
-            .generate_challenge(request.tee, request.extra_params.clone())
+            .generate_challenge(request.tees[0], request.extra_params.clone())
             .await
             .context("Attestation Service generate challenge failed")?;
 
@@ -221,7 +229,7 @@ impl AttestationService {
 
         let attestation: Attestation =
             serde_json::from_slice(attestation).context("deserialize Attestation")?;
-        let (tee, nonce) = {
+        let (tees, nonce) = {
             let session = self
                 .session_map
                 .sessions
@@ -256,14 +264,17 @@ impl AttestationService {
                 .context("Failed to serialize Attestation")?;
             debug!("Attestation: {attestation_str}");
 
-            (session.request().tee, session.challenge().nonce.to_string())
+            (
+                session.request().tees.clone(),
+                session.challenge().nonce.to_string(),
+            )
         };
 
         let attestation_str =
             serde_json::to_string(&attestation).context("serialize attestation failed")?;
         let token = self
             .inner
-            .verify(tee, &nonce, &attestation_str)
+            .verify(tees, &nonce, &attestation_str)
             .await
             .context("verify TEE evidence failed")?;
 

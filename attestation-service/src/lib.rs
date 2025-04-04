@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
-use verifier::{InitDataHash, ReportData};
+use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 /// Hash algorithms used to calculate runtime/init data binding
 #[derive(Debug, Display, EnumString, AsRefStr)]
@@ -158,18 +158,25 @@ impl AttestationService {
     pub async fn evaluate(
         &self,
         evidence: Vec<u8>,
-        tee: Tee,
+        tees: Vec<Tee>,
         runtime_data: Option<Data>,
         runtime_data_hash_algorithm: HashAlgorithm,
         init_data: Option<Data>,
         init_data_hash_algorithm: HashAlgorithm,
         policy_ids: Vec<String>,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee)?;
+        // Tee => (DeviceClass, Evidence)
+        let evidence: HashMap<Tee, (String, String)> = serde_json::from_str(
+            &String::from_utf8(evidence).context("Failed to parse evidence as string")?,
+        )
+        .context("Failed to deserialize evidence")?;
 
         let (report_data, runtime_data_claims) =
             parse_data(runtime_data, &runtime_data_hash_algorithm).context("parse runtime data")?;
 
+        // report data and init data should work without too many changes
+        // there is one set per guest
+        // but most non-cpu verifiers won't return a claim it
         let report_data = match &report_data {
             Some(data) => ReportData::Value(data),
             None => ReportData::NotProvided,
@@ -183,11 +190,20 @@ impl AttestationService {
             None => InitDataHash::NotProvided,
         };
 
-        let claims_from_tee_evidence = verifier
-            .evaluate(&evidence, &report_data, &init_data_hash)
-            .await
-            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
-        info!("{:?} Verifier/endorsement check passed.", tee);
+        let mut claims_from_tee_evidence: Vec<(Tee, String, TeeEvidenceParsedClaim)> = Vec::new();
+        for tee in &tees {
+            let ev = evidence
+                .get(tee)
+                .ok_or(anyhow!("No evidence found for {:?}", tee))?;
+            let verifier = verifier::to_verifier(tee)?;
+            let claims = verifier
+                .evaluate(ev.1.as_bytes(), &report_data, &init_data_hash)
+                .await
+                .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+            info!("{:?} Verifier/endorsement check passed.", tee);
+
+            claims_from_tee_evidence.push((*tee, ev.0.clone(), claims));
+        }
 
         let reference_data_map = self
             .rvps
@@ -204,7 +220,7 @@ impl AttestationService {
                 init_data_claims,
                 runtime_data_claims,
                 reference_data_map,
-                tee,
+                tees,
             )
             .await?;
         Ok(attestation_results_token)

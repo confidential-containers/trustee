@@ -113,7 +113,7 @@ mod tests {
     fn dummy_input(product_id: &str, svn: u64, executables: u8, hardware: u8) -> String {
         json!({
             "submods": {
-                "cpu": {
+                "cpu0": {
                     "ear.trustworthiness-vector": {
                         "executables": executables,
                         "hardware": hardware,

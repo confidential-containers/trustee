@@ -37,6 +37,7 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
         "tdx" => Tee::Tdx,
         "csv" => Tee::Csv,
         "sample" => Tee::Sample,
+        "sampledevice" => Tee::SampleDevice,
         "azsnpvtpm" => Tee::AzSnpVtpm,
         "cca" => Tee::Cca,
         "aztdxvtpm" => Tee::AzTdxVtpm,
@@ -106,7 +107,11 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         info!("AttestationEvaluate API called.");
         debug!("Evidence: {}", &request.evidence);
 
-        let tee = to_kbs_tee(&request.tee)
+        let tees = request
+            .tees
+            .iter()
+            .map(|t| to_kbs_tee(t))
+            .collect::<Result<Vec<Tee>, _>>()
             .map_err(|e| Status::aborted(format!("parse TEE type: {e}")))?;
         let evidence = URL_SAFE_NO_PAD
             .decode(request.evidence)
@@ -184,7 +189,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .attestation_service
             .evaluate(
                 evidence,
-                tee,
+                tees,
                 runtime_data,
                 runtime_data_hash_algorithm,
                 init_data,
