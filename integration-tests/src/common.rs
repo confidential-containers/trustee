@@ -23,7 +23,7 @@ use attestation_service::{
 
 use reference_value_provider_service::client as rvps_client;
 use reference_value_provider_service::config::Config as RVPSConfig;
-use reference_value_provider_service::rvps_api::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
+use reference_value_provider_service::rvps_api::reference::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
 use reference_value_provider_service::storage::{local_json, ReferenceValueStorageConfig};
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
