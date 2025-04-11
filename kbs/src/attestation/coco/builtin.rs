@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use attestation_service::{config::Config as AsConfig, AttestationService, Data, HashAlgorithm};
 use kbs_types::{Attestation, Challenge, Tee};
 use serde_json::json;
+use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 use crate::attestation::backend::{make_nonce, Attest};
@@ -68,6 +69,14 @@ impl Attest for BuiltInCoCoAs {
         };
 
         Ok(challenge)
+    }
+
+    async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {
+        self.inner.write().await.register_reference_value(message).await
+    }
+
+    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        self.inner.read().await.query_reference_values().await
     }
 }
 
