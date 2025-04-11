@@ -71,7 +71,7 @@ impl CcEventLog {
     }
 
     fn rebuild_rtmr(&self) -> Result<Rtmr> {
-        let mr_map = self.cc_events.replay_measurement_regiestry();
+        let mr_map = self.cc_events.replay_measurement_registry();
 
         let mr = Rtmr {
             rtmr0: mr_map.get(&1).unwrap_or(&Vec::from([0u8; 48]))[0..48].try_into()?,
