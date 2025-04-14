@@ -49,9 +49,9 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
 
 #[derive(Error, Debug)]
 pub enum GrpcError {
-    #[error("Read AS config file failed: {0}")]
+    #[error("Failed to read Attestation Service config file: {0}")]
     Config(#[source] ConfigError),
-    #[error("Creating attestation service failed: {0}")]
+    #[error("Failed to create AS service: {0}")]
     Service(#[from] ServiceError),
     #[error("tonic transport error: {0}")]
     TonicTransport(#[from] tonic::transport::Error),
@@ -107,7 +107,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         debug!("Evidence: {}", &request.evidence);
 
         let tee = to_kbs_tee(&request.tee)
-            .map_err(|e| Status::aborted(format!("parse TEE type: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Failed to parse TEE type: {e}")))?;
         let evidence = URL_SAFE_NO_PAD
             .decode(request.evidence)
             .map_err(|e| Status::aborted(format!("Illegal input Evidence: {e}")))?;
@@ -117,14 +117,14 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                 crate::as_api::attestation_request::RuntimeData::RawRuntimeData(raw) => {
                     let raw_runtime = URL_SAFE_NO_PAD
                         .decode(raw)
-                        .map_err(|e| Status::aborted(format!("base64 decode runtime data: {e}")))?;
+                        .map_err(|e| Status::aborted(format!("Failed to decode base64 runtime data: {e}")))?;
                     Some(attestation_service::Data::Raw(raw_runtime))
                 }
                 crate::as_api::attestation_request::RuntimeData::StructuredRuntimeData(
                     structured,
                 ) => {
                     let structured = serde_json::from_str(&structured).map_err(|e| {
-                        Status::aborted(format!("parse structured runtime data: {e}"))
+                        Status::aborted(format!("Failed to parse structured runtime data: {e}"))
                     })?;
                     Some(attestation_service::Data::Structured(structured))
                 }
@@ -137,12 +137,12 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                 crate::as_api::attestation_request::InitData::RawInitData(raw) => {
                     let raw_init = URL_SAFE_NO_PAD
                         .decode(raw)
-                        .map_err(|e| Status::aborted(format!("base64 decode init data: {e}")))?;
+                        .map_err(|e| Status::aborted(format!("Failed to decode base64 init data: {e}")))?;
                     Some(attestation_service::Data::Raw(raw_init))
                 }
                 crate::as_api::attestation_request::InitData::StructuredInitData(structured) => {
                     let structured = serde_json::from_str(&structured)
-                        .map_err(|e| Status::aborted(format!("parse structured init data: {e}")))?;
+                        .map_err(|e| Status::aborted(format!("Failed to parse structured init data: {e}")))?;
                     Some(attestation_service::Data::Structured(structured))
                 }
             },
@@ -152,7 +152,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let runtime_data_hash_algorithm = match request.runtime_data_hash_algorithm.is_empty() {
             false => {
                 HashAlgorithm::try_from(&request.runtime_data_hash_algorithm[..]).map_err(|e| {
-                    Status::aborted(format!("parse runtime data HashAlgorithm failed: {e}"))
+                    Status::aborted(format!("Failed to parse runtime data HashAlgorithm: {e}"))
                 })?
             }
             true => {
@@ -164,7 +164,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let init_data_hash_algorithm = match request.init_data_hash_algorithm.is_empty() {
             false => {
                 HashAlgorithm::try_from(&request.init_data_hash_algorithm[..]).map_err(|e| {
-                    Status::aborted(format!("parse init data HashAlgorithm failed: {e}"))
+                    Status::aborted(format!("Failed to parse init data HashAlgorithm: {e}"))
                 })?
             }
             true => {
@@ -192,7 +192,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                 policy_ids,
             )
             .await
-            .map_err(|e| Status::aborted(format!("Attestation: {e:?}")))?;
+            .map_err(|e| Status::aborted(format!("Attestation evaluation failed: {e:?}")))?;
 
         debug!("Attestation Token: {}", &attestation_token);
 
@@ -266,7 +266,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         debug!("registering reference value: {}", request.message);
 
         let message = serde_json::from_str(&request.message)
-            .map_err(|e| Status::aborted(format!("Parse message: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Failed to parse message: {e}")))?;
         self.write()
             .await
             .attestation_service
@@ -280,7 +280,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
 }
 
 pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
-    info!("Listen socket: {}", &socket);
+    info!("Starting gRPC Attestation Service. Listenening on socket: {}", &socket);
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
 
