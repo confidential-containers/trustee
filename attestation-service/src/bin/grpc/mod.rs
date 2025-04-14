@@ -240,10 +240,20 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         &self,
         _request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
-        let status =
-            Status::aborted("Cannot query reference values using RVPS as a submodule in AS.");
+        let values = self
+            .read()
+            .await
+            .attestation_service
+            .query_reference_values()
+            .await
+            .map_err(|e| Status::aborted(format!("Failed to query reference values: {e}")))?;
 
-        Err(status)
+        let res = ReferenceValueQueryResponse {
+            reference_value_results: serde_json::to_string(&values).map_err(|e| {
+                Status::aborted(format!("Failed to serialize reference values: {e}"))
+            })?,
+        };
+        Ok(Response::new(res))
     }
 
     async fn register_reference_value(
@@ -253,7 +263,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         let request = request.into_inner();
 
         info!("RegisterReferenceValue API called.");
-        debug!("registry reference value: {}", request.message);
+        debug!("registering reference value: {}", request.message);
 
         let message = serde_json::from_str(&request.message)
             .map_err(|e| Status::aborted(format!("Parse message: {e}")))?;
