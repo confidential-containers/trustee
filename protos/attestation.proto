@@ -90,5 +90,4 @@ service AttestationService {
     rpc AttestationEvaluate(AttestationRequest) returns (AttestationResponse) {};
     rpc SetAttestationPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
     rpc GetAttestationChallenge(ChallengeRequest) returns (ChallengeResponse) {};
-    // Get the GetPolicyRequest.user and GetPolicyRequest.tee specified Policy(.rego)
 }
