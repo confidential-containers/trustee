@@ -19,12 +19,10 @@ use crate::as_api::{
     AttestationRequest, AttestationResponse, ChallengeRequest, ChallengeResponse, SetPolicyRequest,
     SetPolicyResponse,
 };
-
-use crate::rvps_api::reference_value_provider_service_server::{
-    ReferenceValueProviderService, ReferenceValueProviderServiceServer,
-};
-
 use crate::rvps_api::{
+    reference_value_provider_service_server::{
+        ReferenceValueProviderService, ReferenceValueProviderServiceServer,
+    },
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
     ReferenceValueRegisterResponse,
 };
@@ -115,9 +113,9 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let runtime_data = match request.runtime_data {
             Some(runtime_data) => match runtime_data {
                 crate::as_api::attestation_request::RuntimeData::RawRuntimeData(raw) => {
-                    let raw_runtime = URL_SAFE_NO_PAD
-                        .decode(raw)
-                        .map_err(|e| Status::aborted(format!("Failed to decode base64 runtime data: {e}")))?;
+                    let raw_runtime = URL_SAFE_NO_PAD.decode(raw).map_err(|e| {
+                        Status::aborted(format!("Failed to decode base64 runtime data: {e}"))
+                    })?;
                     Some(attestation_service::Data::Raw(raw_runtime))
                 }
                 crate::as_api::attestation_request::RuntimeData::StructuredRuntimeData(
@@ -135,14 +133,15 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
         let init_data = match request.init_data {
             Some(init_data) => match init_data {
                 crate::as_api::attestation_request::InitData::RawInitData(raw) => {
-                    let raw_init = URL_SAFE_NO_PAD
-                        .decode(raw)
-                        .map_err(|e| Status::aborted(format!("Failed to decode base64 init data: {e}")))?;
+                    let raw_init = URL_SAFE_NO_PAD.decode(raw).map_err(|e| {
+                        Status::aborted(format!("Failed to decode base64 init data: {e}"))
+                    })?;
                     Some(attestation_service::Data::Raw(raw_init))
                 }
                 crate::as_api::attestation_request::InitData::StructuredInitData(structured) => {
-                    let structured = serde_json::from_str(&structured)
-                        .map_err(|e| Status::aborted(format!("Failed to parse structured init data: {e}")))?;
+                    let structured = serde_json::from_str(&structured).map_err(|e| {
+                        Status::aborted(format!("Failed to parse structured init data: {e}"))
+                    })?;
                     Some(attestation_service::Data::Structured(structured))
                 }
             },
@@ -265,12 +264,10 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         info!("RegisterReferenceValue API called.");
         debug!("registering reference value: {}", request.message);
 
-        let message = serde_json::from_str(&request.message)
-            .map_err(|e| Status::aborted(format!("Failed to parse message: {e}")))?;
         self.write()
             .await
             .attestation_service
-            .register_reference_value(message)
+            .register_reference_value(&request.message)
             .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
@@ -280,7 +277,10 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
 }
 
 pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
-    info!("Starting gRPC Attestation Service. Listenening on socket: {}", &socket);
+    info!(
+        "Starting gRPC Attestation Service. Listening on socket: {}",
+        &socket
+    );
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
 

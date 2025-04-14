@@ -4,6 +4,7 @@ fn real_main() -> Result<(), String> {
     #[cfg(feature = "grpc-bin")]
     tonic_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
 
+    #[cfg(feature = "grpc-bin")]
     tonic_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
     Ok(())
 }
