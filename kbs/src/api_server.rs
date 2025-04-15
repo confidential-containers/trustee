@@ -179,6 +179,42 @@ pub(crate) async fn api(
 
             Ok(HttpResponse::Ok().finish())
         }
+        #[cfg(feature = "as")]
+        "reference-value" if request.method() == Method::GET => {
+            core.admin_auth.validate_auth(&request)?;
+            let reference_values = serde_json::to_string(
+                &core
+                    .attestation_service
+                    .query_reference_values()
+                    .await
+                    .map_err(|e| Error::RvpsError {
+                        message: format!("Failed to get reference_values: {e}").to_string(),
+                    })?,
+            )?;
+
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(reference_values))
+        }
+        #[cfg(feature = "as")]
+        "reference-value" if request.method() == Method::POST => {
+            core.admin_auth.validate_auth(&request)?;
+            let message = std::str::from_utf8(&body).map_err(|_| Error::RvpsError {
+                message: "Failed to parse reference value message".to_string(),
+            })?;
+            serde_json::to_string(
+                &core
+                    .attestation_service
+                    .register_reference_value(message)
+                    .await
+                    .map_err(|e| Error::RvpsError {
+                        message: format!("Failed to register reference value: {e}").to_string(),
+                    })?,
+            )?;
+
+            Ok(HttpResponse::Ok().content_type("application/json").finish())
+        }
+
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
