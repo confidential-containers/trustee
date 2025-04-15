@@ -332,6 +332,18 @@ impl AttestationService {
 
         Ok(token.to_owned())
     }
+
+    pub async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {
+        self.inner.register_reference_value(message).await?;
+
+        Ok(())
+    }
+
+    pub async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        let values = self.inner.query_reference_values().await?;
+
+        Ok(values)
+    }
 }
 
 #[cfg(test)]
