@@ -210,12 +210,20 @@ impl AttestationService {
         Ok(attestation_results_token)
     }
 
-    /// Registry a new reference value
+    /// Register a new reference value
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
         self.rvps
             .verify_and_extract(message)
             .await
             .context("register reference value")
+    }
+
+    /// Query Reference Values
+    pub async fn query_reference_values(&self) -> Result<HashMap<String, Vec<String>>> {
+        self.rvps
+            .get_digests()
+            .await
+            .context("query reference values")
     }
 
     pub async fn generate_supplemental_challenge(

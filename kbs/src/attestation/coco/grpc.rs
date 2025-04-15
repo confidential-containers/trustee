@@ -18,7 +18,8 @@ use crate::attestation::backend::{make_nonce, Attest};
 
 use self::attestation::{
     attestation_request::RuntimeData, attestation_service_client::AttestationServiceClient,
-    AttestationRequest, ChallengeRequest, SetPolicyRequest,
+    AttestationRequest, ChallengeRequest, ReferenceValueQueryRequest, ReferenceValueQueryResponse,
+    ReferenceValueRegisterRequest, SetPolicyRequest,
 };
 
 mod attestation {
@@ -155,6 +156,37 @@ impl Attest for GrpcClientPool {
         };
 
         Ok(challenge)
+    }
+
+    async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {
+        let req = tonic::Request::new(ReferenceValueRegisterRequest {
+            message: message.to_string(),
+        });
+
+        let mut client = { self.pool.lock().await.get().await? };
+
+        client
+            .register_reference_value(req)
+            .await
+            .map_err(|e| anyhow!("Failed to set reference values: {:?}", e))?;
+
+        Ok(())
+    }
+
+    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        let req = tonic::Request::new(ReferenceValueQueryRequest {});
+
+        let mut client = { self.pool.lock().await.get().await? };
+
+        let ReferenceValueQueryResponse {
+            reference_value_results,
+        } = client
+            .query_reference_value(req)
+            .await
+            .map_err(|e| anyhow!("Failed to get reference values: {:?}", e))?
+            .into_inner();
+
+        Ok(serde_json::from_str(&reference_value_results)?)
     }
 }
 

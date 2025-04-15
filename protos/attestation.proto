@@ -86,9 +86,24 @@ message ChallengeResponse {
     string attestation_challenge = 1;
 }
 
+// The attestation service can also proxy requests
+// to an RVPS if supported.
+message ReferenceValueQueryRequest {}
+
+message ReferenceValueQueryResponse {
+    string reference_value_results = 1;
+}
+
+message ReferenceValueRegisterRequest {
+    string message = 1;
+}
+
+message ReferenceValueRegisterResponse {}
+
 service AttestationService {
     rpc AttestationEvaluate(AttestationRequest) returns (AttestationResponse) {};
     rpc SetAttestationPolicy(SetPolicyRequest) returns (SetPolicyResponse) {};
     rpc GetAttestationChallenge(ChallengeRequest) returns (ChallengeResponse) {};
-    // Get the GetPolicyRequest.user and GetPolicyRequest.tee specified Policy(.rego)
+    rpc QueryReferenceValue(ReferenceValueQueryRequest) returns (ReferenceValueQueryResponse) {};
+    rpc RegisterReferenceValue(ReferenceValueRegisterRequest) returns (ReferenceValueRegisterResponse) {};
 }

@@ -15,6 +15,7 @@ use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
 
@@ -89,6 +90,20 @@ pub trait Attest: Send + Sync {
         tee_parameters: serde_json::Value,
     ) -> anyhow::Result<Challenge> {
         generic_generate_challenge(tee, tee_parameters).await
+    }
+
+    /// Add reference values to the RVPS, if the AS supports it
+    async fn register_reference_value(&self, _message: &str) -> anyhow::Result<()> {
+        Err(anyhow!(
+            "Attestation Service does not support reference value configuration."
+        ))
+    }
+
+    /// Get reference values from the RVPS, if the AS supports it
+    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        Err(anyhow!(
+            "Attestation Service does not support reference value configuration."
+        ))
     }
 }
 
@@ -316,6 +331,18 @@ impl AttestationService {
         };
 
         Ok(token.to_owned())
+    }
+
+    pub async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {
+        self.inner.register_reference_value(message).await?;
+
+        Ok(())
+    }
+
+    pub async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        let values = self.inner.query_reference_values().await?;
+
+        Ok(values)
     }
 }
 
