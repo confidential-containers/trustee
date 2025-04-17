@@ -3,9 +3,8 @@ kind: Ingress
 metadata:
   name: kbs
   namespace: coco-tenant
-  annotations:
-    kubernetes.io/ingress.class: $KBS_INGRESS_CLASS
 spec:
+  ingressClassName: $KBS_INGRESS_CLASS
   rules:
   - host: $KBS_INGRESS_HOST
     http:
