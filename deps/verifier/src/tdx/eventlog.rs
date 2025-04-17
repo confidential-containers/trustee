@@ -86,7 +86,7 @@ impl CcEventLog {
     pub fn query_digest(&self, entity: MeasuredEntity) -> Option<String> {
         for event_entry in self.cc_events.log.clone() {
             match (entity, event_entry.event_type.as_str()) {
-                (MeasuredEntity::TdvfKernel, "EV_EFI_BOOT_SERVICES_APPLICATION") => {
+                (MeasuredEntity::TdvfKernel, "EV_EFI_BOOT_SERVICES_APPLICATION") if event_entry.event_desc.len() >= KERNEL_VENMEDIA_DEVPATH_OFFSET + 2 * entity.as_ref().len() => {
                     let raw_bytes = &event_entry.event_desc[KERNEL_VENMEDIA_DEVPATH_OFFSET
                         ..KERNEL_VENMEDIA_DEVPATH_OFFSET + 2 * entity.as_ref().len()];
 
