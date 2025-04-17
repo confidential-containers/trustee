@@ -1,0 +1,45 @@
+name: Build and Push KBS-Client Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_push_kbs_client_image:
+    permissions:
+      packages: write
+    uses: ./.github/workflows/build-kbs-client-image.yml
+    with:
+      build_option: --push
+    secrets: inherit
+
+  publish_multi_arch_image:
+    needs: build_and_push_kbs_client_image
+    strategy:
+      fail-fast: false
+    permissions:
+      packages: write
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Login to GHCR Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish Multi-Arch kbs-client-image
+      run: |
+        commit_sha=${{ github.sha }}
+        docker manifest create "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}-x86_64" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}-aarch64" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}-s390x"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}"
+        docker manifest create "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest-x86_64" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest-aarch64" \
+          --amend "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest-s390x"
+        docker manifest push "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest"

@@ -45,8 +45,8 @@ jobs:
           verifier: se-verifier
         - target_arch: aarch64
           target_platform: linux/arm64
-          build_platform: linux/amd64
-          instance: ubuntu-22.04
+          build_platform: linux/arm64
+          instance: ubuntu-24.04-arm
           verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
 
