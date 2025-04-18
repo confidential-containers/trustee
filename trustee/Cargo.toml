@@ -1,0 +1,18 @@
+[package]
+name = "trustee"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[features]
+default = ["aliases", "plugins"]
+aliases = []
+plugins = []
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
