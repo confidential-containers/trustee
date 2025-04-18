@@ -1,6 +1,11 @@
+use std::path::Path;
+
 use anyhow::Result;
 use clap::{error::Error, Parser};
 use openssl::pkey::PKey;
+use tokio;
+
+use kbs::{ApiServer, KbsConfig};
 
 fn trustee_keygen(path: Option<String>) -> Result<()> {
     let private = PKey::generate_ed25519()?;
@@ -15,7 +20,15 @@ fn trustee_keygen(path: Option<String>) -> Result<()> {
     Ok(())
 }
 
-/// Enum to represent different subcommands.
+async fn trustee_run(config_file: &str) -> Result<()> {
+    let kbs_config = KbsConfig::try_from(Path::new(config_file))?;
+    let api_server = ApiServer::new(kbs_config).await?;
+    // TODO initialize the components separately
+    // and spawn each one within try_join
+    tokio::try_join!(api_server.server()?)?;
+    Ok(())
+}
+
 #[derive(Debug, Parser)]
 enum Commands {
     /// Generate a new key pair
@@ -23,6 +36,12 @@ enum Commands {
         /// Output file for the private key
         #[arg(long = "out")]
         out: Option<String>,
+    },
+    /// Launch Trustee
+    Run {
+        /// Configuration file
+        #[arg(long = "config")]
+        config_file: String,
     },
 }
 
@@ -33,11 +52,12 @@ struct Cli {
     command: Commands,
 }
 
-pub fn cli_default() -> Result<(), Error> {
+pub async fn cli_default() -> Result<(), Error> {
     let cli = Cli::try_parse()?;
 
     match cli.command {
         Commands::Keygen { out } => trustee_keygen(out).unwrap(),
+        Commands::Run { config_file } => trustee_run(&config_file).await.unwrap(),
     };
 
     Ok(())

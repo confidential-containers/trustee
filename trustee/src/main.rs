@@ -10,7 +10,8 @@ mod aliases;
 #[cfg(feature = "plugins")]
 mod plugins;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     #[cfg(feature = "aliases")]
@@ -21,7 +22,7 @@ fn main() {
         }
     }
 
-    let cli_error = match cli::cli_default() {
+    let cli_error = match cli::cli_default().await {
         Ok(_) => return,
         Err(e) => e,
     };

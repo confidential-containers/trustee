@@ -15,5 +15,7 @@ plugins = []
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
+kbs = { version = "0.1.0", path = "../kbs" }
 log.workspace = true
 openssl.workspace = true
+tokio.workspace = true
