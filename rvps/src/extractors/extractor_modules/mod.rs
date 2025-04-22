@@ -14,6 +14,7 @@ use crate::ReferenceValue;
 pub mod in_toto;
 
 pub mod sample;
+pub mod swid;
 
 /// Extractor is a standard interface that all provenance extractors
 /// need to implement. Here reference_value can be modified in the
@@ -39,6 +40,12 @@ impl Default for ExtractorModuleList {
             let instantiate_func: ExtractorInstantiateFunc =
                 Box::new(|| -> ExtractorInstance { Box::<sample::SampleExtractor>::default() });
             mod_list.insert("sample".to_string(), instantiate_func);
+        }
+
+        {
+            let instantiate_func: ExtractorInstantiateFunc =
+                Box::new(|| -> ExtractorInstance { Box::<swid::SwidExtractor>::default() });
+            mod_list.insert("swid".to_string(), instantiate_func);
         }
 
         #[cfg(feature = "in-toto")]
