@@ -12,7 +12,7 @@ use log::info;
 
 use crate::{
     admin::Admin, config::KbsConfig, jwe::jwe, plugins::PluginManager, policy_engine::PolicyEngine,
-    token::TokenVerifier, Error, Result,
+    prometheus_exporter, token::TokenVerifier, Error, Result,
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -101,6 +101,8 @@ impl ApiServer {
         );
 
         let http_config = self.config.http_server.clone();
+
+        #[allow(clippy::redundant_closure)]
         let http_server = HttpServer::new({
             move || {
                 let api_server = self.clone();
@@ -114,6 +116,11 @@ impl ApiServer {
                         web::resource([kbs_path!("{base_path}{additional_path:.*}")])
                             .route(web::get().to(api))
                             .route(web::post().to(api)),
+                    )
+                    .service(
+                        web::resource("/metrics")
+                            .route(web::get().to(prometheus_metrics_handler))
+                            .route(web::post().to(|| HttpResponse::MethodNotAllowed())),
                     )
             }
         });
@@ -257,4 +264,16 @@ pub(crate) async fn api(
             }
         }
     }
+}
+
+pub(crate) async fn prometheus_metrics_handler(
+    _request: HttpRequest,
+    _core: web::Data<ApiServer>,
+) -> Result<HttpResponse> {
+    let report = prometheus_exporter::instance
+        .lock()
+        .unwrap()
+        .export_metrics()
+        .map_err(|e| Error::PrometheusError { source: e })?;
+    Ok(HttpResponse::Ok().body(report))
 }
