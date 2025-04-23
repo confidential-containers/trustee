@@ -122,6 +122,11 @@ enum ConfigCommands {
         #[clap(long, action, group = "resource_policy")]
         deny_all: bool,
 
+        /// Use built-in policy that only releases resources if the attestation
+        /// token is affirming (i.e. the attestation policy is met)
+        #[clap(long, action, group = "resource_policy")]
+        affirming: bool,
+
         /// Use built-in default policy that allows access to all policies
         /// unless the sample evidence is provided
         #[clap(long, action, group = "resource_policy")]
@@ -226,6 +231,7 @@ async fn main() -> Result<()> {
                     policy_file,
                     allow_all,
                     deny_all,
+                    affirming,
                     default,
                 } => {
                     let policy_bytes: Vec<u8> = if let Some(file) = policy_file {
@@ -234,6 +240,8 @@ async fn main() -> Result<()> {
                         include_bytes!("../../../kbs/sample_policies/allow_all.rego").into()
                     } else if deny_all {
                         include_bytes!("../../../kbs/sample_policies/deny_all.rego").into()
+                    } else if affirming {
+                        include_bytes!("../../../kbs/sample_policies/affirming.rego").into()
                     } else if default {
                         include_bytes!("../../../kbs/src/policy_engine/opa/default_policy.rego")
                             .into()
