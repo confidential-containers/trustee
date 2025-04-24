@@ -22,7 +22,6 @@ jobs:
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       tee: sample
-      runs-on: '["ubuntu-22.04"]'
       tarball: kbs.tar.gz
 
   e2e-test-arm64:
@@ -30,6 +29,7 @@ jobs:
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       tee: sample
-      runs-on: '["ubuntu-22.04-arm"]'
+      runs-on-build: '["ubuntu-22.04-arm"]'
+      runs-on-test: '["ubuntu-22.04-arm"]'
       tarball: kbs.tar.gz
       kbs-client-features: "sample_only,cca-attester"
