@@ -6,7 +6,13 @@ use log::{trace, warn};
 use std::result::Result::Ok;
 use strum::{AsRefStr, Display, EnumString};
 
+const UEFI_IMAGE_LOAD_EVENT_OFFSET: usize = 24;
 const KERNEL_VENMEDIA_DEVPATH_OFFSET: usize = 55;
+
+/// Little-endian of: "{0x1428f772, 0xb64a, 0x441e, {0xb8, 0xc3, 0x9e, 0xbd, 0xd7, 0xf8, 0x93, 0xc7}}"
+const QEMU_KERNEL_LOADER_FS_MEDIA_GUID: [u8; 16] = [
+    114, 247, 40, 20, 74, 182, 30, 68, 184, 195, 158, 189, 215, 248, 147, 199,
+];
 
 #[derive(AsRefStr, Copy, Debug, Clone, EnumString, Display)]
 pub enum MeasuredEntity {
@@ -55,6 +61,35 @@ fn read_string(raw_bytes: &[u8]) -> Result<String, std::string::FromUtf16Error> 
     String::from_utf16(utf16_string.as_ref())
 }
 
+fn is_qemu_direct_boot(desc: &[u8]) -> bool {
+    let mut pos = UEFI_IMAGE_LOAD_EVENT_OFFSET;
+
+    // Check desc can fit Image Load Event (32 bytes) with a Media / Vendor Device
+    // Path (20 bytes)
+    if desc.len() < 52 {
+        return false;
+    }
+    // UEFI Image Load Event contains a Device Path
+    if u64::from_le_bytes(desc[pos..pos + 8].try_into().unwrap_or_default()) == 0 {
+        return false;
+    }
+    pos += 8;
+    // UEFI Device Path is Media / Vendor
+    if desc[pos] != 4 && desc[pos + 1] != 3 {
+        return false;
+    }
+    pos += 2;
+    if u16::from_le_bytes(desc[pos..pos + 2].try_into().unwrap_or_default()) != 20 {
+        return false;
+    }
+    pos += 2;
+    // Vendor GUID is what EDK2 defines for QEMU
+    if desc[pos..pos + 16] != QEMU_KERNEL_LOADER_FS_MEDIA_GUID {
+        return false;
+    }
+    true
+}
+
 impl CcEventLog {
     pub fn integrity_check(&self, rtmr_from_quote: Rtmr) -> Result<()> {
         let rtmr_eventlog = self.rebuild_rtmr()?;
@@ -86,7 +121,9 @@ impl CcEventLog {
     pub fn query_digest(&self, entity: MeasuredEntity) -> Option<String> {
         for event_entry in self.cc_events.log.clone() {
             match (entity, event_entry.event_type.as_str()) {
-                (MeasuredEntity::TdvfKernel, "EV_EFI_BOOT_SERVICES_APPLICATION") => {
+                (MeasuredEntity::TdvfKernel, "EV_EFI_BOOT_SERVICES_APPLICATION")
+                    if is_qemu_direct_boot(&event_entry.event_desc) =>
+                {
                     let raw_bytes = &event_entry.event_desc[KERNEL_VENMEDIA_DEVPATH_OFFSET
                         ..KERNEL_VENMEDIA_DEVPATH_OFFSET + 2 * entity.as_ref().len()];
 
