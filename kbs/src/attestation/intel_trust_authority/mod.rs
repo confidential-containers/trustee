@@ -91,6 +91,7 @@ pub struct IntelTrustAuthorityConfig {
     pub api_key: String,
     pub certs_file: String,
     pub allow_unmatched_policy: Option<bool>,
+    #[serde(default)]
     pub policy_ids: Vec<String>,
 }
 
