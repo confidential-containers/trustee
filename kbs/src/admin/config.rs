@@ -9,6 +9,7 @@ use serde::Deserialize;
 pub const DEFAULT_INSECURE_API: bool = false;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct AdminConfig {
     /// Public key used to authenticate the resource registration endpoint token (JWT).
     /// Only JWTs signed with the corresponding private keys are authenticated.
