@@ -74,7 +74,7 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
         Tee::Snp => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "snp-verifier")] {
-                    let verifier = snp::Snp::new()?;
+                    let verifier = snp::Snp::default();
                     Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `snp-verifier` is not enabled for `verifier` crate.")

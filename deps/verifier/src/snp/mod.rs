@@ -1,24 +1,27 @@
-use anyhow::anyhow;
-use base64::{engine::general_purpose::STANDARD, Engine};
-use log::{debug, warn};
-extern crate serde;
-use self::serde::{Deserialize, Serialize};
 use super::*;
+
+use self::serde::{Deserialize, Serialize};
+use anyhow::anyhow;
 use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
+use base64::{engine::general_purpose::STANDARD, Engine};
+use log::{debug, warn};
 use openssl::{
-    ec::EcKey,
-    ecdsa,
     nid::Nid,
-    pkey::{PKey, Public},
-    sha::sha384,
     x509::{self, X509},
 };
 use reqwest::{get, Response as ReqwestResponse, StatusCode};
+use serde;
 use serde_json::json;
-use sev::firmware::guest::AttestationReport;
-use sev::firmware::host::{CertTableEntry, CertType};
-use std::sync::OnceLock;
+use sev::{
+    certs::snp::{ca::Chain as CaChain, Certificate, Chain, Verifiable},
+    firmware::{
+        guest::AttestationReport,
+        host::{CertTableEntry, CertType},
+    },
+};
+use std::{collections::HashMap, hash::Hash, result::Result::Ok, sync::LazyLock};
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
@@ -44,57 +47,74 @@ const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
 const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
 const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
 const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
+const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
 
 // KDS URL parameters
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
 const KDS_VCEK: &str = "/vcek/v1";
 
 /// Attestation report versions supported
-const REPORT_VERSION_MIN: u32 = 2;
-const REPORT_VERSION_MAX: u32 = 3;
+const REPORT_VERSION_MIN: u32 = 3;
+const REPORT_VERSION_MAX: u32 = 4;
 
-#[derive(Debug)]
-pub struct Snp {
-    vendor_certs: VendorCertificates,
-}
+static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCertificates>> =
+    LazyLock::new(|| {
+        let mut map = HashMap::new();
+        for proc in ProcessorGeneration::iter() {
+            let cert_authority = match proc {
+                ProcessorGeneration::Milan => include_bytes!("milan_ask_ark_asvk.pem"),
+                ProcessorGeneration::Genoa => include_bytes!("genoa_ask_ark_asvk.pem"),
+                ProcessorGeneration::Turin => include_bytes!("turin_ask_ark_asvk.pem"),
+            };
 
-/// Loads the Milan certificate chain and returns a static reference to it.
-/// The chain is loaded lazily using `OnceLock` to ensure it's only initialized once.
-/// Certificates are loaded from a PEM file and must contain exactly three certificates (ASK, ARK, ASVK).
-pub(crate) fn load_milan_cert_chain() -> &'static Result<VendorCertificates> {
-    static MILAN_CERT_CHAIN: OnceLock<Result<VendorCertificates>> = OnceLock::new();
-    MILAN_CERT_CHAIN.get_or_init(|| {
-        let certs = X509::stack_from_pem(include_bytes!("milan_ask_ark_asvk.pem"))?;
-        if certs.len() != 3 {
-            bail!("Malformed Milan ASK/ARK/ASVK");
+            let certs = X509::stack_from_pem(cert_authority).unwrap();
+
+            if certs.len() != 3 {
+                panic!(
+                    "Malformed cached Vendor Certs for {} processor (ASK, ARK, ASVK)",
+                    proc
+                );
+            }
+
+            let vendor_certs = VendorCertificates {
+                ask: Certificate::from(certs[0].clone()),
+                ark: Certificate::from(certs[1].clone()),
+                asvk: Certificate::from(certs[2].clone()),
+            };
+
+            map.insert(proc, vendor_certs);
         }
 
-        let vendor_certs = VendorCertificates {
-            ask: certs[0].clone(),
-            ark: certs[1].clone(),
-            asvk: certs[2].clone(),
-        };
-        Ok(vendor_certs)
-    })
-}
+        map
+    });
 
-impl Snp {
-    /// Creates a new `Snp` instance by loading the Milan certificate chain.
-    /// Returns an error if the certificate chain can not be loaded.
-    pub fn new() -> Result<Self> {
-        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            bail!("Failed to load Milan cert chain");
-        };
-        let vendor_certs = vendor_certs.clone();
-        Ok(Self { vendor_certs })
-    }
+#[derive(Default, Debug)]
+pub struct Snp {}
+
+#[derive(Clone, Debug)]
+pub(crate) enum VendorEndorsementKey {
+    Vcek,
+    Vlek,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct VendorCertificates {
-    ask: X509,
-    ark: X509,
-    asvk: X509,
+    pub(crate) ask: Certificate,
+    pub(crate) ark: Certificate,
+    pub(crate) asvk: Certificate,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display, EnumIter, Hash)]
+#[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
+pub(crate) enum ProcessorGeneration {
+    /// 3rd Gen AMD EPYC Processor (Standard)
+    Milan,
+
+    /// 4th Gen AMD EPYC Processor (Standard)
+    Genoa,
+
+    /// 5th Gen AMD EPYC Processor (Standard)
+    Turin,
 }
 
 #[async_trait]
@@ -111,32 +131,144 @@ impl Verifier for Snp {
         let SnpEvidence {
             attestation_report: report,
             cert_chain,
-        } = serde_json::from_slice(evidence).context("Deserialize Quote failed.")?;
-
-        let cert_chain = match cert_chain {
-            Some(chain) if !chain.is_empty() => chain,
-            _ => fetch_vcek_from_kds(report).await?,
-        };
-
-        verify_report_signature(&report, &cert_chain, &self.vendor_certs)?;
+        } = serde_json::from_slice(evidence).context("Deserialize SNP Evidence failed")?;
 
         // See Trustee Issue#589 https://github.com/confidential-containers/trustee/issues/589
-        if report.version < REPORT_VERSION_MIN || report.version > REPORT_VERSION_MAX {
-            return Err(anyhow!(
-                "Unexpected attestation report version. Check SNP Firmware ABI specification"
-            ));
+        // Version 3 minimum is needed to tell processor type in report
+        if report.version < REPORT_VERSION_MIN {
+            bail!("Attestation Report version is too old. Please update your firmware.");
+        } else if report.version > REPORT_VERSION_MAX {
+            bail!("Unexpected attestation report version. Check SNP Firmware ABI specification");
         }
+
+        // Get the processor model from the report
+        let proc_gen: ProcessorGeneration = get_processor_model(&report)?;
+
+        // Get vendor certs for specific processor type
+        let vendor_certs = CERT_CHAINS
+            .get(&proc_gen)
+            .ok_or_else(|| anyhow!("Vendor certs not found for processor type: {proc_gen:?}"))?;
+
+        // Get the Version Endorsement Key (VEK) from the provided certs or KDS
+        let vek = match cert_chain {
+            // If the user provided cert chain, use that.
+            Some(chain) => {
+                // Initialize certs as options, will be filled out if left as none
+                let mut ask: Option<Certificate> = None;
+                let mut ark: Option<Certificate> = None;
+                let mut vek: Option<Certificate> = None;
+                let mut vek_type = VendorEndorsementKey::Vcek;
+
+                // Iterate through the cert chain and find the ASK, ARK, and VCEK/VLEK
+                for cert in chain.iter() {
+                    match cert.cert_type {
+                        CertType::ARK => {
+                            // If the user provided ARK, verify against our trusted ARK
+                            let provisioned_ark = vendor_certs.ark.clone();
+                            ark = Some(Certificate::from_bytes(cert.data.as_slice())?);
+                            (&provisioned_ark, &ark.clone().unwrap())
+                                .verify()
+                                .context("Provided ARK has an invalid signature")?;
+                        }
+
+                        CertType::ASK => {
+                            ask = Some(Certificate::from_bytes(cert.data.as_slice())?);
+                        }
+
+                        // If both VLEK and VCEK are present, use the first one found
+                        CertType::VCEK => {
+                            if vek.is_none() {
+                                vek = Some(Certificate::from_bytes(cert.data.as_slice())?);
+                            }
+                        }
+                        CertType::VLEK => {
+                            if vek.is_none() {
+                                vek_type = VendorEndorsementKey::Vlek;
+                                vek = Some(Certificate::from_bytes(cert.data.as_slice())?);
+                            }
+                        }
+                        _ => continue,
+                    }
+                }
+
+                let vek = vek.as_ref().ok_or_else(|| {
+                    anyhow!("A VCEK/VLEK has to be provided in the certificate chain")
+                })?;
+
+                // Make sure we have all the required certificates
+                // Missing certs will be filled with the vendor certs
+                let chain = Chain {
+                    ca: CaChain {
+                        ark: ark.unwrap_or_else(|| vendor_certs.ark.clone()),
+                        ask: ask.unwrap_or_else(|| match vek_type {
+                            VendorEndorsementKey::Vlek => vendor_certs.asvk.clone(),
+
+                            VendorEndorsementKey::Vcek => vendor_certs.ask.clone(),
+                        }),
+                    },
+                    vek: vek.clone(),
+                };
+
+                // Verify the chain and return vek if succesful
+                chain
+                    .verify()
+                    .context("Certificate chain provided by user failed to verify")?;
+
+                // Return the vek
+                vek.clone()
+            }
+
+            // No certificate chain provided, so we need to request the VCEK from KDS
+            _ => {
+                // Get VCEK from KDS
+                let vcek_buf = fetch_vcek_from_kds(report, proc_gen.clone())
+                    .await
+                    .context("Failed to fetch VCEK from KDS")?;
+                let vcek = Certificate::from_bytes(&vcek_buf)
+                    .context("Failed to convert kds vcek into certificate")?;
+
+                let chain = Chain {
+                    ca: CaChain {
+                        ark: vendor_certs.ark.clone(),
+                        ask: vendor_certs.ask.clone(),
+                    },
+                    vek: vcek.clone(),
+                };
+
+                // Verify the chain and return vek if succesful
+                chain
+                    .verify()
+                    .context("Certificate chain from KDS/CACHE failed ")?;
+
+                // Return the vcek
+                vcek.clone()
+            }
+        };
+
+        // Verify the report signature using the VEK
+        match (&vek, &report).verify() {
+            Ok(()) => {
+                debug!("VEK signature verified");
+            }
+            Err(e) => {
+                bail!("VEK signature verification failed: {e}");
+            }
+        };
+
+        // Verify the TCB values in the report against the VEK
+        verify_report_tcb(&report, vek, proc_gen).context("Reported TCB values do not match")?;
 
         if report.vmpl != 0 {
-            return Err(anyhow!("VMPL Check Failed"));
+            bail!("VMPL Check Failed");
         }
 
+        // Verify expected data
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");
-            let expected_report_data =
+            let expected_report_data: Vec<u8> =
                 regularize_data(expected_report_data, 64, "REPORT_DATA", "SNP");
 
-            if expected_report_data != report.report_data {
+            if expected_report_data != report.report_data.to_vec() {
                 warn!(
                     "Report data mismatch. Given: {}, Expected: {}",
                     hex::encode(report.report_data),
@@ -150,7 +282,7 @@ impl Verifier for Snp {
             debug!("Check the binding of HOST_DATA.");
             let expected_init_data_hash =
                 regularize_data(expected_init_data_hash, 32, "HOST_DATA", "SNP");
-            if expected_init_data_hash != report.host_data {
+            if expected_init_data_hash != report.host_data.to_vec() {
                 bail!("Host Data Mismatch");
             }
         }
@@ -198,33 +330,26 @@ fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Res
     val_int.as_u8().context("Unexpected data size")
 }
 
-/// Verifies the signature of the attestation report using the provided certificate chain and vendor certificates.
-pub(crate) fn verify_report_signature(
+/// Verifies the signature of the attestation report using the provided Vendor Endorsement Key (VEK).
+pub(crate) fn verify_report_tcb(
     report: &AttestationReport,
-    cert_chain: &[CertTableEntry],
-    vendor_certs: &VendorCertificates,
+    vek: Certificate,
+    proc_gen: ProcessorGeneration,
 ) -> Result<()> {
-    // check cert chain
-    let VendorCertificates { ask, ark, asvk } = vendor_certs;
-
-    // verify VCEK or VLEK cert chain
-    // the key can be either VCEK or VLEK
-    let endorsement_key = verify_cert_chain(cert_chain, ask, ark, asvk)?;
-
     // OpenSSL bindings do not expose custom extensions
     // Parse the key using x509_parser
-    let endorsement_key_der = &endorsement_key.to_der()?;
-    let parsed_endorsement_key = X509Certificate::from_der(endorsement_key_der)?
+    let endorsement_key_der = vek.to_der()?;
+    let parsed_endorsement_key = X509Certificate::from_der(&endorsement_key_der)?
         .1
         .tbs_certificate;
 
     let common_name =
-        get_common_name(&endorsement_key).context("No common name found in certificate")?;
+        get_common_name(&vek.into()).context("No common name found in certificate")?;
 
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
     if common_name == "VCEK"
-        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != *report.chip_id
     {
         bail!("Chip ID mismatch");
     }
@@ -247,64 +372,14 @@ pub(crate) fn verify_report_signature(
         return Err(anyhow!("Boot loader version mismatch"));
     }
 
-    // verify report signature
-    let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
-    let data = &bincode::serialize(&report)?[..=0x29f];
-
-    let pub_key = EcKey::try_from(endorsement_key.public_key()?)?;
-    let signed = sig.verify(&sha384(data), &pub_key)?;
-    if !signed {
-        return Err(anyhow!("Signature validation failed."));
+    // FMC is a Turin+ field only
+    if proc_gen == ProcessorGeneration::Turin
+        && get_oid_int(&parsed_endorsement_key, FMC_SPL_OID)? != report.reported_tcb.fmc.unwrap()
+    {
+        return Err(anyhow!("FMC version mismatch"));
     }
 
     Ok(())
-}
-
-/// Verifies the signature of a certificate against its issuer's public key.
-fn verify_signature(cert: &X509, issuer: &X509, name: &str) -> Result<()> {
-    cert.verify(&(issuer.public_key()? as PKey<Public>))?
-        .then_some(())
-        .ok_or_else(|| anyhow!("Invalid {name} signature"))
-}
-
-/// Verifies the certificate chain based on the provided VCEK or VLEK.
-/// Ensures the chain is valid by verifying signatures and relationships between certificates.
-fn verify_cert_chain(
-    cert_chain: &[CertTableEntry],
-    ask: &X509,
-    ark: &X509,
-    asvk: &X509,
-) -> Result<X509> {
-    // get endorsement keys (VLEK or VCEK)
-    let endorsement_keys: Vec<&CertTableEntry> = cert_chain
-        .iter()
-        .filter(|e| e.cert_type == CertType::VCEK || e.cert_type == CertType::VLEK)
-        .collect();
-
-    let &[key] = endorsement_keys.as_slice() else {
-        bail!("Could not find either VCEK or VLEK in cert chain")
-    };
-
-    let decoded_key =
-        x509::X509::from_der(key.data()).context("Failed to decode endorsement key")?;
-
-    match key.cert_type {
-        CertType::VCEK => {
-            // Chain: ARK -> ARK -> ASK -> VCEK
-            verify_signature(ark, ark, "ARK")?;
-            verify_signature(ask, ark, "ASK")?;
-            verify_signature(&decoded_key, ask, "VCEK")?;
-        }
-        CertType::VLEK => {
-            // Chain: ARK -> ARK -> ASVK -> VLEK
-            verify_signature(ark, ark, "ARK")?;
-            verify_signature(asvk, ark, "ASVK")?;
-            verify_signature(&decoded_key, asvk, "VLEK")?;
-        }
-        _ => bail!("Certificate not of type versioned endorsement key (VLEK or VCEK)"),
-    }
-
-    Ok(decoded_key)
 }
 
 /// Parses the attestation report and extracts the TEE evidence claims.
@@ -354,20 +429,56 @@ fn get_common_name(cert: &x509::X509) -> Result<String> {
 
 /// Asynchronously fetches the VCEK from the Key Distribution Service (KDS) using the provided attestation report.
 /// Returns the VCEK in DER format as part of a certificate table entry.
-async fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTableEntry>> {
+async fn fetch_vcek_from_kds(
+    att_report: AttestationReport,
+    proc_gen: ProcessorGeneration,
+) -> Result<Vec<u8>> {
     // Use attestation report to get data for URL
-    let hw_id: String = hex::encode(att_report.chip_id);
+    let hw_id: String = if att_report.chip_id.as_slice() != [0; 64] {
+        match proc_gen {
+            ProcessorGeneration::Turin => {
+                let shorter_bytes: &[u8] = &att_report.chip_id[0..8];
+                hex::encode(shorter_bytes)
+            }
+            _ => hex::encode(att_report.chip_id),
+        }
+    } else {
+        bail!("Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request from VCEK from KDS.");
+    };
 
-    let vcek_url: String = format!(
-        "{KDS_CERT_SITE}{KDS_VCEK}/Milan/\
-        {hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
-        att_report.reported_tcb.bootloader,
-        att_report.reported_tcb.tee,
-        att_report.reported_tcb.snp,
-        att_report.reported_tcb.microcode
-    );
+    // Request VCEK from KDS
+    let vcek_url: String = match proc_gen {
+        ProcessorGeneration::Turin => {
+            let fmc = if let Some(fmc) = att_report.reported_tcb.fmc {
+                fmc
+            } else {
+                bail!("A Turin processor must have a fmc value");
+            };
+            format!(
+                "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
+                {hw_id}?fmcSPL={:02}&blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
+                proc_gen,
+                fmc,
+                att_report.reported_tcb.bootloader,
+                att_report.reported_tcb.tee,
+                att_report.reported_tcb.snp,
+                att_report.reported_tcb.microcode
+            )
+        }
+        _ => {
+            format!(
+                "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
+                {hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
+                proc_gen,
+                att_report.reported_tcb.bootloader,
+                att_report.reported_tcb.tee,
+                att_report.reported_tcb.snp,
+                att_report.reported_tcb.microcode
+            )
+        }
+    };
     // VCEK in DER format
-    let vcek_rsp: ReqwestResponse = get(vcek_url)
+    let vcek_rsp: ReqwestResponse = get(vcek_url.clone())
         .await
         .context("Unable to send request for VCEK")?;
 
@@ -378,13 +489,35 @@ async fn fetch_vcek_from_kds(att_report: AttestationReport) -> Result<Vec<CertTa
                 .await
                 .context("Unable to parse VCEK")?
                 .to_vec();
-            let key = CertTableEntry {
-                cert_type: CertType::VCEK,
-                data: vcek_rsp_bytes,
-            };
-            Ok(vec![key])
+            Ok(vcek_rsp_bytes)
         }
-        status => Err(anyhow!("Unable to fetch VCEK from URL: {status:?}")),
+
+        status => bail!("Unable to fetch VCEK from URL: {status:?}, {vcek_url:?}"),
+    }
+}
+
+/// Determines the processor model based on the family and model IDs from the attestation report.
+fn get_processor_model(att_report: &AttestationReport) -> Result<ProcessorGeneration> {
+    let cpu_fam = att_report
+        .cpuid_fam_id
+        .ok_or_else(|| anyhow::anyhow!("Attestation report version 3+ is missing CPU family ID"))?;
+
+    let cpu_mod = att_report
+        .cpuid_mod_id
+        .ok_or_else(|| anyhow::anyhow!("Attestation report version 3+ is missing CPU model ID"))?;
+
+    match cpu_fam {
+        0x19 => match cpu_mod {
+            0x0..=0xF => Ok(ProcessorGeneration::Milan),
+            0x10..=0x1F | 0xA0..0xAF => Ok(ProcessorGeneration::Genoa),
+            _ => Err(anyhow::anyhow!("Processor model not supported")),
+        },
+        0x1A => match cpu_mod {
+            0x0..=0x11 => Ok(ProcessorGeneration::Turin),
+
+            _ => Err(anyhow::anyhow!("Processor model not supported")),
+        },
+        _ => Err(anyhow::anyhow!("Processor family not supported")),
     }
 }
 
@@ -403,31 +536,80 @@ mod tests {
 
     #[test]
     fn check_milan_certificates() {
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
-        assert_eq!(get_common_name(ark).unwrap(), "ARK-Milan");
-        assert_eq!(get_common_name(ask).unwrap(), "SEV-Milan");
-        assert_eq!(get_common_name(asvk).unwrap(), "SEV-VLEK-Milan");
+        let VendorCertificates { ask, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
+        assert_eq!(get_common_name(ark.into()).unwrap(), "ARK-Milan");
+        assert_eq!(get_common_name(ask.into()).unwrap(), "SEV-Milan");
+        assert_eq!(get_common_name(asvk.into()).unwrap(), "SEV-VLEK-Milan");
 
-        assert!(ark
-            .verify(&(ark.public_key().unwrap() as PKey<Public>))
+        (ark, ark)
+            .verify()
             .context("Invalid ARK Signature")
-            .unwrap());
+            .unwrap();
 
-        assert!(ask
-            .verify(&(ark.public_key().unwrap() as PKey<Public>))
+        (ark, ask)
+            .verify()
             .context("Invalid ASK Signature")
-            .unwrap());
+            .unwrap();
 
-        assert!(asvk
-            .verify(&(ark.public_key().unwrap() as PKey<Public>))
+        (ark, asvk)
+            .verify()
             .context("Invalid ASVK Signature")
-            .unwrap());
+            .unwrap();
+    }
+
+    #[test]
+    fn check_genoa_certificates() {
+        let VendorCertificates { ask, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Genoa).unwrap();
+        assert_eq!(get_common_name(ark.into()).unwrap(), "ARK-Genoa");
+        assert_eq!(get_common_name(ask.into()).unwrap(), "SEV-Genoa");
+        assert_eq!(get_common_name(asvk.into()).unwrap(), "SEV-VLEK-Genoa");
+
+        (ark, ark)
+            .verify()
+            .context("Invalid ARK Signature")
+            .unwrap();
+
+        (ark, ask)
+            .verify()
+            .context("Invalid ASK Signature")
+            .unwrap();
+
+        (ark, asvk)
+            .verify()
+            .context("Invalid ASVK Signature")
+            .unwrap();
+    }
+
+    #[test]
+    fn check_turin_certificates() {
+        let VendorCertificates { ask, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Turin).unwrap();
+        assert_eq!(get_common_name(ark.into()).unwrap(), "ARK-Turin");
+        assert_eq!(get_common_name(ask.into()).unwrap(), "SEV-Turin");
+        assert_eq!(get_common_name(asvk.into()).unwrap(), "SEV-VLEK-Turin");
+
+        (ark, ark)
+            .verify()
+            .context("Invalid ARK Signature")
+            .unwrap();
+
+        (ark, ask)
+            .verify()
+            .context("Invalid ASK Signature")
+            .unwrap();
+
+        (ark, asvk)
+            .verify()
+            .context("Invalid ASVK Signature")
+            .unwrap();
     }
 
     fn check_oid_ints(cert: &TbsCertificate) {
         let oids = vec![UCODE_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, LOADER_SPL_OID];
         for oid in oids {
-            get_oid_int(&cert, oid).unwrap();
+            get_oid_int(cert, oid).unwrap();
         }
     }
 
@@ -473,94 +655,154 @@ mod tests {
 
     #[test]
     fn check_vcek_signature_verification() {
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
+        let vcek = Certificate::from_bytes(VCEK).unwrap();
+
+        let VendorCertificates { ask, ark, asvk: _ } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
+        let chain = Chain {
+            ca: CaChain {
+                ark: ark.clone(),
+                ask: ask.clone(),
+            },
+            vek: vcek.clone(),
+        };
+        chain.verify().unwrap();
     }
 
     #[test]
     fn check_vcek_signature_failure() {
-        let mut vcek = VCEK.clone();
+        let mut vcek_bytes = *VCEK;
 
         // corrupt some byte, while it should remain a valid cert
-        vcek[42] += 1;
-        X509::from_der(&vcek).expect("failed to parse der");
+        vcek_bytes[42] += 1;
+        let vcek = Certificate::from_bytes(&vcek_bytes).unwrap();
+        let VendorCertificates { ask, ark, asvk: _ } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
+        let chain = Chain {
+            ca: CaChain {
+                ark: ark.clone(),
+                ask: ask.clone(),
+            },
+            vek: vcek.clone(),
+        };
 
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, vcek.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
+        chain.verify().unwrap_err();
     }
 
     #[test]
     fn check_vlek_signature_verification() {
-        let cert_table = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap();
+        let vlek = Certificate::from_bytes(VLEK).unwrap();
+
+        let VendorCertificates { ask: _, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
+        let chain = Chain {
+            ca: CaChain {
+                ark: ark.clone(),
+                ask: asvk.clone(),
+            },
+            vek: vlek.clone(),
+        };
+        chain.verify().unwrap();
     }
 
     #[test]
     fn check_vlek_signature_failure() {
-        let mut vlek = VLEK.clone();
+        let mut vlek_bytes = *VCEK;
 
         // corrupt some byte, while it should remain a valid cert
-        vlek[42] += 1;
-        X509::from_der(&vlek).expect("failed to parse der");
+        vlek_bytes[42] += 1;
 
-        let cert_table = vec![CertTableEntry::new(CertType::VLEK, vlek.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
-        verify_cert_chain(&cert_table, ask, ark, asvk).unwrap_err();
+        let vlek = Certificate::from_bytes(&vlek_bytes).unwrap();
+        let VendorCertificates { ask: _, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
+        let chain = Chain {
+            ca: CaChain {
+                ark: ark.clone(),
+                ask: asvk.clone(),
+            },
+            vek: vlek.clone(),
+        };
+        chain.verify().unwrap_err();
     }
 
     #[test]
     fn check_milan_chain_signature_failure() {
-        let cert_table = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let VendorCertificates { ask, ark, asvk } = load_milan_cert_chain().as_ref().unwrap();
+        let vcek = Certificate::from_bytes(VCEK).unwrap();
+        let VendorCertificates { ask: _, ark, asvk } =
+            CERT_CHAINS.get(&ProcessorGeneration::Milan).unwrap();
 
         // toggle ark <=> ask
-        verify_cert_chain(&cert_table, ark, ask, asvk).unwrap_err();
+        let chain = Chain {
+            ca: CaChain {
+                ark: ark.clone(),
+                ask: asvk.clone(),
+            },
+            vek: vcek.clone(),
+        };
+        chain.verify().unwrap_err();
     }
 
     #[test]
     fn check_report_signature() {
-        let attestation_report =
-            bincode::deserialize::<AttestationReport>(VCEK_REPORT.as_slice()).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
+        let attestation_report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        let vcek = Certificate::from_bytes(VCEK).unwrap();
+        (&vcek, &attestation_report).verify().unwrap();
+        verify_report_tcb(&attestation_report, vcek, ProcessorGeneration::Milan).unwrap();
     }
 
     #[test]
     fn check_vlek_report_signature() {
-        let attestation_report =
-            bincode::deserialize::<AttestationReport>(VLEK_REPORT.as_slice()).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap();
+        let attestation_report = AttestationReport::from_bytes(VLEK_REPORT).unwrap();
+        let vlek = Certificate::from_bytes(VLEK).unwrap();
+        (&vlek, &attestation_report).verify().unwrap();
+        verify_report_tcb(&attestation_report, vlek, ProcessorGeneration::Milan).unwrap();
     }
 
     #[test]
     fn check_report_signature_failure() {
-        let mut bytes = VCEK_REPORT.clone();
+        let mut bytes = *VCEK_REPORT;
 
         // corrupt some byte
         bytes[42] += 1;
 
-        let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VCEK, VCEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
+        let attestation_report = AttestationReport::from_bytes(&bytes).unwrap();
+        let vcek = Certificate::from_bytes(VCEK).unwrap();
+        (&vcek, &attestation_report).verify().unwrap_err();
+    }
+
+    #[test]
+    fn check_report_tcb_failure() {
+        let mut bytes = *VCEK_REPORT;
+
+        // corrupt some byte
+        bytes[384] += 1;
+
+        let attestation_report = AttestationReport::from_bytes(&bytes).unwrap();
+        let vcek = Certificate::from_bytes(VCEK).unwrap();
+        verify_report_tcb(&attestation_report, vcek, ProcessorGeneration::Milan).unwrap_err();
     }
 
     #[test]
     fn check_vlek_report_signature_failure() {
-        let mut bytes = VLEK_REPORT.clone();
+        let mut bytes = *VLEK_REPORT;
 
         // corrupt some byte
         bytes[42] += 1;
 
-        let attestation_report = bincode::deserialize::<AttestationReport>(&bytes).unwrap();
-        let cert_chain = vec![CertTableEntry::new(CertType::VLEK, VLEK.to_vec())];
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_report_signature(&attestation_report, &cert_chain, vendor_certs).unwrap_err();
+        let attestation_report = AttestationReport::from_bytes(&bytes).unwrap();
+        let vlek = Certificate::from_bytes(VLEK).unwrap();
+        (&vlek, &attestation_report).verify().unwrap_err();
+    }
+
+    #[test]
+    fn check_vlek_report_tcb_failure() {
+        let mut bytes = *VLEK_REPORT;
+
+        // corrupt some byte
+        bytes[384] += 1;
+
+        let attestation_report = AttestationReport::from_bytes(&bytes).unwrap();
+        let vlek = Certificate::from_bytes(VLEK).unwrap();
+        verify_report_tcb(&attestation_report, vlek, ProcessorGeneration::Milan).unwrap_err();
     }
 }
