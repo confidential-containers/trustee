@@ -80,7 +80,7 @@ impl SessionStatus {
     impl_member!(timeout, OffsetDateTime);
 
     pub fn is_expired(&self) -> bool {
-        return *self.timeout() < OffsetDateTime::now_utc();
+        *self.timeout() < OffsetDateTime::now_utc()
     }
 
     pub fn attest(&mut self, token: String) {

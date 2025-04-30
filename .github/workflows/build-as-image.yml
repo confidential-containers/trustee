@@ -36,7 +36,7 @@ jobs:
         - target_arch: x86_64
           target_platform: linux/amd64
           build_platform: linux/amd64
-          instance: ubuntu-latest
+          instance: ubuntu-24.04
           verifier: all-verifier
         - target_arch: s390x
           target_platform: linux/s390x
@@ -46,7 +46,7 @@ jobs:
         - target_arch: aarch64
           target_platform: linux/arm64
           build_platform: linux/amd64
-          instance: ubuntu-latest
+          instance: ubuntu-22.04
           verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
 

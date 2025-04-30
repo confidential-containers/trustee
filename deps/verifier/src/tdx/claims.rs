@@ -4,9 +4,16 @@
 //
 
 //! This module helps parse all fields inside a TDX Quote and CCEL and
-//! serialize them into a JSON. The format will look lile
+//! serialize them into a JSON. The format will look like
 //! ```json
 //! {
+//!  "td_attributes": {
+//!    "debug": true,
+//!    "key_locker": false,
+//!    "perfmon": false,
+//!    "protection_keys": false,
+//!    "septve_disable": true
+//!  },
 //!  "ccel": {
 //!    "kernel": "5b7aa6572f649714ff00b6a2b9170516a068fd1a0ba72aa8de27574131d454e6396d3bfa1727d9baf421618a942977fa",
 //!    "kernel_parameters": {
@@ -45,7 +52,8 @@
 //!}
 //! ```
 
-use anyhow::*;
+use anyhow::Result;
+use bitflags::{bitflags, Flags};
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::{debug, warn};
 use serde_json::{Map, Value};
@@ -160,6 +168,7 @@ pub fn generate_parsed_claim(
 
                     parse_claim!(quote_body, "tee_tcb_svn2", body.tee_tcb_svn2);
                     parse_claim!(quote_body, "mr_servicetd", body.mr_servicetd);
+
                     parse_claim!(quote_map, "header", quote_header);
                     parse_claim!(quote_map, "body", quote_body);
                 }
@@ -173,6 +182,8 @@ pub fn generate_parsed_claim(
         parse_ccel(ccel, &mut ccel_map)?;
     }
 
+    let td_attributes = parse_td_attributes(quote.td_attributes())?;
+
     let mut claims = Map::new();
 
     // Claims from AA eventlog
@@ -183,6 +194,7 @@ pub fn generate_parsed_claim(
 
     parse_claim!(claims, "quote", quote_map);
     parse_claim!(claims, "ccel", ccel_map);
+    parse_claim!(claims, "td_attributes", td_attributes);
 
     parse_claim!(claims, "report_data", quote.report_data());
     parse_claim!(claims, "init_data", quote.mr_config_id());
@@ -220,6 +232,32 @@ fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()>
         }
     }
 
+    // Digest of kernel cmdline using TDVF
+    match ccel.query_digest(MeasuredEntity::TdvfKernelParams) {
+        Some(cmdline_digest) => {
+            ccel_map.insert(
+                "cmdline".to_string(),
+                serde_json::Value::String(cmdline_digest),
+            );
+        }
+        _ => {
+            warn!("No tdvf kernel cmdline hash in CCEL");
+        }
+    }
+
+    // Digest of initrd using TDVF
+    match ccel.query_digest(MeasuredEntity::TdvfInitrd) {
+        Some(initrd_digest) => {
+            ccel_map.insert(
+                "initrd".to_string(),
+                serde_json::Value::String(initrd_digest),
+            );
+        }
+        _ => {
+            warn!("No tdvf initrd hash in CCEL");
+        }
+    }
+
     // Map of Kernel Parameters
     match ccel.query_event_data(MeasuredEntity::TdShimKernelParams) {
         Some(config_info) => {
@@ -233,11 +271,38 @@ fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()>
             );
         }
         _ => {
-            warn!("No kernel parameters in CCEL");
+            warn!("No td-shim kernel parameters in CCEL");
         }
     }
 
     Ok(())
+}
+
+bitflags! {
+    #[derive(Debug, Clone)]
+    struct TdAttributesFlags: u64 {
+        const DEBUG            = 1 << 0;
+        const SEPTVE_DISABLE   = 1 << 28;
+        const PROTECTION_KEYS  = 1 << 30;
+        const KEY_LOCKER       = 1 << 31;
+        const PERFMON          = 1 << 63;
+    }
+}
+
+fn parse_td_attributes(data: &[u8]) -> Result<Map<String, Value>> {
+    let arr = <[u8; 8]>::try_from(data)?;
+    let td = TdAttributesFlags::from_bits_retain(u64::from_le_bytes(arr));
+    let attribs = TdAttributesFlags::FLAGS
+        .iter()
+        .map(|f| {
+            (
+                f.name().to_string().to_lowercase(),
+                Value::Bool(td.contains(f.value().clone())),
+            )
+        })
+        .collect();
+
+    Ok(attribs)
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -354,6 +419,13 @@ mod tests {
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
         let claims = generate_parsed_claim(quote, Some(ccel), None).expect("parse claim failed");
         let expected = json!({
+            "td_attributes": {
+                "debug": true,
+                "key_locker": false,
+                "perfmon": false,
+                "protection_keys": false,
+                "septve_disable": true
+            },
             "ccel": {
                 "kernel": "5b7aa6572f649714ff00b6a2b9170516a068fd1a0ba72aa8de27574131d454e6396d3bfa1727d9baf421618a942977fa",
                 "kernel_parameters": {

@@ -24,13 +24,13 @@ on:
 
 jobs:
   authorize:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'test_e2e')
     steps:
     - run: "true"
 
   checkout-and-rebase:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: authorize
     steps:
     - name: Checkout Code

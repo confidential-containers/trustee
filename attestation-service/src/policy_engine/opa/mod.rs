@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::debug;
+use log::{debug, warn};
 use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
@@ -36,6 +36,8 @@ impl OPA {
         if !default_policy_path.as_path().exists() {
             fs::write(&default_policy_path, default_policy)
                 .map_err(PolicyError::WriteDefaultPolicyFailed)?;
+        } else {
+            warn!("Default policy file is already populated. Existing policy file will be used.");
         }
 
         Ok(Self { policy_dir_path })
@@ -239,7 +241,7 @@ mod tests {
 
         let ear_rules = TrustVector::new()
             .into_iter()
-            .map(|c| c.tag().to_string())
+            .map(|c| c.tag().to_string().replace("-", "_"))
             .collect();
 
         let output = opa

@@ -11,9 +11,9 @@ env:
 
 jobs:
   e2e-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.80.0
     steps:
     - name: Checkout KBS
       uses: actions/checkout@v4

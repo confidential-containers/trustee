@@ -21,14 +21,14 @@ jobs:
           #   generate_evidence: true
           #   grpc_tee_enum: 3
           #   restful_tee_enum: tdx
-          - runner: ubuntu-22.04
+          - runner: ubuntu-24.04
             generate_evidence: false
             grpc_tee_enum: 2
             restful_tee_enum: snp
     name: TEE=${{ matrix.restful_tee_enum }} Generate Evidence Dynamically=${{ matrix.generate_evidence }}
     runs-on: ${{ matrix.runner }}
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.80.0
       GRPC_TEE_ENUM: ${{ matrix.grpc_tee_enum }}
       RESTFUL_TEE_ENUM: ${{ matrix.restful_tee_enum }}
     steps:
@@ -55,7 +55,7 @@ jobs:
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
     - name: Install dependencies
-      if: ${{ matrix.runner == 'ubuntu-22.04' }}
+      if: ${{ matrix.runner == 'ubuntu-24.04' }}
       working-directory: attestation-service/tests/e2e
       run: |
         make install-dependencies

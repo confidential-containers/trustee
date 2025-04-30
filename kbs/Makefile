@@ -1,5 +1,6 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
+NEBULA_CA_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -46,6 +47,10 @@ endif
 
 ifeq ($(ALIYUN), true)
   FEATURES += aliyun
+endif
+
+ifeq ($(NEBULA_CA_PLUGIN), true)
+  FEATURES += nebula-ca-plugin
 endif
 
 ifndef CLI_FEATURES
@@ -104,7 +109,7 @@ uninstall:
 	rm -rf $(INSTALL_DESTDIR)/kbs $(INSTALL_DESTDIR)/kbs-client $(INSTALL_DESTDIR)/issuer-kbs $(INSTALL_DESTDIR)/resource-kbs
 
 check:
-	cargo test -p kbs -p kbs-client
+	cargo test -p kbs -p kbs-client -p integration-tests
 
 lint:
 	cargo clippy -p kbs -p kbs-client -- -D warnings

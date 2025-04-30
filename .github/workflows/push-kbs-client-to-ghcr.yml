@@ -14,12 +14,17 @@ jobs:
           - x86_64
           - s390x
           - aarch64
-    runs-on: ${{ matrix.arch == 's390x' && 's390x' || 'ubuntu-22.04' }}
+    runs-on: ${{ matrix.arch == 's390x' && 's390x' || 'ubuntu-24.04' }}
     permissions:
       contents: read
       packages: write
 
     steps:
+    - name: Install ORAS
+      uses: oras-project/setup-oras@v1
+      with:
+        version: 1.0.0
+
     - name: Check out code
       uses: actions/checkout@v4
 
@@ -42,7 +47,7 @@ jobs:
       run: |
         commit_sha=${{ github.sha }}
         oras push \
-          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${{ matrix.arch }}-linux-gnu-${commit_sha},latest-${{ matrix.arch }} \
+          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${commit_sha}-${{ matrix.arch }},latest-${{ matrix.arch }} \
           kbs-client
         if [ "${{ matrix.arch }}" = "x86_64" ]; then
           oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client
