@@ -41,7 +41,7 @@ scroll = { version = "0.12.0", default-features = false, features = ["derive"], 
 serde.workspace = true
 serde_json.workspace = true
 serde_with = { workspace = true, optional = true }
-sev = { version = "4.0.0", features = ["openssl", "snp"], optional = true }
+sev = { version = "6.1.0", default_features = false, features = ["openssl", "snp"], optional = true }
 sha2.workspace = true 
 tokio = { workspace = true, optional = true }
 intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.22", optional = true }
