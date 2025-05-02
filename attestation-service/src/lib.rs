@@ -10,18 +10,19 @@ pub mod token;
 
 use crate::token::AttestationTokenBroker;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
-use verifier::{InitDataHash, ReportData};
+use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 /// Hash algorithms used to calculate runtime/init data binding
 #[derive(Debug, Display, EnumString, AsRefStr)]
@@ -58,9 +59,34 @@ impl HashAlgorithm {
     }
 }
 
+pub type TeeEvidence = serde_json::Value;
+pub type TeeClass = String;
+
+/// GuestEvidence is the combined evidence from all the TEEs
+/// that represent the guest.
+#[derive(Serialize, Deserialize)]
+pub struct GuestEvidence {
+    primary_evidence: TeeEvidence,
+    primary_tee_class: TeeClass,
+    // The additional evidence is a map of Tee -> (TeeClass, TeeEvidence),
+    // but we convert it to a string to avoid any inconsistencies
+    // with serialization. The string in this struct is exactly
+    // what is used to calculate the runtime data.
+    additional_evidence: String,
+}
+
+/// Tee Claims are the output of the verifier plus some metadata
+/// that identifies the TEE type and class.
+#[derive(Debug)]
+pub struct TeeClaims {
+    tee: Tee,
+    tee_class: TeeClass,
+    claims: TeeEvidenceParsedClaim,
+}
+
 /// Runtime/Init Data used to check the binding relationship with report data
 /// in Evidence
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Data {
     /// This will be used as the expected runtime/init data to check against
     /// the one inside evidence.
@@ -165,16 +191,10 @@ impl AttestationService {
         init_data_hash_algorithm: HashAlgorithm,
         policy_ids: Vec<String>,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee)?;
+        let mut tee_claims: Vec<TeeClaims> = vec![];
+        let guest_evidence: GuestEvidence = serde_json::from_slice(&evidence)?;
 
-        let (report_data, runtime_data_claims) =
-            parse_data(runtime_data, &runtime_data_hash_algorithm).context("parse runtime data")?;
-
-        let report_data = match &report_data {
-            Some(data) => ReportData::Value(data),
-            None => ReportData::NotProvided,
-        };
-
+        // Parse init_data, which is shared by primary and additonal verifiers
         let (init_data, init_data_claims) =
             parse_data(init_data, &init_data_hash_algorithm).context("parse init data")?;
 
@@ -183,11 +203,83 @@ impl AttestationService {
             None => InitDataHash::NotProvided,
         };
 
-        let claims_from_tee_evidence = verifier
-            .evaluate(&evidence, &report_data, &init_data_hash)
+        // Extend the primary runtime data to include the evidence from the additional
+        // attesters
+        let mut primary_runtime_data = runtime_data.clone();
+        match primary_runtime_data {
+            Some(Data::Structured(ref mut data)) => match data.as_object_mut() {
+                Some(data_object) => {
+                    data_object.insert(
+                        "additional-evidence".to_string(),
+                        json!(guest_evidence.additional_evidence),
+                    );
+                }
+                _ => bail!("Malformed structured runtime data."),
+            },
+            // Since the runtime_data must be extended to validate the
+            // evidence of the additional attesters, we cannot support
+            // raw runtime data.
+            _ => bail!("Runtime data must be structured JSON data"),
+        };
+
+        let (primary_report_data, _primary_runtime_data_claims) =
+            parse_data(primary_runtime_data, &runtime_data_hash_algorithm)
+                .context("parse runtime data")?;
+
+        let primary_report_data = match &primary_report_data {
+            Some(data) => ReportData::Value(data),
+            None => ReportData::NotProvided,
+        };
+
+        // Validate the evidence from the primary attester
+        let primary_evidence = guest_evidence.primary_evidence;
+        let primary_verifier = verifier::to_verifier(&tee)?;
+
+        let primary_claims = primary_verifier
+            .evaluate(
+                primary_evidence.clone(),
+                &primary_report_data,
+                &init_data_hash,
+            )
             .await
-            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
-        info!("{:?} Verifier/endorsement check passed.", tee);
+            .map_err(|e| anyhow!("Primary verifier evaluate failed: {e:?}"))?;
+        info!("{:?} Primary verifier/endorsement check passed.", tee);
+
+        tee_claims.push(TeeClaims {
+            tee,
+            tee_class: guest_evidence.primary_tee_class,
+            claims: primary_claims,
+        });
+
+        // Validate additional evidence
+        let (additional_report_data, additional_runtime_data_claims) =
+            parse_data(runtime_data, &runtime_data_hash_algorithm).context("parse runtime data")?;
+
+        let additional_report_data = match &additional_report_data {
+            Some(data) => ReportData::Value(data),
+            None => ReportData::NotProvided,
+        };
+
+        // Parse additional evidence if present
+        if guest_evidence.additional_evidence != "" {
+            let additional_evidence: HashMap<Tee, (TeeClass, TeeEvidence)> =
+                serde_json::from_str(&guest_evidence.additional_evidence)?;
+            for (tee, (class, evidence)) in additional_evidence.iter() {
+                let additional_verifier = verifier::to_verifier(tee)?;
+
+                let additional_claims = additional_verifier
+                    .evaluate(evidence.clone(), &additional_report_data, &init_data_hash)
+                    .await
+                    .map_err(|e| anyhow!("Primary verifier evaluate failed: {e:?}"))?;
+                info!("{:?} Primary verifier/endorsement check passed.", tee);
+
+                tee_claims.push(TeeClaims {
+                    tee: *tee,
+                    tee_class: class.clone(),
+                    claims: additional_claims,
+                });
+            }
+        }
 
         let reference_data_map = self
             .rvps
@@ -199,10 +291,10 @@ impl AttestationService {
         let attestation_results_token = self
             .token_broker
             .issue(
-                claims_from_tee_evidence,
+                tee_claims,
                 policy_ids,
                 init_data_claims,
-                runtime_data_claims,
+                additional_runtime_data_claims,
                 reference_data_map,
                 tee,
             )

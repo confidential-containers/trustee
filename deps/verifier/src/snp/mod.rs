@@ -104,14 +104,14 @@ impl Verifier for Snp {
     /// Returns parsed claims if the verification is successful.
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
         let SnpEvidence {
             attestation_report: report,
             cert_chain,
-        } = serde_json::from_slice(evidence).context("Deserialize Quote failed.")?;
+        } = serde_json::from_value(evidence).context("Deserialize Quote failed.")?;
 
         let cert_chain = match cert_chain {
             Some(chain) if !chain.is_empty() => chain,
