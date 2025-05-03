@@ -15,7 +15,7 @@ use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
-use serde_json::{json, Value};
+use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumString};
@@ -243,18 +243,7 @@ impl AttestationService {
 
         let attestation_results_token = self
             .token_broker
-            .issue(
-                tee_claims,
-                policy_ids,
-                // The runtime data claims and init data claims are being moved into the
-                // TEE evidence struct. This interface will be adjusted in the next commit
-                json!(""),
-                json!(""),
-                json!(""),
-                reference_data_map,
-                // This is ignored anyway.
-                "",
-            )
+            .issue(tee_claims, policy_ids, reference_data_map)
             .await?;
         Ok(attestation_results_token)
     }
