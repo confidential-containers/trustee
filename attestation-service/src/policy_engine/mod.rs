@@ -60,11 +60,13 @@ impl PolicyEngineType {
         &self,
         work_dir: &Path,
         default_policy: &str,
+        default_policy_id: &str,
     ) -> Result<Arc<dyn PolicyEngine>> {
         match self {
             PolicyEngineType::OPA => Ok(Arc::new(opa::OPA::new(
                 work_dir.to_path_buf(),
                 default_policy,
+                default_policy_id,
             )?) as Arc<dyn PolicyEngine>),
         }
     }
