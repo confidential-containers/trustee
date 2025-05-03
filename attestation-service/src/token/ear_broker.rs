@@ -27,11 +27,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
-use verifier::TeeEvidenceParsedClaim;
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
 use crate::token::DEFAULT_TOKEN_WORK_DIR;
-use crate::AttestationTokenBroker;
+use crate::{AttestationTokenBroker, TeeClaims};
 
 use super::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION};
 
@@ -139,7 +138,6 @@ impl Default for Configuration {
 pub struct EarAttestationTokenBroker {
     config: Configuration,
     private_key: EcKey<Private>,
-    //private_key_bytes: Vec<u8>,
     cert_url: Option<String>,
     cert_chain: Option<Vec<X509>>,
     policy_engine: Arc<dyn PolicyEngine>,
@@ -149,9 +147,10 @@ impl EarAttestationTokenBroker {
     pub fn new(config: Configuration) -> Result<Self> {
         let policy_engine = PolicyEngineType::OPA.to_policy_engine(
             Path::new(&config.policy_dir),
-            include_str!("ear_default_policy.rego"),
+            include_str!("ear_default_policy_cpu.rego"),
+            "default_cpu.rego",
         )?;
-        info!("Loading default AS policy \"ear_default_policy.rego\"");
+        info!("Loading default AS policy \"default_cpu.rego\"");
 
         if config.signer.is_none() {
             log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
@@ -204,22 +203,11 @@ impl EarAttestationTokenBroker {
 impl AttestationTokenBroker for EarAttestationTokenBroker {
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        init_data_claims: serde_json::Value,
-        runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
     ) -> Result<String> {
-        let tcb_claims = transform_claims(
-            tcb_claims,
-            init_data_claims.clone(),
-            runtime_data_claims.clone(),
-            tee,
-        )?;
-        debug!("tcb_claims: {:#?}", tcb_claims);
-
-        let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
+        debug!("all_tee_claims: {:#?}", all_tee_claims);
 
         let reference_data = json!({
             "reference": reference_data_map,
@@ -234,43 +222,68 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             bail!("No policy is given for EAR token generation.");
         }
 
-        let rules = TrustVector::new()
-            .into_iter()
-            .map(|c| c.tag().to_string().replace("-", "_"))
-            .collect();
-        let policy_results = self
-            .policy_engine
-            .evaluate(&reference_data, &tcb_claims_json, &policy_ids[0], rules)
-            .await?;
-
-        debug!("policy results: {:#?}", policy_results);
-
-        let mut appraisal = Appraisal::new();
-
-        for (k, v) in &policy_results.rules_result {
-            let claim_value = v.as_i8().context("Policy claim value not i8")?;
-
-            let k = k.replace("_", "-");
-
-            appraisal
-                .trust_vector
-                .mut_by_name(&k)
-                .unwrap()
-                .set(claim_value);
-        }
-
-        if !appraisal.trust_vector.any_set() {
-            bail!("At least one policy claim must be set.");
-        }
-
-        appraisal.update_status_from_trust_vector();
-        appraisal.annotated_evidence = tcb_claims;
-        appraisal.policy_id = Some(policy_ids[0].clone());
-
-        // For now, create only one submod, called `cpu`.
-        // We can create more when we support attesting multiple devices at once.
+        let mut tee_class_indices: HashMap<String, u8> = HashMap::new();
         let mut submods = BTreeMap::new();
-        submods.insert("cpu".to_string(), appraisal);
+
+        // Create an appraisal for each device
+        for tee_claims in all_tee_claims {
+            let mut appraisal = Appraisal::new();
+
+            let tcb_claims = transform_claims(
+                tee_claims.claims,
+                tee_claims.init_data_claims.clone(),
+                tee_claims.runtime_data_claims.clone(),
+                tee_claims.tee,
+            )?;
+
+            let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
+
+            let rules = TrustVector::new()
+                .into_iter()
+                .map(|c| c.tag().to_string())
+                .collect();
+
+            // There is a policy for each tee class.
+            // The cpu tee class is loaded as the default.
+            let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
+            let policy_results = self
+                .policy_engine
+                .evaluate(&reference_data, &tcb_claims_json, &policy_id, rules)
+                .await?;
+
+            for (k, v) in &policy_results.rules_result {
+                let claim_value = v.as_i8().context("Policy claim value not i8")?;
+                debug!("Policy claim: {}: {}", k, claim_value);
+
+                appraisal
+                    .trust_vector
+                    .mut_by_name(k)
+                    .unwrap()
+                    .set(claim_value);
+            }
+
+            if !appraisal.trust_vector.any_set() {
+                bail!("At least one policy claim must be set.");
+            }
+
+            appraisal.update_status_from_trust_vector();
+            appraisal.annotated_evidence = tcb_claims;
+            appraisal.policy_id = Some(policy_ids[0].clone());
+
+            if let Some(index) = tee_class_indices.get_mut(&tee_claims.tee_class) {
+                *index += 1;
+            } else {
+                tee_class_indices.insert(tee_claims.tee_class.clone(), 0);
+            }
+
+            let submod_name = format!(
+                "{}{}",
+                tee_claims.tee_class,
+                // We know this key will exist because of the logic above.
+                tee_class_indices.get(&tee_claims.tee_class).unwrap()
+            );
+            submods.insert(submod_name, appraisal);
+        }
 
         let now = OffsetDateTime::now_utc();
         let exp = now
@@ -450,6 +463,8 @@ mod tests {
     use std::io::Write;
     use tempfile::NamedTempFile;
 
+    use crate::TeeClaims;
+
     use super::*;
 
     #[tokio::test]
@@ -461,9 +476,11 @@ mod tests {
 
         let _token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![TeeClaims {
+                    tee: Tee::Sample,
+                    tee_class: "cpu".to_string(),
+                    claims: json!({"claim": "claim1"}),
+                }],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"
@@ -496,9 +513,11 @@ mod tests {
         let broker = EarAttestationTokenBroker::new(config).unwrap();
         let token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![TeeClaims {
+                    tee: Tee::Sample,
+                    tee_class: "cpu".to_string(),
+                    claims: json!({"claim": "claim1"}),
+                }],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"

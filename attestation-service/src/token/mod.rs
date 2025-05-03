@@ -3,13 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use crate::TeeClaims;
 use anyhow::*;
-use kbs_types::Tee;
 use serde::Deserialize;
 use shadow_rs::concatcp;
 use std::collections::HashMap;
 use strum::Display;
-use verifier::TeeEvidenceParsedClaim;
 
 use crate::config::DEFAULT_WORK_DIR;
 
@@ -27,12 +26,9 @@ pub trait AttestationTokenBroker: Send + Sync {
     /// Return base64 encoded Json Web Token.
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        init_data_claims: serde_json::Value,
-        runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
     ) -> Result<String>;
 
     async fn set_policy(&self, _policy_id: String, _policy: String) -> Result<()> {
