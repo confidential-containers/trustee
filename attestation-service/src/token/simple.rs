@@ -10,7 +10,6 @@
 use anyhow::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use kbs_types::Tee;
 use log::info;
 use openssl::rsa::Rsa;
 use openssl::sign::Signer;
@@ -28,10 +27,10 @@ use shadow_rs::concatcp;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use verifier::TeeEvidenceParsedClaim;
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
 use crate::token::{AttestationTokenBroker, DEFAULT_TOKEN_WORK_DIR};
+use crate::{TeeClaims, TeeEvidenceParsedClaim};
 
 use super::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION};
 
@@ -110,6 +109,7 @@ impl SimpleAttestationTokenBroker {
         let policy_engine = PolicyEngineType::OPA.to_policy_engine(
             Path::new(&config.policy_dir),
             include_str!("simple_default_policy.rego"),
+            "default.rego",
         )?;
         info!("Loading default AS policy \"simple_default_policy.rego\"");
 
@@ -205,14 +205,16 @@ impl SimpleAttestationTokenBroker {
 impl AttestationTokenBroker for SimpleAttestationTokenBroker {
     async fn issue(
         &self,
-        tcb_claims: TeeEvidenceParsedClaim,
+        all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        init_data_claims: serde_json::Value,
-        runtime_data_claims: serde_json::Value,
         reference_data_map: HashMap<String, Vec<String>>,
-        tee: Tee,
     ) -> Result<String> {
-        let flattened_claims = flatten_claims(tee, &tcb_claims)?;
+        // Take claims from all verifiers, flatten them and add them to one map.
+        let mut flattened_claims: Map<String, Value> = Map::new();
+        for tee_claims in &all_tee_claims {
+            flattened_claims.append(&mut flatten_claims(tee_claims.tee, &tee_claims.claims)?);
+        }
+
         let reference_data = json!({
             "reference": reference_data_map,
         });
@@ -254,12 +256,12 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             .collect();
 
         let token_claims = json!({
-            "tee": to_variant_name(&tee)?,
+            "tee": to_variant_name(&all_tee_claims[0].tee)?,
             "evaluation-reports": policies,
             "tcb-status": tcb_claims,
             "customized_claims": {
-                "init_data": init_data_claims,
-                "runtime_data": runtime_data_claims,
+                "init_data": all_tee_claims[0].init_data_claims,
+                "runtime_data": all_tee_claims[0].runtime_data_claims,
             },
         });
 
@@ -425,6 +427,7 @@ fn flatten_helper(parent: &mut Map<String, Value>, child: &serde_json::Value, pr
 mod tests {
     use std::collections::HashMap;
 
+    use crate::TeeClaims;
     use assert_json_diff::assert_json_eq;
     use kbs_types::Tee;
     use serde_json::json;
@@ -445,9 +448,11 @@ mod tests {
 
         let _token = broker
             .issue(
-                json!({
-                    "claim": "claim1"
-                }),
+                vec![TeeClaims {
+                    tee: Tee::Sample,
+                    tee_class: "cpu".to_string(),
+                    claims: json!({"claim": "claim1"}),
+                }],
                 vec!["default".into()],
                 json!({
                     "initdata": "111"
