@@ -19,7 +19,11 @@ pub struct OPA {
 }
 
 impl OPA {
-    pub fn new(work_dir: PathBuf, default_policy: &str) -> Result<Self, PolicyError> {
+    pub fn new(
+        work_dir: PathBuf,
+        default_policy: &str,
+        default_policy_id: &str,
+    ) -> Result<Self, PolicyError> {
         let mut policy_dir_path = work_dir;
 
         policy_dir_path.push("opa");
@@ -32,7 +36,7 @@ impl OPA {
                 .to_str()
                 .ok_or_else(|| PolicyError::PolicyDirPathToStringFailed)?,
         );
-        default_policy_path.push("default.rego");
+        default_policy_path.push(default_policy_id);
         if !default_policy_path.as_path().exists() {
             fs::write(&default_policy_path, default_policy)
                 .map_err(PolicyError::WriteDefaultPolicyFailed)?;
@@ -237,7 +241,7 @@ mod tests {
         let opa = OPA {
             policy_dir_path: PathBuf::from("./src/token/"),
         };
-        let default_policy_id = "ear_default_policy".to_string();
+        let default_policy_id = "ear_default_policy_cpu".to_string();
 
         let ear_rules = TrustVector::new()
             .into_iter()
@@ -276,7 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_policy_management() {
-        let opa = OPA::new(PathBuf::from("tests/tmp"), "default").unwrap();
+        let opa = OPA::new(PathBuf::from("tests/tmp"), "default", "default.rego").unwrap();
         let policy = "package policy
 default allow = true"
             .to_string();
