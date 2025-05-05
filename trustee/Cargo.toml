@@ -1,0 +1,21 @@
+[package]
+name = "trustee"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[features]
+default = ["aliases", "plugins"]
+aliases = []
+plugins = []
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+kbs = { version = "0.1.0", path = "../kbs" }
+log.workspace = true
+openssl.workspace = true
+tokio.workspace = true

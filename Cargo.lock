@@ -5694,6 +5694,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "trustee"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "env_logger 0.10.2",
+ "kbs",
+ "log",
+ "openssl",
+ "tokio",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
