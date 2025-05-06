@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use clap::{error::Error, Parser};
 use dirs::home_dir;
-use log::info;
+use log::{info, warn};
 
 use crate::keys_certs::{
     ensure_auth_key_pair, ensure_https_cert, ensure_https_key_pair, write_new_auth_key_pair,
@@ -18,7 +18,11 @@ fn trustee_keygen(private_path: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn trustee_run(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> Result<()> {
+async fn trustee_run(
+    config_file: Option<PathBuf>,
+    allow_all: bool,
+    trustee_home_dir: &Path,
+) -> Result<()> {
     let mut config = config_file
         .map(|config_file| KbsConfig::try_from(config_file.as_path()).unwrap())
         .unwrap_or_default();
@@ -43,6 +47,21 @@ async fn trustee_run(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> R
         }
     }
 
+    if allow_all {
+        warn!("Using policy allow_all. This is for development only.");
+        config.policy_engine.policy_path = trustee_home_dir.join("allow_all.rego");
+        std::fs::write(
+            &config.policy_engine.policy_path,
+            include_bytes!("../../../kbs/sample_policies/allow_all.rego"),
+        )?;
+    } else if !config.policy_engine.policy_path.exists() {
+        config.policy_engine.policy_path = trustee_home_dir.join("deny_all.rego");
+        std::fs::write(
+            &config.policy_engine.policy_path,
+            include_bytes!("../../../kbs/sample_policies/deny_all.rego"),
+        )?;
+    }
+
     let api_server = ApiServer::new(config).await?;
     api_server.server()?.await?;
     Ok(())
@@ -61,6 +80,10 @@ enum Commands {
         /// Configuration file
         #[arg(long)]
         config_file: Option<PathBuf>,
+        /// Use built-in policy to allow all (development only).
+        /// If neither this nor a policy file is provided, the default policy is to deny all.
+        #[arg(long)]
+        allow_all: bool,
     },
 }
 
@@ -94,8 +117,13 @@ pub async fn cli_default() -> Result<(), Error> {
             let out = out.unwrap_or_else(|| trustee_home_dir.join("key"));
             trustee_keygen(&out).unwrap();
         }
-        Commands::Run { config_file } => {
-            trustee_run(config_file, &trustee_home_dir).await.unwrap();
+        Commands::Run {
+            config_file,
+            allow_all,
+        } => {
+            trustee_run(config_file, allow_all, &trustee_home_dir)
+                .await
+                .unwrap();
         }
     };
 
