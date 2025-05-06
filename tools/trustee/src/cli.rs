@@ -1,11 +1,28 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use clap::{error::Error, Parser};
 use dirs::home_dir;
+use log::info;
+
+use crate::keys_certs::new_auth_key_pair;
+
+fn trustee_keygen(trustee_home_dir: &Path) -> Result<(PathBuf, PathBuf)> {
+    let (private, public) = new_auth_key_pair(trustee_home_dir)?;
+    info!("Wrote new private key: {:?}", private);
+    info!("Wrote new public key: {:?}", public);
+    Ok((private, public))
+}
 
 #[derive(Debug, Parser)]
-enum Commands {}
+enum Commands {
+    /// Generate a new key pair
+    Keygen {
+        /// Output file for the private key
+        #[arg(short = 'f')]
+        output_file: Option<PathBuf>,
+    },
+}
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -31,6 +48,13 @@ pub async fn cli_default() -> Result<(), Error> {
     if !trustee_home_dir.exists() {
         std::fs::create_dir_all(&trustee_home_dir)?;
     }
+
+    match cli.command {
+        Commands::Keygen { output_file: out } => {
+            let out = out.unwrap_or_else(|| trustee_home_dir.join("key"));
+            trustee_keygen(&out).unwrap();
+        }
+    };
 
     Ok(())
 }
