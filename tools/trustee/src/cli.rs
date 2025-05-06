@@ -5,14 +5,17 @@ use clap::{error::Error, Parser};
 use dirs::home_dir;
 use log::info;
 
-use crate::keys_certs::new_auth_key_pair;
+use crate::keys_certs::{
+    ensure_auth_key_pair, ensure_https_cert, ensure_https_key_pair, write_new_auth_key_pair,
+};
 use kbs::{ApiServer, KbsConfig};
 
-fn trustee_keygen(trustee_home_dir: &Path) -> Result<(PathBuf, PathBuf)> {
-    let (private, public) = new_auth_key_pair(trustee_home_dir)?;
-    info!("Wrote new private key: {:?}", private);
-    info!("Wrote new public key: {:?}", public);
-    Ok((private, public))
+fn trustee_keygen(private_path: &Path) -> Result<()> {
+    let public_path = private_path.with_extension("pub");
+    write_new_auth_key_pair(&private_path, &public_path)?;
+    info!("Wrote new private key: {:?}", private_path);
+    info!("Wrote new public key: {:?}", public_path);
+    Ok(())
 }
 
 async fn trustee_run(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> Result<()> {
@@ -21,17 +24,23 @@ async fn trustee_run(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> R
         .unwrap_or_default();
 
     if config.admin.auth_public_key.is_none() {
-        let key_base_path = trustee_home_dir.join("auth_key");
-        let private_path = key_base_path.with_extension("pem");
+        let (_, public_path) = ensure_auth_key_pair(trustee_home_dir)?;
 
-        let public_path = {
-            if !private_path.exists() {
-                trustee_keygen(&key_base_path)?.1
-            } else {
-                key_base_path.with_extension("pub")
-            }
-        };
         config.admin.auth_public_key = Some(public_path);
+    }
+
+    if !config.http_server.insecure_http {
+        if config.http_server.private_key.is_none() {
+            let (private_path, _) = ensure_https_key_pair(trustee_home_dir)?;
+
+            config.http_server.private_key = Some(private_path);
+        }
+
+        if config.http_server.certificate.is_none() {
+            let private_key = config.http_server.private_key.as_ref().unwrap();
+            config.http_server.certificate =
+                Some(ensure_https_cert(trustee_home_dir, private_key)?);
+        }
     }
 
     let api_server = ApiServer::new(config).await?;
