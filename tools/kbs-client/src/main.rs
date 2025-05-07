@@ -66,16 +66,6 @@ enum Commands {
         #[clap(long, value_parser)]
         tee_key_file: Option<PathBuf>,
     },
-
-    /// List reference values registered with RVPS
-    GetReferenceValues,
-
-    /// Add a sample reference value to the RVPS.
-    /// The RVPS must enable the sample extractor
-    /// or the reference value will not be registered.
-    /// The sample extractor should only be used in scenarios
-    /// where the RVPS endpoint is not exposed to untrusted users.
-    SetSampleReferenceValue { name: String, value: String },
 }
 
 #[derive(Args)]
@@ -144,6 +134,16 @@ enum ConfigCommands {
         #[clap(long, value_parser)]
         resource_file: PathBuf,
     },
+
+    /// List reference values registered with RVPS
+    GetReferenceValues,
+
+    /// Add a sample reference value to the RVPS.
+    /// The RVPS must enable the sample extractor
+    /// or the reference value will not be registered.
+    /// The sample extractor should only be used in scenarios
+    /// where the RVPS endpoint is not exposed to untrusted users.
+    SetSampleReferenceValue { name: String, value: String },
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -278,15 +278,23 @@ async fn main() -> Result<()> {
                         STANDARD.encode(resource_bytes)
                     );
                 }
+                ConfigCommands::SetSampleReferenceValue { name, value } => {
+                    kbs_client::set_sample_rv(
+                        cli.url,
+                        name,
+                        value,
+                        auth_key.clone(),
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!("Reference Values Updated");
+                }
+                ConfigCommands::GetReferenceValues => {
+                    let values =
+                        kbs_client::get_rvs(cli.url, auth_key.clone(), kbs_cert.clone()).await?;
+                    println!("{:?}", values);
+                }
             }
-        }
-        Commands::SetSampleReferenceValue { name, value } => {
-            kbs_client::set_sample_rv(cli.url, name, value).await?;
-            println!("Reference Values Updated");
-        }
-        Commands::GetReferenceValues => {
-            let values = kbs_client::get_rvs(cli.url).await?;
-            println!("{:?}", values);
         }
     }
 

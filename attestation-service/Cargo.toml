@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "restful-bin", "rvps-grpc" ]
+default = [ "grpc-bin", "rvps-grpc" ]
 all-verifier = [ "verifier/all-verifier" ]
 tdx-verifier = [ "verifier/tdx-verifier" ]
 sgx-verifier = [ "verifier/sgx-verifier" ]

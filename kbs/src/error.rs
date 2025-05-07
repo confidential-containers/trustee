@@ -67,6 +67,9 @@ pub enum Error {
     #[error("Policy engine error")]
     PolicyEngine(#[from] crate::policy_engine::KbsPolicyEngineError),
 
+    #[error("RVPS configuration failed: {message}")]
+    RvpsError { message: String },
+
     #[error("Serialize/Deserialize failed")]
     SerdeError(#[from] serde_json::Error),
 
