@@ -2,7 +2,7 @@
 insecure_http = true
 
 [attestation_token]
-insecure_api = true
+insecure_key = true
 
 [attestation_service]
 type = "coco_as_builtin"

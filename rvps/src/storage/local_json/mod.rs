@@ -43,6 +43,12 @@ impl LocalJson {
         })?;
         debug!("create path for LocalJson: {:?}", parent_dir);
         fs::create_dir_all(parent_dir)?;
+
+        if !path.exists() {
+            debug!("Creating empty file for LocalJson reference values.");
+            std::fs::write(config.file_path.clone(), "[]")?;
+        }
+
         Ok(Self {
             file_path: config.file_path,
             lock: RwLock::new(0),

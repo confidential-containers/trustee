@@ -8,46 +8,21 @@
 pub mod extractor_modules;
 
 use anyhow::*;
-
 use std::collections::HashMap;
 
 use self::extractor_modules::{ExtractorInstance, ExtractorModuleList};
-
 use super::{Message, ReferenceValue};
 
-/// `Extractors` provides different kinds of `Extractor`s due to
-/// different provenance types, e.g. in-toto, etc.
-/// Each `Extractor` will process the input provenance, verify the
-/// authenticity of the provenance, and then extract the formatted
-/// reference value (degest, s.t. hash value and name of the artifact)
-/// from the provenance. If the verification fails, no reference value
-/// will be extracted.
-
-/// `Extractors` defines the interfaces of Extractors.
-pub trait Extractors {
-    /// Process the message, e.g. verifying
-    /// and extracting the provenance inside the message due to
-    /// type also inside the same message. If verification
-    /// succeeds, return the generated ReferenceValue.
-    /// All the digests value inside a ReferenceValue must be
-    /// base64 encoded.
-    fn process(&mut self, message: Message) -> Result<Vec<ReferenceValue>>;
-}
-
-/// The struct `ExtractorsImpl` is responsible for implementing
-/// trait `Extractors`.
-/// `extractors_module_list` is a map that maps provenance type
-/// (in String) to its Extractor's instancializer.
-/// `extractors_instance_map` is another map that maps provenance type
-/// to the instancialized Extractor. The two map implement a
-/// "instantialization-on-demand" mechanism.
 #[derive(Default)]
-pub struct ExtractorsImpl {
+pub struct Extractors {
+    /// A map of provenance types to Extractor initializers
     extractors_module_list: ExtractorModuleList,
+
+    /// A map of provenance types to Extractor instances
     extractors_instance_map: HashMap<String, ExtractorInstance>,
 }
 
-impl ExtractorsImpl {
+impl Extractors {
     /// Register an `Extractor` instance to `Extractors`. The `Extractor` is responsible for
     /// handling specific kind of provenance (as `extractor_name` indicates).
     fn register_instance(&mut self, extractor_name: String, extractor_instance: ExtractorInstance) {
@@ -63,10 +38,13 @@ impl ExtractorsImpl {
         self.register_instance(extractor_name, extractor_instance);
         Ok(())
     }
-}
 
-impl Extractors for ExtractorsImpl {
-    fn process(&mut self, message: Message) -> Result<Vec<ReferenceValue>> {
+    /// Process the message, by verifying the provenance
+    /// and extracting reference values within.
+    /// If provenance is valid, return all of the relevant
+    /// reference values.
+    /// Each ReferenceValue digest is expected to be base64 encoded.
+    pub fn process(&mut self, message: Message) -> Result<Vec<ReferenceValue>> {
         let typ = message.r#type;
 
         if self.extractors_instance_map.get_mut(&typ).is_none() {

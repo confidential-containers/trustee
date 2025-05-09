@@ -24,8 +24,6 @@ sudo apt-get install -y \
 	clang \
 	libsgx-dcap-quote-verify-dev \
 	libsgx-dcap-quote-verify \
-	libtdx-attest-dev \
-	libtdx-attest \
 	libtss2-dev \
 	openssl \
 	pkg-config \

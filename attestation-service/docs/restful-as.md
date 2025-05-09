@@ -70,9 +70,9 @@ Build and install binary
 git clone https://github.com/confidential-containers/trustee
 cd trustee/attestation-service
 WORKDIR=$(pwd)
-make ATTESTER=all-attester && make install
+make VERIFIER=all-verifier && make install
 
-# You can use different attester by changing the value of ATTESTER
+# You can use different verifier by changing the value of VERIFIER
 ```
 
 - For help information, run:
@@ -104,8 +104,24 @@ cd trustee
 docker build \
   -t coco-as:restful \
   -f attestation-service/docker/as-restful/Dockerfile \
-  --build-arg ATTESTER=all-attester \
+  --build-arg VERIFIER=all-verifier \
   . 
+```
+
+Or you can run the binary in a podman container:
+```shell
+# Build the restful-as container image
+podman build \
+    -t restful-as \
+    -f attestation-service/podman/restful-as/Containerfile \
+    .
+
+# Run the restful-as container
+podman run \
+    -d \
+    -p 50004:50004 \
+    --net host \
+    restful-as
 ```
 
 ### HTTPS support

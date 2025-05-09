@@ -32,6 +32,14 @@ If you have more than one secret, copy them over to the `config/kubernetes/overl
 
 With the default configuration the keys will be stored in `reponame/workload_key/`. If you wish to define a different repository make necessary changes to the `overlays/patch.yaml` file.
 
+## Optional: Changing default policies
+
+The default deployed resources policy file is `base/policy.rego`. If you wish to change the default then edit that file. For example, suppose that you want to have the "allow all" policy applied, do:
+
+```bash
+cp ../../sample_policies/allow_all.rego base/policy.rego
+```
+
 ## Optional: Expose KBS using Ingress
 
 If you would like to expose KBS using Ingress, then run the following commands:

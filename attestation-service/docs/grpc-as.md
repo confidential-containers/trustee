@@ -79,9 +79,9 @@ Build and install binary
 git clone https://github.com/confidential-containers/trustee
 cd trustee/attestation-service
 WORKDIR=$(pwd)
-make ATTESTER=all-attester && make install
+make VERIFIER=all-verifier && make install
 
-# You can use different attester by changing the value of ATTESTER
+# You can use different verifier by changing the value of VERIFIER
 ```
 
 - For help information, run:
@@ -104,6 +104,22 @@ If you want to see the runtime log, run:
 RUST_LOG=debug grpc-as --socket 127.0.0.1:50004
 ```
 
+Or you can run the binary in a podman container:
+```shell
+# Build the grpc-as container image
+podman build \
+    -t grpc-as \
+    -f attestation-service/podman/as-grpc/Containerfile \
+    .
+
+# Run the grpc-as container
+podman run \
+    -d \
+    -p 50004:50004 \
+    --net host \
+    grpc-as
+```
+
 #### Image Build
 
 Build and run container image
@@ -113,7 +129,7 @@ cd trustee
 docker build \
   -t coco-as:grpc \
   -f attestation-service/docker/as-grpc/Dockerfile \
-  --build-arg ATTESTER=all-attester \
+  --build-arg VERIFIER=all-verifier \
   . 
 ```
 

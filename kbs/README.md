@@ -81,7 +81,8 @@ If you do not want to use the community version of KBS ([built-in-as](https://gi
 Build the KBS container (background check mode with native AS) image:
 
 ```shell
-DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f docker/Dockerfile
+cd ..
+DOCKER_BUILDKIT=1 docker build -t kbs:coco-as . -f kbs/docker/Dockerfile
 ```
 
 ### Binary

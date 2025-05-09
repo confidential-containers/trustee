@@ -22,9 +22,9 @@ jobs:
   basic_ci:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     name: Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
-      RUSTC_VERSION: 1.76.0
+      RUSTC_VERSION: 1.80.0
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
@@ -32,9 +32,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install OPA command line tool
-        run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
-          chmod 755 ./opa && cp opa /usr/local/bin
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
 
       - name: OPA policy.rego fmt and check
         run: |
@@ -54,8 +54,8 @@ jobs:
       
       - name: Install TDX build dependencies
         run: |
-          sudo curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
-          sudo echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
           sudo apt-get update
           sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
 

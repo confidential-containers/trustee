@@ -1,0 +1,11 @@
+# Copyright (c) 2025 by Red Hat.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+FROM fedora:latest
+
+COPY target/release/rvps /usr/local/bin/rvps
+
+CMD ["rvps"]
+
+EXPOSE 50003

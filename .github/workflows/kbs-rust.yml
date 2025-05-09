@@ -23,8 +23,8 @@ jobs:
     strategy:
       fail-fast: false
     env:
-      RUSTC_VERSION: 1.76.0
-    runs-on: ubuntu-22.04
+      RUSTC_VERSION: 1.80.0
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Code checkout
@@ -47,16 +47,12 @@ jobs:
 
     - name: Install TDX dependencies
       run: |
-        sudo curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
-        sudo echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+        curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
         sudo apt-get update
-        sudo apt-get install -y libtdx-attest-dev libsgx-dcap-quote-verify-dev
+        sudo apt-get install -y libsgx-dcap-quote-verify-dev
 
-    - name: KBS Build [Default]
-      working-directory: kbs
-      run: make
-
-    - name: KBS Build [Built-in CoCo AS]
+    - name: KBS Build [Default/Built-in CoCo AS]
       working-directory: kbs
       run: make
 

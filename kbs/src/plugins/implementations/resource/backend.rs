@@ -38,7 +38,7 @@ impl TryFrom<&str> for ResourceDesc {
     fn try_from(value: &str) -> Result<Self> {
         let regex = CELL.get_or_init(|| {
             Regex::new(
-                r"^((?<repo>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/)?(?<type>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/(?<tag>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)$",
+                r"^(?<repo>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/(?<type>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)\/(?<tag>[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-\.]*)$",
             )
             .unwrap()
         });
@@ -47,11 +47,7 @@ impl TryFrom<&str> for ResourceDesc {
         };
 
         Ok(Self {
-            repository_name: captures
-                .name("repo")
-                .map(|s| s.into())
-                .unwrap_or("default")
-                .into(),
+            repository_name: captures["repo"].into(),
             resource_type: captures["type"].into(),
             resource_tag: captures["tag"].into(),
         })
@@ -158,11 +154,7 @@ mod tests {
         resource_type: "type".into(),
         resource_tag: "tag".into(),
     }))]
-    #[case("1/2", Some(ResourceDesc {
-        repository_name: "default".into(),
-        resource_type: "1".into(),
-        resource_tag: "2".into(),
-    }))]
+    #[case("1/2", None)]
     #[case("123--_default/1Abff-_/___-afds44BC", Some(ResourceDesc {
         repository_name: "123--_default".into(),
         resource_type: "1Abff-_".into(),
