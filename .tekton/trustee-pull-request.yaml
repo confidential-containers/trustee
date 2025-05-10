@@ -34,10 +34,9 @@ spec:
     value: "true"
   - name: build-platforms
     value:
-      - linux/x86_64
-      - linux/s390x
+    - linux/x86_64
+    - linux/s390x
   pipelineRef:
-    resolver: bundles
     params:
     - name: name
       value: docker-build-multi-platform-oci-ta
@@ -45,11 +44,13 @@ spec:
       value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta:devel@sha256:b507376577eea0d2ec53209878c39db26030062c797d608994eb1a836cb90693
     - name: kind
       value: pipeline
-  taskRunTemplate: {}
+    resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-trustee
+  timeouts:
+    pipeline: 2h0m0s
   workspaces:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-  timeouts:
-    pipeline: "2h"
 status: {}
