@@ -33,7 +33,7 @@ hex = "0.4.3"
 jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "27b8245", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 kbs-types = "0.10.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
