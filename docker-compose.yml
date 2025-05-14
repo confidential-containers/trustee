@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: kbs/docker/coco-as-grpc/Dockerfile
     image: ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest
+    environment:
+      - RUST_LOG
     command: [
         "/usr/local/bin/kbs",
         "--config-file",
@@ -25,6 +27,8 @@ services:
       context: .
       dockerfile: attestation-service/docker/as-grpc/Dockerfile
     image: ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest
+    environment:
+      - RUST_LOG
     ports:
     - "50004:50004"
     restart: always
@@ -47,6 +51,8 @@ services:
       context: .
       dockerfile: rvps/docker/Dockerfile
     image: ghcr.io/confidential-containers/staged-images/rvps:latest
+    environment:
+      - RUST_LOG
     restart: always # keep the server running
     ports:
       - "50003:50003"
@@ -61,6 +67,8 @@ services:
 
   keyprovider:
     image: ghcr.io/confidential-containers/coco-keyprovider:latest
+    environment:
+      - RUST_LOG
     restart: always
     ports:
       - "50000:50000"
