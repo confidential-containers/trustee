@@ -42,12 +42,12 @@ impl SnpEvidence {
     }
 }
 
-const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
-const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
-const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
-const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
-const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
-const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
+pub(crate) const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
+pub(crate) const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
+pub(crate) const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
+pub(crate) const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
+pub(crate) const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
+pub(crate) const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
 
 // KDS URL parameters
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
@@ -57,35 +57,36 @@ const KDS_VCEK: &str = "/vcek/v1";
 const REPORT_VERSION_MIN: u32 = 3;
 const REPORT_VERSION_MAX: u32 = 4;
 
-static CERT_CHAINS: LazyLock<HashMap<ProcType, VendorCertificates>> = LazyLock::new(|| {
-    let mut map = HashMap::new();
-    for proc in ProcType::iter() {
-        let cert_authority = match proc {
-            ProcType::Milan => include_bytes!("milan_ask_ark_asvk.pem"),
-            ProcType::Genoa => include_bytes!("genoa_ask_ark_asvk.pem"),
-            ProcType::Turin => include_bytes!("turin_ask_ark_asvk.pem"),
-        };
+pub(crate) static CERT_CHAINS: LazyLock<HashMap<ProcType, VendorCertificates>> =
+    LazyLock::new(|| {
+        let mut map = HashMap::new();
+        for proc in ProcType::iter() {
+            let cert_authority = match proc {
+                ProcType::Milan => include_bytes!("milan_ask_ark_asvk.pem"),
+                ProcType::Genoa => include_bytes!("genoa_ask_ark_asvk.pem"),
+                ProcType::Turin => include_bytes!("turin_ask_ark_asvk.pem"),
+            };
 
-        let certs = X509::stack_from_pem(cert_authority).unwrap();
+            let certs = X509::stack_from_pem(cert_authority).unwrap();
 
-        if certs.len() != 3 {
-            panic!(
-                "Malformed cached Vendor Certs for {} processor (ASK, ARK, ASVK)",
-                proc
-            );
+            if certs.len() != 3 {
+                panic!(
+                    "Malformed cached Vendor Certs for {} processor (ASK, ARK, ASVK)",
+                    proc
+                );
+            }
+
+            let vendor_certs = VendorCertificates {
+                ask: Certificate::from(certs[0].clone()),
+                ark: Certificate::from(certs[1].clone()),
+                asvk: Certificate::from(certs[2].clone()),
+            };
+
+            map.insert(proc, vendor_certs);
         }
 
-        let vendor_certs = VendorCertificates {
-            ask: Certificate::from(certs[0].clone()),
-            ark: Certificate::from(certs[1].clone()),
-            asvk: Certificate::from(certs[2].clone()),
-        };
-
-        map.insert(proc, vendor_certs);
-    }
-
-    map
-});
+        map
+    });
 
 #[derive(Default, Debug)]
 pub struct Snp {}
@@ -297,7 +298,7 @@ impl Verifier for Snp {
 
 /// Retrieves the octet string value for a given OID from a certificate's extensions.
 /// Supports both raw and DER-encoded formats.
-fn get_oid_octets<const N: usize>(
+pub(crate) fn get_oid_octets<const N: usize>(
     vcek: &x509_parser::certificate::TbsCertificate,
     oid: Oid,
 ) -> Result<[u8; N]> {
@@ -322,7 +323,7 @@ fn get_oid_octets<const N: usize>(
 }
 
 /// Retrieves an integer value for a given OID from a certificate's extensions.
-fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
+pub(crate) fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
     let val = cert
         .get_extension_unique(&oid)?
         .ok_or_else(|| anyhow!("Oid not found"))?
@@ -416,7 +417,7 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
 }
 
 /// Extracts the common name (CN) from the subject name of a certificate.
-fn get_common_name(cert: &x509::X509) -> Result<String> {
+pub(crate) fn get_common_name(cert: &x509::X509) -> Result<String> {
     let mut entries = cert.subject_name().entries_by_nid(Nid::COMMONNAME);
     let Some(e) = entries.next() else {
         bail!("No CN found");
