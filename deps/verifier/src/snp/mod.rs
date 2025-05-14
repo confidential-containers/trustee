@@ -42,12 +42,12 @@ impl SnpEvidence {
     }
 }
 
-const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
-const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
-const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
-const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
-const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
-const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
+pub(crate) const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
+pub(crate) const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
+pub(crate) const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
+pub(crate) const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
+pub(crate) const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
+pub(crate) const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
 
 // KDS URL parameters
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
@@ -57,7 +57,7 @@ const KDS_VCEK: &str = "/vcek/v1";
 const REPORT_VERSION_MIN: u32 = 3;
 const REPORT_VERSION_MAX: u32 = 4;
 
-static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCertificates>> =
+pub(crate) static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCertificates>> =
     LazyLock::new(|| {
         let mut map = HashMap::new();
         for proc in ProcessorGeneration::iter() {
@@ -142,7 +142,7 @@ impl Verifier for Snp {
         }
 
         // Get the processor model from the report
-        let proc_gen: ProcessorGeneration = get_processor_model(&report)?;
+        let proc_gen: ProcessorGeneration = get_processor_generation(&report)?;
 
         // Get vendor certs for specific processor type
         let vendor_certs = CERT_CHAINS
@@ -192,7 +192,7 @@ impl Verifier for Snp {
                 }
 
                 let vek = vek.as_ref().ok_or_else(|| {
-                    anyhow!("A VCEK/VLEK has to be provided in the certificate chain")
+                    anyhow!("If a cert chain is provided, it must include a VCEK/VLEK")
                 })?;
 
                 // Make sure we have all the required certificates
@@ -202,7 +202,6 @@ impl Verifier for Snp {
                         ark: ark.unwrap_or_else(|| vendor_certs.ark.clone()),
                         ask: ask.unwrap_or_else(|| match vek_type {
                             VendorEndorsementKey::Vlek => vendor_certs.asvk.clone(),
-
                             VendorEndorsementKey::Vcek => vendor_certs.ask.clone(),
                         }),
                     },
@@ -225,7 +224,7 @@ impl Verifier for Snp {
                     .await
                     .context("Failed to fetch VCEK from KDS")?;
                 let vcek = Certificate::from_bytes(&vcek_buf)
-                    .context("Failed to convert kds vcek into certificate")?;
+                    .context("Failed to convert KDS VCEK into certificate")?;
 
                 let chain = Chain {
                     ca: CaChain {
@@ -238,7 +237,7 @@ impl Verifier for Snp {
                 // Verify the chain and return vek if succesful
                 chain
                     .verify()
-                    .context("Certificate chain from KDS/CACHE failed ")?;
+                    .context("Certificate chain from KDS failed verification")?;
 
                 // Return the vcek
                 vcek.clone()
@@ -246,14 +245,9 @@ impl Verifier for Snp {
         };
 
         // Verify the report signature using the VEK
-        match (&vek, &report).verify() {
-            Ok(()) => {
-                debug!("VEK signature verified");
-            }
-            Err(e) => {
-                bail!("VEK signature verification failed: {e}");
-            }
-        };
+        (&vek, &report)
+            .verify()
+            .context("Report signature verification against VEK signature failed")?;
 
         // Verify the TCB values in the report against the VEK
         verify_report_tcb(&report, vek, proc_gen).context("Reported TCB values do not match")?;
@@ -295,7 +289,7 @@ impl Verifier for Snp {
 
 /// Retrieves the octet string value for a given OID from a certificate's extensions.
 /// Supports both raw and DER-encoded formats.
-fn get_oid_octets<const N: usize>(
+pub(crate) fn get_oid_octets<const N: usize>(
     vcek: &x509_parser::certificate::TbsCertificate,
     oid: Oid,
 ) -> Result<[u8; N]> {
@@ -320,7 +314,7 @@ fn get_oid_octets<const N: usize>(
 }
 
 /// Retrieves an integer value for a given OID from a certificate's extensions.
-fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
+pub(crate) fn get_oid_int(cert: &x509_parser::certificate::TbsCertificate, oid: Oid) -> Result<u8> {
     let val = cert
         .get_extension_unique(&oid)?
         .ok_or_else(|| anyhow!("Oid not found"))?
@@ -414,7 +408,7 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
 }
 
 /// Extracts the common name (CN) from the subject name of a certificate.
-fn get_common_name(cert: &x509::X509) -> Result<String> {
+pub(crate) fn get_common_name(cert: &x509::X509) -> Result<String> {
     let mut entries = cert.subject_name().entries_by_nid(Nid::COMMONNAME);
     let Some(e) = entries.next() else {
         bail!("No CN found");
@@ -497,7 +491,7 @@ async fn fetch_vcek_from_kds(
 }
 
 /// Determines the processor model based on the family and model IDs from the attestation report.
-fn get_processor_model(att_report: &AttestationReport) -> Result<ProcessorGeneration> {
+fn get_processor_generation(att_report: &AttestationReport) -> Result<ProcessorGeneration> {
     let cpu_fam = att_report
         .cpuid_fam_id
         .ok_or_else(|| anyhow::anyhow!("Attestation report version 3+ is missing CPU family ID"))?;
