@@ -82,7 +82,7 @@ type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
 
-    [attestation_serivce.attestation_token_broker]
+    [attestation_service.attestation_token_broker]
     type = "Ear"
     duration_min = 5
 
