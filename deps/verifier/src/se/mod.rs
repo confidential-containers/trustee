@@ -9,7 +9,7 @@ use ibmse::SeVerifierImpl;
 use log::warn;
 use tokio::sync::OnceCell;
 
-use crate::{InitDataHash, ReportData, TeeEvidenceParsedClaim, Verifier};
+use crate::{InitDataHash, ReportData, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
 pub mod ibmse;
 
@@ -22,7 +22,7 @@ pub struct SeVerifier;
 impl Verifier for SeVerifier {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {

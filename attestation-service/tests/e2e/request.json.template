@@ -1,5 +1,5 @@
 {
-    "tee": "%TEE_NAME%",
+    "tees": ["%TEE_NAME%"],
     "evidence": "%EVIDENCE%",
     "policy_ids": []
 }
