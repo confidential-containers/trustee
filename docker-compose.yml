@@ -9,7 +9,7 @@ services:
     command: [
         "/usr/local/bin/kbs",
         "--config-file",
-        "/etc/kbs-config.toml",
+        "/opt/confidential-containers/kbs/user-keys/docker-compose/kbs-config.toml",
       ]
     restart: always # keep the server running
     ports:
@@ -17,10 +17,12 @@ services:
     volumes:
       - ./kbs/data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
       - ./kbs/data/nebula-ca:/opt/confidential-containers/kbs/nebula-ca:rw
-      - ./kbs/config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
-      - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
+      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
     depends_on:
-    - as
+      as:
+        condition: service_started
+      setup:
+        condition: service_completed_successfully
 
   as:
     build:
@@ -73,7 +75,7 @@ services:
     ports:
       - "50000:50000"
     volumes:
-      - ./kbs/config/private.key:/etc/private.key
+      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
     command: [
       "coco_keyprovider",
       "--socket",
@@ -81,7 +83,24 @@ services:
       "--kbs",
       "http://kbs:8080",
       "--auth-private-key",
-      "/etc/private.key"
+      "/opt/confidential-containers/kbs/user-keys/private.key"
     ]
     depends_on:
-    - kbs
+      kbs:
+        condition: service_started
+      setup:
+        condition: service_completed_successfully
+
+  setup:
+    image: alpine/openssl
+    environment:
+      - RUST_LOG
+    entrypoint: /bin/ash
+    command: >
+        -c "
+          if [ ! -s /opt/confidential-containers/kbs/user-keys/private.key ]; then
+            /usr/bin/openssl genpkey -algorithm ed25519 > /opt/confidential-containers/kbs/user-keys/private.key &&
+            /usr/bin/openssl pkey -in /opt/confidential-containers/kbs/user-keys/private.key -pubout -out /opt/confidential-containers/kbs/user-keys/public.pub;
+          fi"
+    volumes:
+      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
