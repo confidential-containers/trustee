@@ -2834,9 +2834,9 @@ dependencies = [
 
 [[package]]
 name = "josekit"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0633782b10949cf7d5aca9ec7c87ce642cbe4fff7d34602b2ec2e890ad56e5"
+checksum = "65635870648e8d6bb111e81d52f80ca4420e916d1018d6e4cfbdd5d37d6eaa74"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2845,7 +2845,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
  "time",
 ]
 
