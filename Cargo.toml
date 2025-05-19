@@ -21,7 +21,7 @@ actix-web = "4"
 actix-web-httpauth = "0.8.2"
 anyhow = "1.0"
 assert-json-diff = "2.0.2"
-async-trait = "0.1.31"
+async-trait = "0.1.88"
 base64 = "0.22.1"
 cfg-if = "1.0.0"
 chrono = "0.4.41"
@@ -33,9 +33,9 @@ hex = "0.4.3"
 jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "27b8245", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "069a6ea", default-features = false }
 kbs-types = "0.10.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "e6999a3c0fd877dae9e68ea78b8b483062db32b8", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "069a6ea", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 openssl = "0.10.72"
