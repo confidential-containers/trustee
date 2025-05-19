@@ -525,7 +525,7 @@ mod tests {
     const VCEK_NEW: &[u8; 1362] = include_bytes!("../../test_data/snp/test-vcek-invalid-new.der");
     const VCEK_REPORT: &[u8; 1184] = include_bytes!("../../test_data/snp/test-report.bin");
 
-    const VLEK: &[u8; 1329] = include_bytes!("../../test_data/snp/test-vlek.der");
+    const VLEK: &[u8; 1319] = include_bytes!("../../test_data/snp/test-vlek.der");
     const VLEK_REPORT: &[u8; 1184] = include_bytes!("../../test_data/snp/test-vlek-report.bin");
 
     #[test]
@@ -798,5 +798,14 @@ mod tests {
         let attestation_report = AttestationReport::from_bytes(&bytes).unwrap();
         let vlek = Certificate::from_bytes(VLEK).unwrap();
         verify_report_tcb(&attestation_report, vlek, ProcessorGeneration::Milan).unwrap_err();
+    }
+
+    #[test]
+    fn check_json_deserialize_report() {
+        let attestation_report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        let json_string = serde_json::to_string(&attestation_report).unwrap();
+        let deserialized_report: AttestationReport =
+            serde_json::from_str(&json_string).expect("Failed to deserialize JSON");
+        assert_eq!(attestation_report, deserialized_report);
     }
 }
