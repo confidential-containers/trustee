@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use super::{TeeEvidenceParsedClaim, Verifier};
+use super::{TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
     load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
 };
@@ -97,7 +97,7 @@ impl Verifier for AzSnpVtpm {
     /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
@@ -105,7 +105,7 @@ impl Verifier for AzSnpVtpm {
             bail!("unexpected empty report data");
         };
 
-        let evidence = serde_json::from_slice::<Evidence>(evidence)
+        let evidence = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
 
         let hcl_report = HclReport::new(evidence.report)?;
