@@ -124,14 +124,14 @@ impl Verifier for Snp {
     /// Returns parsed claims if the verification is successful.
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
         let SnpEvidence {
             attestation_report: report,
             cert_chain,
-        } = serde_json::from_slice(evidence).context("Deserialize SNP Evidence failed")?;
+        } = serde_json::from_value(evidence).context("Deserialize SNP Evidence failed")?;
 
         // See Trustee Issue#589 https://github.com/confidential-containers/trustee/issues/589
         // Version 3 minimum is needed to tell processor type in report
@@ -283,7 +283,7 @@ impl Verifier for Snp {
 
         let claims_map = parse_tee_evidence(&report);
         let json = json!(claims_map);
-        Ok(json)
+        Ok((json, "cpu".to_string()))
     }
 }
 

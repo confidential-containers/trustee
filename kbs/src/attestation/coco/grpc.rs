@@ -9,19 +9,19 @@ use attestation::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use kbs_types::{Attestation, Challenge, Tee};
+use kbs_types::{Challenge, Tee};
 use log::info;
 use mobc::{Manager, Pool};
 use serde::Deserialize;
-use serde_json::json;
 use std::collections::HashMap;
 use tonic::transport::Channel;
 
-use crate::attestation::backend::{make_nonce, Attest};
+use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
 
 use self::attestation::{
-    attestation_request::RuntimeData, attestation_service_client::AttestationServiceClient,
-    AttestationRequest, ChallengeRequest, SetPolicyRequest,
+    attestation_service_client::AttestationServiceClient,
+    individual_attestation_request::RuntimeData, AttestationRequest, ChallengeRequest,
+    IndividualAttestationRequest, SetPolicyRequest,
 };
 
 mod attestation {
@@ -96,26 +96,30 @@ impl Attest for GrpcClientPool {
         Ok(())
     }
 
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        let attestation: Attestation = serde_json::from_str(attestation)?;
+    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> Result<String> {
+        let mut verification_requests: Vec<IndividualAttestationRequest> = vec![];
 
-        // TODO: align with the guest-components/kbs-protocol side.
-        let runtime_data_plaintext = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce});
-        let runtime_data_plaintext = serde_json::to_string(&runtime_data_plaintext)
-            .context("CoCo AS client: serialize runtime data failed")?;
+        for evidence in evidence_to_verify {
+            let tee = serde_json::to_string(&evidence.tee)
+                .context("CoCo AS client: serialize tee type failed.")?
+                .trim_end_matches('"')
+                .trim_start_matches('"')
+                .to_string();
 
-        let tee = serde_json::to_string(&tee)
-            .context("CoCo AS client: serialize tee type failed.")?
-            .trim_end_matches('"')
-            .trim_start_matches('"')
-            .to_string();
-        let req = tonic::Request::new(AttestationRequest {
-            tee,
-            evidence: URL_SAFE_NO_PAD.encode(attestation.tee_evidence.to_string()),
-            runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
-            init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
-            runtime_data: Some(RuntimeData::StructuredRuntimeData(runtime_data_plaintext)),
-            init_data: None,
+            verification_requests.push(IndividualAttestationRequest {
+                tee,
+                evidence: URL_SAFE_NO_PAD.encode(evidence.tee_evidence.to_string()),
+                runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
+                init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
+                runtime_data: Some(RuntimeData::StructuredRuntimeData(
+                    evidence.runtime_data.to_string(),
+                )),
+                init_data: None,
+            });
+        }
+
+        let attestation_request = tonic::Request::new(AttestationRequest {
+            verification_requests,
             policy_ids: vec!["default".to_string()],
         });
 
@@ -123,7 +127,7 @@ impl Attest for GrpcClientPool {
 
         let token = client
             .as_rpc
-            .attestation_evaluate(req)
+            .attestation_evaluate(attestation_request)
             .await?
             .into_inner()
             .attestation_token;
