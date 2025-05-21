@@ -6,7 +6,7 @@
 use super::az_snp_vtpm::{extend_claim, verify_init_data};
 use super::tdx::claims::generate_parsed_claim;
 use super::tdx::quote::{parse_tdx_quote, Quote as TdQuote};
-use super::{TeeEvidenceParsedClaim, Verifier};
+use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
@@ -38,15 +38,15 @@ impl Verifier for AzTdxVtpm {
     /// 6. Init data hash matches TPM PCR[INITDATA_PCR]
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("unexpected empty report data");
         };
 
-        let evidence = serde_json::from_slice::<Evidence>(evidence)
+        let evidence = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize Azure vTPM TDX evidence")?;
 
         let hcl_report = HclReport::new(evidence.hcl_report)?;
@@ -68,7 +68,7 @@ impl Verifier for AzTdxVtpm {
         extend_claim(&mut claim, &evidence.tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
-        Ok(claim)
+        Ok((claim, "cpu".to_string()))
     }
 }
 
