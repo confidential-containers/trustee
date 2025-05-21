@@ -35,11 +35,11 @@ pub struct Tdx {}
 impl Verifier for Tdx {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tdx_evidence = serde_json::from_slice::<TdxEvidence>(evidence)
+        let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
             .context("Deserialize TDX Evidence failed.")?;
 
         verify_evidence(expected_report_data, expected_init_data_hash, tdx_evidence)
