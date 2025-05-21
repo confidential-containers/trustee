@@ -24,11 +24,11 @@ pub struct Sample {}
 impl Verifier for Sample {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_slice::<SampleTeeEvidence>(evidence)
+        let tee_evidence = serde_json::from_value::<SampleTeeEvidence>(evidence)
             .context("Deserialize Quote failed.")?;
 
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)

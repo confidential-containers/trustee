@@ -13,8 +13,9 @@ use lazy_static::lazy_static;
 use log::{debug, info};
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
 
@@ -40,6 +41,22 @@ lazy_static! {
 
         VersionReq::parse(&format!("={kbs_version}")).unwrap()
     };
+}
+
+pub type TeeEvidence = serde_json::Value;
+pub type TeeClass = String;
+
+/// CompositeEvidence is the combined evidence from all the TEEs
+/// that represent the guest.
+#[derive(Serialize, Deserialize)]
+pub struct CompositeEvidence {
+    primary_evidence: TeeEvidence,
+    primary_tee_class: TeeClass,
+    // The additional evidence is a map of Tee -> (TeeClass, TeeEvidence),
+    // but we convert it to a string to avoid any inconsistencies
+    // with serialization. The string in this struct is exactly
+    // what is used to calculate the runtime data.
+    additional_evidence: String,
 }
 
 /// Number of bytes in a nonce.
@@ -80,7 +97,10 @@ pub trait Attest: Send + Sync {
 
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> anyhow::Result<String>;
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<(Tee, TeeClass, TeeEvidence, serde_json::Value)>,
+    ) -> anyhow::Result<String>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -259,11 +279,39 @@ impl AttestationService {
             (session.request().tee, session.challenge().nonce.to_string())
         };
 
-        let attestation_str =
-            serde_json::to_string(&attestation).context("serialize attestation failed")?;
+        // deserialize evidence
+        let composite_evidence: CompositeEvidence =
+            serde_json::from_value(attestation.tee_evidence)?;
+        let mut evidence_to_verify: Vec<(Tee, TeeClass, TeeEvidence, serde_json::Value)> = vec![];
+
+        let additional_runtime_data = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce});
+        let primary_runtime_data = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce, "additional-evidence": composite_evidence.additional_evidence});
+
+        // primary evidence
+        evidence_to_verify.push((
+            tee,
+            composite_evidence.primary_tee_class,
+            composite_evidence.primary_evidence,
+            primary_runtime_data,
+        ));
+
+        // additional evidence
+        if !composite_evidence.additional_evidence.is_empty() {
+            let additional_evidence: HashMap<Tee, (TeeClass, TeeEvidence)> =
+                serde_json::from_str(&composite_evidence.additional_evidence)?;
+            for (tee, (class, evidence)) in additional_evidence.iter() {
+                evidence_to_verify.push((
+                    *tee,
+                    class.to_string(),
+                    evidence.clone(),
+                    additional_runtime_data.clone(),
+                ));
+            }
+        }
+
         let token = self
             .inner
-            .verify(tee, &nonce, &attestation_str)
+            .verify(evidence_to_verify)
             .await
             .context("verify TEE evidence failed")?;
 
