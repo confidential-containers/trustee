@@ -35,16 +35,18 @@ pub struct Tdx {}
 impl Verifier for Tdx {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
-        let tdx_evidence = serde_json::from_slice::<TdxEvidence>(evidence)
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+        let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
             .context("Deserialize TDX Evidence failed.")?;
 
-        verify_evidence(expected_report_data, expected_init_data_hash, tdx_evidence)
+        let claims = verify_evidence(expected_report_data, expected_init_data_hash, tdx_evidence)
             .await
-            .map_err(|e| anyhow!("TDX Verifier: {:?}", e))
+            .map_err(|e| anyhow!("TDX Verifier: {:?}", e))?;
+
+        Ok((claims, "cpu".to_string()))
     }
 }
 

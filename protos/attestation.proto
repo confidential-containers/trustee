@@ -3,12 +3,22 @@ syntax = "proto3";
 package attestation;
 
 message AttestationRequest {
+    // The evidence from one or more atttesters that should be verified
+    // along with metadata about the evidence.
+    repeated IndividualAttestationRequest verification_requests = 1;
+    // List of IDs of the policy used to check evidence. If not provided,
+    // a "default" one will be used.
+    repeated string policy_ids = 2;
+
+}
+
+message IndividualAttestationRequest {
     // TEE enum. Specify the evidence type
     string tee = 1;
 
     // Base64 encoded evidence. The alphabet is URL_SAFE_NO_PAD.
     // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
-    string evidence = 2;
+    string evidence = 3;
 
     // Runtime Data used to check the binding relationship with report data in
     // Evidence
@@ -20,7 +30,7 @@ message AttestationRequest {
         //
         // The alphabet is URL_SAFE_NO_PAD.
         // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
-        string raw_runtime_data = 3;
+        string raw_runtime_data = 4;
 
         // Runtime data in a JSON map. CoCoAS will rearrange each layer of the
         // data JSON object in dictionary order by key, then serialize and output
@@ -29,7 +39,7 @@ message AttestationRequest {
         //
         // After the verification, the structured runtime data field will be included
         // inside the token claims.
-        string structured_runtime_data = 4;
+        string structured_runtime_data = 5;
     }
 
     // Init Data used to check the binding relationship with init data in
@@ -42,7 +52,7 @@ message AttestationRequest {
         //
         // The alphabet is URL_SAFE_NO_PAD.
         // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
-        string raw_init_data = 5;
+        string raw_init_data = 6;
 
         // Init data in a JSON map. CoCoAS will rearrange each layer of the
         // data JSON object in dictionary order by key, then serialize and output
@@ -51,20 +61,16 @@ message AttestationRequest {
         // 
         // After the verification, the structured init data field will be included
         // inside the token claims.
-        string structured_init_data = 6;
+        string structured_init_data = 7;
     }
 
     // Hash algorithm used to calculate runtime data. Currently can be "sha256",
     // "sha384" or "sha512". If not specified, "sha384" will be selected.
-    string runtime_data_hash_algorithm = 7;
+    string runtime_data_hash_algorithm = 8;
 
     // Hash algorithm used to calculate init data. Currently can be "sha256",
     // "sha384" or "sha512". If not specified, "sha384" will be selected.
-    string init_data_hash_algorithm = 8;
-
-    // List of IDs of the policy used to check evidence. If not provided,
-    // a "default" one will be used.
-    repeated string policy_ids = 9;
+    string init_data_hash_algorithm = 9;
 }
 
 message AttestationResponse {

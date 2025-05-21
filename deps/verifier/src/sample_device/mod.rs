@@ -26,11 +26,11 @@ pub struct SampleDeviceVerifier {}
 impl Verifier for SampleDeviceVerifier {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_slice::<SampleDeviceEvidence>(evidence)
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+        let tee_evidence = serde_json::from_value::<SampleDeviceEvidence>(evidence)
             .context("Deserialize Quote failed.")?;
 
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)
@@ -39,7 +39,8 @@ impl Verifier for SampleDeviceVerifier {
 
         debug!("TEE-Evidence<sample_device>: {:?}", tee_evidence);
 
-        parse_tee_evidence(&tee_evidence)
+        let claims = parse_tee_evidence(&tee_evidence)?;
+        Ok((claims, "gpu".to_string()))
     }
 }
 

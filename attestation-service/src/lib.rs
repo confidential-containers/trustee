@@ -10,18 +10,18 @@ pub mod token;
 
 use crate::token::AttestationTokenBroker;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
 pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
-use verifier::{InitDataHash, ReportData};
+use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 /// Hash algorithms used to calculate runtime/init data binding
 #[derive(Debug, Display, EnumString, AsRefStr)]
@@ -58,6 +58,20 @@ impl HashAlgorithm {
     }
 }
 
+pub type TeeEvidence = serde_json::Value;
+pub type TeeClass = String;
+
+/// Tee Claims are the output of the verifier plus some metadata
+/// that identifies the TEE type and class.
+#[derive(Debug)]
+pub struct TeeClaims {
+    tee: Tee,
+    tee_class: TeeClass,
+    claims: TeeEvidenceParsedClaim,
+    init_data_claims: serde_json::Value,
+    runtime_data_claims: serde_json::Value,
+}
+
 /// Runtime/Init Data used to check the binding relationship with report data
 /// in Evidence
 #[derive(Debug)]
@@ -85,6 +99,29 @@ pub enum ServiceError {
     Rvps(#[source] RvpsError),
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
+}
+
+/// A VerificationRequest contains hw evidence that the AS will verify along with some
+/// metadata required for verification.
+///
+pub struct VerificationRequest {
+    /// TEE evidence bytes. This might not be the raw hardware evidence bytes. Definitions
+    /// are in `verifier` crate.
+    pub evidence: TeeEvidence,
+    /// concrete TEE type
+    pub tee: Tee,
+    /// These data field will be used to check against the counterpart inside the evidence.
+    /// The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
+    /// will not be performed.
+    pub runtime_data: Option<Data>,
+    /// The hash algorithm that is used to calculate the digest of `runtime_data`.
+    pub runtime_data_hash_algorithm: HashAlgorithm,
+    /// These data field will be used to check against the counterpart inside the evidence.
+    /// The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
+    /// will not be performed.
+    pub init_data: Option<Data>,
+    /// The hash algorithm that is used to calculate the digest of `init_data`.
+    pub init_data_hash_algorithm: HashAlgorithm,
 }
 
 pub struct AttestationService {
@@ -139,55 +176,63 @@ impl AttestationService {
     }
 
     /// Evaluate Attestation Evidence.
-    /// Issue an attestation results token which contain TCB status and TEE public key. Input parameters:
-    /// - `evidence`: TEE evidence bytes. This might not be the raw hardware evidence bytes. Definitions
-    ///   are in `verifier` crate.
-    /// - `tee`: concrete TEE type
-    /// - `runtime_data`: These data field will be used to check against the counterpart inside the evidence.
-    ///   The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
-    ///   will not be performed.
-    /// - `init_data`: These data field will be used to check against the counterpart inside the evidence.
-    ///   The concrete way of checking is decide by the enum type. If this parameter is set `None`, the comparation
-    ///   will not be performed.
-    /// - `hash_algorithm`: The hash algorithm that is used to calculate the digest of `runtime_data` and
-    ///   `init_data`.
-    /// - `policy_ids`: The ids of the policies that will be used to evaluate the claims.
-    ///    For EAR tokens, only the first policy will be evaluated.
-    ///    The hash of the policy will be returned as part of the attestation token.
-    #[allow(clippy::too_many_arguments)]
+    /// Issue an attestation results token which contain TCB status and TEE public key.
+    /// An evaluation can cover one more pieces of TEE Evidence which represent the TCB.
+    /// The results will be combined into one attestation token.
+    /// For more information, see the definition of VerificationRequest above.
     pub async fn evaluate(
         &self,
-        evidence: Vec<u8>,
-        tee: Tee,
-        runtime_data: Option<Data>,
-        runtime_data_hash_algorithm: HashAlgorithm,
-        init_data: Option<Data>,
-        init_data_hash_algorithm: HashAlgorithm,
+        verification_requests: Vec<VerificationRequest>,
         policy_ids: Vec<String>,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee)?;
+        let mut tee_claims: Vec<TeeClaims> = vec![];
 
-        let (report_data, runtime_data_claims) =
-            parse_data(runtime_data, &runtime_data_hash_algorithm).context("parse runtime data")?;
+        if verification_requests.is_empty() {
+            bail!("No verification requests provided.")
+        }
 
-        let report_data = match &report_data {
-            Some(data) => ReportData::Value(data),
-            None => ReportData::NotProvided,
-        };
+        for verification_request in verification_requests {
+            let verifier = verifier::to_verifier(&verification_request.tee)?;
 
-        let (init_data, init_data_claims) =
-            parse_data(init_data, &init_data_hash_algorithm).context("parse init data")?;
+            let (report_data, runtime_data_claims) = parse_data(
+                verification_request.runtime_data,
+                &verification_request.runtime_data_hash_algorithm,
+            )
+            .context("parse runtime data")?;
 
-        let init_data_hash = match &init_data {
-            Some(data) => InitDataHash::Value(data),
-            None => InitDataHash::NotProvided,
-        };
+            let report_data = match &report_data {
+                Some(data) => ReportData::Value(data),
+                None => ReportData::NotProvided,
+            };
 
-        let claims_from_tee_evidence = verifier
-            .evaluate(&evidence, &report_data, &init_data_hash)
-            .await
-            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
-        info!("{:?} Verifier/endorsement check passed.", tee);
+            let (init_data, init_data_claims) = parse_data(
+                verification_request.init_data,
+                &verification_request.init_data_hash_algorithm,
+            )
+            .context("parse init data")?;
+
+            let init_data_hash = match &init_data {
+                Some(data) => InitDataHash::Value(data),
+                None => InitDataHash::NotProvided,
+            };
+
+            let (claims_from_tee_evidence, tee_class) = verifier
+                .evaluate(verification_request.evidence, &report_data, &init_data_hash)
+                .await
+                .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+            info!(
+                "{:?} Verifier/endorsement check passed.",
+                verification_request.tee
+            );
+
+            tee_claims.push(TeeClaims {
+                tee: verification_request.tee,
+                tee_class,
+                claims: claims_from_tee_evidence,
+                init_data_claims,
+                runtime_data_claims,
+            });
+        }
 
         let reference_data_map = self
             .rvps
@@ -199,12 +244,16 @@ impl AttestationService {
         let attestation_results_token = self
             .token_broker
             .issue(
-                claims_from_tee_evidence,
+                tee_claims,
                 policy_ids,
-                init_data_claims,
-                runtime_data_claims,
+                // The runtime data claims and init data claims are being moved into the
+                // TEE evidence struct. This interface will be adjusted in the next commit
+                json!(""),
+                json!(""),
+                json!(""),
                 reference_data_map,
-                tee,
+                // This is ignored anyway.
+                "",
             )
             .await?;
         Ok(attestation_results_token)
