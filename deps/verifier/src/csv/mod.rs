@@ -66,11 +66,11 @@ pub struct CsvVerifier {}
 impl Verifier for CsvVerifier {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
-        let tee_evidence = serde_json::from_slice::<CsvEvidence>(evidence)?;
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+        let tee_evidence = serde_json::from_value::<CsvEvidence>(evidence)?;
 
         verify_report_signature(&tee_evidence.attestation_report, &tee_evidence.cert_chain)?;
 
@@ -89,7 +89,8 @@ impl Verifier for CsvVerifier {
             warn!("CSV does not support init data hash mechanism. skip.");
         }
 
-        parse_tee_evidence(&report_raw, tee_evidence.serial_number.clone())
+        let claims = parse_tee_evidence(&report_raw, tee_evidence.serial_number.clone())?;
+        Ok((claims, "cpu".to_string()))
     }
 }
 
