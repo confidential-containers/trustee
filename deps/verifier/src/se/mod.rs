@@ -9,7 +9,7 @@ use ibmse::SeVerifierImpl;
 use log::warn;
 use tokio::sync::OnceCell;
 
-use crate::{InitDataHash, ReportData, TeeEvidenceParsedClaim, Verifier};
+use crate::{InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
 pub mod ibmse;
 
@@ -22,10 +22,10 @@ pub struct SeVerifier;
 impl Verifier for SeVerifier {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
         let se_verifier = VERIFIER
             .get_or_try_init(|| async { SeVerifierImpl::new() })
             .await?;
@@ -35,7 +35,8 @@ impl Verifier for SeVerifier {
         if let ReportData::Value(_) = expected_report_data {
             warn!("IBM SE verifier does not support verify report data hash, will ignore the input `report_data`.");
         }
-        se_verifier.evaluate(evidence)
+        let claims = se_verifier.evaluate(evidence)?;
+        Ok((claims, "cpu".to_string()))
     }
 
     async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
