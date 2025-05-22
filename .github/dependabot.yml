@@ -7,7 +7,6 @@ updates:
     open-pull-requests-limit: 1
     allow:
       - dependency-type: direct
-      - dependency-type: indirect
 
   - package-ecosystem: "github-actions"
     directory: "/"
