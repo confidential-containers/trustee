@@ -1,3 +1,4 @@
+use ::eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
 use std::str::FromStr;
 
 use anyhow::anyhow;
@@ -9,12 +10,10 @@ use super::*;
 use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use async_trait::async_trait;
 use base64::Engine;
-use eventlog::{CcEventLog, Rtmr};
 use quote::parse_tdx_quote;
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod claims;
-pub mod eventlog;
 pub(crate) mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -99,16 +98,30 @@ async fn verify_evidence(
                 .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
             ccel_option = Some(ccel.clone());
 
-            log::debug!("Get CC Eventlog. \n{}\n", &ccel.cc_events);
+            let compare_obj: Vec<ReferenceMeasurement> = vec![
+                ReferenceMeasurement {
+                    index: 1,
+                    algorithm: TcgAlgorithm::Sha384,
+                    reference: quote.rtmr_0().to_vec(),
+                },
+                ReferenceMeasurement {
+                    index: 2,
+                    algorithm: TcgAlgorithm::Sha384,
+                    reference: quote.rtmr_1().to_vec(),
+                },
+                ReferenceMeasurement {
+                    index: 3,
+                    algorithm: TcgAlgorithm::Sha384,
+                    reference: quote.rtmr_2().to_vec(),
+                },
+                ReferenceMeasurement {
+                    index: 4,
+                    algorithm: TcgAlgorithm::Sha384,
+                    reference: quote.rtmr_3().to_vec(),
+                },
+            ];
 
-            let rtmr_from_quote = Rtmr {
-                rtmr0: quote.rtmr_0().try_into().expect("must be 48 bytes"),
-                rtmr1: quote.rtmr_1().try_into().expect("must be 48 bytes"),
-                rtmr2: quote.rtmr_2().try_into().expect("must be 48 bytes"),
-                rtmr3: quote.rtmr_3().try_into().expect("must be 48 bytes"),
-            };
-
-            ccel.integrity_check(rtmr_from_quote)?;
+            ccel.replay_and_match(compare_obj)?;
             info!("CCEL integrity check succeeded.");
         }
         _ => {
@@ -142,8 +155,11 @@ async fn verify_evidence(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::{fs, str::FromStr};
+    use crate::tdx::quote::parse_tdx_quote;
+    use crate::{eventlog::AAEventlog, tdx::claims::generate_parsed_claim};
+    use ::eventlog::CcEventLog;
+    use std::fs;
+    use std::str::FromStr;
 
     #[test]
     fn test_generate_parsed_claim() {

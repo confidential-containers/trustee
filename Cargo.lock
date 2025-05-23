@@ -584,7 +584,7 @@ dependencies = [
  "cfg-if",
  "clap",
  "ear",
- "env_logger 0.10.2",
+ "env_logger",
  "futures",
  "hex",
  "jsonwebtoken",
@@ -648,17 +648,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.12",
  "tokio",
-]
-
-[[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
 ]
 
 [[package]]
@@ -1993,19 +1982,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
@@ -2034,18 +2010,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "eventlog-rs"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8032cb35e23e548f50306064c37de06e04eb51378bce8ad99f0a7f119b30204e"
+name = "eventlog"
+version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
+ "base64 0.22.1",
  "byteorder",
- "env_logger 0.8.4",
  "hex",
- "lazy_static",
  "log",
+ "rstest",
+ "scroll",
+ "serde",
+ "serde_json",
+ "serde_with 1.14.0",
  "sha2",
+ "shadow-rs",
+ "tokio",
+ "tonic-build",
 ]
 
 [[package]]
@@ -2401,15 +2383,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -2886,7 +2859,7 @@ dependencies = [
  "anyhow",
  "attestation-service",
  "base64 0.22.1",
- "env_logger 0.10.2",
+ "env_logger",
  "kbs",
  "kbs-client",
  "log",
@@ -2945,7 +2918,7 @@ version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
 dependencies = [
- "hermit-abi 0.5.2",
+ "hermit-abi",
  "libc",
  "windows-sys 0.59.0",
 ]
@@ -3117,7 +3090,7 @@ dependencies = [
  "config 0.13.4",
  "cryptoki",
  "derivative",
- "env_logger 0.10.2",
+ "env_logger",
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
@@ -3162,7 +3135,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "clap",
- "env_logger 0.10.2",
+ "env_logger",
  "jwt-simple",
  "kbs_protocol",
  "log",
@@ -4491,7 +4464,7 @@ dependencies = [
  "chrono",
  "clap",
  "config 0.13.4",
- "env_logger 0.10.2",
+ "env_logger",
  "log",
  "path-clean",
  "prost",
@@ -6280,7 +6253,7 @@ dependencies = [
  "codicon",
  "csv-rs",
  "ear",
- "eventlog-rs",
+ "eventlog",
  "hex",
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
