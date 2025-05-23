@@ -1,0 +1,26 @@
+[package]
+name = "eventlog"
+description = "Parser for TCG Eventlog"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+byteorder.workspace = true
+hex.workspace = true
+log.workspace = true
+scroll = { version = "0.12.0", default-features = false, features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+serde_with = { workspace = true, optional = true }
+sha2.workspace = true
+
+[build-dependencies]
+shadow-rs.workspace = true
+tonic-build.workspace = true
+
+[dev-dependencies]
+assert-json-diff.workspace = true
+rstest.workspace = true
+tokio.workspace = true
