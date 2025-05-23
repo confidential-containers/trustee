@@ -15,6 +15,7 @@ RAW_RUNTIME_DATA := $(shell cat $(RAW_RUNTIME_DATA_FILE) | base64 -w0 | tr -d '=
 EVIDENCE := $(shell cat $(EVIDENCE_FILE) | base64 -w0 | tr -d '=' | sed -e "s/+/-/g" -e "s/\//_/g")
 
 TEE_NAME ?= snp
+TEE_CLASS ?= cpu
 REQUEST := $(MAKEFILE_DIR)/request.json
 
 .PHONY: install-dependencies
@@ -53,6 +54,7 @@ grpc.pid: $(GRPC_BIN)
 
 $(REQUEST): $(REQUEST).template
 	sed -e "s/%TEE_NAME%/$(TEE_NAME)/g" \
+		-e "s/%TEE_CLASS%/$(TEE_CLASS)/g" \
 		-e "s/%EVIDENCE%/$(EVIDENCE)/g" \
 		$(REQUEST).template > $(REQUEST)
 
