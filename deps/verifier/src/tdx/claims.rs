@@ -4,67 +4,19 @@
 //
 
 //! This module helps parse all fields inside a TDX Quote and CCEL and
-//! serialize them into a JSON. The format will look like
-//! ```json
-//! {
-//!  "td_attributes": {
-//!    "debug": true,
-//!    "key_locker": false,
-//!    "perfmon": false,
-//!    "protection_keys": false,
-//!    "septve_disable": true
-//!  },
-//!  "ccel": {
-//!    "kernel": "5b7aa6572f649714ff00b6a2b9170516a068fd1a0ba72aa8de27574131d454e6396d3bfa1727d9baf421618a942977fa",
-//!    "kernel_parameters": {
-//!      "console": "hvc0",
-//!      "root": "/dev/vda1",
-//!      "rw": null
-//!    }
-//!  },
-//!  "quote": {
-//!    "header":{
-//!        "version": "0400",
-//!        "att_key_type": "0200",
-//!        "tee_type": "81000000",
-//!        "reserved": "00000000",
-//!        "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
-//!        "user_data": "d099bfec0a477aa85a605dceabf2b10800000000"
-//!    },
-//!    "body":{
-//!        "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
-//!        "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
-//!        "seam_attributes": "0000000000000000",
-//!        "td_attributes": "0100001000000000",
-//!        "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
-//!        "tcb_svn": "03000500000000000000000000000000",
-//!        "xfam": "e742060000000000",
-//!        "rtmr_0": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "rtmr_1": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "rtmr_2": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-//!        "rtmr_3": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-//!    }
-//!  }
-//!}
-//! ```
+//! serialize them into a JSON. The format will look like example available in test data:
+//! ./test_data/parse_tdx_claims_expected.json
 
 use anyhow::Result;
 use bitflags::{bitflags, Flags};
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::{debug, warn};
+use log::debug;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
+use super::quote::Quote;
 use crate::{eventlog::AAEventlog, tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
-
-use super::{
-    eventlog::{CcEventLog, MeasuredEntity},
-    quote::Quote,
-};
+use ::eventlog::CcEventLog;
 
 macro_rules! parse_claim {
     ($map_name: ident, $key_name: literal, $field: ident) => {
@@ -176,12 +128,6 @@ pub fn generate_parsed_claim(
         }
     }
 
-    // Claims from CC EventLog.
-    let mut ccel_map = Map::new();
-    if let Some(ccel) = cc_eventlog {
-        parse_ccel(ccel, &mut ccel_map)?;
-    }
-
     let td_attributes = parse_td_attributes(quote.td_attributes())?;
 
     let mut claims = Map::new();
@@ -192,8 +138,13 @@ pub fn generate_parsed_claim(
         parse_claim!(claims, "aael", aael_map);
     }
 
+    // Claims from CC EventLog.
+    if let Some(ccel) = cc_eventlog {
+        let result = serde_json::to_value(ccel.clone().log)?;
+        claims.insert("uefi_event_logs".to_string(), result);
+    }
+
     parse_claim!(claims, "quote", quote_map);
-    parse_claim!(claims, "ccel", ccel_map);
     parse_claim!(claims, "td_attributes", td_attributes);
 
     parse_claim!(claims, "report_data", quote.report_data());
@@ -203,79 +154,6 @@ pub fn generate_parsed_claim(
     debug!("Parsed Evidence claims map: \n{claims_str}\n");
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
-}
-
-fn parse_ccel(ccel: CcEventLog, ccel_map: &mut Map<String, Value>) -> Result<()> {
-    // Digest of kernel using td-shim
-    match ccel.query_digest(MeasuredEntity::TdShimKernel) {
-        Some(kernel_digest) => {
-            ccel_map.insert(
-                "kernel".to_string(),
-                serde_json::Value::String(kernel_digest),
-            );
-        }
-        _ => {
-            warn!("No td-shim kernel hash in CCEL");
-        }
-    }
-
-    // Digest of kernel using TDVF
-    match ccel.query_digest(MeasuredEntity::TdvfKernel) {
-        Some(kernel_digest) => {
-            ccel_map.insert(
-                "kernel".to_string(),
-                serde_json::Value::String(kernel_digest),
-            );
-        }
-        _ => {
-            warn!("No tdvf kernel hash in CCEL");
-        }
-    }
-
-    // Digest of kernel cmdline using TDVF
-    match ccel.query_digest(MeasuredEntity::TdvfKernelParams) {
-        Some(cmdline_digest) => {
-            ccel_map.insert(
-                "cmdline".to_string(),
-                serde_json::Value::String(cmdline_digest),
-            );
-        }
-        _ => {
-            warn!("No tdvf kernel cmdline hash in CCEL");
-        }
-    }
-
-    // Digest of initrd using TDVF
-    match ccel.query_digest(MeasuredEntity::TdvfInitrd) {
-        Some(initrd_digest) => {
-            ccel_map.insert(
-                "initrd".to_string(),
-                serde_json::Value::String(initrd_digest),
-            );
-        }
-        _ => {
-            warn!("No tdvf initrd hash in CCEL");
-        }
-    }
-
-    // Map of Kernel Parameters
-    match ccel.query_event_data(MeasuredEntity::TdShimKernelParams) {
-        Some(config_info) => {
-            let td_shim_platform_config_info =
-                TdShimPlatformConfigInfo::try_from(&config_info[..])?;
-
-            let parameters = parse_kernel_parameters(td_shim_platform_config_info.data)?;
-            ccel_map.insert(
-                "kernel_parameters".to_string(),
-                serde_json::Value::Object(parameters),
-            );
-        }
-        _ => {
-            warn!("No td-shim kernel parameters in CCEL");
-        }
-    }
-
-    Ok(())
 }
 
 bitflags! {
@@ -367,49 +245,17 @@ impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
     }
 }
 
-fn parse_kernel_parameters(kernel_parameters: &[u8]) -> Result<Map<String, Value>> {
-    let parameters_str = String::from_utf8(kernel_parameters.to_vec())?;
-    debug!("kernel parameters: {parameters_str}");
-
-    let parameters = parameters_str
-        .split(&[' ', '\n', '\r', '\0'])
-        .collect::<Vec<&str>>()
-        .iter()
-        .filter_map(|item| {
-            if item.is_empty() {
-                return None;
-            }
-
-            let it = item.split_once('=');
-
-            match it {
-                Some((k, v)) => Some((k.into(), v.into())),
-                None => Some((item.to_string(), Value::Null)),
-            }
-        })
-        .collect();
-
-    Ok(parameters)
-}
-
 #[cfg(test)]
 mod tests {
-    use anyhow::{anyhow, Result};
     use assert_json_diff::assert_json_eq;
-    use serde_json::{json, to_value, Map, Value};
+    use serde_json::Value;
 
-    use crate::tdx::{
-        claims::PlatformConfigInfoError, eventlog::CcEventLog, quote::parse_tdx_quote,
-    };
+    use crate::tdx::{claims::PlatformConfigInfoError, quote::parse_tdx_quote};
 
-    use super::{generate_parsed_claim, parse_kernel_parameters, TdShimPlatformConfigInfo};
+    use super::{generate_parsed_claim, TdShimPlatformConfigInfo};
 
+    use ::eventlog::CcEventLog;
     use rstest::rstest;
-
-    // This is used with anyhow!() to create an actual error. However, we
-    // don't care about the type of error: it's simply used to denote that
-    // some sort of Err() occurred.
-    const SOME_ERROR: &str = "an error of some sort occurred";
 
     #[test]
     fn parse_tdx_claims() {
@@ -418,199 +264,13 @@ mod tests {
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
         let claims = generate_parsed_claim(quote, Some(ccel), None).expect("parse claim failed");
-        let expected = json!({
-            "td_attributes": {
-                "debug": true,
-                "key_locker": false,
-                "perfmon": false,
-                "protection_keys": false,
-                "septve_disable": true
-            },
-            "ccel": {
-                "kernel": "5b7aa6572f649714ff00b6a2b9170516a068fd1a0ba72aa8de27574131d454e6396d3bfa1727d9baf421618a942977fa",
-                "kernel_parameters": {
-                    "console": "hvc0",
-                    "root": "/dev/vda1",
-                    "rw": null
-                }
-            },
-            "quote": {
-                "header":{
-                    "version": "0400",
-                    "att_key_type": "0200",
-                    "tee_type": "81000000",
-                    "reserved": "00000000",
-                    "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
-                    "user_data": "d099bfec0a477aa85a605dceabf2b10800000000"
-                },
-                "body":{
-                    "mr_config_id": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    "mr_owner": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    "mr_owner_config": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    "mr_td": "705ee9381b8633a9fbe532b52345e8433343d2868959f57889d84ca377c395b689cac1599ccea1b7d420483a9ce5f031",
-                    "mrsigner_seam": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
-                    "seam_attributes": "0000000000000000",
-                    "td_attributes": "0100001000000000",
-                    "mr_seam": "2fd279c16164a93dd5bf373d834328d46008c2b693af9ebb865b08b2ced320c9a89b4869a9fab60fbe9d0c5a5363c656",
-                    "tcb_svn": "03000500000000000000000000000000",
-                    "xfam": "e742060000000000",
-                    "rtmr_0": "e940da7c2712d2790e2961e00484f4fa8e6f9eed71361655ae22699476b14f9e63867eb41edd4b480fef0c59f496b288",
-                    "rtmr_1": "559cfcf42716ed6c40a48a73d5acb7da255435012f0a9f00fbe8c1c57612ede486a5684c4c9ff3ddf52315fcdca3a596",
-                    "rtmr_2": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    "rtmr_3": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                }
-            },
-            "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429"
-        });
+        let expected_json_str =
+            std::fs::read_to_string("./test_data/parse_tdx_claims_expected.json")
+                .expect("read expected json output failed");
+        let expected: Value =
+            serde_json::from_str(&expected_json_str).expect("parsing expected json failed");
 
         assert_json_eq!(expected, claims);
-    }
-
-    #[rstest]
-    #[trace]
-    #[case(b"", Ok(Map::from_iter(vec![].into_iter())))]
-    // Invalid UTF8 data
-    #[case(b"\xff\xff", Err(anyhow!(SOME_ERROR)))]
-    // Invalid UTF8 data
-    #[case(b"foo=\xff\xff", Err(anyhow!(SOME_ERROR)))]
-    #[case(b"name_only", Ok(Map::from_iter(vec![
-                ("name_only".to_string(), Value::Null)
-    ].into_iter())))]
-    #[case(b"a=b", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap())
-    ].into_iter())))]
-    #[case(b"\ra=b", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap())
-    ].into_iter())))]
-    #[case(b"\na=b", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\nc=d", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\n\nc=d", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\rc=d", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\r\rc=d", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\rc=d\ne=foo", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap()),
-                ("e".to_string(), to_value("foo").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b\rc=d\nname_only\0e=foo", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("d").unwrap()),
-                ("name_only".to_string(), Value::Null),
-                ("e".to_string(), to_value("foo").unwrap())
-    ].into_iter())))]
-    #[case(b"foo='bar'", Ok(Map::from_iter(vec![
-                ("foo".to_string(), to_value("'bar'").unwrap())
-    ].into_iter())))]
-    #[case(b"foo=\"bar\"", Ok(Map::from_iter(vec![
-                ("foo".to_string(), to_value("\"bar\"").unwrap())
-    ].into_iter())))]
-    // Spaces in parameter values are not supported.
-    // XXX: Note carefully the apostrophe values below!
-    #[case(b"params_with_spaces_do_not_work='a b c'", Ok(Map::from_iter(vec![
-                ("b".to_string(), Value::Null),
-                ("c'".to_string(), Value::Null),
-                ("params_with_spaces_do_not_work".to_string(), to_value("'a").unwrap()),
-    ].into_iter())))]
-    #[case(b"params_with_spaces_do_not_work=\"a b c\"", Ok(Map::from_iter(vec![
-                ("b".to_string(), Value::Null),
-                ("c\"".to_string(), Value::Null),
-                ("params_with_spaces_do_not_work".to_string(), to_value("\"a").unwrap()),
-    ].into_iter())))]
-    #[case(b"a==", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("=").unwrap())
-    ].into_iter())))]
-    #[case(b"a==b", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("=b").unwrap())
-    ].into_iter())))]
-    #[case(b"a==b=", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("=b=").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b=c", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b=c").unwrap())
-    ].into_iter())))]
-    #[case(b"a==b==c", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("=b==c").unwrap())
-    ].into_iter())))]
-    #[case(b"module_foo=bar=baz,wibble_setting=2", Ok(Map::from_iter(vec![
-                ("module_foo".to_string(), to_value("bar=baz,wibble_setting=2").unwrap())
-    ].into_iter())))]
-    #[case(b"a=b c== d=e", Ok(Map::from_iter(vec![
-                ("a".to_string(), to_value("b").unwrap()),
-                ("c".to_string(), to_value("=").unwrap()),
-                ("d".to_string(), to_value("e").unwrap()),
-    ].into_iter())))]
-    fn test_parse_kernel_parameters(
-        #[case] params: &[u8],
-        #[case] result: Result<Map<String, Value>>,
-    ) {
-        let msg = format!(
-            "test: params: {:?}, result: {result:?}",
-            String::from_utf8_lossy(&params.to_vec())
-        );
-
-        let actual_result = parse_kernel_parameters(params);
-
-        let msg = format!("{msg}: actual result: {actual_result:?}");
-
-        if std::env::var("DEBUG").is_ok() {
-            println!("DEBUG: {msg}");
-        }
-
-        if result.is_err() {
-            assert!(actual_result.is_err(), "{msg}");
-            return;
-        }
-
-        let expected_result_str = format!("{result:?}");
-        let actual_result_str = format!("{actual_result:?}");
-
-        assert_eq!(expected_result_str, actual_result_str, "{msg}");
-
-        let result = result.unwrap();
-        let actual_result = actual_result.unwrap();
-
-        let expected_count = result.len();
-
-        let actual_count = actual_result.len();
-
-        let msg = format!("{msg}: expected_count: {expected_count}, actual_count: {actual_count}");
-
-        assert_eq!(expected_count, actual_count, "{msg}");
-
-        for expected_kv in &result {
-            let key = expected_kv.0.to_string();
-            let value = expected_kv.1.to_string();
-
-            let value_found = actual_result.get(&key);
-
-            let kv_msg = format!("{msg}: key: {key:?}, value: {value:?}");
-
-            if std::env::var("DEBUG").is_ok() {
-                println!("DEBUG: {kv_msg}");
-            }
-
-            assert!(value_found.is_some(), "{kv_msg}");
-
-            let value_found = value_found.unwrap().to_string();
-
-            assert_eq!(value_found, value, "{kv_msg}");
-        }
     }
 
     #[rstest]
