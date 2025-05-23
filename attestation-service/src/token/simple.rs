@@ -452,16 +452,11 @@ mod tests {
                     tee: Tee::Sample,
                     tee_class: "cpu".to_string(),
                     claims: json!({"claim": "claim1"}),
+                    runtime_data_claims: json!({"runtime_data": "111"}),
+                    init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                json!({
-                    "initdata": "111"
-                }),
-                json!({
-                    "runtime_data": "111"
-                }),
                 HashMap::new(),
-                Tee::Sample,
             )
             .await
             .unwrap();
