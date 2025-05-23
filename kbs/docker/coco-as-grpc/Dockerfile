@@ -34,3 +34,5 @@ LABEL org.opencontainers.image.source="https://github.com/confidential-container
 
 COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs
 COPY --from=builder /usr/local/bin/nebula-cert* /usr/local/bin/nebula-cert
+
+RUN apt-get update && apt install -y openssl

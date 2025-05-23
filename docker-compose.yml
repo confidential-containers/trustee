@@ -6,18 +6,20 @@ services:
     image: ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest
     environment:
       - RUST_LOG
-    command: [
-        "/usr/local/bin/kbs",
-        "--config-file",
-        "/etc/kbs-config.toml",
-      ]
+    command: >
+        sh -c "
+          if [ ! -s /opt/confidential-containers/kbs/user-keys/private.key ]; then
+            /usr/bin/openssl genpkey -algorithm ed25519 > /opt/confidential-containers/kbs/user-keys/private.key &&
+            /usr/bin/openssl pkey -in /opt/confidential-containers/kbs/user-keys/private.key -pubout -out /opt/confidential-containers/kbs/user-keys/public.pub;
+          fi && exec /usr/local/bin/kbs --config-file /etc/kbs-config.toml
+        "
     restart: always # keep the server running
     ports:
       - "8080:8080"
     volumes:
       - ./kbs/data/kbs-storage:/opt/confidential-containers/kbs/repository:rw
       - ./kbs/data/nebula-ca:/opt/confidential-containers/kbs/nebula-ca:rw
-      - ./kbs/config/public.pub:/opt/confidential-containers/kbs/user-keys/public.pub
+      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
       - ./kbs/config/docker-compose/kbs-config.toml:/etc/kbs-config.toml
     depends_on:
     - as
@@ -73,7 +75,7 @@ services:
     ports:
       - "50000:50000"
     volumes:
-      - ./kbs/config/private.key:/etc/private.key
+      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
     command: [
       "coco_keyprovider",
       "--socket",
@@ -81,7 +83,7 @@ services:
       "--kbs",
       "http://kbs:8080",
       "--auth-private-key",
-      "/etc/private.key"
+      "/opt/confidential-containers/kbs/user-keys/private.key"
     ]
     depends_on:
     - kbs
