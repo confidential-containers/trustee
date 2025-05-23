@@ -116,5 +116,5 @@ We will introduce the format of policy by providing some examples to show the us
 
 1. The [default policy](../src/token/ear_default_policy.rego). This policy assigns multiple trust claims based on reference values. 
 2. An [SGX policy](../tests/coco-as/policy/example-1.rego). The client want to ensure the `mr_signer` and `mrenclave` are both expected value.
-3. A [TDX policy](../tests/coco-as/policy/example-2.rego). The client want to ensure the TDX module (reflected by `tdx.quote.body.mr_seam`), guest firmware (reflected by `tdx.quote.body.mr_td`), kernel (reflected by `tdx.ccel.kernel`) are all as expected.
+3. A [TDX policy](../tests/coco-as/policy/example-2.rego). The client want to ensure the TDX module (reflected by `tdx.quote.body.mr_seam`), guest firmware (reflected by `tdx.quote.body.mr_td`), tcb_status (reflected by `input.tdx.tcb_status`), collateral expiration status (reflected by `input.tdx.collateral_expiration_status`) are all as expected.
 4. A [IBM SE policy](../tests/coco-as/policy/example-3.rego). The client want to ensure the `se.version`, `se.tag`, `se.user_data`, `se.image_phkh` and `se.attestation_phkh` are all expected value.
