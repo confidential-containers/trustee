@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use anyhow::anyhow;
@@ -6,15 +7,15 @@ use log::{debug, error, info, warn};
 use crate::{eventlog::AAEventlog, tdx::claims::generate_parsed_claim};
 
 use super::*;
+use crate::eventlog::ccel::rtmr::Rtmr;
+use crate::eventlog::ccel::CcEventLog;
 use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use async_trait::async_trait;
 use base64::Engine;
-use eventlog::{CcEventLog, Rtmr};
 use quote::parse_tdx_quote;
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod claims;
-pub mod eventlog;
 pub(crate) mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -97,16 +98,14 @@ async fn verify_evidence(
                 .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
             ccel_option = Some(ccel.clone());
 
-            log::debug!("Get CC Eventlog. \n{}\n", &ccel.cc_events);
+            let mut rtmr_from_quote: HashMap<u32, Vec<u8>> = HashMap::new();
+            rtmr_from_quote.insert(1, quote.rtmr_0().to_vec());
+            rtmr_from_quote.insert(2, quote.rtmr_1().to_vec());
+            rtmr_from_quote.insert(3, quote.rtmr_2().to_vec());
+            rtmr_from_quote.insert(4, quote.rtmr_3().to_vec());
 
-            let rtmr_from_quote = Rtmr {
-                rtmr0: quote.rtmr_0().try_into().expect("must be 48 bytes"),
-                rtmr1: quote.rtmr_1().try_into().expect("must be 48 bytes"),
-                rtmr2: quote.rtmr_2().try_into().expect("must be 48 bytes"),
-                rtmr3: quote.rtmr_3().try_into().expect("must be 48 bytes"),
-            };
-
-            ccel.integrity_check(rtmr_from_quote)?;
+            let rtmr = Rtmr::try_from(ccel)?;
+            rtmr.integrity_check(rtmr_from_quote)?;
             info!("CCEL integrity check succeeded.");
         }
         _ => {
@@ -140,8 +139,11 @@ async fn verify_evidence(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::{fs, str::FromStr};
+    use crate::eventlog::ccel::CcEventLog;
+    use crate::tdx::quote::parse_tdx_quote;
+    use crate::{eventlog::AAEventlog, tdx::claims::generate_parsed_claim};
+    use std::fs;
+    use std::str::FromStr;
 
     #[test]
     fn test_generate_parsed_claim() {

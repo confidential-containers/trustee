@@ -89,9 +89,10 @@ else := 3 if {
 ##### TDX
 executables := 3 if {
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	# TODO: add individual CCEL measurements from input.tdx.ccel instead
 	input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
 	input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
+	tdx_uefi_event_tdvfkernel_ok
+	tdx_uefi_event_tdvfkernelparams_ok
 }
 
 hardware := 2 if {
@@ -103,11 +104,12 @@ hardware := 2 if {
 	input.tdx.quote.body.mr_seam in data.reference.mr_seam
 	input.tdx.quote.body.tcb_svn in data.reference.tcb_svn
 	input.tdx.quote.body.mr_td in data.reference.mr_td
+
 	# Check TCB status
-	# input.tdx.tcb_status == "OK"
+	input.tdx.tcb_status == "OK"
 
 	# Check collateral expiration status
-	# input.tdx.collateral_expiration_status == "0"
+	input.tdx.collateral_expiration_status == "0"
 
 	# Check against allowed advisory ids
 	# allowed_advisory_ids := {"INTEL-SA-00837"}
@@ -119,12 +121,44 @@ hardware := 2 if {
 	# attester_advisory_ids := {id | id := input.tdx.advisory_ids[_]} # convert array to set
 	# intersection := attester_advisory_ids & disallowed_advisory_ids
 	# count(intersection) == 0
+
+	tdx_event_digest_ok
 }
 
 configuration := 2 if {
 	# Check the TD has the expected attributes (e.g., debug not enabled) and features.
 	input.tdx.td_attributes.debug == false
 	input.tdx.quote.body.xfam in data.reference.xfam
+}
+
+tdx_event_digest_ok if {
+	event := input.tdx.uefi_event_logs[_]
+	event.type_name == "EV_EFI_VARIABLE_BOOT"
+
+	digest := event.digests[_]
+	digest.digest == "23ada07f5261f12f34a0bd8e46760962d6b4d576a416f1fea1c64bc656b1d28eacf7047ae6e967c58fd2a98bfa74c298"
+
+	event.details.unicode_name == "Boot0000"
+}
+
+tdx_uefi_event_tdvfkernel_ok if {
+	event := input.tdx.uefi_event_logs[_]
+	event.type_name == "EV_EFI_BOOT_SERVICES_APPLICATION"
+
+	digest := event.digests[_]
+	digest.digest == "b08b4866196930c43bc3ac1ab11920171fe44ee9c9d2f94f37d42203a2f629608bcbc453e20e7a85aaa59b4ea7e109e2"
+
+	"File(kernel)" in event.details.device_paths
+}
+
+tdx_uefi_event_tdvfkernelparams_ok if {
+	event := input.tdx.uefi_event_logs[_]
+	event.type_name == "EV_EVENT_TAG"
+
+	digest := event.digests[_]
+	digest.digest == "34efbfeef7a7732b7fe40f132b5b1e624ce94e174777a79fd229f28765797a72666ee67dcf11bac6bc76df27dfdb54d5"
+
+	event.details.string == "LOADED_IMAGE::LoadOptions"
 }
 
 ##### AZ SNP TODO
