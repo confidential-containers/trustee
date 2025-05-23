@@ -12,6 +12,8 @@ use hash::HashAlgorithm;
 use serde_json::{Map, Value};
 use sha2::{digest::FixedOutput, Digest, Sha256, Sha384, Sha512};
 
+pub mod ccel;
+
 #[derive(Clone)]
 pub struct AAEvent {
     pub domain: String,
