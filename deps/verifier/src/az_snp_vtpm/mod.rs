@@ -3,27 +3,36 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use std::mem::offset_of;
+
 use super::{TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
-    load_milan_cert_chain, parse_tee_evidence, verify_report_signature, VendorCertificates,
+    get_common_name, get_oid_int, get_oid_octets, ProcessorGeneration, CERT_CHAINS, HW_ID_OID,
+    LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
 };
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use az_snp_vtpm::certs::Vcek;
+use az_snp_vtpm::certs::{AmdChain, Vcek};
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
 use az_snp_vtpm::vtpm::QuoteError;
+use base64::{engine::general_purpose::STANDARD, Engine};
 use log::debug;
 use openssl::pkey::PKey;
+use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use sev::firmware::host::{CertTableEntry, CertType};
+use serde_json::{json, Value};
 use thiserror::Error;
+use x509_parser::prelude::*;
 
 const HCL_VMPL_VALUE: u32 = 0;
 const INITDATA_PCR: usize = 8;
+
+struct AzVendorCertificates {
+    ca_chain: AmdChain,
+}
 
 #[derive(Serialize, Deserialize)]
 struct Evidence {
@@ -33,7 +42,7 @@ struct Evidence {
 }
 
 pub struct AzSnpVtpm {
-    vendor_certs: VendorCertificates,
+    vendor_certs: AzVendorCertificates,
 }
 
 #[derive(Error, Debug)]
@@ -54,13 +63,21 @@ pub enum CertError {
     Anyhow(#[from] anyhow::Error),
 }
 
+// Azure vTPM still initialized to Milan only certs until az_snp_vtpm crate gets updated.
 impl AzSnpVtpm {
     pub fn new() -> Result<Self, CertError> {
-        let Result::Ok(vendor_certs) = load_milan_cert_chain() else {
-            return Err(CertError::LoadMilanCert);
-        };
-        let vendor_certs = vendor_certs.clone();
-        Ok(Self { vendor_certs })
+        let vendor_certs = CERT_CHAINS
+            .get(&ProcessorGeneration::Milan)
+            .ok_or(CertError::LoadMilanCert)?
+            .clone();
+        Ok(Self {
+            vendor_certs: AzVendorCertificates {
+                ca_chain: AmdChain {
+                    ask: vendor_certs.ask.into(),
+                    ark: vendor_certs.ark.into(),
+                },
+            },
+        })
     }
 }
 
@@ -120,12 +137,21 @@ impl Verifier for AzSnpVtpm {
         verify_report_data(&var_data_hash, &snp_report)?;
 
         let vcek = Vcek::from_pem(&evidence.vcek)?;
-        verify_snp_report(&snp_report, &vcek, &self.vendor_certs)?;
+
+        //Verify certificates
+        self.vendor_certs
+            .ca_chain
+            .validate()
+            .context("Failed to validate CA chain")?;
+        vcek.validate(&self.vendor_certs.ca_chain)
+            .context("Failed to validate VCEK")?;
+
+        verify_snp_report(&snp_report, &vcek)?;
 
         let pcrs: Vec<&[u8; 32]> = evidence.quote.pcrs_sha256().collect();
         verify_init_data(expected_init_data_hash, &pcrs)?;
 
-        let mut claim = parse_tee_evidence(&snp_report);
+        let mut claim = parse_tee_evidence_az(&snp_report);
         extend_claim(&mut claim, &evidence.quote)?;
 
         Ok(claim)
@@ -172,17 +198,64 @@ fn verify_report_data(
     Ok(())
 }
 
-fn verify_snp_report(
-    snp_report: &AttestationReport,
-    vcek: &Vcek,
-    vendor_certs: &VendorCertificates,
-) -> Result<(), CertError> {
-    let vcek_data = vcek.0.to_der().context("Failed to get raw VCEK data")?;
-    let cert_chain = [CertTableEntry::new(CertType::VCEK, vcek_data)];
-    verify_report_signature(snp_report, &cert_chain, vendor_certs)?;
+fn verify_snp_report(snp_report: &AttestationReport, vcek: &Vcek) -> Result<(), CertError> {
+    verify_report_signature(snp_report, vcek)?;
 
     if snp_report.vmpl != HCL_VMPL_VALUE {
         return Err(CertError::VmplIncorrect(HCL_VMPL_VALUE));
+    }
+
+    Ok(())
+}
+
+/// Verifies the signature of the attestation report using the provided certificate chain and vendor certificates.
+fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()> {
+    // OpenSSL bindings do not expose custom extensions
+    // Parse the key using x509_parser
+
+    let endorsement_key_der = &vcek.0.to_der()?;
+    let parsed_endorsement_key = X509Certificate::from_der(endorsement_key_der)?
+        .1
+        .tbs_certificate;
+
+    let common_name = get_common_name(&vcek.0).context("No common name found in certificate")?;
+
+    // if the common name is "VCEK", then the key is a VCEK
+    // so lets check the chip id
+    if common_name == "VCEK"
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
+    {
+        bail!("Chip ID mismatch");
+    }
+
+    // tcb version
+    // these integer extensions are 3 bytes with the last byte as the data
+    if get_oid_int(&parsed_endorsement_key, UCODE_SPL_OID)? != report.reported_tcb.microcode {
+        bail!("Microcode version mismatch");
+    }
+
+    if get_oid_int(&parsed_endorsement_key, SNP_SPL_OID)? != report.reported_tcb.snp {
+        bail!("SNP version mismatch");
+    }
+
+    if get_oid_int(&parsed_endorsement_key, TEE_SPL_OID)? != report.reported_tcb.tee {
+        bail!("TEE version mismatch");
+    }
+
+    if get_oid_int(&parsed_endorsement_key, LOADER_SPL_OID)? != report.reported_tcb.bootloader {
+        bail!("Boot loader version mismatch");
+    }
+
+    // verify report signature
+    let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
+    // Get the offset of the signature field in the report struct
+    let signature_offset = offset_of!(AttestationReport, signature);
+    let data = &bincode::serialize(&report)?[..signature_offset];
+
+    let pub_key = EcKey::try_from(vcek.0.public_key()?)?;
+    let signed = sig.verify(&sha384(data), &pub_key)?;
+    if !signed {
+        bail!("Signature validation failed.");
     }
 
     Ok(())
@@ -208,6 +281,37 @@ pub(crate) fn verify_init_data(expected: &InitDataHash, pcrs: &[&[u8; 32]]) -> R
     Ok(())
 }
 
+/// Parses the attestation report and extracts the TEE evidence claims.
+/// Returns a JSON-formatted map of parsed claims.
+pub(crate) fn parse_tee_evidence_az(report: &AttestationReport) -> TeeEvidenceParsedClaim {
+    let claims_map = json!({
+        // policy fields
+        "policy_abi_major": format!("{}",report.policy.abi_major()),
+        "policy_abi_minor": format!("{}", report.policy.abi_minor()),
+        "policy_smt_allowed": format!("{}", report.policy.smt_allowed()),
+        "policy_migrate_ma": format!("{}", report.policy.migrate_ma_allowed()),
+        "policy_debug_allowed": format!("{}", report.policy.debug_allowed()),
+        "policy_single_socket": format!("{}", report.policy.single_socket_required()),
+
+        // versioning info
+        "reported_tcb_bootloader": format!("{}", report.reported_tcb.bootloader),
+        "reported_tcb_tee": format!("{}", report.reported_tcb.tee),
+        "reported_tcb_snp": format!("{}", report.reported_tcb.snp),
+        "reported_tcb_microcode": format!("{}", report.reported_tcb.microcode),
+
+        // platform info
+        "platform_tsme_enabled": format!("{}", report.plat_info.tsme_enabled()),
+        "platform_smt_enabled": format!("{}", report.plat_info.smt_enabled()),
+
+        // measurements
+        "measurement": format!("{}", STANDARD.encode(report.measurement)),
+        "report_data": format!("{}", STANDARD.encode(report.report_data)),
+        "init_data": format!("{}", STANDARD.encode(report.host_data)),
+    });
+
+    claims_map as TeeEvidenceParsedClaim
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,21 +327,29 @@ mod tests {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
-        verify_snp_report(&snp_report, &vcek, vendor_certs).unwrap();
+        let vendor_certs = CERT_CHAINS
+            .get(&ProcessorGeneration::Milan)
+            .unwrap()
+            .clone();
+        let amd_chain = AmdChain {
+            ask: vendor_certs.ask.into(),
+            ark: vendor_certs.ark.into(),
+        };
+        amd_chain.validate().unwrap();
+        vcek.validate(&amd_chain).unwrap();
+        verify_snp_report(&snp_report, &vcek).unwrap();
     }
 
     #[test]
     fn test_verify_snp_report_failure() {
-        let mut wrong_report = REPORT.clone();
+        let mut wrong_report = *REPORT;
         // messing with snp report
         wrong_report[0x01a6] = 0;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
-        let vendor_certs = load_milan_cert_chain().as_ref().unwrap();
         assert_eq!(
-            verify_snp_report(&snp_report, &vcek, vendor_certs)
+            verify_snp_report(&snp_report, &vcek)
                 .unwrap_err()
                 .to_string(),
             "SNP version mismatch",
@@ -254,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_verify_report_data_failure() {
-        let mut wrong_report = REPORT.clone();
+        let mut wrong_report = *REPORT;
         wrong_report[0x06e0] += 1;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let var_data_hash = hcl_report.var_data_sha256();
@@ -276,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_verify_quote_signature_failure() {
-        let mut quote = QUOTE.clone();
+        let mut quote = *QUOTE;
         quote[0x030] = 0;
         let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
 
@@ -294,7 +406,7 @@ mod tests {
     #[test]
     fn test_verify_akpub_failure() {
         let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        let mut wrong_report = REPORT.clone();
+        let mut wrong_report = *REPORT;
         // messing with AKpub in var data
         wrong_report[0x0540] = 0;
         let wrong_hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
@@ -309,7 +421,7 @@ mod tests {
     #[test]
     fn test_verify_quote_nonce() {
         let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        verify_nonce(&quote, &REPORT_DATA).unwrap();
+        verify_nonce(&quote, REPORT_DATA).unwrap();
     }
 
     #[test]
@@ -328,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_verify_pcrs_failure() {
-        let mut quote = QUOTE.clone();
+        let mut quote = *QUOTE;
         quote[0x0169] = 0;
         let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
 
@@ -344,7 +456,7 @@ mod tests {
 
     #[test]
     fn test_verify_init_data() {
-        let quote = QUOTE.clone();
+        let quote = *QUOTE;
         let quote: Quote = bincode::deserialize(&quote).unwrap();
         let mut init_data_hash = [0u8; 32];
         hex::decode_to_slice(
@@ -369,11 +481,11 @@ mod tests {
 
     #[test]
     fn test_verify_init_data_failure() {
-        let quote = QUOTE.clone();
+        let quote = *QUOTE;
         let quote: Quote = bincode::deserialize(&quote).unwrap();
         let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
-        let mut init_data = pcrs[INITDATA_PCR].clone();
-        init_data[0] = init_data[0] ^ 1;
+        let mut init_data = *pcrs[INITDATA_PCR];
+        init_data[0] ^= 1;
         let init_data_hash = InitDataHash::Value(&init_data);
 
         verify_init_data(&init_data_hash, &pcrs).unwrap_err();
