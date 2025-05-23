@@ -89,7 +89,15 @@ else := 3 if {
 ##### TDX
 executables := 3 if {
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	# TODO: add individual CCEL measurements from input.tdx.ccel instead
+	input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
+	input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
+	tdx_uefi_event_tdvfkernel_ok
+	tdx_uefi_event_tdvfkernelparams_ok
+}
+
+# Support for Grub boot used by GKE
+else := 4 if {
+	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
 	input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
 	input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
 }
@@ -103,12 +111,12 @@ hardware := 2 if {
 	input.tdx.quote.body.mr_seam in data.reference.mr_seam
 	input.tdx.quote.body.tcb_svn in data.reference.tcb_svn
 	input.tdx.quote.body.mr_td in data.reference.mr_td
+
 	# Check TCB status
-	# input.tdx.tcb_status == "OK"
+	input.tdx.tcb_status == "OK"
 
 	# Check collateral expiration status
-	# input.tdx.collateral_expiration_status == "0"
-
+	input.tdx.collateral_expiration_status == "0"
 	# Check against allowed advisory ids
 	# allowed_advisory_ids := {"INTEL-SA-00837"}
 	# attester_advisory_ids := {id | id := input.attester_advisory_ids[_]}
@@ -125,6 +133,24 @@ configuration := 2 if {
 	# Check the TD has the expected attributes (e.g., debug not enabled) and features.
 	input.tdx.td_attributes.debug == false
 	input.tdx.quote.body.xfam in data.reference.xfam
+}
+
+tdx_uefi_event_tdvfkernel_ok if {
+	event := input.tdx.uefi_event_logs[_]
+	event.type_name == "EV_EFI_BOOT_SERVICES_APPLICATION"
+	"File(kernel)" in event.details.device_paths
+
+	digest := event.digests[_]
+	digest.digest == data.reference.tdvfkernel
+}
+
+tdx_uefi_event_tdvfkernelparams_ok if {
+	event := input.tdx.uefi_event_logs[_]
+	event.type_name == "EV_EVENT_TAG"
+	event.details.string == "LOADED_IMAGE::LoadOptions"
+
+	digest := event.digests[_]
+	digest.digest == data.reference.tdvfkernelparams
 }
 
 ##### Azure vTPM SNP
