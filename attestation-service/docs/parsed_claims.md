@@ -20,8 +20,23 @@ All platforms will by default have two fixed claims:
 ## Intel TDX
 
 The following fields are optional. Whether they appear depends on whether there is CCEL.
-- `tdx.ccel.kernel`: the measurement of the kernel memory slice in hex
-- `tdx.ccel.kernel_parameters.*`: different kernel parameter items. For example `console=hvc0` will be parsed into a claim `"tdx.ccel.kernel_parameters.console": "hvc0"`. `rw` will be parsed into a claim `"tdx.ccel.kernel_parameters.rw": null`.
+- `tdx.uefi_event_logs` list of objects parsed from ccel log file. Each event can be accessed using fields described below.
+
+Uefi event log entry contains below fields:
+`tdx.uefi_event_logs[0].index`: PCR index.
+`tdx.uefi_event_logs[0].event_type`: Name of the measurement event from TCG PC Client Platform Firmware Profile Specification.
+`tdx.uefi_event_logs[0].digests[0].alg`: Hash algorithm (RSA, TDES, SHA-1, SHA-256, SHA-384, SHA-512).
+`tdx.uefi_event_logs[0].digests[0].digest`: Digest value calculated for hash defined in previous field.
+`tdx.uefi_event_logs[0].event`: Base64 encoded raw event data.
+`tdx.uefi_event_logs[0].details`: List of attributes parsed from event data. All details properties are optional.
+`tdx.uefi_event_logs[0].details.string`: Parsed UTF-8 value.
+`tdx.uefi_event_logs[0].details.unicode_name`: Parsed Unicode name of the measurement event.
+`tdx.uefi_event_logs[0].details.unicode_name_length`: Unicode name length of the measurement event.
+`tdx.uefi_event_logs[0].details.variable_data`: Base64 encoded event variable data.
+`tdx.uefi_event_logs[0].details.variable_data_length`: Length of the variable data.
+`tdx.uefi_event_logs[0].details.variable_name`: Variable name.
+`tdx.uefi_event_logs[0].details.device_paths`: List of parsed device paths.
+`tdx.uefi_event_logs[0].details.data`: Additional information processed from the event.
 
 The following fields always exist.
 - `tdx.quote.header.version`: The quote format version. Now supports 4 and 5.
@@ -49,6 +64,14 @@ The following fields always exist.
 - `tdx.quote.size`: Quote body length. Only quote format V5 contains this field.
 - `tdx.quote.body.tee_tcb_svn2`: Array of TEE TCB SVNs (for TD preserving).
 - `tdx.quote.body.mr_servicetd`: If there is one or more bound or pre-bound service TDs, this field is the SHA384 hash of the `TDINFO`s of those service TDs bound. Else, this field is 0.
+- `tdx.tcb_status`: TCB status which can be one of: OK, Min, OutOfDate, OutOfDateConfigurationNeeded, InvalidSignature, Revoked, Unspecified, SoftwareHardeningNeeded, ConfigurationAndSoftwareHardeningNeeded, TdRelaunchAdvised, TdRelaunchAdvisedConfigurationNeeded, Max
+- `tdx.td_attributes.debug`: A boolean value that indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
+- `tdx.td_attributes.key_locker`: A boolean value that indicates whether the TD is allowed to use Key Locker.
+- `tdx.td_attributes.perfmon`: A boolean value that indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
+- `tdx.td_attributes.protection_keys`: A boolean value that indicates whether the TD is allowed to use Supervisor Protection Keys.
+- `tdx.td_attributes.septve_disable`:  A boolean value that determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+- `tdx.advisory_ids`: List of Intel® Product Security Center Advisories
+- `tdx.collateral_expiration_status`:  Expected 0, if none of the inputted collateral has expired as compared to the inputted expiration_check_date.
 
 ## Intel SGX
 
