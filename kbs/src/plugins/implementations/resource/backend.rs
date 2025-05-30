@@ -5,11 +5,14 @@
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{bail, Context, Error, Result};
+use log::warn;
 use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
 
 use super::local_fs;
+
+use crate::prometheus_exporter;
 
 type RepositoryInstance = Arc<dyn StorageBackend>;
 
@@ -81,8 +84,52 @@ impl Default for RepositoryConfig {
 }
 
 #[derive(Clone)]
+struct PrometheusMetrics {
+    resource_reads_total: prometheus::CounterVec,
+    resource_writes_total: prometheus::CounterVec,
+}
+
+impl PrometheusMetrics {
+    fn new() -> Result<Self> {
+        let prom = prometheus_exporter::instance.lock().unwrap();
+        let reads_opts = prometheus::Opts::new("resource_reads_total", "KBS resource read count");
+        let resource_reads_total = prometheus::CounterVec::new(reads_opts, &["resource_path"])?;
+        prom.register(Box::new(resource_reads_total.clone()))?;
+
+        let writes_opts =
+            prometheus::Opts::new("resource_writes_total", "KBS resource write count");
+        let resource_writes_total = prometheus::CounterVec::new(writes_opts, &["resource_path"])?;
+        prom.register(Box::new(resource_writes_total.clone()))?;
+
+        Ok(Self {
+            resource_reads_total,
+            resource_writes_total,
+        })
+    }
+}
+
+impl Drop for PrometheusMetrics {
+    fn drop(&mut self) {
+        let prom = prometheus_exporter::instance.lock().unwrap();
+        if let Err(err) = prom.unregister(Box::new(self.resource_reads_total.clone())) {
+            warn!(
+                "couldn't unregister Prometheus resource_reads_total: {:?}",
+                err
+            );
+        };
+        if let Err(err) = prom.unregister(Box::new(self.resource_writes_total.clone())) {
+            warn!(
+                "couldn't unregister Prometheus resource_writes_total: {:?}",
+                err
+            );
+        };
+    }
+}
+
+#[derive(Clone)]
 pub struct ResourceStorage {
     backend: RepositoryInstance,
+    prometheus_metrics: PrometheusMetrics,
 }
 
 impl TryFrom<RepositoryConfig> for ResourceStorage {
@@ -95,6 +142,7 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
                     .context("Failed to initialize Resource Storage")?;
                 Ok(Self {
                     backend: Arc::new(backend),
+                    prometheus_metrics: PrometheusMetrics::new()?,
                 })
             }
             #[cfg(feature = "aliyun")]
@@ -102,6 +150,7 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
                 let client = super::aliyun_kms::AliyunKmsBackend::new(&config)?;
                 Ok(Self {
                     backend: Arc::new(client),
+                    prometheus_metrics: PrometheusMetrics::new()?,
                 })
             }
         }
@@ -114,12 +163,20 @@ impl ResourceStorage {
         resource_desc: ResourceDesc,
         data: &[u8],
     ) -> Result<()> {
+        self.prometheus_metrics
+            .resource_writes_total
+            .with_label_values(&[&format!("{}", resource_desc)])
+            .inc();
         self.backend
             .write_secret_resource(resource_desc, data)
             .await
     }
 
     pub(crate) async fn get_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+        self.prometheus_metrics
+            .resource_reads_total
+            .with_label_values(&[&format!("{}", resource_desc)])
+            .inc();
         self.backend.read_secret_resource(resource_desc).await
     }
 }

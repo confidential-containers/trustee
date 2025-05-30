@@ -78,6 +78,12 @@ pub enum Error {
 
     #[error("Token Verifier error")]
     TokenVerifierError(#[from] crate::token::Error),
+
+    #[error("Prometheus error")]
+    PrometheusError {
+        #[from]
+        source: prometheus::Error,
+    },
 }
 
 impl ResponseError for Error {
