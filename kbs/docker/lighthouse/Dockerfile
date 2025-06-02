@@ -31,3 +31,8 @@ RUN echo no | apt-get install -y iperf3
 RUN \
   curl -fSLO https://github.com/slackhq/nebula/releases/download/${NEBULA_VERSION}/nebula-$(echo ${BUILDPLATFORM} | sed 's/\//-/').tar.gz && \
   tar -C /usr/local/bin -xzf nebula-$(echo "${BUILDPLATFORM}" | sed 's/\//-/').tar.gz
+
+RUN mkdir -p /opt/nebula/config
+RUN mkdir -p /opt/nebula/creds
+COPY kbs/docker/lighthouse/assets/lighthouse-config.yaml /opt/nebula/config
+COPY kbs/docker/lighthouse/assets/start-lighthouse.sh /usr/local/bin
