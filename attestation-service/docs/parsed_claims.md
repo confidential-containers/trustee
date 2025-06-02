@@ -49,6 +49,14 @@ The following fields always exist.
 - `tdx.quote.size`: Quote body length. Only quote format V5 contains this field.
 - `tdx.quote.body.tee_tcb_svn2`: Array of TEE TCB SVNs (for TD preserving).
 - `tdx.quote.body.mr_servicetd`: If there is one or more bound or pre-bound service TDs, this field is the SHA384 hash of the `TDINFO`s of those service TDs bound. Else, this field is 0.
+- `tdx.tcb_status`: TCB status which can be one of: OK, Min, OutOfDate, OutOfDateConfigurationNeeded, InvalidSignature, Revoked, Unspecified, SoftwareHardeningNeeded, ConfigurationAndSoftwareHardeningNeeded, TdRelaunchAdvised, TdRelaunchAdvisedConfigurationNeeded, Max
+- `tdx.td_attributes.debug`: A boolean value that indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
+- `tdx.td_attributes.key_locker`: A boolean value that indicates whether the TD is allowed to use Key Locker.
+- `tdx.td_attributes.perfmon`: A boolean value that indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
+- `tdx.td_attributes.protection_keys`: A boolean value that indicates whether the TD is allowed to use Supervisor Protection Keys.
+- `tdx.td_attributes.septve_disable`:  A boolean value that determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+- `tdx.advisory_ids`: List of Intel® Product Security Center Advisories
+- `tdx.collateral_expiration_status`:  Expected 0, if none of the inputted collateral has expired as compared to the inputted expiration_check_date.
 
 ## Intel SGX
 
