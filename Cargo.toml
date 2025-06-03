@@ -38,7 +38,7 @@ kbs-types = "0.10.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "069a6ea", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
-openssl = "0.10.72"
+openssl = "0.10.73"
 p256 = "0.13.2"
 prost = "0.13"
 regorus = { version = "0.2.6", default-features = false, features = [
