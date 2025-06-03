@@ -35,7 +35,7 @@ jsonwebkey = "0.3.5"
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 log.workspace = true
-openssl = { version = "0.10.55", optional = true }
+openssl = { version = "0.10.73", optional = true }
 pv = { version = "0.10.0", package = "s390_pv", optional = true }
 scroll = { version = "0.12.0", default-features = false, features = ["derive"], optional = true }
 serde.workspace = true
