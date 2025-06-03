@@ -8,6 +8,8 @@ message AttestationRequest {
     repeated IndividualAttestationRequest verification_requests = 1;
     // List of IDs of the policy used to check evidence. If not provided,
     // a "default" one will be used.
+    // EAR tokens will be based only on the first policy specified in
+    // this list.
     repeated string policy_ids = 2;
 
 }
