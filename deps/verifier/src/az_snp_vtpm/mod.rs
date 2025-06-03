@@ -3,9 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use std::mem::offset_of;
-
-use super::{TeeEvidenceParsedClaim, Verifier};
+use super::{TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
     get_common_name, get_oid_int, get_oid_octets, ProcessorGeneration, CERT_CHAINS, HW_ID_OID,
     LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
@@ -24,6 +22,7 @@ use openssl::pkey::PKey;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::mem::offset_of;
 use thiserror::Error;
 use x509_parser::prelude::*;
 
@@ -114,7 +113,7 @@ impl Verifier for AzSnpVtpm {
     /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
@@ -122,7 +121,7 @@ impl Verifier for AzSnpVtpm {
             bail!("unexpected empty report data");
         };
 
-        let evidence = serde_json::from_slice::<Evidence>(evidence)
+        let evidence = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
 
         let hcl_report = HclReport::new(evidence.report)?;

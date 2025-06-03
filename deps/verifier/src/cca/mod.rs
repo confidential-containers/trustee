@@ -68,23 +68,11 @@ struct CcaEvidence {
     token: Vec<u8>,
 }
 
-fn unwrap_evidence(wrapped_evidence: &[u8]) -> Result<String> {
-    // The value of the request's "tee-evidence" is a string containing the
-    // JSON-encoded CcaEvidence, such as:
-    //      "{ \"token\": [ 217, ... ] }"
-    // We need to remove the surrounding quotes and unescape the JSON key
-    // before passing it to serde.
-    let s = str::from_utf8(&wrapped_evidence[1..wrapped_evidence.len() - 1])?;
-    let u = s.replace("\\", "");
-
-    Ok(u)
-}
-
 #[async_trait]
 impl Verifier for CCA {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<TeeEvidenceParsedClaim> {
@@ -100,8 +88,7 @@ impl Verifier for CCA {
 
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "CCA");
 
-        let evidence = unwrap_evidence(evidence)?;
-        let evidence = serde_json::from_str::<CcaEvidence>(&evidence)
+        let evidence = serde_json::from_value::<CcaEvidence>(evidence)
             .context("Deserialize CCA Evidence failed.")?;
 
         let ear: Ear = match config.cca_verifier {
