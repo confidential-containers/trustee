@@ -8,11 +8,17 @@ use actix_web::{
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
-use log::{info, warn};
+use log::info;
 
 use crate::{
-    admin::Admin, config::KbsConfig, jwe::jwe, plugins::PluginManager, policy_engine::PolicyEngine,
-    prometheus_exporter, token::TokenVerifier, Error, Result,
+    admin::Admin,
+    config::KbsConfig,
+    jwe::jwe,
+    plugins::PluginManager,
+    policy_engine::PolicyEngine,
+    prometheus::{REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL},
+    token::TokenVerifier,
+    Error, Result,
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -35,8 +41,6 @@ pub struct ApiServer {
     admin_auth: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
-
-    prometheus_metrics: ApiServerMetrics,
 }
 
 impl ApiServer {
@@ -65,7 +69,6 @@ impl ApiServer {
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
         let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
         let admin_auth = Admin::try_from(config.admin.clone())?;
-        let prometheus_metrics = ApiServerMetrics::new()?;
 
         #[cfg(feature = "as")]
         let attestation_service =
@@ -80,8 +83,6 @@ impl ApiServer {
 
             #[cfg(feature = "as")]
             attestation_service,
-
-            prometheus_metrics,
         })
     }
 
@@ -276,11 +277,8 @@ pub(crate) async fn prometheus_metrics_handler(
     _request: HttpRequest,
     _core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
-    let report = prometheus_exporter::instance
-        .lock()
-        .unwrap()
-        .export_metrics()
-        .map_err(|e| Error::PrometheusError { source: e })?;
+    let report =
+        crate::prometheus::export_metrics().map_err(|e| Error::PrometheusError { source: e })?;
     Ok(HttpResponse::Ok().body(report))
 }
 
@@ -293,18 +291,13 @@ async fn prometheus_metrics_middleware(
     next: Next<impl MessageBody>,
 ) -> std::result::Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
     let start = actix::clock::Instant::now();
-    let api_server = req
-        .request()
-        .app_data::<web::Data<ApiServer>>()
-        .unwrap()
-        .clone();
 
     // Ignore requests like /metrics for metrics collection, they can make
     // metrics weirdly not add up and distort metrics in odd ways.  They
     // arguably are not very interesting either to a user of KBS metrics.
     let is_kbs_req = req.request().path().starts_with("/kbs");
     if is_kbs_req {
-        api_server.prometheus_metrics.requests_total.inc();
+        REQUEST_TOTAL.inc();
 
         // Consider requests lacking a "content-length" header to be of zero
         // size as this seems to be the usual case with KBS.  (Streamed
@@ -312,13 +305,10 @@ async fn prometheus_metrics_middleware(
         // relevant with KBS.)
         if let Some(len) = req.headers().get("content-length") {
             if let Ok(Ok(len)) = len.to_str().map(|l| l.parse::<u64>()) {
-                api_server
-                    .prometheus_metrics
-                    .request_size
-                    .observe(len as f64);
+                REQUEST_SIZES.observe(len as f64);
             }
         } else {
-            api_server.prometheus_metrics.request_size.observe(0_f64);
+            REQUEST_SIZES.observe(0_f64);
         }
     }
 
@@ -326,90 +316,12 @@ async fn prometheus_metrics_middleware(
     let res = next.call(req).await?;
 
     if is_kbs_req {
-        api_server
-            .prometheus_metrics
-            .request_duration
-            .observe(start.elapsed().as_secs_f64());
+        REQUEST_DURATION.observe(start.elapsed().as_secs_f64());
 
         if let actix_web::body::BodySize::Sized(len) = res.response().body().size() {
-            api_server
-                .prometheus_metrics
-                .response_size
-                .observe(len as f64);
+            REQUEST_SIZES.observe(len as f64);
         }
     }
 
     Ok(res)
-}
-
-#[derive(Clone)]
-struct ApiServerMetrics {
-    requests_total: prometheus::Counter,
-    request_duration: prometheus::Histogram,
-    request_size: prometheus::Histogram,
-    response_size: prometheus::Histogram,
-}
-
-impl ApiServerMetrics {
-    fn new() -> std::result::Result<Self, crate::error::Error> {
-        let prom = prometheus_exporter::instance.lock().unwrap();
-        let requests_total = prometheus::Counter::with_opts(prometheus::Opts::new(
-            "http_requests_total",
-            "Total HTTP requests count",
-        ))?;
-        prom.register(Box::new(requests_total.clone()))?;
-
-        let request_duration = prometheus::Histogram::with_opts(
-            prometheus::HistogramOpts::new(
-                "http_request_duration_seconds",
-                "Distribution of request handling duration",
-            )
-            .buckets(vec![0.0005, 0.001, 0.005, 0.01, 0.05, 0.5, 1.0]),
-        )?;
-        prom.register(Box::new(request_duration.clone()))?;
-
-        let request_size = prometheus::Histogram::with_opts(
-            prometheus::HistogramOpts::new(
-                "http_request_size_bytes",
-                "Distribution of request body sizes",
-            )
-            .buckets(prometheus::exponential_buckets(32.0, 4.0, 5)?),
-        )?;
-        prom.register(Box::new(request_size.clone()))?;
-
-        let response_size = prometheus::Histogram::with_opts(
-            prometheus::HistogramOpts::new(
-                "http_response_size_bytes",
-                "Distribution of response body sizes",
-            )
-            .buckets(prometheus::exponential_buckets(32.0, 4.0, 5)?),
-        )?;
-        prom.register(Box::new(response_size.clone()))?;
-
-        Ok(ApiServerMetrics {
-            requests_total,
-            request_duration,
-            request_size,
-            response_size,
-        })
-    }
-}
-
-impl Drop for ApiServerMetrics {
-    fn drop(&mut self) {
-        let prom = prometheus_exporter::instance.lock().unwrap();
-
-        if let Err(err) = prom.unregister(Box::new(self.requests_total.clone())) {
-            warn!("couldn't unregister Prometheus requests_total: {:?}", err);
-        }
-        if let Err(err) = prom.unregister(Box::new(self.request_duration.clone())) {
-            warn!("couldn't unregister Prometheus request_duration: {:?}", err);
-        }
-        if let Err(err) = prom.unregister(Box::new(self.request_size.clone())) {
-            warn!("couldn't unregister Prometheus request_size: {:?}", err);
-        }
-        if let Err(err) = prom.unregister(Box::new(self.response_size.clone())) {
-            warn!("couldn't unregister Prometheus response_size: {:?}", err);
-        }
-    }
 }
