@@ -20,8 +20,8 @@ const SECRET_PATH: &str = "default/test/secret";
 #[case::simple_deny_all(TestParameters{attestation_token_type: "Simple".to_string(), rvps_type: RvpsType::Builtin }, "deny_all".to_string())]
 #[case::contraindicated(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Builtin }, "contraindicated".to_string())]
 #[case::not_contraindicated(TestParameters{attestation_token_type: "Ear".to_string(), rvps_type: RvpsType::Remote }, "not_contraindicated".to_string())]
-#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial]
 async fn run_test(
     #[case] test_parameters: TestParameters,
     #[case] test_type: String,
