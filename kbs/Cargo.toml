@@ -61,7 +61,7 @@ log.workspace = true
 mobc = { version = "0.8.5", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
 #prometheus = "0.14.0"
-prometheus = "0.13.4"
+prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
 regex = "1.11.1"
