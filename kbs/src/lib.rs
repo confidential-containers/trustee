@@ -26,4 +26,4 @@ pub mod admin;
 pub mod http;
 pub mod jwe;
 
-pub mod prometheus_exporter;
+pub mod prometheus;
