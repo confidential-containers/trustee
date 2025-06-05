@@ -637,7 +637,7 @@ dependencies = [
  "log",
  "occlum_dcap",
  "s390_pv",
- "scroll",
+ "scroll 0.12.0",
  "serde",
  "serde_json",
  "serde_with 3.12.0",
@@ -4860,7 +4860,16 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ab8598aa408498679922eff7fa985c25d58a90771bd6be794434c5277eab1a6"
 dependencies = [
- "scroll_derive",
+ "scroll_derive 0.12.0",
+]
+
+[[package]]
+name = "scroll"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1257cd4248b4132760d6524d6dda4e053bc648c9070b960929bf50cfb1e7add"
+dependencies = [
+ "scroll_derive 0.13.0",
 ]
 
 [[package]]
@@ -4868,6 +4877,17 @@ name = "scroll_derive"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f81c2fde025af7e69b1d1420531c8a8811ca898919db177141a85313b1cb932"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "scroll_derive"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22fc4f90c27b57691bbaf11d8ecc7cfbfe98a4da6dbe60226115d322aa80c06e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6115,7 +6135,7 @@ dependencies = [
  "reqwest",
  "rstest",
  "s390_pv",
- "scroll",
+ "scroll 0.13.0",
  "serde",
  "serde_json",
  "serde_with 1.14.0",
