@@ -20,12 +20,13 @@ configuration file.
 
 The following properties can be set under the `[http_server]` section.
 
-| Property                 | Type         | Description                                                                                                | Required | Default              |
-|--------------------------|--------------|------------------------------------------------------------------------------------------------------------|----------|----------------------|
-| `sockets`                | String array | One or more sockets to listen on.                                                                          | No       | `["127.0.0.1:8080"]` |
-| `insecure_http`          | Boolean      | Don't use TLS for the KBS HTTP endpoint.                                                                   | No       | `false`              |
-| `private_key`            | String       | Path to a private key file to be used for HTTPS.                                                           | No       | None                 |
-| `certificate`            | String       | Path to a certificate file to be used for HTTPS.                                                           | No       | None                 |
+| Property                 | Type         | Description                                      | Required | Default              |
+|--------------------------|--------------|--------------------------------------------------|----------|----------------------|
+| `sockets`                | String array | One or more sockets to listen on.                | No       | `["127.0.0.1:8080"]` |
+| `insecure_http`          | Boolean      | Don't use TLS for the KBS HTTP endpoint.         | No       | `false`              |
+| `private_key`            | String       | Path to a private key file to be used for HTTPS. | No       | None                 |
+| `certificate`            | String       | Path to a certificate file to be used for HTTPS. | No       | None                 |
+| `payload_request_size`   | Integer      | Request payload size in mega bytes.              | No       | 2                    |
 
 ### Attestation Token Configuration
 
@@ -305,15 +306,15 @@ type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
 
-    [attestation_service.attestation_token_broker]
-    type = "Ear"
-    duration_min = 5
+[attestation_service.attestation_token_broker]
+type = "Ear"
+duration_min = 5
 
-    [attestation_service.rvps_config]
-    type = "BuiltIn"
+[attestation_service.rvps_config]
+type = "BuiltIn"
 
-    [attestation_service.rvps_config.storage]
-    type = "LocalFs"
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
 
 [[plugins]]
 name = "resource"
@@ -348,11 +349,10 @@ sockets = ["0.0.0.0:8080"]
 private_key = "/etc/kbs-private.key"
 certificate = "/etc/kbs-cert.pem"
 insecure_http = false
+payload_request_size = 2
 
 [attestation_token]
 trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
-
-[attestation_token]
 
 [attestation_service]
 type = "intel_ta"
@@ -391,15 +391,15 @@ type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
 policy_engine = "opa"
 
-    [attestation_service.attestation_token_broker]
-    type = "Ear"
-    duration_min = 5
+[attestation_service.attestation_token_broker]
+type = "Ear"
+duration_min = 5
 
-    [attestation_service.rvps_config]
-    type = "BuiltIn"
+[attestation_service.rvps_config]
+type = "BuiltIn"
 
-    [attestation_service.rvps_config.storage]
-    type = "LocalFs"
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
 
 [[plugins]]
 name = "resource"

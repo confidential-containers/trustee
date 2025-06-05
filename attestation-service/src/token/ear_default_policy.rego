@@ -48,7 +48,7 @@ hardware := 2 if {
 ##### SNP
 executables := 3 if {
 	# In the future, we might calculate this measurement here various components
-	input.snp.launch_measurement in data.reference.snp_launch_measurement
+	input.snp.measurement in data.reference.snp_launch_measurement
 }
 
 hardware := 2 if {

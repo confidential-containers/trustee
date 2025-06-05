@@ -1,7 +1,7 @@
 # Reference Value Provider Service
 
-Reference Value Provider Service, RVPS for short is a componant to receive software supply chain provenances/metadata, verify them and extract the reference values.
-All the reference values will be stored inside RVPS. When AS queries specific software claims, RVPS will response with related reference values.
+Reference Value Provider Service, or RVPS for short, is a component to receive software supply chain provenances/metadata, verify them, and extract the reference values.
+All the reference values will be stored inside RVPS. When the Attestation Service queries specific software claims, RVPS will response with related reference values.
 
 ## Architecture
 
@@ -9,19 +9,20 @@ RVPS contains the following components:
 
 - Pre-Processor : Pre-Processor contains a set of Wares (like Middleware). The Wares can process the input Message and then deliver it to the Extractors.
 
-- Extractors : Extractors has sub-modules to process different type of provenance. Each sub-module will consume the input Message, and then generate an output Reference Value.
+- Extractors : Extractors has sub-modules to process different types of provenance. Each sub-module will consume the input Message, and then generate an output Reference Value.
 
-- Store : Store is a trait object, which can provide key-value like API. All verified reference values will be stored in the Store. When requested by Attestation Service, related reference value will be provided.
+- Store : Store is a trait object, which can provide a key-value like API. All verified reference values will be stored in the Store. When requested by Attestation Service, related reference value will be provided.
 
 ## Message Flow
 
-The message flow of RVPS is like the following figure
+The following figure illustrates the message flow of RVPS:
+
 ![](./diagrams/rvps.svg)
 
 ### Message
 
 A protocol helps to distribute provenance of binaries. It will be received and processed
-by RVPS, then RVPS will generate Reference Value if working correctly. 
+by RVPS, then RVPS will generate a Reference Value if working correctly. 
 
 ```
 {
@@ -48,7 +49,7 @@ It is the reference values really requested and used by Attestation Service to c
 
 Install the protocol buffer compiler package `protobuf-compiler`.
 
-### Directly Build
+### Build Directly
 
 In this way, the RVPS can run as a single service. The [gRPC protos](../protos/reference.proto) are defined.
 
@@ -65,17 +66,17 @@ Run RVPS
 rvps
 ```
 
-By default listen to `localhost:50003` to wait for requests
+By default RVPS listens on `localhost:50003` waiting for requests.
 
 ### Container Image
 
-We can build RVPS docker image
+We can build an RVPS docker image
 
 ```bash
 cd .. && docker build -t rvps -f rvps/docker/Dockerfile .
 ```
 
-Run
+Run the container
 ```bash
 docker run -d -p 50003:50003 rvps --address 0.0.0.0:50003
 ```
@@ -93,30 +94,29 @@ podman run -d -p 50003:50003 --net host rvps
 
 ### Configuration file
 
-RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks lile
+RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks like
 ```json
 {
     "storage": {
-	"type": "LocalFs",
+        "type": "LocalFs",
         "file_path": "/opt/confidential-containers/attestation-service/reference_values"
     }
 }
 ```
-- `store_type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
-- `store_config`: optional extra parameters for different kinds of `store_type`. This is also a JSON map object. The concrete content is different due to different `store_type`.
+- `storage.type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
+- `storage.*`: Each different type of storage has its own associated configuration parameters. This is also a JSON map object.
 
-## Integrate RVPS into AS
+## Integrate RVPS into the Attestation Service
 
 ### Native Mode (Not Recommend)
 
-In this way RVPS will work as a crate inside AS binary.
+In this mode, the RVPS will work as a crate inside the Attestation Service binary.
 
 ![](./diagrams/rvps-native.svg)
 
 ### gRPC Mode
 
-In this way AS will connect to a remote RVPS. If AS is built with feature `rvps-grpc`, the remote RVPS
-will be connected to.
+In this mode, the Attestation Service will connect to a remote RVPS. This requires the Attestation Service to be built with feature `rvps-grpc`.
 
 ```bash
 cd ../attestation-service && cargo run --bin as-grpc -- --config-file config.json
@@ -126,19 +126,19 @@ cd ../attestation-service && cargo run --bin as-grpc -- --config-file config.jso
 
 ## Client Tool
 
-A client tool helps to perform as a client to rvps. It can
+The `rvps-tool` tool is a command line client to interact with RVPS. It can:
 - Register reference values into the RVPS
 - Query reference values from the RVPS
 
 ### Quick guide to interact with RVPS
 
-Run RVPS in docker or the following commands
+Run RVPS in docker or by issuing the following commands
 ```bash
 RVPS_ADDR=127.0.0.1:50003
 rvps --address $RVPS_ADDR
 ```
 
-Edit an test message in [sample format](./src/extractors/extractor_modules/sample/README.md)
+Create a test message in [sample format](./src/extractors/extractor_modules/sample/README.md)
 ```bash
 cat << EOF > sample
 {
@@ -167,7 +167,7 @@ Register the provenance into RVPS
 rvps-tool register --path ./message --addr http://$RVPS_ADDR
 ```
 
-Then it will say something like
+It will say something like
 ```
 [2023-03-09T04:44:11Z INFO  rvps_client] Register provenance succeeded.
 ```
@@ -177,7 +177,7 @@ Let's then query the reference values
 rvps-tool query --addr http://$RVPS_ADDR
 ```
 
-Then the reference values will be output
+The output should display something like the following:
 ```
 [2025-01-24T06:04:41Z INFO  rvps_tool] Get reference values succeeded:
      {"test-binary-1":["reference-value-1","reference-value-2"],

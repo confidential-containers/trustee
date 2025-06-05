@@ -60,7 +60,7 @@ jobs:
     - checkout-and-rebase
     uses: ./.github/workflows/kbs-e2e.yml
     with:
-      runs-on: '["self-hosted","azure-cvm-tdx"]'
+      runs-on-test: '["self-hosted","azure-cvm-tdx"]'
       tee: aztdxvtpm
       tarball: kbs.tar.gz
 
@@ -70,6 +70,6 @@ jobs:
     - checkout-and-rebase
     uses: ./.github/workflows/kbs-e2e.yml
     with:
-      runs-on: '["self-hosted","azure-cvm"]'
+      runs-on-test: '["self-hosted","azure-cvm"]'
       tee: azsnpvtpm
       tarball: kbs.tar.gz
