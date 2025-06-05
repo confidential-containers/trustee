@@ -2959,7 +2959,7 @@ dependencies = [
  "jsonwebtoken",
  "jwt-simple",
  "kbs-client",
- "kbs-types",
+ "kbs-types 0.10.0",
  "kms",
  "lazy_static",
  "log",
