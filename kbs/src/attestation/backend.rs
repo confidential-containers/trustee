@@ -18,6 +18,7 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
+use crate::prometheus::{ATTESTATION_FAILURES, ATTESTATION_REQUESTS};
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -230,6 +231,8 @@ impl AttestationService {
         attestation: &[u8],
         request: HttpRequest,
     ) -> anyhow::Result<HttpResponse> {
+        ATTESTATION_REQUESTS.inc();
+
         let cookie = request.cookie(KBS_SESSION_ID).context("cookie not found")?;
 
         let session_id = cookie.value();
@@ -276,11 +279,13 @@ impl AttestationService {
 
         let attestation_str =
             serde_json::to_string(&attestation).context("serialize attestation failed")?;
-        let token = self
-            .inner
-            .verify(tee, &nonce, &attestation_str)
-            .await
-            .context("verify TEE evidence failed")?;
+        let token = match self.inner.verify(tee, &nonce, &attestation_str).await {
+            Ok(token) => token,
+            Err(err) => {
+                ATTESTATION_FAILURES.inc();
+                return Err(err).context("verify TEE evidence failed");
+            }
+        };
 
         let mut session = self
             .session_map
