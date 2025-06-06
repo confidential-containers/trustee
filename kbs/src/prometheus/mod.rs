@@ -57,6 +57,42 @@ lazy_static! {
         Histogram::with_opts(response_sizes_opts).unwrap()
     };
 
+    /// KBS Policy Evaluations Total
+    pub(crate) static ref KBS_POLICY_EVALS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_evaluations_total",
+            "Total count of KBS policy evaluations",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Approvals Total
+    pub(crate) static ref KBS_POLICY_APPROVALS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_approvals_total",
+            "Total count of requests approved by KBS policy",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Violations Total
+    pub(crate) static ref KBS_POLICY_VIOLATIONS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_violations_total",
+            "Total count of requests denied by KBS policy",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Errors Total
+    pub(crate) static ref KBS_POLICY_ERRORS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_errors_total",
+            "Total count of errors during KBS evaluation",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -70,6 +106,10 @@ lazy_static! {
         registry.register(Box::new(REQUEST_DURATION.clone())).unwrap();
         registry.register(Box::new(REQUEST_SIZES.clone())).unwrap();
         registry.register(Box::new(RESPONSE_SIZES.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_EVALS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_APPROVALS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_VIOLATIONS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_ERRORS.clone())).unwrap();
 
         registry
     };
