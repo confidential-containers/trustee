@@ -57,6 +57,24 @@ lazy_static! {
         Histogram::with_opts(response_sizes_opts).unwrap()
     };
 
+    /// KBS Policy Evaluations Total
+    pub(crate) static ref RESOURCE_POLICY_EVALS: Counter = {
+        let opts = Opts::new(
+            "resource_policy_evaluations_total",
+            "Total count of resource policy evaluations",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Violations Total
+    pub(crate) static ref RESOURCE_POLICY_VIOLATIONS: Counter = {
+        let opts = Opts::new(
+            "resource_policy_violations_total",
+            "Total count of resource policy violations",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -70,6 +88,8 @@ lazy_static! {
         registry.register(Box::new(REQUEST_DURATION.clone())).unwrap();
         registry.register(Box::new(REQUEST_SIZES.clone())).unwrap();
         registry.register(Box::new(RESPONSE_SIZES.clone())).unwrap();
+        registry.register(Box::new(RESOURCE_POLICY_EVALS.clone())).unwrap();
+        registry.register(Box::new(RESOURCE_POLICY_VIOLATIONS.clone())).unwrap();
 
         registry
     };

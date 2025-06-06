@@ -8,6 +8,8 @@ use base64::Engine;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::prometheus::{RESOURCE_POLICY_EVALS, RESOURCE_POLICY_VIOLATIONS};
+
 #[derive(Debug, Clone)]
 pub struct Opa {
     policy_path: PathBuf,
@@ -33,6 +35,8 @@ impl PolicyEngineInterface for Opa {
         resource_path: &str,
         input_claims: &str,
     ) -> Result<bool, KbsPolicyEngineError> {
+        RESOURCE_POLICY_EVALS.inc();
+
         let mut engine = regorus::Engine::new();
 
         // Add policy as data
@@ -55,6 +59,9 @@ impl PolicyEngineInterface for Opa {
             .map_err(|_| KbsPolicyEngineError::InputError)?;
 
         let res = engine.eval_bool_query("data.policy.allow".to_string(), false)?;
+        if !res {
+            RESOURCE_POLICY_VIOLATIONS.inc();
+        }
         Ok(res)
     }
 
