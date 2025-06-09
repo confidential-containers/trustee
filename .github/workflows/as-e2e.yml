@@ -28,16 +28,14 @@ jobs:
     name: TEE=${{ matrix.restful_tee_enum }} Generate Evidence Dynamically=${{ matrix.generate_evidence }}
     runs-on: ${{ matrix.runner }}
     env:
-      RUSTC_VERSION: 1.80.0
       GRPC_TEE_ENUM: ${{ matrix.grpc_tee_enum }}
       RESTFUL_TEE_ENUM: ${{ matrix.restful_tee_enum }}
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust toolchain (${{ env.RUSTC_VERSION }})
+    - name: Install Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: ${{ env.RUSTC_VERSION }}
         components: rustfmt, clippy
 
     - uses: actions/setup-go@v5
