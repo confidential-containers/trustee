@@ -100,7 +100,7 @@ attestation-service = { path = "../attestation-service", default-features = fals
 
 
 [dev-dependencies]
-josekit = "0.10.2"
+josekit = "0.10.3"
 tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
