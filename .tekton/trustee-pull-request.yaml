@@ -43,11 +43,12 @@ spec:
     value: "true"
   pipelineRef:
     name: docker-build-multi-platform-oci-ta
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-trustee
+  timeouts:
+    pipeline: 2h0m0s
   workspaces:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-  timeouts:
-    pipeline: "2h"
 status: {}
