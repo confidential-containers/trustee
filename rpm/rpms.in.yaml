@@ -1,0 +1,10 @@
+packages: [pkg-config, perl-FindBin, openssl-devel, perl-lib, perl-IPC-Cmd, perl-File-Compare, perl-File-Copy, clang-devel, tpm2-tss-devel, protobuf-compiler, meson] 
+contentOrigin:
+  repofiles:
+    - ./ubi.repo
+    - ./redhat.repo
+arches:
+  - x86_64
+  - s390x
+context:
+  image: registry.access.redhat.com/ubi9/ubi-minimal:9.5-1741850109
