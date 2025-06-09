@@ -11,8 +11,14 @@ use anyhow::Context;
 use log::info;
 
 use crate::{
-    admin::Admin, config::KbsConfig, jwe::jwe, plugins::PluginManager, policy_engine::PolicyEngine,
-    token::TokenVerifier, Error, Result,
+    admin::Admin,
+    config::KbsConfig,
+    jwe::jwe,
+    plugins::PluginManager,
+    policy_engine::PolicyEngine,
+    prometheus::{REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL},
+    token::TokenVerifier,
+    Error, Result,
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -101,16 +107,27 @@ impl ApiServer {
         );
 
         let http_config = self.config.http_server.clone();
+
+        #[allow(clippy::redundant_closure)]
         let http_server = HttpServer::new({
             move || {
                 let api_server = self.clone();
                 App::new()
                     .wrap(middleware::Logger::default())
+                    .wrap(middleware::from_fn(prometheus_metrics_middleware))
                     .app_data(web::Data::new(api_server))
+                    .app_data(web::PayloadConfig::new(
+                        (1024 * 1024 * http_config.payload_request_size) as usize,
+                    ))
                     .service(
                         web::resource([kbs_path!("{base_path}{additional_path:.*}")])
                             .route(web::get().to(api))
                             .route(web::post().to(api)),
+                    )
+                    .service(
+                        web::resource("/metrics")
+                            .route(web::get().to(prometheus_metrics_handler))
+                            .route(web::post().to(|| HttpResponse::MethodNotAllowed())),
                     )
             }
         });
@@ -254,4 +271,57 @@ pub(crate) async fn api(
             }
         }
     }
+}
+
+pub(crate) async fn prometheus_metrics_handler(
+    _request: HttpRequest,
+    _core: web::Data<ApiServer>,
+) -> Result<HttpResponse> {
+    let report =
+        crate::prometheus::export_metrics().map_err(|e| Error::PrometheusError { source: e })?;
+    Ok(HttpResponse::Ok().body(report))
+}
+
+use actix_web::body::MessageBody;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::middleware::Next;
+
+async fn prometheus_metrics_middleware(
+    req: ServiceRequest,
+    next: Next<impl MessageBody>,
+) -> std::result::Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+    let start = actix::clock::Instant::now();
+
+    // Ignore requests like /metrics for metrics collection, they can make
+    // metrics weirdly not add up and distort metrics in odd ways.  They
+    // arguably are not very interesting either to a user of KBS metrics.
+    let is_kbs_req = req.request().path().starts_with("/kbs");
+    if is_kbs_req {
+        REQUEST_TOTAL.inc();
+
+        // Consider requests lacking a "content-length" header to be of zero
+        // size as this seems to be the usual case with KBS.  (Streamed
+        // requests would also lack "content-length" but they don't seem too
+        // relevant with KBS.)
+        if let Some(len) = req.headers().get("content-length") {
+            if let Ok(Ok(len)) = len.to_str().map(|l| l.parse::<u64>()) {
+                REQUEST_SIZES.observe(len as f64);
+            }
+        } else {
+            REQUEST_SIZES.observe(0_f64);
+        }
+    }
+
+    // This is the actual request handling.
+    let res = next.call(req).await?;
+
+    if is_kbs_req {
+        REQUEST_DURATION.observe(start.elapsed().as_secs_f64());
+
+        if let actix_web::body::BodySize::Sized(len) = res.response().body().size() {
+            REQUEST_SIZES.observe(len as f64);
+        }
+    }
+
+    Ok(res)
 }

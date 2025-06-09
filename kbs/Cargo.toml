@@ -30,7 +30,7 @@ intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
 
-# Use pkcs11 resource backend to store secrets in an HSM
+# Use pkcs11 plugin
 pkcs11 = ["cryptoki"]
 
 # Use Nebula Certificate Authority plugin to provide CA services to nodes
@@ -60,6 +60,7 @@ lazy_static = "1.4.0"
 log.workspace = true
 mobc = { version = "0.8.5", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
+prometheus = "0.13.4"
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
 regex = "1.11.1"
@@ -74,7 +75,7 @@ serde_json.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
-time = { version = "0.3.37", features = ["std"] }
+time = { version = "0.3.40", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
@@ -103,6 +104,20 @@ josekit = "0.10.0"
 tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
+serial_test.workspace = true
+
+[target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dev-dependencies]
+kbs-client = { path = "../tools/kbs-client" }
+
+[target.'cfg(target_arch = "s390x")'.dev-dependencies]
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "se-attester",
+] }
+
+[target.'cfg(target_arch = "aarch64")'.dev-dependencies]
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "cca-attester",
+] }
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }

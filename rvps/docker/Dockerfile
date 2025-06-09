@@ -21,7 +21,7 @@ RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
     export RUSTFLAGS="${RUSTFLAGS_ARGS}"; \
     apt-get install -y ${GCC_PACKAGE}; \
     rustup target add ${RUSTC_TARGET}; fi; \
-    cargo install --bin rvps --path rvps ${TARGET_FLAG}
+    cargo install --bin rvps --path rvps ${TARGET_FLAG} --locked
 
 FROM debian
 

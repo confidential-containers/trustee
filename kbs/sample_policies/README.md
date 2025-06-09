@@ -7,3 +7,4 @@ There are also several example policies used [for testing](../test/data).
 | ---  | ---         |
 |[allow_all.rego](./allow_all.rego)|Equivalent to turning off the policy engine. Release resources unconditionally|
 |[deny_all.rego](./deny_all.rego)|Deny all resources release|
+|[affirming.rego](./affirming.rego)|Only release resources if the AS provides an affirming EAR token|

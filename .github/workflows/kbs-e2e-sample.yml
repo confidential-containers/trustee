@@ -17,9 +17,19 @@ jobs:
       with:
         path: ./kbs.tar.gz
 
-  e2e-test:
+  e2e-test-amd64:
     needs: checkout
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       tee: sample
       tarball: kbs.tar.gz
+
+  e2e-test-arm64:
+    needs: checkout
+    uses: ./.github/workflows/kbs-e2e.yml
+    with:
+      tee: sample
+      runs-on-build: '["ubuntu-22.04-arm"]'
+      runs-on-test: '["ubuntu-22.04-arm"]'
+      tarball: kbs.tar.gz
+      kbs-client-features: "sample_only,cca-attester"

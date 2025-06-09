@@ -9,6 +9,8 @@ use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
 
+use crate::prometheus::{RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL};
+
 use super::local_fs;
 
 type RepositoryInstance = Arc<dyn StorageBackend>;
@@ -72,10 +74,6 @@ pub enum RepositoryConfig {
     #[cfg(feature = "aliyun")]
     #[serde(alias = "aliyun")]
     Aliyun(super::aliyun_kms::AliyunKmsBackendConfig),
-
-    #[cfg(feature = "pkcs11")]
-    #[serde(alias = "pkcs11")]
-    Pkcs11(super::pkcs11::Pkcs11Config),
 }
 
 impl Default for RepositoryConfig {
@@ -108,13 +106,6 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
                     backend: Arc::new(client),
                 })
             }
-            #[cfg(feature = "pkcs11")]
-            RepositoryConfig::Pkcs11(config) => {
-                let client = super::pkcs11::Pkcs11Backend::new(&config)?;
-                Ok(Self {
-                    backend: Arc::new(client),
-                })
-            }
         }
     }
 }
@@ -125,12 +116,18 @@ impl ResourceStorage {
         resource_desc: ResourceDesc,
         data: &[u8],
     ) -> Result<()> {
+        RESOURCE_WRITES_TOTAL
+            .with_label_values(&[&format!("{}", resource_desc)])
+            .inc();
         self.backend
             .write_secret_resource(resource_desc, data)
             .await
     }
 
     pub(crate) async fn get_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+        RESOURCE_READS_TOTAL
+            .with_label_values(&[&format!("{}", resource_desc)])
+            .inc();
         self.backend.read_secret_resource(resource_desc).await
     }
 }

@@ -5,7 +5,7 @@ NEBULA_CA_PLUGIN ?= false
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
 # Check if ARCH is supported, otehrwise return error
-ifeq ($(filter $(ARCH),x86_64 s390x aarch64),)
+ifeq ($(filter $(ARCH),x86_64 s390x aarch64 arm64),)
 	$(error "Unsupported architecture: $(ARCH)")
 endif
 
@@ -34,6 +34,8 @@ endif
 CLI_FEATURES ?=
 ATTESTER ?=
 FEATURES ?=
+TEST_FEATURES ?=
+TEST_ARGUMENTS ?=
 
 COCO_AS_INTEGRATION_TYPE ?= builtin
 
@@ -59,6 +61,10 @@ ifndef CLI_FEATURES
   else
     CLI_FEATURES += "sample_only,all-attesters"
   endif
+endif
+
+ifneq ($(TEST_FEATURES),)
+  TEST_ARGUMENTS = --no-default-features --features $(TEST_FEATURES)
 endif
 
 build: background-check-kbs
@@ -109,10 +115,10 @@ uninstall:
 	rm -rf $(INSTALL_DESTDIR)/kbs $(INSTALL_DESTDIR)/kbs-client $(INSTALL_DESTDIR)/issuer-kbs $(INSTALL_DESTDIR)/resource-kbs
 
 check:
-	cargo test -p kbs -p kbs-client -p integration-tests
+	cargo test -p kbs -p kbs-client $(TEST_ARGUMENTS)
 
 lint:
-	cargo clippy -p kbs -p kbs-client -- -D warnings
+	cargo clippy -p kbs -p kbs-client $(TEST_ARGUMENTS) -- -D warnings
 
 format:
 	cargo fmt -p kbs -p kbs-client -- --check --config format_code_in_doc_comments=true

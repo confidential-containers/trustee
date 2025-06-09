@@ -6,14 +6,22 @@ on:
       tee:
         type: string
         required: true
-      runs-on:
+      runs-on-build:
         type: string
         default: '["ubuntu-22.04"]'
-        description: JSON representation of runner labels
+        description: JSON representation of runner labels for build
+      runs-on-test:
+        type: string
+        default: '["ubuntu-22.04"]'
+        description: JSON representation of runner labels for test
       tarball:
         type: string
         description: Artifact containing checked out source from a prior job
         required: true
+      kbs-client-features:
+        type: string
+        default: ""
+        description: features for kbs-client
 
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
@@ -22,7 +30,7 @@ defaults:
 
 jobs:
   build-binaries:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runs-on-build) }}
     env:
       RUSTC_VERSION: 1.80.0
       OS_VERSION: ubuntu-22.04
@@ -55,7 +63,7 @@ jobs:
       working-directory: kbs/test
       run: |
         make install-dev-dependencies
-        make bins
+        make bins TEST_FEATURES=${{ inputs.kbs-client-features }}
 
     - name: Archive test folder
       run: tar czf test.tar.gz kbs/test
@@ -68,7 +76,7 @@ jobs:
 
   e2e-test:
     needs: build-binaries
-    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    runs-on: ${{ fromJSON(inputs.runs-on-test) }}
     steps:
     - name: Download artifacts
       uses: actions/download-artifact@v4

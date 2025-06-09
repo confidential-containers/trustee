@@ -23,7 +23,7 @@ use attestation_service::{
 
 use reference_value_provider_service::client as rvps_client;
 use reference_value_provider_service::config::Config as RVPSConfig;
-use reference_value_provider_service::rvps_api::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
+use reference_value_provider_service::rvps_api::reference::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
 use reference_value_provider_service::storage::{local_json, ReferenceValueStorageConfig};
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
@@ -70,7 +70,8 @@ pub struct TestParameters {
 
 // Internal state of tests
 pub struct TestHarness {
-    pub kbs_config: KbsConfig,
+    // This variable is not used thus added an underscore.
+    _kbs_config: KbsConfig,
     auth_privkey: String,
     kbs_server_handle: actix_web::dev::ServerHandle,
     _work_dir: TempDir,
@@ -173,6 +174,7 @@ impl TestHarness {
                 private_key: None,
                 certificate: None,
                 insecure_http: true,
+                payload_request_size: 2,
             },
             admin: AdminConfig {
                 auth_public_key: None,
@@ -196,7 +198,7 @@ impl TestHarness {
         tokio::spawn(kbs_server);
 
         Ok(TestHarness {
-            kbs_config,
+            _kbs_config: kbs_config,
             auth_privkey,
             kbs_server_handle: kbs_handle,
             _work_dir: work_dir,

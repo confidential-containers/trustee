@@ -66,6 +66,16 @@ enum Commands {
         #[clap(long, value_parser)]
         tee_key_file: Option<PathBuf>,
     },
+
+    /// List reference values registered with RVPS
+    GetReferenceValues,
+
+    /// Add a sample reference value to the RVPS.
+    /// The RVPS must enable the sample extractor
+    /// or the reference value will not be registered.
+    /// The sample extractor should only be used in scenarios
+    /// where the RVPS endpoint is not exposed to untrusted users.
+    SetSampleReferenceValue { name: String, value: String },
 }
 
 #[derive(Args)]
@@ -101,8 +111,26 @@ enum ConfigCommands {
     /// Set resource policy
     SetResourcePolicy {
         /// Policy file path
-        #[clap(long, value_parser)]
-        policy_file: PathBuf,
+        #[clap(long, value_parser, group = "resource_policy")]
+        policy_file: Option<PathBuf>,
+
+        /// Use built-in policy that allows access to all resources
+        #[clap(long, action, group = "resource_policy")]
+        allow_all: bool,
+
+        /// Use built-in policy that does not allow access to any resources
+        #[clap(long, action, group = "resource_policy")]
+        deny_all: bool,
+
+        /// Use built-in policy that only releases resources if the attestation
+        /// token is affirming (i.e. the attestation policy is met)
+        #[clap(long, action, group = "resource_policy")]
+        affirming: bool,
+
+        /// Use built-in default policy that allows access to all policies
+        /// unless the sample evidence is provided
+        #[clap(long, action, group = "resource_policy")]
+        default: bool,
     },
 
     /// Set confidential resource
@@ -199,8 +227,27 @@ async fn main() -> Result<()> {
                         STANDARD.encode(policy_bytes)
                     );
                 }
-                ConfigCommands::SetResourcePolicy { policy_file } => {
-                    let policy_bytes = std::fs::read(policy_file)?;
+                ConfigCommands::SetResourcePolicy {
+                    policy_file,
+                    allow_all,
+                    deny_all,
+                    affirming,
+                    default,
+                } => {
+                    let policy_bytes: Vec<u8> = if let Some(file) = policy_file {
+                        std::fs::read(file)?
+                    } else if allow_all {
+                        include_bytes!("../../../kbs/sample_policies/allow_all.rego").into()
+                    } else if deny_all {
+                        include_bytes!("../../../kbs/sample_policies/deny_all.rego").into()
+                    } else if affirming {
+                        include_bytes!("../../../kbs/sample_policies/affirming.rego").into()
+                    } else if default {
+                        include_bytes!("../../../kbs/src/policy_engine/opa/default_policy.rego")
+                            .into()
+                    } else {
+                        bail!("No policy specified")
+                    };
                     kbs_client::set_resource_policy(
                         &cli.url,
                         auth_key.clone(),
@@ -232,6 +279,14 @@ async fn main() -> Result<()> {
                     );
                 }
             }
+        }
+        Commands::SetSampleReferenceValue { name, value } => {
+            kbs_client::set_sample_rv(cli.url, name, value).await?;
+            println!("Reference Values Updated");
+        }
+        Commands::GetReferenceValues => {
+            let values = kbs_client::get_rvs(cli.url).await?;
+            println!("{:?}", values);
         }
     }
 
