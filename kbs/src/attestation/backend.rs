@@ -18,7 +18,9 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
-use crate::prometheus::{ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS};
+use crate::prometheus::{
+    ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, AUTH_ERRORS, AUTH_REQUESTS
+};
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -193,9 +195,16 @@ impl AttestationService {
     }
 
     async fn __auth(&self, request: &[u8]) -> anyhow::Result<HttpResponse> {
-        let request: Request = serde_json::from_slice(request).context("deserialize Request")?;
-        let version = Version::parse(&request.version).context("failed to parse KBS version")?;
+        AUTH_REQUESTS.inc();
+
+        let request: Request = serde_json::from_slice(request)
+            .inspect_err(|_| AUTH_ERRORS.inc())
+            .context("deserialize Request")?;
+        let version = Version::parse(&request.version)
+            .inspect_err(|_| AUTH_ERRORS.inc())
+            .context("failed to parse KBS version")?;
         if !VERSION_REQ.matches(&version) {
+            AUTH_ERRORS.inc();
             bail!(
                 "KBS Client Protocol Version Mismatch: expect {} while the request is {}",
                 *VERSION_REQ,
@@ -207,6 +216,7 @@ impl AttestationService {
             .inner
             .generate_challenge(request.tee, request.extra_params.clone())
             .await
+            .inspect_err(|_| AUTH_ERRORS.inc())
             .context("Attestation Service generate challenge failed")?;
 
         let session = SessionStatus::auth(request, self.timeout, challenge);
