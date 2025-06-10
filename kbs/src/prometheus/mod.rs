@@ -129,6 +129,33 @@ lazy_static! {
         Counter::with_opts(opts).unwrap()
     };
 
+    /// KBS Auth Requests Total
+    pub(crate) static ref AUTH_REQUESTS: Counter = {
+        let opts = Opts::new(
+            "auth_requests_total",
+            "Total count of auth requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Auth Successes Total
+    pub(crate) static ref AUTH_SUCCESSES: Counter = {
+        let opts = Opts::new(
+            "auth_successes_total",
+            "Total count of successfully authenticated requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Auth Errors Total
+    pub(crate) static ref AUTH_ERRORS: Counter = {
+        let opts = Opts::new(
+            "auth_errors_total",
+            "Total count of errors during auth processing",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -150,6 +177,9 @@ lazy_static! {
         registry.register(Box::new(ATTESTATION_SUCCESSES.clone())).unwrap();
         registry.register(Box::new(ATTESTATION_FAILURES.clone())).unwrap();
         registry.register(Box::new(ATTESTATION_ERRORS.clone())).unwrap();
+        registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
+        registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
+        registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
 
         registry
     };
