@@ -104,20 +104,7 @@ josekit = "0.10.3"
 tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
-serial_test.workspace = true
-
-[target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dev-dependencies]
-kbs-client = { path = "../tools/kbs-client" }
-
-[target.'cfg(target_arch = "s390x")'.dev-dependencies]
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
-    "se-attester",
-] }
-
-[target.'cfg(target_arch = "aarch64")'.dev-dependencies]
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
-    "cca-attester",
-] }
+serial_test = "3.0"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
