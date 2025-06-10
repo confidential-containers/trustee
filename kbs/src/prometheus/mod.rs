@@ -93,6 +93,42 @@ lazy_static! {
         Counter::with_opts(opts).unwrap()
     };
 
+    /// KBS Attestation Requests Total
+    pub(crate) static ref ATTESTATION_REQUESTS: Counter = {
+        let opts = Opts::new(
+            "attestation_requests_total",
+            "Total count of attestation requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Attestation Successes Total
+    pub(crate) static ref ATTESTATION_SUCCESSES: CounterVec = {
+        let opts = Opts::new(
+            "attestation_successes_total",
+            "Total count of attestation successes",
+        );
+        CounterVec::new(opts, &["tee_type"]).unwrap()
+    };
+
+    /// KBS Attestation Failures Total
+    pub(crate) static ref ATTESTATION_FAILURES: CounterVec = {
+        let opts = Opts::new(
+            "attestation_failures_total",
+            "Total count of attestation failures",
+        );
+        CounterVec::new(opts, &["tee_type"]).unwrap()
+    };
+
+    /// KBS Attestation Errors Total
+    pub(crate) static ref ATTESTATION_ERRORS: Counter = {
+        let opts = Opts::new(
+            "attestation_errors_total",
+            "Total count of errors during attestation processing",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -110,6 +146,10 @@ lazy_static! {
         registry.register(Box::new(KBS_POLICY_APPROVALS.clone())).unwrap();
         registry.register(Box::new(KBS_POLICY_VIOLATIONS.clone())).unwrap();
         registry.register(Box::new(KBS_POLICY_ERRORS.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_REQUESTS.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_SUCCESSES.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_FAILURES.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_ERRORS.clone())).unwrap();
 
         registry
     };

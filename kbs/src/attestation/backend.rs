@@ -18,6 +18,9 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
+use crate::prometheus::{
+    ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
+};
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -267,19 +270,26 @@ impl AttestationService {
         attestation: &[u8],
         request: HttpRequest,
     ) -> anyhow::Result<HttpResponse> {
-        let cookie = request.cookie(KBS_SESSION_ID).context("cookie not found")?;
+        ATTESTATION_REQUESTS.inc();
+
+        let cookie = request
+            .cookie(KBS_SESSION_ID)
+            .context("cookie not found")
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
 
         let session_id = cookie.value();
 
-        let attestation: Attestation =
-            serde_json::from_slice(attestation).context("deserialize Attestation")?;
+        let attestation: Attestation = serde_json::from_slice(attestation)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("deserialize Attestation")?;
         let (tee, nonce) = {
             let session = self
                 .session_map
                 .sessions
                 .get_async(session_id)
                 .await
-                .ok_or(anyhow!("No cookie found"))?;
+                .ok_or(anyhow!("No cookie found"))
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
             let session = session.get();
 
             debug!("Session ID {}", session.id());
@@ -296,6 +306,7 @@ impl AttestationService {
                 let body = serde_json::to_string(&json!({
                     "token": token,
                 }))
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Serialize token failed")?;
 
                 return Ok(HttpResponse::Ok()
@@ -305,6 +316,7 @@ impl AttestationService {
             }
 
             let attestation_str = serde_json::to_string_pretty(&attestation)
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Failed to serialize Attestation")?;
             debug!("Attestation: {attestation_str}");
 
@@ -314,6 +326,7 @@ impl AttestationService {
         // deserialize evidence
         let composite_evidence: CompositeEvidence =
             serde_json::from_value(attestation.tee_evidence)
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("failed to parse composite evidence")?;
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
@@ -354,7 +367,8 @@ impl AttestationService {
         // additional evidence
         if !composite_evidence.additional_evidence.is_empty() {
             let additional_evidence: HashMap<Tee, TeeEvidence> =
-                serde_json::from_str(&composite_evidence.additional_evidence)?;
+                serde_json::from_str(&composite_evidence.additional_evidence)
+                    .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
             for (tee, tee_evidence) in additional_evidence {
                 evidence_to_verify.push(IndependentEvidence {
                     tee,
@@ -365,23 +379,41 @@ impl AttestationService {
             }
         }
 
-        let token = self
-            .inner
-            .verify(evidence_to_verify)
-            .await
-            .context("verify TEE evidence failed")?;
-
         let mut session = self
             .session_map
             .sessions
             .get_async(session_id)
             .await
-            .ok_or(anyhow!("session not found"))?;
+            .ok_or(anyhow!("session not found"))
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
         let session = session.get_mut();
+
+        let tee_type_label = serde_json::to_string(&session.request().tee)?
+            // it seems impossible to prevent serde from putting double-quotes
+            // around the tee name, get rid of them subsequently
+            .trim_start_matches('"')
+            .trim_end_matches('"')
+            .to_owned();
+
+        let token = self
+            .inner
+            .verify(evidence_to_verify)
+            .await
+            .inspect_err(|_| {
+                ATTESTATION_FAILURES
+                    .with_label_values(&[&tee_type_label])
+                    .inc()
+            })
+            .context("verify TEE evidence failed")?;
+
+        ATTESTATION_SUCCESSES
+            .with_label_values(&[&tee_type_label])
+            .inc();
 
         let body = serde_json::to_string(&json!({
             "token": token,
         }))
+        .inspect_err(|_| ATTESTATION_ERRORS.inc())
         .context("Serialize token failed")?;
 
         session.attest(token);
