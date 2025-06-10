@@ -11,7 +11,6 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, Request, Tee, TeePubKey};
 use lazy_static::lazy_static;
 use log::{debug, info};
-use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -91,9 +90,7 @@ const NONCE_SIZE_BYTES: usize = 32;
 pub async fn make_nonce() -> anyhow::Result<String> {
     let mut nonce: Vec<u8> = vec![0; NONCE_SIZE_BYTES];
 
-    thread_rng()
-        .try_fill(&mut nonce[..])
-        .map_err(anyhow::Error::from)?;
+    rand::fill(&mut nonce[..]);
 
     Ok(STANDARD.encode(&nonce))
 }

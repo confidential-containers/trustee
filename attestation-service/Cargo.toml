@@ -50,7 +50,7 @@ lazy_static.workspace = true
 log.workspace = true
 openssl.workspace = true
 prost = { workspace = true, optional = true }
-rand = "0.8.5"
+rand = "0.9.1"
 reference-value-provider-service.path = "../rvps"
 regorus.workspace = true
 rsa = { version = "0.9.8", features = ["sha2"] }

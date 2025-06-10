@@ -16,7 +16,7 @@ use log::warn;
 use p256::{
     ecdh::EphemeralSecret, elliptic_curve::sec1::FromEncodedPoint, EncodedPoint, PublicKey,
 };
-use rand::{rngs::OsRng, Rng};
+use rand::Rng;
 use rsa::{sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
 use serde_json::{json, Map};
 
@@ -47,11 +47,11 @@ const AES_GCM_256_KEY_BITS: u32 = 256;
 #[deprecated(note = "This algorithm is no longer recommended.")]
 fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
     warn!("Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues.");
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
-    let aes_sym_key = Aes256Gcm::generate_key(&mut OsRng);
+    let aes_sym_key = Aes256Gcm::generate_key(&mut rng);
     let mut cipher = Aes256Gcm::new(&aes_sym_key);
-    let iv = rng.gen::<[u8; 12]>();
+    let iv = rng.random::<[u8; 12]>();
     let nonce = Nonce::from_slice(&iv);
     let protected = ProtectedHeader {
         alg: RSA1_5_ALGORITHM.to_string(),
@@ -92,11 +92,11 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
 
 /// Use RSA-OAEP SHA-256 to encrypt the payload data.
 fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
-    let aes_sym_key = Aes256Gcm::generate_key(&mut OsRng);
+    let aes_sym_key = Aes256Gcm::generate_key(&mut rng);
     let mut cipher = Aes256Gcm::new(&aes_sym_key);
-    let iv = rng.gen::<[u8; 12]>();
+    let iv = rng.random::<[u8; 12]>();
     let nonce = Nonce::from_slice(&iv);
     let protected = ProtectedHeader {
         alg: RSA_OAEP256_ALGORITHM.to_string(),
@@ -138,7 +138,7 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
 
 /// Use ECDH-ES-A256KW to encrypt the payload data. The EC curve is P256.
 fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // 1. Generate a random CEK
     let cek = Aes256Gcm::generate_key(&mut rng);
@@ -219,7 +219,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     // 3. Encrypt content with CEK
     let mut cek_cipher = Aes256Gcm::new(GenericArray::from_slice(&cek));
 
-    let iv = rand::thread_rng().gen::<[u8; 12]>();
+    let iv = rand::rng().random::<[u8; 12]>();
     let nonce = Nonce::from_slice(&iv);
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
@@ -359,7 +359,7 @@ mod tests {
         let test_data = b"this is a test data";
 
         // Generate a EC key pair
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let private_key = SecretKey::random(&mut rng);
         let point = EncodedPoint::from(private_key.public_key());
         let x = point.x().unwrap();
