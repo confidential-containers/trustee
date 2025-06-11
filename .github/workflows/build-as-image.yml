@@ -49,6 +49,8 @@ jobs:
           instance: ubuntu-24.04-arm
           verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
+    env:
+      RUST_TOOLCHAIN_VERSION: 1.85.1
 
     steps:
     - name: Checkout code
@@ -72,5 +74,6 @@ jobs:
           --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
           --build-arg ARCH="${{ matrix.target_arch }}" \
           --build-arg VERIFIER="${{ matrix.verifier }}" \
+          --build-arg RUST_TOOLCHAIN_VERSION="${{ env.RUST_TOOLCHAIN_VERSION }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" .

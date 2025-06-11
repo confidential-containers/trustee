@@ -60,6 +60,8 @@ jobs:
             instance: ubuntu-24.04-arm
 
     runs-on: ${{ matrix.instance }}
+    env:
+      RUST_TOOLCHAIN_VERSION: 1.85.1
 
     steps:
     - name: Checkout code
@@ -82,5 +84,6 @@ jobs:
           -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" \
+          --build-arg RUST_TOOLCHAIN_VERSION="${{ env.RUST_TOOLCHAIN_VERSION }}" \
           --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
           --build-arg ARCH="${{ matrix.target_arch }}" .

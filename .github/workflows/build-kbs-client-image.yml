@@ -21,6 +21,8 @@ jobs:
           - arch: aarch64
             instance: ubuntu-24.04-arm
     runs-on: ${{ matrix.instance }}
+    env:
+      RUST_TOOLCHAIN_VERSION: 1.85.1
 
     steps:
     - name: Checkout code
@@ -41,5 +43,6 @@ jobs:
         commit_sha=${{ github.sha }}
         docker buildx build --provenance false ${{ inputs.build_option }} \
           -f kbs/docker/kbs-client-image/Dockerfile \
+          --build-arg RUST_TOOLCHAIN_VERSION="${{ env.RUST_TOOLCHAIN_VERSION }}" \
           -t "ghcr.io/confidential-containers/staged-images/kbs-client-image:${commit_sha}-${{ matrix.arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/kbs-client-image:latest-${{ matrix.arch }}" .

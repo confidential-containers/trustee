@@ -26,6 +26,8 @@ jobs:
             target_arch: aarch64
             verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
+    env:
+      RUST_TOOLCHAIN_VERSION: 1.85.1
     steps:
     - name: Checkout KBS
       uses: actions/checkout@v4
@@ -45,7 +47,11 @@ jobs:
         openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
 
     - name: Build KBS Cluster
-      run: docker compose build --build-arg BUILDPLATFORM=${{ matrix.build_platform }} --build-arg ARCH=${{ matrix.target_arch }} --build-arg VERIFIER=${{ matrix.verifier }}
+      run: |
+        docker compose build --build-arg BUILDPLATFORM=${{ matrix.build_platform }} \
+          --build-arg ARCH=${{ matrix.target_arch }} \
+          --build-arg RUST_TOOLCHAIN_VERSION="${{ env.RUST_TOOLCHAIN_VERSION }}" \
+          --build-arg VERIFIER=${{ matrix.verifier }}
 
     - name: Start KBS cluster
       run: docker compose up -d

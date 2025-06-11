@@ -18,6 +18,8 @@ jobs:
           - arch: aarch64
             instance: ubuntu-24.04-arm
     runs-on: ${{ matrix.instance }}
+    env:
+      RUST_TOOLCHAIN_VERSION: 1.85.1
     permissions:
       contents: read
       packages: write
@@ -44,6 +46,7 @@ jobs:
     - name: Build a statically linked kbs-client for ${{ matrix.arch }} linux
       run: |
         docker buildx build -f kbs/docker/kbs-client/Dockerfile \
+          --build-arg RUST_TOOLCHAIN_VERSION="${{ env.RUST_TOOLCHAIN_VERSION }}" \
           --build-arg ARCH="${{ matrix.arch }}" --output ./ .
 
     - name: Push to ghcr.io
