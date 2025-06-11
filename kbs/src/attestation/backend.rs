@@ -18,6 +18,9 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use crate::attestation::session::KBS_SESSION_ID;
+use crate::prometheus::{
+    ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, AUTH_ERRORS, AUTH_REQUESTS
+};
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -192,9 +195,16 @@ impl AttestationService {
     }
 
     async fn __auth(&self, request: &[u8]) -> anyhow::Result<HttpResponse> {
-        let request: Request = serde_json::from_slice(request).context("deserialize Request")?;
-        let version = Version::parse(&request.version).context("failed to parse KBS version")?;
+        AUTH_REQUESTS.inc();
+
+        let request: Request = serde_json::from_slice(request)
+            .inspect_err(|_| AUTH_ERRORS.inc())
+            .context("deserialize Request")?;
+        let version = Version::parse(&request.version)
+            .inspect_err(|_| AUTH_ERRORS.inc())
+            .context("failed to parse KBS version")?;
         if !VERSION_REQ.matches(&version) {
+            AUTH_ERRORS.inc();
             bail!(
                 "KBS Client Protocol Version Mismatch: expect {} while the request is {}",
                 *VERSION_REQ,
@@ -206,6 +216,7 @@ impl AttestationService {
             .inner
             .generate_challenge(request.tee, request.extra_params.clone())
             .await
+            .inspect_err(|_| AUTH_ERRORS.inc())
             .context("Attestation Service generate challenge failed")?;
 
         let session = SessionStatus::auth(request, self.timeout, challenge);
@@ -230,19 +241,26 @@ impl AttestationService {
         attestation: &[u8],
         request: HttpRequest,
     ) -> anyhow::Result<HttpResponse> {
-        let cookie = request.cookie(KBS_SESSION_ID).context("cookie not found")?;
+        ATTESTATION_REQUESTS.inc();
+
+        let cookie = request
+            .cookie(KBS_SESSION_ID)
+            .context("cookie not found")
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
 
         let session_id = cookie.value();
 
-        let attestation: Attestation =
-            serde_json::from_slice(attestation).context("deserialize Attestation")?;
+        let attestation: Attestation = serde_json::from_slice(attestation)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("deserialize Attestation")?;
         let (tee, nonce) = {
             let session = self
                 .session_map
                 .sessions
                 .get_async(session_id)
                 .await
-                .ok_or(anyhow!("No cookie found"))?;
+                .ok_or(anyhow!("No cookie found"))
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
             let session = session.get();
 
             debug!("Session ID {}", session.id());
@@ -259,6 +277,7 @@ impl AttestationService {
                 let body = serde_json::to_string(&json!({
                     "token": token,
                 }))
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Serialize token failed")?;
 
                 return Ok(HttpResponse::Ok()
@@ -268,18 +287,21 @@ impl AttestationService {
             }
 
             let attestation_str = serde_json::to_string_pretty(&attestation)
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Failed to serialize Attestation")?;
             debug!("Attestation: {attestation_str}");
 
             (session.request().tee, session.challenge().nonce.to_string())
         };
 
-        let attestation_str =
-            serde_json::to_string(&attestation).context("serialize attestation failed")?;
+        let attestation_str = serde_json::to_string(&attestation)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("serialize attestation failed")?;
         let token = self
             .inner
             .verify(tee, &nonce, &attestation_str)
             .await
+            .inspect_err(|_| ATTESTATION_FAILURES.inc())
             .context("verify TEE evidence failed")?;
 
         let mut session = self
@@ -287,12 +309,14 @@ impl AttestationService {
             .sessions
             .get_async(session_id)
             .await
-            .ok_or(anyhow!("session not found"))?;
+            .ok_or(anyhow!("session not found"))
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
         let session = session.get_mut();
 
         let body = serde_json::to_string(&json!({
             "token": token,
         }))
+        .inspect_err(|_| ATTESTATION_ERRORS.inc())
         .context("Serialize token failed")?;
 
         session.attest(token);

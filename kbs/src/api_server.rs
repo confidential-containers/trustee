@@ -16,7 +16,10 @@ use crate::{
     jwe::jwe,
     plugins::PluginManager,
     policy_engine::PolicyEngine,
-    prometheus::{REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL},
+    prometheus::{
+        REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL, RESOURCE_POLICY_ERRORS,
+        RESOURCE_POLICY_EVALS, RESOURCE_POLICY_VIOLATIONS,
+    },
     token::TokenVerifier,
     Error, Result,
 };
@@ -280,8 +283,15 @@ pub(crate) async fn api(
 
                 let claim_str = serde_json::to_string(&claims)?;
 
+                RESOURCE_POLICY_EVALS.inc();
                 // TODO: add policy filter support for other plugins
-                if !core.policy_engine.evaluate(&endpoint, &claim_str).await? {
+                if !core
+                    .policy_engine
+                    .evaluate(&endpoint, &claim_str)
+                    .await
+                    .inspect_err(|_| RESOURCE_POLICY_ERRORS.inc())?
+                {
+                    RESOURCE_POLICY_VIOLATIONS.inc();
                     return Err(Error::PolicyDeny);
                 }
 
