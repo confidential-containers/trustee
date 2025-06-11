@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::{anyhow, bail, Context};
-use attestation_service::{AttestationService, HashAlgorithm};
+use attestation_service::{AttestationService, HashAlgorithm, VerificationRequest};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::Tee;
 use log::{debug, error, info};
@@ -36,13 +36,18 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AttestationRequest {
+    individual_attestation_request: Vec<IndividualAttestationRequest>,
+    policy_ids: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IndividualAttestationRequest {
     tee: String,
     evidence: String,
     runtime_data: Option<Data>,
     init_data: Option<Data>,
     runtime_data_hash_algorithm: Option<String>,
     init_data_hash_algorithm: Option<String>,
-    policy_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,6 +75,7 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
         "cca" => Tee::Cca,
         "csv" => Tee::Csv,
         "sample" => Tee::Sample,
+        "sampledevice" => Tee::SampleDevice,
         "aztdxvtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
         other => bail!("tee `{other} not supported`"),
@@ -102,43 +108,58 @@ pub async fn attestation(
     let request = request.into_inner();
     debug!("attestation: {request:#?}");
 
-    let evidence = URL_SAFE_NO_PAD
-        .decode(&request.evidence)
-        .context("base64 decode evidence")?;
+    let mut verification_requests: Vec<VerificationRequest> = vec![];
+    for attestation_request in request.individual_attestation_request {
+        let evidence = URL_SAFE_NO_PAD
+            .decode(&attestation_request.evidence)
+            .context("base64 decode evidence")?;
 
-    let tee = to_tee(&request.tee)?;
+        let evidence =
+            serde_json::from_slice(&evidence).context("failed to parse evidence as JSON")?;
 
-    let runtime_data = request
-        .runtime_data
-        .map(parse_data)
-        .transpose()
-        .context("decode given Runtime Data")?;
+        let tee = to_tee(&attestation_request.tee)?;
 
-    let init_data = request
-        .init_data
-        .map(parse_data)
-        .transpose()
-        .context("decode given Init Data")?;
+        let runtime_data = attestation_request
+            .runtime_data
+            .map(parse_data)
+            .transpose()
+            .context("decode given Runtime Data")?;
 
-    let runtime_data_hash_algorithm = match request.runtime_data_hash_algorithm {
-        Some(alg) => {
-            HashAlgorithm::try_from(&alg[..]).context("parse runtime data HashAlgorithm failed")?
-        }
-        None => {
-            info!("No Runtime Data Hash Algorithm provided, use `sha384` by default.");
-            HashAlgorithm::Sha384
-        }
-    };
+        let init_data = attestation_request
+            .init_data
+            .map(parse_data)
+            .transpose()
+            .context("decode given Init Data")?;
 
-    let init_data_hash_algorithm = match request.init_data_hash_algorithm {
-        Some(alg) => {
-            HashAlgorithm::try_from(&alg[..]).context("parse init data HashAlgorithm failed")?
-        }
-        None => {
-            info!("No Init Data Hash Algorithm provided, use `sha384` by default.");
-            HashAlgorithm::Sha384
-        }
-    };
+        let runtime_data_hash_algorithm = match attestation_request.runtime_data_hash_algorithm {
+            Some(alg) => HashAlgorithm::try_from(&alg[..])
+                .context("parse runtime data HashAlgorithm failed")?,
+            None => {
+                info!("No Runtime Data Hash Algorithm provided, use `sha384` by default.");
+                HashAlgorithm::Sha384
+            }
+        };
+
+        let init_data_hash_algorithm = match attestation_request.init_data_hash_algorithm {
+            Some(alg) => {
+                HashAlgorithm::try_from(&alg[..]).context("parse init data HashAlgorithm failed")?
+            }
+            None => {
+                info!("No Init Data Hash Algorithm provided, use `sha384` by default.");
+                HashAlgorithm::Sha384
+            }
+        };
+
+        verification_requests.push(VerificationRequest {
+            evidence,
+            tee,
+            runtime_data,
+            runtime_data_hash_algorithm,
+            init_data,
+            init_data_hash_algorithm,
+        });
+    }
+
     let policy_ids = if request.policy_ids.is_empty() {
         info!("no policy specified. `default` will be used");
         vec!["default".into()]
@@ -149,15 +170,7 @@ pub async fn attestation(
     let token = cocoas
         .read()
         .await
-        .evaluate(
-            evidence,
-            tee,
-            runtime_data,
-            runtime_data_hash_algorithm,
-            init_data,
-            init_data_hash_algorithm,
-            policy_ids,
-        )
+        .evaluate(verification_requests, policy_ids)
         .await
         .context("attestation report evaluate")?;
     Ok(HttpResponse::Ok().body(token))

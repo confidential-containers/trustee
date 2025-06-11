@@ -175,8 +175,19 @@ in the KBC's execution environment.
 The `tee-evidence` formats depend on the TEE and are typically defined by the
 Attestation-Service.
 
-The KBS does not parse or analyze the attestation evidence, it forwards it to
-the Attestation-Service for verification.
+Complex guests may be represented by more than one type of attester and more than
+one format of TEE evidence. TEE evidence from multiple attesters can be combined
+together. The method for combining and decomposing evidence should be shared
+between the Attestation-Agent and Attestation-Service or KBS.
+
+Typically, the KBS does not parse or analyze the attestation evidence.
+Instead,it forwards it to the Attestation-Service for verification.
+When dealing with combined evidence, the KBS may be responsible for
+unwrapping multiple pieces of hardware evidence and forwarding them
+to the Attestation-Service individually.
+Alternatively, the Attestation-Service could be responsible for
+unpacking the combined evidence. Either way, the format of the evidence
+is beyond the scope of this document.
 
 ## `Response`
 

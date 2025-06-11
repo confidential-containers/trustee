@@ -11,7 +11,7 @@ use scroll::Pread;
 use serde::{Deserialize, Serialize};
 
 use self::types::sgx_quote3_t;
-use super::{TeeEvidenceParsedClaim, Verifier};
+use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use crate::{regularize_data, InitDataHash, ReportData};
 
@@ -34,18 +34,20 @@ pub struct SgxVerifier {}
 impl Verifier for SgxVerifier {
     async fn evaluate(
         &self,
-        evidence: &[u8],
+        evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<TeeEvidenceParsedClaim> {
+    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
         let tee_evidence =
-            serde_json::from_slice::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
+            serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
 
         debug!("TEE-Evidence<Sgx>: {:?}", &tee_evidence);
 
-        verify_evidence(expected_report_data, expected_init_data_hash, tee_evidence)
+        let claims = verify_evidence(expected_report_data, expected_init_data_hash, tee_evidence)
             .await
-            .map_err(|e| anyhow!("SGX Verifier: {:?}", e))
+            .map_err(|e| anyhow!("SGX Verifier: {:?}", e))?;
+
+        Ok((claims, "cpu".to_string()))
     }
 }
 

@@ -70,8 +70,7 @@ pub struct TestParameters {
 
 // Internal state of tests
 pub struct TestHarness {
-    // This variable is not used thus added an underscore.
-    _kbs_config: KbsConfig,
+    pub kbs_config: KbsConfig,
     auth_privkey: String,
     kbs_server_handle: actix_web::dev::ServerHandle,
     _work_dir: TempDir,
@@ -129,7 +128,6 @@ impl TestHarness {
                 storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                     file_path: rv_path,
                 }),
-                ..Default::default()
             }),
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
@@ -137,7 +135,6 @@ impl TestHarness {
                     storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                         file_path: rv_path,
                     }),
-                    ..Default::default()
                 })?;
                 let inner = Arc::new(RwLock::new(service));
                 let rvps_server = RvpsServer::new(inner.clone());
@@ -198,7 +195,7 @@ impl TestHarness {
         tokio::spawn(kbs_server);
 
         Ok(TestHarness {
-            _kbs_config: kbs_config,
+            kbs_config,
             auth_privkey,
             kbs_server_handle: kbs_handle,
             _work_dir: work_dir,
@@ -227,6 +224,20 @@ impl TestHarness {
             policy_bytes,
             // Optional HTTPS certs for KBS
             vec![],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_attestation_policy(&self, policy: String, policy_id: String) -> Result<()> {
+        kbs_client::set_attestation_policy(
+            KBS_URL,
+            self.auth_privkey.clone(),
+            policy.as_bytes().to_vec(),
+            None, // Policy type (default is rego)
+            Some(policy_id),
+            vec![], // Optional HTTPS certs for KBS
         )
         .await?;
 

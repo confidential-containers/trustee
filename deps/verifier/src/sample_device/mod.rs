@@ -1,3 +1,8 @@
+// Copyright (c) 2025 IBM
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use log::debug;
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
@@ -7,47 +12,44 @@ use base64::Engine;
 use serde_json::json;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SampleTeeEvidence {
+struct SampleDeviceEvidence {
     svn: String,
 
     #[serde(default = "String::default")]
     report_data: String,
-
-    #[serde(default = "String::default")]
-    init_data: String,
 }
 
 #[derive(Debug, Default)]
-pub struct Sample {}
+pub struct SampleDeviceVerifier {}
 
 #[async_trait]
-impl Verifier for Sample {
+impl Verifier for SampleDeviceVerifier {
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
-        let tee_evidence = serde_json::from_value::<SampleTeeEvidence>(evidence)
+        let tee_evidence = serde_json::from_value::<SampleDeviceEvidence>(evidence)
             .context("Deserialize Quote failed.")?;
 
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
 
-        debug!("TEE-Evidence<sample>: {:?}", tee_evidence);
+        debug!("TEE-Evidence<sample_device>: {:?}", tee_evidence);
 
         let claims = parse_tee_evidence(&tee_evidence)?;
-        Ok((claims, "cpu".to_string()))
+        Ok((claims, "gpu".to_string()))
     }
 }
 
 async fn verify_tee_evidence(
     expected_report_data: &ReportData<'_>,
-    expected_init_data_hash: &InitDataHash<'_>,
-    evidence: &SampleTeeEvidence,
+    _expected_init_data_hash: &InitDataHash<'_>,
+    evidence: &SampleDeviceEvidence,
 ) -> Result<()> {
-    // Verify the TEE Hardware signature. (Null for sample TEE)
+    // Verify the TEE Hardware signature. (Null for sample device)
 
     // Emulate the report data.
     if let ReportData::Value(expected_report_data) = expected_report_data {
@@ -60,30 +62,14 @@ async fn verify_tee_evidence(
         }
     }
 
-    // Emulate the init data hash.
-    if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
-        debug!("Check the binding of init_data_digest.");
-        let ev_init_data_hash = base64::engine::general_purpose::STANDARD
-            .decode(&evidence.init_data)
-            .context("base64 decode init data hash for sample evidence")?;
-        if *expected_init_data_hash != ev_init_data_hash {
-            bail!("INIT DATA HASH is different from that in Sample Quote");
-        }
-    }
-
     Ok(())
 }
 
 // Dump the TCB status from the quote.
 // Example: CPU SVN, RTMR, etc.
-fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClaim> {
+fn parse_tee_evidence(quote: &SampleDeviceEvidence) -> Result<TeeEvidenceParsedClaim> {
     let claims_map = json!({
         "svn": quote.svn,
-        "report_data": quote.report_data,
-        "init_data": quote.init_data,
-
-        // Generally TCB claims should originate from the attester.
-        "launch_digest": "abcde",
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    attestation::backend::{generic_generate_challenge, make_nonce, Attest},
+    attestation::backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
     token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
 };
 use anyhow::*;
@@ -12,7 +12,7 @@ use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use derivative::Derivative;
 use kbs_types::Challenge;
-use kbs_types::{Attestation, Tee};
+use kbs_types::Tee;
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
@@ -94,16 +94,13 @@ pub struct IntelTrustAuthority {
 
 #[async_trait]
 impl Attest for IntelTrustAuthority {
-    async fn verify(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        // get quote
-        let attestation = serde_json::from_str::<Attestation>(attestation)
-            .context("Failed to deserialize Attestation request")?;
+    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String> {
+        if evidence_to_verify.len() != 1 {
+            bail!("ITA backend does not yet support multi-device attestation.");
+        }
 
-        let runtime_data = json!({
-            "tee-pubkey": attestation.tee_pubkey,
-            "nonce": nonce,
-        })
-        .to_string();
+        let runtime_data = evidence_to_verify[0].runtime_data.to_string();
+        let tee = evidence_to_verify[0].tee;
 
         let policy_ids = self.config.policy_ids.clone();
 
@@ -117,8 +114,9 @@ impl Attest for IntelTrustAuthority {
             Tee::AzTdxVtpm => {
                 let att_url = format!("{}{AZURE_TDXVM_ADDR}", &self.config.base_url);
 
-                let evidence = from_value::<AzItaTeeEvidence>(attestation.tee_evidence)
-                    .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
+                let evidence =
+                    from_value::<AzItaTeeEvidence>(evidence_to_verify[0].tee_evidence.clone())
+                        .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
 
                 let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
 
@@ -136,8 +134,9 @@ impl Attest for IntelTrustAuthority {
             Tee::Tdx | Tee::Sgx => {
                 let att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
 
-                let evidence = from_value::<ItaTeeEvidence>(attestation.tee_evidence)
-                    .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
+                let evidence =
+                    from_value::<ItaTeeEvidence>(evidence_to_verify[0].tee_evidence.clone())
+                        .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
 
                 let req_data = AttestReqData {
                     quote: evidence.quote,
