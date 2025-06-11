@@ -1,4 +1,6 @@
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:latest AS builder
+ARG RUST_TOOLCHAIN_VERSION=1.85.1
+
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:${RUST_TOOLCHAIN_VERSION} AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
@@ -24,8 +26,8 @@ RUN cd kbs && make AS_FEATURE=coco-as-grpc ALIYUN=${ALIYUN} ARCH=${ARCH} NEBULA_
 
 # Download and install Nebula
 RUN if [ "${NEBULA_CA_PLUGIN}" = "true" ]; then \
-       curl -fSLO https://github.com/slackhq/nebula/releases/download/${NEBULA_VERSION}/nebula-$(echo ${BUILDPLATFORM} | sed 's/\//-/').tar.gz && \
-       tar -C /usr/local/bin -xzf nebula-$(echo "${BUILDPLATFORM}" | sed 's/\//-/').tar.gz; \
+    curl -fSLO https://github.com/slackhq/nebula/releases/download/${NEBULA_VERSION}/nebula-$(echo ${BUILDPLATFORM} | sed 's/\//-/').tar.gz && \
+    tar -C /usr/local/bin -xzf nebula-$(echo "${BUILDPLATFORM}" | sed 's/\//-/').tar.gz; \
     fi
 
 FROM ubuntu:22.04

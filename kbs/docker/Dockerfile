@@ -1,4 +1,6 @@
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:slim AS builder
+ARG RUST_TOOLCHAIN_VERSION=1.85.1
+
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:${RUST_TOOLCHAIN_VERSION}-slim AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false

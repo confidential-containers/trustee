@@ -1,4 +1,6 @@
-FROM docker.io/library/rust:1.85.1 AS builder
+ARG RUST_TOOLCHAIN_VERSION=1.85.1
+
+FROM docker.io/library/rust:${RUST_TOOLCHAIN_VERSION} AS builder
 
 WORKDIR /usr/src/kbs
 COPY . .

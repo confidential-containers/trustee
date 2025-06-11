@@ -2,7 +2,9 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:latest AS builder
+ARG RUST_TOOLCHAIN_VERSION=1.85.1
+
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:${RUST_TOOLCHAIN_VERSION} AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier

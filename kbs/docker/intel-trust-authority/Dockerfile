@@ -1,4 +1,6 @@
-FROM docker.io/library/rust:latest AS builder
+ARG RUST_TOOLCHAIN_VERSION=1.85.1
+
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:${RUST_TOOLCHAIN_VERSION} AS builder
 ARG ALIYUN=false
 
 WORKDIR /usr/src/kbs
