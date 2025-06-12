@@ -6307,6 +6307,7 @@ name = "trustee"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "attestation-service",
  "clap",
  "dirs 6.0.0",
  "env_logger 0.10.2",
@@ -6314,6 +6315,7 @@ dependencies = [
  "log",
  "nix",
  "openssl",
+ "reference-value-provider-service",
  "tokio",
 ]
 

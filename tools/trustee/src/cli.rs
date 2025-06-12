@@ -3,12 +3,13 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use clap::Parser;
 use dirs::home_dir;
-use log::{info, warn};
+use log::{debug, info, warn};
 use nix::unistd::Uid;
 
 use crate::keys_certs::{
     ensure_auth_key_pair, ensure_https_cert, ensure_https_key_pair, write_new_auth_key_pair,
 };
+use kbs::attestation::config::AttestationServiceConfig::CoCoASBuiltIn;
 use kbs::{ApiServer, KbsConfig};
 
 fn trustee_keygen(private_path: &Path) -> Result<()> {
@@ -19,16 +20,52 @@ fn trustee_keygen(private_path: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn trustee_run(
+/// replace_base_dir replaces the leading `/opt/confidential-containers/` in the path with a new base path.
+///
+/// This behavior is a compromise to set the base directory at runtime and workaround the hardcoded paths all around the codebase.
+///  replace_base_dir will become obsolete when it's possible to set the base directory at runtime project-wide.
+fn replace_base_dir(path: &Path, new_base: &Path) -> PathBuf {
+    let old_base = "/opt/confidential-containers/";
+    let suffix = if path.starts_with(old_base) {
+        path.strip_prefix(old_base).unwrap()
+    } else {
+        path
+    };
+    new_base.join(suffix)
+}
+
+fn get_config(
     config_file: Option<PathBuf>,
     allow_all: bool,
     trustee_home_dir: &Path,
-) -> Result<()> {
+) -> Result<KbsConfig> {
     let mut config = if let Some(path) = config_file {
         KbsConfig::try_from(path.as_path())?
     } else {
         KbsConfig::default()
     };
+
+    config.policy_engine.policy_path =
+        replace_base_dir(config.policy_engine.policy_path.as_path(), trustee_home_dir);
+
+    match &mut config.attestation_service.attestation_service {
+        CoCoASBuiltIn(as_config) => {
+            as_config.work_dir = replace_base_dir(as_config.work_dir.as_path(), trustee_home_dir);
+            
+            // Handle RVPS config paths
+            if let attestation_service::rvps::RvpsConfig::BuiltIn(rvps_config) = &mut as_config.rvps_config {
+                if let reference_value_provider_service::storage::ReferenceValueStorageConfig::LocalFs(local_fs_config) = &mut rvps_config.storage {
+                    local_fs_config.file_path = replace_base_dir(Path::new(&local_fs_config.file_path), trustee_home_dir).to_string_lossy().into_owned();
+                }
+            }
+
+            // Handle attestation token broker paths
+            if let attestation_service::token::AttestationTokenConfig::Ear(ear_config) = &mut as_config.attestation_token_broker {
+                ear_config.policy_dir = replace_base_dir(Path::new(&ear_config.policy_dir), trustee_home_dir).to_string_lossy().into_owned();
+            }
+        }
+        _ => {}
+    }
 
     if config.admin.auth_public_key.is_none() {
         let (_, public_path) = ensure_auth_key_pair(trustee_home_dir)?;
@@ -65,6 +102,11 @@ async fn trustee_run(
         )?;
     }
 
+    debug!("Config: {:?}", config);
+    Ok(config)
+}
+
+async fn trustee_run(config: KbsConfig) -> Result<()> {
     let api_server = ApiServer::new(config).await?;
     api_server.server()?.await?;
     Ok(())
@@ -124,7 +166,8 @@ pub async fn cli_default() -> Result<()> {
             config_file,
             allow_all,
         } => {
-            trustee_run(config_file, allow_all, &trustee_home_dir).await?;
+            let config = get_config(config_file, allow_all, &trustee_home_dir)?;
+            trustee_run(config).await?;
         }
     };
 
