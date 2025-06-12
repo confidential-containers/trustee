@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, error};
 
 mod cli;
 mod keys_certs;
@@ -32,7 +32,7 @@ async fn main() {
     }
 
     if let Err(e) = cli::cli_default().await {
-        eprintln!("Error: {:#}", e);
+        error!("Error: {:#}", e);
         std::process::exit(1);
     }
 }
