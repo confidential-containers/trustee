@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::{error::Error, Parser};
+use clap::Parser;
 use dirs::home_dir;
 use log::{info, warn};
+use nix::unistd::Uid;
 
 use crate::keys_certs::{
     ensure_auth_key_pair, ensure_https_cert, ensure_https_key_pair, write_new_auth_key_pair,
@@ -68,7 +69,7 @@ async fn trustee_run(
 }
 
 #[derive(Debug, Parser)]
-enum Commands {
+pub(crate) enum Commands {
     /// Generate a new key pair
     Keygen {
         /// Output file for the private key
@@ -97,8 +98,8 @@ struct Cli {
     home: Option<PathBuf>,
 }
 
-pub async fn cli_default() -> Result<(), Error> {
-    let cli = Cli::try_parse()?;
+pub async fn cli_default() -> Result<()> {
+    let cli = Cli::parse();
 
     let trustee_home_dir = cli.home.unwrap_or_else(|| {
         if Uid::effective().is_root() {
@@ -115,15 +116,13 @@ pub async fn cli_default() -> Result<(), Error> {
     match cli.command {
         Commands::Keygen { output_file: out } => {
             let out = out.unwrap_or_else(|| trustee_home_dir.join("key"));
-            trustee_keygen(&out).unwrap();
+            trustee_keygen(&out)?;
         }
         Commands::Run {
             config_file,
             allow_all,
         } => {
-            trustee_run(config_file, allow_all, &trustee_home_dir)
-                .await
-                .unwrap();
+            trustee_run(config_file, allow_all, &trustee_home_dir).await?;
         }
     };
 
