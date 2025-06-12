@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nebula-lighthouse
+spec:
+  restartPolicy: Always
+  containers:
+  - name: lighthouse
+    command:
+    - "bin/sh"
+    - "-c"
+    - "while (true); do sleep 10000; done"
+    image: ghcr.io/portersrc/lighthouse:latest
+    imagePullPolicy: Always
+    resources:
+      limits:
+        cpu: "8"
+    securityContext:
+      privileged: true 
+---

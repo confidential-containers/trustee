@@ -78,7 +78,10 @@ jobs:
     - name: Build Container Image KBS (${{ matrix.name }})
       run: |
         commit_sha=${{ github.sha }}
-        docker buildx build --platform "${{ matrix.target_platform }}" --provenance false \
+        docker buildx build \
+          --platform "${{ matrix.target_platform }}" \
+          --provenance false \
+          --build-arg NEBULA_CA_PLUGIN=true \
           -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" \

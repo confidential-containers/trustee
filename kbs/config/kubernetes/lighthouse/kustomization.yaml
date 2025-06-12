@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: coco-tenant
+
+images:
+- name: lighthouse
+  newName: ghcr.io/portersrc/lighthouse
+  newTag: latest
+
+resources:
+- deployment.yaml
+- service.yaml
