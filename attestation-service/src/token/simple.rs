@@ -209,7 +209,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
-        reference_data_map: HashMap<String, Vec<String>>,
+        reference_data_map: HashMap<String, serde_json::Value>,
         tee: Tee,
     ) -> Result<String> {
         let flattened_claims = flatten_claims(tee, &tcb_claims)?;
