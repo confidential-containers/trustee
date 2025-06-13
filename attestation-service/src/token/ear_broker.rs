@@ -205,7 +205,7 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, Vec<String>>,
+        reference_data_map: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
         debug!("all_tee_claims: {:#?}", all_tee_claims);
 
