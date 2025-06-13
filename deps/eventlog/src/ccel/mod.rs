@@ -2,6 +2,7 @@ use super::EventDetails;
 
 pub mod blank;
 pub mod boot_services_app;
+pub mod device_paths;
 pub mod efi_variable;
 pub mod event_tag;
 pub mod ipl;
