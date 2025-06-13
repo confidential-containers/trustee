@@ -219,7 +219,7 @@ impl AttestationService {
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Vec<String>>> {
+    pub async fn query_reference_values(&self) -> Result<HashMap<String, serde_json::Value>> {
         self.rvps
             .get_digests()
             .await

@@ -6,35 +6,13 @@
 //! reference value for RVPS
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
+use chrono::{DateTime, Months, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::time::SystemTime;
 
 /// Default version of ReferenceValue
 pub const REFERENCE_VALUE_VERSION: &str = "0.1.0";
-
-/// A HashValuePair stores a hash algorithm name
-/// and relative artifact's hash value due to
-/// the algorithm.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct HashValuePair {
-    alg: String,
-    value: String,
-}
-
-impl HashValuePair {
-    pub fn new(alg: String, value: String) -> Self {
-        Self { alg, value }
-    }
-
-    pub fn alg(&self) -> &String {
-        &self.alg
-    }
-
-    pub fn value(&self) -> &String {
-        &self.value
-    }
-}
+pub const MONTHS_BEFORE_EXPIRATION: u32 = 12;
 
 /// Helper to deserialize an expired time
 fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
@@ -49,26 +27,37 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
     Ok(DateTime::from_naive_utc_and_offset(ndt, Utc))
 }
 
-/// Define Reference Value stored inside RVPS.
-/// This Reference Value is not the same as that in IETF's RATS.
-/// Here, ReferenceValue is stored inside RVPS. Its format MAY be modified.
-/// * `version`: version of the reference value format.
-/// * `name`: name of the artifact related to this reference value.
-/// * `expiration`: Time after which refrence valid is invalid
-/// * `hash_value`: A set of key-value pairs, each indicates a hash
-///   algorithm and its relative hash value for the artifact.
-///   The actual struct deliver from RVPS to AS is
-///   [`TrustedDigest`], whose simple structure is easy
-///   for AS to handle.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum ValueType {
+    Local(serde_json::Value),
+    Remote,
+}
+
+/// The ReferenceValue struct contains metadata about the RV
+/// as well as the value itself or a pointer to a remote value.
+/// This struct will be stored in one of the RVPS's storage backends.
+/// This is the internal representation of reference values,
+/// which is not intended to exactly match the RATS specification
+/// or the RVPS API.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ReferenceValue {
+    /// Since the reference values will be written to storage,
+    /// keep track of the version in case the RVPS implementation
+    /// is updated.
     #[serde(default = "default_version")]
     pub version: String,
     pub name: String,
+    /// The reference value will be invalid after its expiration time.
+    /// By default the expiration time is 12 months from when
+    /// the reference value is created. This can be set
+    /// dynamically by extractors.
     #[serde(deserialize_with = "primitive_date_time_from_str")]
     pub expiration: DateTime<Utc>,
-    #[serde(rename = "hash-value")]
-    pub hash_value: Vec<HashValuePair>,
+    /// The reference value itself can be one either a local value,
+    /// which is stored directly inside the enum variant or a remote
+    /// value, which is not implemented yet, but will allow reference
+    /// values to be fetched remotely as needed.
+    pub value: ValueType,
 }
 
 /// Set the default version for ReferenceValue
@@ -87,8 +76,9 @@ impl ReferenceValue {
             name: String::new(),
             expiration: Utc::now()
                 .with_nanosecond(0)
-                .ok_or_else(|| anyhow!("set nanosecond failed."))?,
-            hash_value: Vec::new(),
+                .and_then(|t| t.checked_add_months(Months::new(MONTHS_BEFORE_EXPIRATION)))
+                .ok_or_else(|| anyhow!("Failed to set time."))?,
+            value: ValueType::Local(serde_json::Value::Null),
         })
     }
 
@@ -111,22 +101,24 @@ impl ReferenceValue {
         self
     }
 
+    pub fn set_local_value(mut self, value: serde_json::Value) -> Self {
+        self.value = ValueType::Local(value);
+
+        self
+    }
+
+    pub fn value(self) -> serde_json::Value {
+        match self.value {
+            ValueType::Local(v) => v,
+            ValueType::Remote => todo!("Remote values not suppported yet."),
+        }
+    }
+
     /// Check whether reference value is expired
     pub fn expired(&self) -> bool {
         let now: DateTime<Utc> = DateTime::from(SystemTime::now());
 
         now > self.expiration
-    }
-
-    /// Set hash value of the ReferenceValue.
-    pub fn add_hash_value(mut self, alg: String, value: String) -> Self {
-        self.hash_value.push(HashValuePair::new(alg, value));
-        self
-    }
-
-    /// Get hash value of the ReferenceValue.
-    pub fn hash_values(&self) -> &Vec<HashValuePair> {
-        &self.hash_value
     }
 
     /// Set artifact name for Reference Value
@@ -168,7 +160,7 @@ mod test {
             .set_version("1.0.0")
             .set_name("artifact")
             .set_expiration(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
-            .add_hash_value("sha512".into(), "123".into());
+            .set_local_value(serde_json::Value::String("abc".to_string()));
 
         assert_eq!(rv.version(), "1.0.0");
 
@@ -176,10 +168,9 @@ mod test {
             "expiration": "1970-01-01T00:00:00Z",
             "name": "artifact",
             "version": "1.0.0",
-            "hash-value": [{
-                "alg": "sha512",
-                "value": "123"
-            }]
+            "value": {
+                "Local": "abc"
+            }
         });
 
         let serialized_rf = serde_json::to_value(&rv).unwrap();
@@ -193,17 +184,16 @@ mod test {
             .set_version("1.0.0")
             .set_name("artifact")
             .set_expiration(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
-            .add_hash_value("sha512".into(), "123".into());
+            .set_local_value(serde_json::Value::String("abcd".to_string()));
 
         assert_eq!(rv.version(), "1.0.0");
         let rv_json = r#"{
             "expiration": "1970-01-01T00:00:00Z",
             "name": "artifact",
             "version": "1.0.0",
-            "hash-value": [{
-                "alg": "sha512",
-                "value": "123"
-            }]
+            "value": {
+                "Local": "abcd"
+            }
         }"#;
         let deserialized_rf: ReferenceValue = serde_json::from_str(&rv_json).unwrap();
         assert_eq!(deserialized_rf, rv);

@@ -208,7 +208,7 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
-        reference_data_map: HashMap<String, Vec<String>>,
+        reference_data_map: HashMap<String, serde_json::Value>,
         tee: Tee,
     ) -> Result<String> {
         let tcb_claims = transform_claims(

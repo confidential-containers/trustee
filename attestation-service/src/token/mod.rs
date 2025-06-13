@@ -31,7 +31,7 @@ pub trait AttestationTokenBroker: Send + Sync {
         policy_ids: Vec<String>,
         init_data_claims: serde_json::Value,
         runtime_data_claims: serde_json::Value,
-        reference_data_map: HashMap<String, Vec<String>>,
+        reference_data_map: HashMap<String, serde_json::Value>,
         tee: Tee,
     ) -> Result<String>;
 
