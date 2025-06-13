@@ -207,7 +207,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, Vec<String>>,
+        reference_data_map: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
         // Take claims from all verifiers, flatten them and add them to one map.
         let mut flattened_claims: Map<String, Value> = Map::new();

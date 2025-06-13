@@ -43,7 +43,7 @@ pub trait RvpsApi {
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
     /// Get the reference values / golden values / expected digests in hex.
-    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>>;
+    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]

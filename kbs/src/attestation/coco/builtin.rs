@@ -81,7 +81,7 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
         self.inner.read().await.query_reference_values().await
     }
 }

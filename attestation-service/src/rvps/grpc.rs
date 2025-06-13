@@ -63,7 +63,7 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
         let req = tonic::Request::new(ReferenceValueQueryRequest {});
         let res = self
             .client
