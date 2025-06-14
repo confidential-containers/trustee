@@ -65,6 +65,7 @@ tokio.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 verifier = { path = "../deps/verifier", default-features = false }
+actix-cors = "0.7"
 
 [build-dependencies]
 shadow-rs.workspace = true
