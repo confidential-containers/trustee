@@ -12,7 +12,7 @@ use hash::HashAlgorithm;
 use serde_json::{Map, Value};
 use sha2::{digest::FixedOutput, Digest, Sha256, Sha384, Sha512};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct AAEvent {
     pub domain: String,
     pub operation: String,
@@ -24,10 +24,7 @@ impl FromStr for AAEvent {
 
     fn from_str(input: &str) -> Result<Self> {
         let input_trimed = input.trim_end();
-        let sections: Vec<&str> = input_trimed.split(' ').collect();
-        if sections.len() != 3 {
-            bail!("Illegal AA event entry format. Should be `<domain> <operation> <content>`");
-        }
+        let sections: Vec<&str> = input_trimed.splitn(3, ' ').collect();
         Ok(Self {
             domain: sections[0].into(),
             operation: sections[1].into(),
@@ -168,9 +165,11 @@ impl AAEventlog {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, str::FromStr};
 
     use rstest::rstest;
+
+    use super::AAEvent;
 
     #[rstest]
     #[case("./test_data/aael/AAEL_data_1", b"71563a23b430b8637970b866169052815ef9434056516dc9f78c1b3bfb745cee18a2ca92aa53c8122be5cbe59a100764")]
@@ -185,5 +184,16 @@ mod tests {
         let aael = AAEventlog::from_str(&aael_bin).unwrap();
         let sum = hex::decode(sum).unwrap();
         aael.integrity_check(&sum).unwrap();
+    }
+
+    #[rstest]
+    #[case("domain operation con tent", AAEvent { domain: "domain".into(), operation: "operation".into(), content: "con tent".into() })]
+    #[case("domain operation content", AAEvent { domain: "domain".into(), operation: "operation".into(), content: "content".into() })]
+    #[case("dom ain operation content", AAEvent { domain: "dom".into(), operation: "ain".into(), content: "operation content".into() })]
+    #[case(r#"github.com/confidential-containers EventWithJSONParams { "key1":"value1\tmore values and 'quotes'\n", "key2": [ "value2", 2, true, null ] }"#, AAEvent { domain: "github.com/confidential-containers".into(), operation: "EventWithJSONParams".into(), content: r#"{ "key1":"value1\tmore values and 'quotes'\n", "key2": [ "value2", 2, true, null ] }"#.into() })]
+
+    fn test_parse_log_entry(#[case] entry: &str, #[case] expect: AAEvent) {
+        let entry = AAEvent::from_str(entry).unwrap();
+        assert_eq!(entry, expect);
     }
 }
