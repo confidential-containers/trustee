@@ -67,12 +67,12 @@ jobs:
 
       - name: Run cargo test
         run: |
-          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier
+          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog
 
       - name: Run cargo fmt check
         run: |
-          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service --check
+          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog --check
 
       - name: Run rust lint check
         run: |
-          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -- -D warnings -A clippy::derive_partial_eq_without_eq
+          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -- -D warnings -A clippy::derive_partial_eq_without_eq
