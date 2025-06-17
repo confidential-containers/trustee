@@ -93,6 +93,14 @@ RUST_LOG=debug \
 
 ## `kbc` emulator
 
+* Install [`evcli`](https://github.com/veraison/evcli)
+
+```sh
+go install github.com/veraison/evcli/v2@latest
+```
+
+* Run the Key Broker Service client emulator:
+
 ```sh
 ( cd ${TRUSTEE_SRC}/deps/verifier/test_data/cca/scripts && ./kbs-test-client.sh )
 ```
