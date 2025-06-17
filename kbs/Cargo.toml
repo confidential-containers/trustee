@@ -62,7 +62,7 @@ mobc = { version = "0.8.5", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
 prometheus = "0.13.4"
 prost = { workspace = true, optional = true }
-rand = "0.8.5"
+rand = "0.9.1"
 regex = "1.11.1"
 regorus.workspace = true
 reqwest = { workspace = true, features = ["json"] }
