@@ -1,5 +1,5 @@
 # Use UBI to build.
-FROM registry.access.redhat.com/ubi9 as builder
+FROM registry.access.redhat.com/ubi9/ubi:9.5 as builder
 ARG ALIYUN=false
 
 # Install build dependencies from CentOS or RHEL repos.
@@ -17,6 +17,8 @@ dnf -y update && \
 # Install packages.
 dnf -y --setopt=install_weak_deps=0 install \
   cargo pkg-config perl-FindBin openssl-devel perl-lib perl-IPC-Cmd perl-File-Compare perl-File-Copy clang-devel \
+  rust gcc gcc-c++ \ 
+  cmake glibc-static perl device-mapper-devel \
   # These two are only available in the CodeReady Builder repo.
   tpm2-tss-devel protobuf-compiler \
   # This one is needed to build the stub.
