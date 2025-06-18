@@ -48,8 +48,8 @@ cd <path-to-attestation-service>
 REQ=$(cat tests/coco-as/request.json)
 grpcurl \
   -plaintext \
-  -import-path protos \
-  -proto ./protos/attestation.proto \
+  -import-path ../protos \
+  -proto ../protos/attestation.proto \
   -d @ 127.0.0.1:50004 attestation.AttestationService/AttestationEvaluate <<EOF
 $REQ
 EOF
