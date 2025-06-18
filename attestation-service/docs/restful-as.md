@@ -151,51 +151,56 @@ RESTful CoCo-AS's endpoints are as following:
 - `/attestation`: receives evidence verification request. The request POST payload is like
 ```json
 {
-    "tee": "sgx", // tee type.
-    "evidence": "YWFhCg==...", // base64 encoded evidence in URL SAFE NO PAD,
-    "runtime_data": {           // `runtime_data` is optional. If given, the runtime data binding will
-                                // be checked.
-                                // The field `raw` and `structured` are exclusive.
-        "raw": "YWFhCg==...",   // Base64 encoded runtime data slice. The whole string will be base64
-                                // decoded. The result one will then be accumulated into a digest which
-                                // is used as the expected runtime data to check against the one inside
-                                // evidence.
-                                //
-                                // The alphabet is URL_SAFE_NO_PAD.
-                                // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
-                                
-        "structured": {}        // Runtime data in a JSON map. CoCoAS will rearrange each layer of the
-                                // data JSON object in dictionary order by key, then serialize and output
-                                // it into a compact string, and perform hash calculation on the whole
-                                // to check against the one inside evidence. The hash algorithm is defined
-                                // by `runtime_data_hash_algorithm`.
-                                //
-                                // After the verification, the structured runtime data field will be included
-                                // inside the token claims.
-    }, 
-    "init_data": {              // `init_data` is optional. If given, the init data binding will
-                                // be checked.
-                                // The field `raw` and `structured` are exclusive.
-        "raw": "YWFhCg==...",   // Base64 encoded init data slice. The whole string will be base64
-                                // decoded. The result one will then be accumulated into a digest which
-                                // is used as the expected init data to check against the one inside
-                                // evidence. The hash algorithm is defined by `init_data_hash_algorithm`.
-                                //
-                                // The alphabet is URL_SAFE_NO_PAD.
-                                // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
-                                
-        "structured": {}        // Init data in a JSON map. CoCoAS will rearrange each layer of the
-                                // data JSON object in dictionary order by key, then serialize and output
-                                // it into a compact string, and perform hash calculation on the whole
-                                // to check against the one inside evidence.
-                                //
-                                // After the verification, the structured init data field will be included
-                                // inside the token claims.
-    }, 
-    "runtime_data_hash_algorithm": "sha384",// Hash algorithm used to calculate runtime data. Currently can be 
-                                            // "sha256", "sha384" or "sha512". If not specified, "sha384" will be selected.
-    "init_data_hash_algorithm": "sha384",   // Hash algorithm used to calculate init data. Currently can be 
-                                            // "sha256", "sha384" or "sha512". If not specified, "sha384" will be selected.
+    "verification_requests": [ // each JSON object is a single attestation request. All requests will be processed
+                               // alltogether with the given policies.
+        {
+            "tee": "sgx", // tee type.
+            "evidence": "YWFhCg==...", // base64 encoded evidence in URL SAFE NO PAD,
+            "runtime_data": {           // `runtime_data` is optional. If given, the runtime data binding will
+                                        // be checked.
+                                        // The field `raw` and `structured` are exclusive.
+                "raw": "YWFhCg==...",   // Base64 encoded runtime data slice. The whole string will be base64
+                                        // decoded. The result one will then be accumulated into a digest which
+                                        // is used as the expected runtime data to check against the one inside
+                                        // evidence.
+                                        //
+                                        // The alphabet is URL_SAFE_NO_PAD.
+                                        // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
+                                        
+                "structured": {}        // Runtime data in a JSON map. CoCoAS will rearrange each layer of the
+                                        // data JSON object in dictionary order by key, then serialize and output
+                                        // it into a compact string, and perform hash calculation on the whole
+                                        // to check against the one inside evidence. The hash algorithm is defined
+                                        // by `runtime_data_hash_algorithm`.
+                                        //
+                                        // After the verification, the structured runtime data field will be included
+                                        // inside the token claims.
+            }, 
+            "init_data": {              // `init_data` is optional. If given, the init data binding will
+                                        // be checked.
+                                        // The field `raw` and `structured` are exclusive.
+                "raw": "YWFhCg==...",   // Base64 encoded init data slice. The whole string will be base64
+                                        // decoded. The result one will then be accumulated into a digest which
+                                        // is used as the expected init data to check against the one inside
+                                        // evidence. The hash algorithm is defined by `init_data_hash_algorithm`.
+                                        //
+                                        // The alphabet is URL_SAFE_NO_PAD.
+                                        // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
+                                        
+                "structured": {}        // Init data in a JSON map. CoCoAS will rearrange each layer of the
+                                        // data JSON object in dictionary order by key, then serialize and output
+                                        // it into a compact string, and perform hash calculation on the whole
+                                        // to check against the one inside evidence.
+                                        //
+                                        // After the verification, the structured init data field will be included
+                                        // inside the token claims.
+            }, 
+            "runtime_data_hash_algorithm": "sha384",// Hash algorithm used to calculate runtime data. Currently can be 
+                                                    // "sha256", "sha384" or "sha512". If not specified, "sha384" will be selected.
+            "init_data_hash_algorithm": "sha384",   // Hash algorithm used to calculate init data. Currently can be 
+                                                    // "sha256", "sha384" or "sha512". If not specified, "sha384" will be selected.
+        }
+    ],
     "policy_ids": ["default", "policy-1"]           // List of IDs of the policy used to check evidence. If
                                                     // not provided, a "default" one will be used.
 }
