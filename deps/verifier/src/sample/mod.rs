@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -12,9 +12,6 @@ struct SampleTeeEvidence {
 
     #[serde(default = "String::default")]
     report_data: String,
-
-    #[serde(default = "String::default")]
-    init_data: String,
 }
 
 #[derive(Debug, Default)]
@@ -60,15 +57,8 @@ async fn verify_tee_evidence(
         }
     }
 
-    // Emulate the init data hash.
-    if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
-        debug!("Check the binding of init_data_digest.");
-        let ev_init_data_hash = base64::engine::general_purpose::STANDARD
-            .decode(&evidence.init_data)
-            .context("base64 decode init data hash for sample evidence")?;
-        if *expected_init_data_hash != ev_init_data_hash {
-            bail!("INIT DATA HASH is different from that in Sample Quote");
-        }
+    if let InitDataHash::Value(_) = expected_init_data_hash {
+        warn!("Sample does not support init data hash mechanism. skip.");
     }
 
     Ok(())
@@ -80,7 +70,6 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
     let claims_map = json!({
         "svn": quote.svn,
         "report_data": quote.report_data,
-        "init_data": quote.init_data,
 
         // Generally TCB claims should originate from the attester.
         "launch_digest": "abcde",
