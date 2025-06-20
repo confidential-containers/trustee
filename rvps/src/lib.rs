@@ -6,7 +6,6 @@
 pub mod client;
 pub mod config;
 pub mod extractors;
-pub mod pre_processor;
 pub mod reference_value;
 pub mod rvps_api;
 pub mod server;
@@ -17,7 +16,6 @@ pub use reference_value::{ReferenceValue, TrustedDigest};
 pub use storage::ReferenceValueStorage;
 
 use extractors::Extractors;
-use pre_processor::{PreProcessor, PreProcessorAPI};
 
 use anyhow::{bail, Context, Result};
 use log::{info, warn};
@@ -50,7 +48,6 @@ fn default_version() -> String {
 
 /// The core of the RVPS, s.t. componants except communication componants.
 pub struct Rvps {
-    pre_processor: PreProcessor,
     extractors: Extractors,
     storage: Box<dyn ReferenceValueStorage + Send + Sync>,
 }
@@ -58,25 +55,17 @@ pub struct Rvps {
 impl Rvps {
     /// Instantiate a new RVPS
     pub fn new(config: Config) -> Result<Self> {
-        let pre_processor = PreProcessor::default();
         let extractors = Extractors::default();
         let storage = config.storage.to_storage()?;
 
         Ok(Rvps {
-            pre_processor,
             extractors,
             storage,
         })
     }
 
-    /// Add Ware to the Core's Pre-Processor
-    pub fn with_ware(&mut self, _ware: &str) -> &Self {
-        // TODO: no wares implemented now.
-        self
-    }
-
     pub async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
-        let mut message: Message = serde_json::from_str(message).context("parse message")?;
+        let message: Message = serde_json::from_str(message).context("parse message")?;
 
         // Judge the version field
         if message.version != MESSAGE_VERSION {
@@ -86,8 +75,6 @@ impl Rvps {
                 message.version
             );
         }
-
-        self.pre_processor.process(&mut message)?;
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
