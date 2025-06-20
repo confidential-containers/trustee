@@ -7,11 +7,9 @@ All the reference values will be stored inside RVPS. When the Attestation Servic
 
 RVPS contains the following components:
 
-- Pre-Processor : Pre-Processor contains a set of Wares (like Middleware). The Wares can process the input Message and then deliver it to the Extractors.
-
 - Extractors : Extractors has sub-modules to process different types of provenance. Each sub-module will consume the input Message, and then generate an output Reference Value.
 
-- Store : Store is a trait object, which can provide a key-value like API. All verified reference values will be stored in the Store. When requested by Attestation Service, related reference value will be provided.
+- Storage : ReferenceValueStorage is a trait object, which can provide a key-value like API. All verified reference values will be stored in a storage backend. When requested by Attestation Service, related reference value will be provided.
 
 ## Message Flow
 
