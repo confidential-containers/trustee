@@ -124,7 +124,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                         let raw_runtime = URL_SAFE_NO_PAD.decode(raw).map_err(|e| {
                             Status::aborted(format!("base64 decode runtime data: {e}"))
                         })?;
-                        Some(attestation_service::Data::Raw(raw_runtime))
+                        Some(attestation_service::RuntimeData::Raw(raw_runtime))
                     }
                     crate::as_api::individual_attestation_request::RuntimeData::StructuredRuntimeData(
                         structured,
@@ -132,7 +132,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                         let structured = serde_json::from_str(&structured).map_err(|e| {
                             Status::aborted(format!("parse structured runtime data: {e}"))
                         })?;
-                        Some(attestation_service::Data::Structured(structured))
+                        Some(attestation_service::RuntimeData::Structured(structured))
                     }
                 },
                 None => None,
@@ -140,20 +140,17 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
             let init_data = match verification_request.init_data {
                 Some(init_data) => match init_data {
-                    crate::as_api::individual_attestation_request::InitData::RawInitData(raw) => {
+                    crate::as_api::individual_attestation_request::InitData::InitDataDigest(
+                        raw,
+                    ) => {
                         let raw_init = URL_SAFE_NO_PAD.decode(raw).map_err(|e| {
                             Status::aborted(format!("base64 decode init data: {e}"))
                         })?;
-                        Some(attestation_service::Data::Raw(raw_init))
+                        Some(attestation_service::InitDataInput::Digest(raw_init))
                     }
-                    crate::as_api::individual_attestation_request::InitData::StructuredInitData(
+                    crate::as_api::individual_attestation_request::InitData::InitDataToml(
                         structured,
-                    ) => {
-                        let structured = serde_json::from_str(&structured).map_err(|e| {
-                            Status::aborted(format!("parse structured init data: {e}"))
-                        })?;
-                        Some(attestation_service::Data::Structured(structured))
-                    }
+                    ) => Some(attestation_service::InitDataInput::Toml(structured)),
                 },
                 None => None,
             };
@@ -172,29 +169,12 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
                     }
                 };
 
-            let init_data_hash_algorithm = match verification_request
-                .init_data_hash_algorithm
-                .is_empty()
-            {
-                false => {
-                    HashAlgorithm::try_from(&verification_request.init_data_hash_algorithm[..])
-                        .map_err(|e| {
-                            Status::aborted(format!("parse init data HashAlgorithm failed: {e}"))
-                        })?
-                }
-                true => {
-                    info!("No Init Data Hash Algorithm provided, use `sha384` by default.");
-                    HashAlgorithm::Sha384
-                }
-            };
-
             verification_requests.push(VerificationRequest {
                 evidence,
                 tee,
                 runtime_data,
                 runtime_data_hash_algorithm,
                 init_data,
-                init_data_hash_algorithm,
             });
         }
         let policy_ids = match request.policy_ids.is_empty() {
