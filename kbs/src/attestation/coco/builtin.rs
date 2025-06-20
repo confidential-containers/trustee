@@ -5,7 +5,8 @@
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{
-    config::Config as AsConfig, AttestationService, Data, HashAlgorithm, VerificationRequest,
+    config::Config as AsConfig, AttestationService, HashAlgorithm, InitDataInput, RuntimeData,
+    VerificationRequest,
 };
 use kbs_types::{Challenge, Tee};
 use std::collections::HashMap;
@@ -31,14 +32,21 @@ impl Attest for BuiltInCoCoAs {
         let mut verification_requests = vec![];
 
         for evidence in evidence_to_verify {
-            verification_requests.push(VerificationRequest {
+            let mut request = VerificationRequest {
                 evidence: evidence.tee_evidence,
                 tee: evidence.tee,
-                runtime_data: Some(Data::Structured(evidence.runtime_data)),
+                runtime_data: Some(RuntimeData::Structured(evidence.runtime_data)),
                 runtime_data_hash_algorithm: HashAlgorithm::Sha384,
                 init_data: None,
-                init_data_hash_algorithm: HashAlgorithm::Sha384,
-            });
+            };
+            if let Some(init_data) = evidence.init_data {
+                if init_data.format != "toml" {
+                    bail!("Unsupported initdata format: {}", init_data.format);
+                }
+                request.init_data = Some(InitDataInput::Toml(init_data.body));
+            }
+
+            verification_requests.push(request);
         }
 
         let policy_ids = vec!["default".to_string()];
