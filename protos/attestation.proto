@@ -56,23 +56,17 @@ message IndividualAttestationRequest {
         // defined in https://datatracker.ietf.org/doc/html/rfc4648#section-5
         string raw_init_data = 6;
 
-        // Init data in a JSON map. CoCoAS will rearrange each layer of the
-        // data JSON object in dictionary order by key, then serialize and output
-        // it into a compact string, and perform hash calculation on the whole
+        // Init data TOML. CoCoAS will perform hash calculation on the whole
         // to check against the one inside evidence.
         // 
-        // After the verification, the structured init data field will be included
-        // inside the token claims.
+        // After the verification, the `.data` field of init data field will
+        // be included inside the token claims.
         string structured_init_data = 7;
     }
 
     // Hash algorithm used to calculate runtime data. Currently can be "sha256",
     // "sha384" or "sha512". If not specified, "sha384" will be selected.
     string runtime_data_hash_algorithm = 8;
-
-    // Hash algorithm used to calculate init data. Currently can be "sha256",
-    // "sha384" or "sha512". If not specified, "sha384" will be selected.
-    string init_data_hash_algorithm = 9;
 }
 
 message AttestationResponse {
