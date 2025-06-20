@@ -8,7 +8,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use kbs_types::{Attestation, Challenge, Request, Tee};
+use kbs_types::{Attestation, Challenge, Request, Tee, TeePubKey};
 use lazy_static::lazy_static;
 use log::{debug, info};
 use rand::{thread_rng, Rng};
@@ -57,11 +57,27 @@ pub struct CompositeEvidence {
     additional_evidence: String,
 }
 
+#[derive(Deserialize)]
+pub struct RuntimeData {
+    pub nonce: String,
+
+    #[serde(rename = "tee-pubkey")]
+    pub tee_pubkey: TeePubKey,
+}
+
+#[derive(Deserialize)]
+pub struct InitData {
+    pub format: String,
+
+    pub body: String,
+}
+
 /// IndependentEvidence is one set of evidence from one attester.
 pub struct IndependentEvidence {
     pub tee: Tee,
     pub tee_evidence: TeeEvidence,
     pub runtime_data: serde_json::Value,
+    pub init_data: Option<InitData>,
 }
 
 /// Number of bytes in a nonce.
@@ -298,28 +314,53 @@ impl AttestationService {
         // deserialize evidence
         let composite_evidence: CompositeEvidence =
             serde_json::from_value(attestation.tee_evidence)
-                .context("Failed to deserialize composite evidence.")?;
+                .context("failed to parse composite evidence")?;
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
-        let additional_runtime_data = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce});
-        let primary_runtime_data = json!({"tee-pubkey": attestation.tee_pubkey, "nonce": nonce, "additional-evidence": composite_evidence.additional_evidence});
+        let runtime_data: RuntimeData = serde_json::from_value(attestation.runtime_data)
+            .context("parse kbs protocol runtime data")?;
 
-        // primary evidence
-        evidence_to_verify.push(IndependentEvidence {
+        if nonce != runtime_data.nonce {
+            bail!("the nonce in the handshake session is different from the client side in KBS protocol's Attestation message");
+        }
+
+        let kbs_evidence_runtime_data = json!({
+            "tee-pubkey": runtime_data.tee_pubkey,
+            "nonce": nonce,
+        });
+
+        let primary_runtime_data = json!({
+            "tee-pubkey": runtime_data.tee_pubkey,
+            "nonce": nonce,
+            "additional-evidence": composite_evidence.additional_evidence,
+        });
+
+        let mut primary_evidence = IndependentEvidence {
             tee,
             tee_evidence: composite_evidence.primary_evidence,
             runtime_data: primary_runtime_data,
-        });
+            init_data: None,
+        };
+
+        if let Some(init_data) = attestation.init_data {
+            let initdata: InitData =
+                serde_json::from_value(init_data).context("parse initdata failed")?;
+            primary_evidence.init_data = Some(initdata);
+        }
+
+        // primary evidence
+        evidence_to_verify.push(primary_evidence);
 
         // additional evidence
         if !composite_evidence.additional_evidence.is_empty() {
             let additional_evidence: HashMap<Tee, TeeEvidence> =
                 serde_json::from_str(&composite_evidence.additional_evidence)?;
-            for (tee, evidence) in additional_evidence.iter() {
+            for (tee, tee_evidence) in additional_evidence {
                 evidence_to_verify.push(IndependentEvidence {
-                    tee: *tee,
-                    tee_evidence: evidence.clone(),
-                    runtime_data: additional_runtime_data.clone(),
+                    tee,
+                    tee_evidence,
+                    runtime_data: kbs_evidence_runtime_data.clone(),
+                    init_data: None,
                 });
             }
         }
