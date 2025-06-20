@@ -63,6 +63,7 @@ tempfile.workspace = true
 time = { version = "0.3.40", features = ["std"] }
 thiserror.workspace = true
 tokio.workspace = true
+toml.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 verifier = { path = "../deps/verifier", default-features = false }
