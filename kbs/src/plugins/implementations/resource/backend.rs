@@ -13,6 +13,9 @@ use crate::prometheus::{RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL};
 
 use super::local_fs;
 
+#[cfg(feature = "vault")]
+use super::vault_kv;
+
 type RepositoryInstance = Arc<dyn StorageBackend>;
 
 /// Interface of a `Repository`.
@@ -74,6 +77,10 @@ pub enum RepositoryConfig {
     #[cfg(feature = "aliyun")]
     #[serde(alias = "aliyun")]
     Aliyun(super::aliyun_kms::AliyunKmsBackendConfig),
+
+    #[cfg(feature = "vault")]
+    #[serde(alias = "vault")]
+    Vault(vault_kv::VaultKvBackendConfig),
 }
 
 impl Default for RepositoryConfig {
@@ -102,6 +109,13 @@ impl TryFrom<RepositoryConfig> for ResourceStorage {
             #[cfg(feature = "aliyun")]
             RepositoryConfig::Aliyun(config) => {
                 let client = super::aliyun_kms::AliyunKmsBackend::new(&config)?;
+                Ok(Self {
+                    backend: Arc::new(client),
+                })
+            }
+            #[cfg(feature = "vault")]
+            RepositoryConfig::Vault(config) => {
+                let client = vault_kv::VaultKvBackend::new(&config)?;
                 Ok(Self {
                     backend: Arc::new(client),
                 })

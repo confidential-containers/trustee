@@ -1,6 +1,7 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
+VAULT ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -53,6 +54,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   FEATURES += nebula-ca-plugin
+endif
+
+ifeq ($(VAULT), true)
+  FEATURES += vault
 endif
 
 ifndef CLI_FEATURES
