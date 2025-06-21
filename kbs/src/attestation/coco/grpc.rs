@@ -182,7 +182,7 @@ impl Attest for GrpcClientPool {
         Ok(())
     }
 
-    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, Vec<String>>> {
+    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
         let req = tonic::Request::new(ReferenceValueQueryRequest {});
 
         let mut client = self.pool.get().await?;

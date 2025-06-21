@@ -17,6 +17,8 @@ pub use storage::ReferenceValueStorage;
 
 use extractors::Extractors;
 
+pub use serde_json::Value;
+
 use anyhow::{bail, Context, Result};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
@@ -87,7 +89,7 @@ impl Rvps {
         Ok(())
     }
 
-    pub async fn get_digests(&self) -> Result<HashMap<String, Vec<String>>> {
+    pub async fn get_digests(&self) -> Result<HashMap<String, Value>> {
         let mut rv_map = HashMap::new();
         let reference_values = self.storage.get_values().await?;
 
@@ -97,13 +99,7 @@ impl Rvps {
                 continue;
             }
 
-            let hash_values = rv
-                .hash_values()
-                .iter()
-                .map(|pair| pair.value().to_owned())
-                .collect();
-
-            rv_map.insert(rv.name().to_string(), hash_values);
+            rv_map.insert(rv.name().to_string(), rv.value());
         }
         Ok(rv_map)
     }

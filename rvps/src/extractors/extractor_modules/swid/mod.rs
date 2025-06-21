@@ -5,24 +5,14 @@
 
 use anyhow::*;
 use base64::Engine;
-use chrono::{Months, Timelike, Utc};
 use log::{debug, info};
 
-use crate::{
-    reference_value::{HashValuePair, REFERENCE_VALUE_VERSION},
-    ReferenceValue,
-};
+use crate::ReferenceValue;
 
 use super::Extractor;
 
 #[derive(Default)]
 pub struct SwidExtractor;
-
-/// Default reference value hash algorithm
-const DEFAULT_ALG: &str = "sha384";
-
-/// The reference value will be expired in the default time (months)
-const MONTHS_BEFORE_EXPIRATION: u32 = 12;
 
 const SWID_NS: &str = "http://standards.iso.org/iso/19770/-2/2015/schema.xsd";
 const RIMIM_NS: &str = "https://trustedcomputinggroup.org/resource/tcg-reference-integrity-manifest-rim-information-model/";
@@ -80,28 +70,19 @@ impl Extractor for SwidExtractor {
             // Resource may have multiple hash attributes
             let mut hash_index = 0;
             loop {
-                let hash = resource.attribute((HASH_NS, format!("Hash{hash_index}").as_str()));
-                if hash.is_none() {
+                let Some(hash) =
+                    resource.attribute((HASH_NS, format!("Hash{hash_index}").as_str()))
+                else {
                     break;
-                }
+                };
 
-                let rv_pair = HashValuePair::new(DEFAULT_ALG.into(), hash.unwrap().to_string());
+                let hash_value = serde_json::Value::String(hash.to_string());
                 let name = format!("{rv_name_prefix}.{measurement_name}.hash{hash_index}");
 
                 // Rego does not like dashes
                 let name = name.replace("-", "_");
 
-                let expiration = Utc::now()
-                    .with_nanosecond(0)
-                    .and_then(|t| t.checked_add_months(Months::new(MONTHS_BEFORE_EXPIRATION)))
-                    .unwrap(); // The expiration time is fixed.
-
-                let rv = ReferenceValue {
-                    version: REFERENCE_VALUE_VERSION.into(),
-                    name: name.to_string(),
-                    expiration,
-                    hash_value: vec![rv_pair],
-                };
+                let rv = ReferenceValue::new()?.set_name(&name).set_value(hash_value);
                 rvs.push(rv);
 
                 hash_index += 1;
@@ -127,7 +108,7 @@ mod tests {
         let mut found = false;
         for rv in rvs {
             if rv.name == "NVIDIA_Corporation.GH100.96_00_74_00_1C.Measurement_12.hash1" {
-                if rv.hash_value[0].value() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
+                if rv.value() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
                     found = true;
                     break
                 }

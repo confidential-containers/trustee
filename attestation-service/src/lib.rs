@@ -10,12 +10,13 @@ pub mod token;
 
 use crate::token::AttestationTokenBroker;
 
+pub use kbs_types::{Attestation, Tee};
+pub use serde_json::Value;
+
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-pub use kbs_types::{Attestation, Tee};
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
-use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumString};
@@ -257,7 +258,7 @@ impl AttestationService {
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Vec<String>>> {
+    pub async fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
         self.rvps
             .get_digests()
             .await
