@@ -241,3 +241,293 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod integration_tests {
+    use super::super::{
+        vault_kv::{VaultKvBackend, VaultKvBackendConfig},
+        ResourceDesc, StorageBackend,
+    };
+    use rstest::{fixture, rstest};
+    use serde_json::json;
+    use tokio;
+
+    // These tests require a running Vault server and are marked as ignored by default.
+    //
+    // Look at the vault.PID and vault-ssl.PID Makefile targets for the setup
+
+    // --- Fixtures for common test setup ---
+
+    #[fixture]
+    fn vault_token() -> String {
+        std::env::var("VAULT_TOKEN").expect("VAULT_TOKEN environment variable must be set")
+    }
+
+    #[fixture]
+    fn ca_cert_path() -> String {
+        std::env::var("VAULT_CA_CERT")
+            .expect("VAULT_CA_CERT environment variable must be set for SSL verification tests")
+    }
+
+    // Fixture that provides a configured VaultKvBackend for non-SSL (HTTP) connections.
+    #[fixture]
+    fn nossl_backend(vault_token: String) -> VaultKvBackend {
+        let config = VaultKvBackendConfig {
+            vault_url: "http://127.0.0.1:8200".to_string(),
+            token: vault_token,
+            mount_path: "secret".to_string(),
+            verify_ssl: false,
+            ca_certs: None,
+        };
+        VaultKvBackend::new(&config).expect("Failed to create non-SSL Vault backend")
+    }
+
+    // Fixture that provides a VaultKvBackend for SSL (HTTPS) connections with CA verification.
+    #[fixture]
+    fn ssl_backend(vault_token: String, ca_cert_path: String) -> VaultKvBackend {
+        let config = VaultKvBackendConfig {
+            vault_url: "https://127.0.0.1:8200".to_string(),
+            token: vault_token,
+            mount_path: "secret".to_string(),
+            verify_ssl: true,
+            ca_certs: Some(vec![ca_cert_path]),
+        };
+        VaultKvBackend::new(&config).expect("Failed to create SSL Vault backend with verification")
+    }
+
+    // Fixture that provides a VaultKvBackend for SSL (HTTPS) connections where SSL verification is skipped.
+    #[fixture]
+    fn ssl_no_verify_backend(vault_token: String, ca_cert_path: String) -> VaultKvBackend {
+        let config = VaultKvBackendConfig {
+            vault_url: "https://127.0.0.1:8200".to_string(),
+            token: vault_token,
+            mount_path: "secret".to_string(),
+            verify_ssl: false,
+            ca_certs: Some(vec![ca_cert_path]),
+        };
+        VaultKvBackend::new(&config)
+            .expect("Failed to create SSL Vault backend without verification")
+    }
+
+    // --- Test Suite for Non-SSL Operations ---
+
+    #[rstest]
+    #[case("write_and_read_text", "simple-text-data".as_bytes())]
+    #[case("write_and_read_json", &serde_json::to_vec(&json!({"user": "test", "pass": "secret"})).unwrap())]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_nossl_write_and_read(
+        nossl_backend: VaultKvBackend,
+        #[case] tag: &str,
+        #[case] data: &[u8],
+    ) {
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: tag.to_string(),
+        };
+
+        // Write the secret
+        nossl_backend
+            .write_secret_resource(resource_desc.clone(), data)
+            .await
+            .expect("Should succeed in writing the secret");
+        println!("Successfully wrote secret for tag: {}", tag);
+
+        // Read it back and verify
+        let read_data = nossl_backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("Should succeed in reading the secret back");
+
+        assert_eq!(read_data, data);
+        println!(
+            "Successfully read back and verified secret for tag: {}",
+            tag
+        );
+    }
+
+    #[rstest]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_nossl_read_scenarios(nossl_backend: VaultKvBackend) {
+        // --- Scenario: Read a pre-existing secret ---
+        let resource_desc_existing = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "test-tag".to_string(),
+        };
+        let data = nossl_backend
+            .read_secret_resource(resource_desc_existing)
+            .await
+            .unwrap();
+        assert_eq!(data, b"test-secret-value");
+        println!("Successfully read pre-existing secret.");
+
+        // --- Scenario: Read a pre-existing JSON secret ---
+        let resource_desc_json = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "json-preloaded".to_string(),
+        };
+        let json_data = nossl_backend
+            .read_secret_resource(resource_desc_json)
+            .await
+            .unwrap();
+        let expected_json = json!({
+            "service": "database",
+            "credentials": {
+                "host": "db.example.com",
+                "port": 5432,
+                "username": "app_user",
+                "password": "secure_pass"
+            },
+            "settings": {
+                "max_connections": 100,
+                "timeout": 30
+            }
+        });
+        let read_json: serde_json::Value = serde_json::from_slice(&json_data).unwrap();
+        assert_eq!(read_json, expected_json);
+        println!("Successfully read pre-existing JSON secret.");
+
+        // --- Scenario: Read a non-existent secret ---
+        let resource_desc_nonexistent = ResourceDesc {
+            repository_name: "nonexistent".to_string(),
+            resource_type: "nonexistent".to_string(),
+            resource_tag: "nonexistent".to_string(),
+        };
+        let err = nossl_backend
+            .read_secret_resource(resource_desc_nonexistent)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("Secret not found"));
+        println!("Correctly failed when reading a non-existent secret.");
+
+        // --- Scenario: Read a secret with an empty data value ---
+        let resource_desc_empty = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "empty-data".to_string(),
+        };
+        let data_empty = nossl_backend
+            .read_secret_resource(resource_desc_empty)
+            .await
+            .unwrap();
+        assert!(data_empty.is_empty());
+        println!("Successfully read secret with empty data.");
+
+        // --- Scenario: Read a secret where the 'data' key is missing in the payload ---
+        let resource_desc_no_data = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "no-data-key".to_string(),
+        };
+        let err = nossl_backend
+            .read_secret_resource(resource_desc_no_data)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("missing required 'data' key"));
+        println!("Correctly failed when 'data' key is missing.");
+    }
+
+    // --- Test Suite for SSL Operations ---
+
+    #[rstest]
+    #[case::with_ssl_verification(ssl_backend::default())]
+    #[case::without_ssl_verification(ssl_no_verify_backend::default())]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_ssl_write_and_read(#[case] backend: VaultKvBackend) {
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "ssl-test".to_string(),
+        };
+        let test_data = b"ssl-test-secret-value";
+
+        // Write operation
+        backend
+            .write_secret_resource(resource_desc.clone(), test_data)
+            .await
+            .expect("Should succeed in writing secret over SSL");
+        println!("Successfully wrote secret over SSL.");
+
+        // Read back and verify
+        let read_data = backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("Should succeed in reading secret back over SSL");
+
+        assert_eq!(read_data, test_data);
+        println!("Successfully read back and verified secret over SSL.");
+    }
+
+    // --- Standalone tests for specific invalid configurations ---
+
+    // This test specifically checks the behavior of an invalid Vault token.
+    #[rstest]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_invalid_token() {
+        let config = VaultKvBackendConfig {
+            vault_url: "http://127.0.0.1:8200".to_string(),
+            token: "invalid-token-12345".to_string(), // The invalid token
+            mount_path: "secret".to_string(),
+            verify_ssl: false,
+            ca_certs: None,
+        };
+        let backend = VaultKvBackend::new(&config).expect("Backend creation should succeed");
+
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "test-tag".to_string(),
+        };
+
+        let err = backend
+            .read_secret_resource(resource_desc)
+            .await
+            .unwrap_err();
+        println!("Failed with invalid token: {}", err);
+        // Error should indicate a permission denied
+        assert!(
+            err.to_string().contains("403")
+                || err.to_string().to_lowercase().contains("permission denied")
+        );
+    }
+
+    // This test specifically checks the behavior of an invalid mount path.
+    #[rstest]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_invalid_mount_path(vault_token: String) {
+        let config = VaultKvBackendConfig {
+            vault_url: "http://127.0.0.1:8200".to_string(),
+            token: vault_token,
+            mount_path: "nonexistent-mount".to_string(), // The invalid mount path
+            verify_ssl: false,
+            ca_certs: None,
+        };
+        let backend = VaultKvBackend::new(&config).expect("Backend creation should succeed");
+
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "test-tag".to_string(),
+        };
+
+        let err = backend
+            .read_secret_resource(resource_desc)
+            .await
+            .unwrap_err();
+        println!("Failed with invalid mount path: {}", err);
+        // Error could be a 403 or a specific Vault error about the path
+        assert!(
+            err.to_string().contains("403")
+                || err
+                    .to_string()
+                    .contains("ensure client's policies grant access to path")
+        );
+    }
+}
