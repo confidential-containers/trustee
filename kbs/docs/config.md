@@ -234,7 +234,7 @@ This is also called "Repository" in old versions. The properties to be configure
 
 | Property | Type   | Description                                                     | Required | Default   |
 |----------|--------|-----------------------------------------------------------------|----------|-----------|
-| `type`   | String | The resource repository type. Valid values: `LocalFs`, `Aliyun` | Yes      | `LocalFs` |
+| `type`   | String | The resource repository type. Valid values: `LocalFs`, `Aliyun`, `Vault` | Yes      | `LocalFs` |
 
 **`LocalFs` Properties**
 
@@ -250,6 +250,16 @@ This is also called "Repository" in old versions. The properties to be configure
 | `kms_instance_id` | String | The KMS instance id               | Yes      | `kst-shh668f7...`                                   |
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
+
+** `Vault` Properties **
+
+| Property      | Type           | Required | Description                                              | Default     |
+|---------------|----------------|----------|----------------------------------------------------------|-------------|
+| `vault_url`   | String         | Yes      | Vault server URL (HTTP or HTTPS)                         | -           |
+| `token`       | String         | Yes      | Vault authentication token                               | -           |
+| `mount_path`  | String         | No       | Vault KV v1 mount path                                   | `"secret"`  |
+| `verify_ssl`  | Boolean        | No       | Enable/disable SSL certificate verification              | `false`     |
+| `ca_certs`    | Array[String]  | No       | Paths to custom CA certificate files                     | `None`      |
 
 #### Nebula CA Configuration
 
