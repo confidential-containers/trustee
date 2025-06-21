@@ -37,6 +37,9 @@ pkcs11 = ["cryptoki"]
 # that want to join a Nebula overlay network
 nebula-ca-plugin = []
 
+# Use HashiCorp Vault KV v1 as KBS backend
+vault = ["vaultrs"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
@@ -82,6 +85,7 @@ uuid = { version = "1.2.2", features = ["serde", "v4"] }
 openssl.workspace = true
 az-cvm-vtpm = { version = "0.7.0", default-features = false, optional = true }
 derivative = "2.2.0"
+vaultrs = { version = "0.7.4", optional = true }
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
@@ -105,6 +109,7 @@ tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 serial_test = "3.0"
+toml = "0.8"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
