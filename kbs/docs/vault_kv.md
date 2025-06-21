@@ -207,6 +207,26 @@ Enable debug logging to troubleshoot issues:
 RUST_LOG=debug ./target/release/kbs --config-file /path/to/kbs-config.toml
 ```
 
+## Testing
+
+The backend includes integration tests that require a running Vault server.
+
+To run the tests without SSL setup:
+
+```sh
+cd kbs/test
+make test-vault-nossl
+make stop-vault
+```
+
+To run the tests with SSL setup:
+
+```sh
+cd kbs/test
+make test-vault-ssl
+make stop-vault-ssl
+```
+
 ## Limitations
 
 - **KV v1 Support**: Currently only supports KV v1 engine
