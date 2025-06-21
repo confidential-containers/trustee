@@ -29,3 +29,7 @@ In this mode, resources will be stored with [generic secrets](https://www.alibab
 One KBS can be configured with a specified KMS instance in `repository_config` field of KBS launch config. For config, see the [document](./config.md#repository-configuration).
 These materials can be found in KMS instance's [AAP](https://www.alibabacloud.com/help/en/kms/user-guide/manage-aaps?spm=a3c0i.23458820.2359477120.1.4fd96e9bmEFST4).
 When being accessed, a resource URI of `kbs:///repo/type/tag` will be translated into the generic secret with name `tag`. Hinting that `repo/type` field will be ignored.
+
+### Hashicorp Vault Backend
+
+[Vault KV secrets engine backend](./vault_kv.md)

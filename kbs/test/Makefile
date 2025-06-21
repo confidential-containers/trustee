@@ -227,10 +227,162 @@ stop: stop-kbs stop-resource-kbs
 .PHONY: e2e-test
 e2e-test: test-bgcheck test-passport stop
 
+# Vault configuration
+VAULT_VERSION := 1.19.5
+VAULT_ARCH := linux_amd64
+VAULT_URL := https://releases.hashicorp.com/vault/$(VAULT_VERSION)/vault_$(VAULT_VERSION)_$(VAULT_ARCH).zip
+VAULT_BIN := $(WORK_DIR)/vault
+VAULT_CONFIG := $(WORK_DIR)/vault-config.json
+VAULT_SSL_CONFIG := $(WORK_DIR)/vault-ssl-config.json
+VAULT_TOKEN_FILE := $(WORK_DIR)/vault-token
+VAULT_KBS_CONFIG_PATH := ./config
+VAULT_CA_KEY := $(WORK_DIR)/vault-ca.key
+VAULT_CA_CERT := $(WORK_DIR)/vault-ca.pem
+VAULT_SERVER_KEY := $(WORK_DIR)/vault-server.key
+VAULT_SERVER_CERT := $(WORK_DIR)/vault-server.pem
+
+# Download and setup Vault binary
+$(VAULT_BIN):
+	@if [ ! -f $(VAULT_BIN) ]; then \
+		printf "${BOLD}downloading vault binary${SGR0}\n"; \
+		mkdir -p $(WORK_DIR) && \
+		cd $(WORK_DIR) && \
+		curl -L "$(VAULT_URL)" -o vault.zip && \
+		unzip vault.zip && \
+		chmod +x vault && \
+		rm vault.zip; \
+	else \
+		printf "${BOLD}vault binary already exists${SGR0}\n"; \
+	fi
+
+# Create Vault configuration for kv1 engine
+$(VAULT_CONFIG):
+	mkdir -p $(WORK_DIR) && \
+	echo '{"storage":{"file":{"path":"$(WORK_DIR)/vault-data"}},"listener":{"tcp":{"address":"127.0.0.1:8200","tls_disable":true}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true,"disable_mlock":true}' > $(VAULT_CONFIG)
+
+# Create Vault SSL configuration for kv1 engine
+$(VAULT_SSL_CONFIG): $(VAULT_SERVER_CERT) $(VAULT_SERVER_KEY)
+	mkdir -p $(WORK_DIR) && \
+	echo '{"storage":{"file":{"path":"$(WORK_DIR)/vault-ssl-data"}},"listener":{"tcp":{"address":"127.0.0.1:8200","tls_disable":false,"tls_cert_file":"$(VAULT_SERVER_CERT)","tls_key_file":"$(VAULT_SERVER_KEY)"}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true,"disable_mlock":true}' > $(VAULT_SSL_CONFIG)
+
+# Generate Vault CA certificate for SSL
+$(VAULT_CA_KEY):
+	openssl genrsa -out $(VAULT_CA_KEY) 4096
+
+$(VAULT_CA_CERT): $(VAULT_CA_KEY)
+	openssl req -new -x509 -key $(VAULT_CA_KEY) -out $(VAULT_CA_CERT) -days 365 \
+		-subj "/C=US/ST=CA/L=San Francisco/O=Test/OU=Vault/CN=Vault CA"
+
+# Generate Vault server certificate for SSL
+$(VAULT_SERVER_KEY):
+	openssl genrsa -out $(VAULT_SERVER_KEY) 4096
+
+$(VAULT_SERVER_CERT): $(VAULT_SERVER_KEY) $(VAULT_CA_CERT) $(VAULT_CA_KEY)
+	openssl req -new -key $(VAULT_SERVER_KEY) -out $(WORK_DIR)/vault-server.csr \
+		-subj "/C=US/ST=CA/L=San Francisco/O=Test/OU=Vault/CN=127.0.0.1" && \
+	echo -e "[v3_req]\nsubjectAltName=IP:127.0.0.1,DNS:localhost" > $(WORK_DIR)/vault-server.conf && \
+	openssl x509 -req -in $(WORK_DIR)/vault-server.csr -CA $(VAULT_CA_CERT) -CAkey $(VAULT_CA_KEY) \
+		-CAcreateserial -out $(VAULT_SERVER_CERT) -days 365 -extensions v3_req \
+		-extfile $(WORK_DIR)/vault-server.conf
+
+# Build KBS with vault feature enabled
+vault-kbs:
+	cd $(PROJECT_DIR) && \
+	make background-check-kbs VAULT=true && \
+	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/vault-kbs
+
+# Start Vault server with kv1 secrets engine
+.PHONY: start-vault
+start-vault: vault.PID
+
+vault.PID: $(VAULT_BIN) $(VAULT_CONFIG)
+	@if [ ! -f vault.PID ]; then \
+		printf "${BOLD}starting vault server${SGR0}\n"; \
+		mkdir -p $(WORK_DIR)/vault-data && \
+		{ \
+			$(VAULT_BIN) server -config=$(VAULT_CONFIG) \
+			& echo $$! > vault.PID; \
+		} && \
+		sleep 3 && \
+		export VAULT_ADDR=http://127.0.0.1:8200 && \
+		$(VAULT_BIN) operator init -key-shares=1 -key-threshold=1 > $(WORK_DIR)/vault-init.txt && \
+		export VAULT_UNSEAL_KEY=$$(grep 'Unseal Key 1:' $(WORK_DIR)/vault-init.txt | cut -d' ' -f4) && \
+		export VAULT_ROOT_TOKEN=$$(grep 'Initial Root Token:' $(WORK_DIR)/vault-init.txt | cut -d' ' -f4) && \
+		$(VAULT_BIN) operator unseal $$VAULT_UNSEAL_KEY && \
+		echo $$VAULT_ROOT_TOKEN > $(VAULT_TOKEN_FILE) && \
+		export VAULT_TOKEN=$$VAULT_ROOT_TOKEN && \
+		$(VAULT_BIN) secrets enable -version=1 -path=secret kv && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/test-tag data="test-secret-value" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/no-data-key value="some-value" other="content" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/empty-data data="" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/json-preloaded data='{"service":"database","credentials":{"host":"db.example.com","port":5432,"username":"app_user","password":"secure_pass"},"settings":{"max_connections":100,"timeout":30}}' && \
+		printf "${BOLD}vault server started and configured${SGR0}\n"; \
+	else \
+		printf "${BOLD}vault server already running (vault.PID exists)${SGR0}\n"; \
+	fi
+
+.PHONY: stop-vault
+stop-vault: vault.PID
+	@printf "${BOLD}stopping vault server${SGR0}\n"
+	kill $$(cat $<) && rm $< || true
+
+# Start Vault server with SSL enabled
+.PHONY: start-vault-ssl
+start-vault-ssl: vault-ssl.PID
+
+vault-ssl.PID: $(VAULT_BIN) $(VAULT_SSL_CONFIG)
+	@if [ ! -f vault-ssl.PID ]; then \
+		printf "${BOLD}starting vault server with SSL${SGR0}\n"; \
+		mkdir -p $(WORK_DIR)/vault-ssl-data && \
+		{ \
+			$(VAULT_BIN) server -config=$(VAULT_SSL_CONFIG) \
+			& echo $$! > vault-ssl.PID; \
+		} && \
+		sleep 3 && \
+		export VAULT_ADDR=https://127.0.0.1:8200 && \
+		export VAULT_CACERT=$(VAULT_CA_CERT) && \
+		$(VAULT_BIN) operator init -key-shares=1 -key-threshold=1 > $(WORK_DIR)/vault-ssl-init.txt && \
+		export VAULT_UNSEAL_KEY=$$(grep 'Unseal Key 1:' $(WORK_DIR)/vault-ssl-init.txt | cut -d' ' -f4) && \
+		export VAULT_ROOT_TOKEN=$$(grep 'Initial Root Token:' $(WORK_DIR)/vault-ssl-init.txt | cut -d' ' -f4) && \
+		$(VAULT_BIN) operator unseal $$VAULT_UNSEAL_KEY && \
+		echo $$VAULT_ROOT_TOKEN > $(WORK_DIR)/vault-ssl-token && \
+		export VAULT_TOKEN=$$VAULT_ROOT_TOKEN && \
+		$(VAULT_BIN) secrets enable -version=1 -path=secret kv && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-test data="ssl-test-secret-value" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-skip-verify-test data="ssl-skip-verify-test-value" && \
+		printf "${BOLD}vault SSL server started and configured${SGR0}\n"; \
+	else \
+		printf "${BOLD}vault SSL server already running (vault-ssl.PID exists)${SGR0}\n"; \
+	fi
+
+.PHONY: stop-vault-ssl
+stop-vault-ssl: vault-ssl.PID
+	@printf "${BOLD}stopping vault SSL server${SGR0}\n"
+	kill $$(cat $<) && rm $< || true
+
+# Test vault integration without SSL
+.PHONY: test-vault-nossl
+test-vault-nossl: vault-kbs start-vault
+	@printf "${BOLD}running vault integration tests (no SSL)${SGR0}\n"
+	export VAULT_TOKEN=$$(cat $(VAULT_TOKEN_FILE)) && \
+	cd $(PROJECT_DIR) && \
+	cargo test --features vault vault_nossl -- --ignored
+
+# Test vault SSL integration
+.PHONY: test-vault-ssl
+test-vault-ssl: vault-kbs start-vault-ssl
+	@printf "${BOLD}running vault SSL integration tests${SGR0}\n"
+	export VAULT_TOKEN=$$(cat $(WORK_DIR)/vault-ssl-token) && \
+	export VAULT_CA_CERT=$(VAULT_CA_CERT) && \
+	cd $(PROJECT_DIR) && \
+	cargo test --features vault vault_ssl -- --ignored
+
+
 .PHONY: clean
 clean:
 	rm -rf \
 		kbs \
 		client \
 		resource-kbs \
+		vault-kbs \
 		work/*
