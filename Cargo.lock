@@ -550,7 +550,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -620,7 +620,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1447,7 +1447,7 @@ checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "aes-gcm",
  "aes-kw",
@@ -3120,7 +3120,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3144,7 +3144,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4554,7 +4554,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=b548c63#b548c6379feda98a5defc906e1051f2673b5855b"
 dependencies = [
  "anyhow",
  "serde",
