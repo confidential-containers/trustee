@@ -2,7 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::{anyhow, bail, Context};
-use attestation_service::{AttestationService, HashAlgorithm, VerificationRequest};
+use attestation_service::{
+    AttestationService, HashAlgorithm, InitDataInput as InnerInitDataInput,
+    RuntimeData as InnerRuntimeData, VerificationRequest,
+};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::Tee;
 use log::{debug, error, info};
@@ -34,20 +37,19 @@ impl ResponseError for Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct AttestationRequest {
     verification_requests: Vec<IndividualAttestationRequest>,
     policy_ids: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct IndividualAttestationRequest {
     tee: String,
     evidence: String,
-    runtime_data: Option<Data>,
-    init_data: Option<Data>,
+    runtime_data: Option<RuntimeData>,
+    init_data: Option<InitDataInput>,
     runtime_data_hash_algorithm: Option<String>,
-    init_data_hash_algorithm: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,9 +62,16 @@ pub struct ChallengeRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum Data {
+enum RuntimeData {
     Raw(String),
     Structured(Value),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum InitDataInput {
+    InitDataDigest(String),
+    InitDataToml(String),
 }
 
 fn to_tee(tee: &str) -> anyhow::Result<Tee> {
@@ -85,15 +94,29 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
     Ok(res)
 }
 
-fn parse_data(data: Data) -> Result<attestation_service::Data> {
+fn parse_runtime_data(data: RuntimeData) -> Result<InnerRuntimeData> {
     let res = match data {
-        Data::Raw(raw) => {
+        RuntimeData::Raw(raw) => {
             let data = URL_SAFE_NO_PAD
                 .decode(raw)
-                .context("base64 decode raw data")?;
-            attestation_service::Data::Raw(data)
+                .context("base64 decode raw runtime data")?;
+            InnerRuntimeData::Raw(data)
         }
-        Data::Structured(structured) => attestation_service::Data::Structured(structured),
+        RuntimeData::Structured(structured) => InnerRuntimeData::Structured(structured),
+    };
+
+    Ok(res)
+}
+
+fn parse_init_data(data: InitDataInput) -> Result<InnerInitDataInput> {
+    let res = match data {
+        InitDataInput::InitDataDigest(raw) => {
+            let data = URL_SAFE_NO_PAD
+                .decode(raw)
+                .context("base64 decode raw init data")?;
+            InnerInitDataInput::Digest(data)
+        }
+        InitDataInput::InitDataToml(structured) => InnerInitDataInput::Toml(structured),
     };
 
     Ok(res)
@@ -122,13 +145,13 @@ pub async fn attestation(
 
         let runtime_data = attestation_request
             .runtime_data
-            .map(parse_data)
+            .map(parse_runtime_data)
             .transpose()
             .context("decode given Runtime Data")?;
 
         let init_data = attestation_request
             .init_data
-            .map(parse_data)
+            .map(parse_init_data)
             .transpose()
             .context("decode given Init Data")?;
 
@@ -141,23 +164,12 @@ pub async fn attestation(
             }
         };
 
-        let init_data_hash_algorithm = match attestation_request.init_data_hash_algorithm {
-            Some(alg) => {
-                HashAlgorithm::try_from(&alg[..]).context("parse init data HashAlgorithm failed")?
-            }
-            None => {
-                info!("No Init Data Hash Algorithm provided, use `sha384` by default.");
-                HashAlgorithm::Sha384
-            }
-        };
-
         verification_requests.push(VerificationRequest {
             evidence,
             tee,
             runtime_data,
             runtime_data_hash_algorithm,
             init_data,
-            init_data_hash_algorithm,
         });
     }
 
