@@ -84,6 +84,12 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
 
         // Generally TCB claims should originate from the attester.
         "launch_digest": "abcde",
+
+        // TCB Claims can be any type supported by serde_json
+        "platform_version": {
+            "major": 1,
+            "minor": 4,
+        },
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
