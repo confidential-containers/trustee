@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.80.0 AS builder
+FROM docker.io/library/rust:1.87.0 AS builder
 
 WORKDIR /usr/src/kbs
 COPY . .
