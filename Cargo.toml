@@ -35,10 +35,12 @@ hex = "0.4.3"
 jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
+# Change the git to confidential containers once the PR https://github.com/confidential-containers/guest-components/pull/1031 is merged
+kbs_protocol = { git = "https://github.com/xynnn007/guest-components.git", rev = "3d40fbb", default-features = false }
 # Remove this personal repo once https://github.com/virtee/kbs-types/pull/65 gets merged
 kbs-types = { "git" = "https://github.com/Xynnn007/kbs-types.git", rev = "590f371" }
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
+# Change the git to confidential containers once the PR https://github.com/confidential-containers/guest-components/pull/1031 is merged
+kms = { git = "https://github.com/xynnn007/guest-components.git", rev = "3d40fbb", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"
 openssl = "0.10.73"
