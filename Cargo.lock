@@ -550,7 +550,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -560,7 +560,7 @@ dependencies = [
  "const_format",
  "crypto",
  "hex",
- "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kbs-types",
  "log",
  "serde",
  "serde_json",
@@ -581,6 +581,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "base64 0.22.1",
+ "canon-json",
  "cfg-if",
  "clap",
  "ear",
@@ -588,7 +589,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types",
  "lazy_static",
  "log",
  "openssl",
@@ -620,7 +621,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -635,7 +636,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle",
- "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kbs-types",
  "log",
  "occlum_dcap",
  "s390_pv",
@@ -982,6 +983,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e465647ae23b2823b0753f50decb2d5a86d2bb2cac04788fafd1f80e45378e5f"
 dependencies = [
  "bytes",
+]
+
+[[package]]
+name = "canon-json"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5ae9f90437d2e2efba2a6c75b8279aa6b8f2f4017e0a4aeb64a76cd9d3a2bab"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -1436,7 +1449,7 @@ checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "aes-gcm",
  "aes-kw",
@@ -1444,7 +1457,7 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr",
- "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kbs-types",
  "p256",
  "rand 0.8.5",
  "rand 0.9.1",
@@ -3122,7 +3135,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types",
  "kms",
  "lazy_static",
  "log",
@@ -3176,18 +3189,6 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2be9fa1f64b3c8da5043cdc634007c6f7444b3ef1f3668f66b34180bdb398ec7"
-dependencies = [
- "base64 0.22.1",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "kbs-types"
-version = "0.12.0"
 source = "git+https://github.com/virtee/kbs-types.git?rev=f4055a1#f4055a17979c509d86924c9cb459221e2d45ff12"
 dependencies = [
  "base64 0.22.1",
@@ -3199,15 +3200,16 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
  "base64 0.22.1",
+ "canon-json",
  "crypto",
  "jwt-simple",
- "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kbs-types",
  "log",
  "reqwest 0.12.20",
  "resource_uri",
@@ -3223,7 +3225,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4673,7 +4675,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
+source = "git+https://github.com/xynnn007/guest-components.git?rev=3d40fbb#3d40fbbd79475363a9dbd55b3227110e15dd9cbe"
 dependencies = [
  "anyhow",
  "serde",
@@ -6373,7 +6375,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types",
  "log",
  "openssl",
  "reqwest 0.12.20",
