@@ -18,7 +18,7 @@ COPY --from=builder /kbs-client /usr/local/bin/kbs-client
 ARG BUILDPLATFORM=linux/amd64
 ARG NEBULA_VERSION=v1.9.5
 
-# install some useful tools
+# Install some useful tools
 RUN apt-get update
 RUN apt install -y \
   curl \
@@ -36,3 +36,9 @@ RUN mkdir -p /opt/nebula/config
 RUN mkdir -p /opt/nebula/creds
 COPY kbs/docker/lighthouse/assets/lighthouse-config.yaml /opt/nebula/config
 COPY kbs/docker/lighthouse/assets/start-lighthouse.sh /usr/local/bin
+
+# Start the lighthouse on container start-up
+ENTRYPOINT ["/usr/local/bin/start-lighthouse.sh"]
+
+# Default values of kbs_url and lighthouse_vpn_ip for start-lighthouse script
+CMD ["127.0.0.1", "192.168.100.100"]
