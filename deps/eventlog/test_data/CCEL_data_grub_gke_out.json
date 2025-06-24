@@ -156,16 +156,6 @@
     },
     {
       "details": {
-        "data": [
-          {
-            "name": "ACPI",
-            "value": null
-          },
-          {
-            "name": "DATA",
-            "value": null
-          }
-        ],
         "string": "ACPI DATA"
       },
       "digests": [
@@ -180,16 +170,6 @@
     },
     {
       "details": {
-        "data": [
-          {
-            "name": "ACPI",
-            "value": null
-          },
-          {
-            "name": "DATA",
-            "value": null
-          }
-        ],
         "string": "ACPI DATA"
       },
       "digests": [
@@ -204,16 +184,6 @@
     },
     {
       "details": {
-        "data": [
-          {
-            "name": "ACPI",
-            "value": null
-          },
-          {
-            "name": "DATA",
-            "value": null
-          }
-        ],
         "string": "ACPI DATA"
       },
       "digests": [
