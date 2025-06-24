@@ -2,7 +2,6 @@
   "uefi_event_logs": [
     {
       "details": {
-        "data": [],
         "string": ""
       },
       "digests": [
@@ -55,24 +54,6 @@
     },
     {
       "details": {
-        "data": [
-          {
-            "name": "td_payload_info",
-            "value": null
-          },
-          {
-            "name": "root",
-            "value": "/dev/vda1"
-          },
-          {
-            "name": "console",
-            "value": "hvc0"
-          },
-          {
-            "name": "rw",
-            "value": null
-          }
-        ],
         "string": "td_payload_info root=/dev/vda1 console=hvc0 rw"
       },
       "digests": [
