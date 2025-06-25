@@ -13,11 +13,11 @@ use super::{sample, RepositoryConfig, ResourceStorage};
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 
-#[cfg(feature = "pki-vault-plugin")]
-use super::{PKIVaultPlugin, PKIVaultPluginConfig};
-
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
+
+#[cfg(feature = "pki-vault-plugin")]
+use super::{PKIVaultPlugin, PKIVaultPluginConfig};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -91,8 +91,6 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
-            #[cfg(feature = "splitapi-plugin")]
-            PluginsConfig::SplitAPI(_) => f.write_str("splitapi"),
             #[cfg(feature = "pki-vault-plugin")]
             PluginsConfig::PKIVaultPlugin(_) => f.write_str("pki_vault"),
         }
