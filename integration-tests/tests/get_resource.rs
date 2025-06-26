@@ -5,6 +5,7 @@
 use anyhow::{bail, Result};
 use log::info;
 use rstest::rstest;
+use serde_json::json;
 use serial_test::serial;
 
 extern crate integration_tests;
@@ -124,10 +125,16 @@ async fn get_secret_not_contraindicated(harness: &TestHarness) -> Result<()> {
 
     // so this test will fail if run in an enclave.
     harness
-        .set_reference_value("svn".to_string(), "1".to_string())
+        .set_reference_value("svn".to_string(), json!(["1"]))
         .await?;
     harness
-        .set_reference_value("launch_digest".to_string(), "abcde".to_string())
+        .set_reference_value("launch_digest".to_string(), json!(["abcde"]))
+        .await?;
+    harness
+        .set_reference_value("major_version".to_string(), 1.into())
+        .await?;
+    harness
+        .set_reference_value("minimum_minor_version".to_string(), 1.into())
         .await?;
 
     let secret = harness.get_secret(SECRET_PATH.to_string()).await?;
@@ -184,15 +191,21 @@ async fn get_secret_not_contraindicated_device(harness: &TestHarness) -> Result<
 
     // cpu reference values
     harness
-        .set_reference_value("svn".to_string(), "1".to_string())
+        .set_reference_value("svn".to_string(), json!(["1"]))
         .await?;
     harness
-        .set_reference_value("launch_digest".to_string(), "abcde".to_string())
+        .set_reference_value("launch_digest".to_string(), json!(["abcde"]))
+        .await?;
+    harness
+        .set_reference_value("major_version".to_string(), 1.into())
+        .await?;
+    harness
+        .set_reference_value("minimum_minor_version".to_string(), 1.into())
         .await?;
 
     // device reference values
     harness
-        .set_reference_value("device_svn".to_string(), "2".to_string())
+        .set_reference_value("device_svn".to_string(), json!(["2"]))
         .await?;
 
     let secret = harness.get_secret(SECRET_PATH.to_string()).await?;
@@ -226,15 +239,21 @@ async fn get_secret_contraindicated_device(harness: &TestHarness) -> Result<()> 
 
     // cpu reference values
     harness
-        .set_reference_value("svn".to_string(), "1".to_string())
+        .set_reference_value("svn".to_string(), json!(["1"]))
         .await?;
     harness
-        .set_reference_value("launch_digest".to_string(), "abcde".to_string())
+        .set_reference_value("launch_digest".to_string(), json!(["abcde"]))
+        .await?;
+    harness
+        .set_reference_value("major_version".to_string(), 1.into())
+        .await?;
+    harness
+        .set_reference_value("minimum_minor_version".to_string(), 1.into())
         .await?;
 
     // device reference values (wrong ones)
     harness
-        .set_reference_value("device_svn".to_string(), "3".to_string())
+        .set_reference_value("device_svn".to_string(), json!(["3"]))
         .await?;
 
     let secret = harness.get_secret(SECRET_PATH.to_string()).await;
