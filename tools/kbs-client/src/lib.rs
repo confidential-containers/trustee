@@ -240,7 +240,7 @@ pub async fn set_resource(
 pub async fn set_sample_rv(
     url: String,
     key: String,
-    value: String,
+    value: serde_json::Value,
     auth_key: String,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
@@ -252,7 +252,7 @@ pub async fn set_sample_rv(
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
 
-    let provenance = json!({key: [value]}).to_string();
+    let provenance = json!({key: value}).to_string();
     let provenance = STANDARD.encode(provenance);
 
     let message = json!({
