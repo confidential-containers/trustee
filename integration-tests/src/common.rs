@@ -272,8 +272,8 @@ impl TestHarness {
         tokio::time::sleep(duration).await;
     }
 
-    pub async fn set_reference_value(&self, key: String, value: String) -> Result<()> {
-        let provenance = json!({key: [value]}).to_string();
+    pub async fn set_reference_value(&self, key: String, value: serde_json::Value) -> Result<()> {
+        let provenance = json!({key: value}).to_string();
         let provenance = STANDARD.encode(provenance);
 
         let message = json!({
