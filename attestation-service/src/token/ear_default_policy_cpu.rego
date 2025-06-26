@@ -43,6 +43,8 @@ executables := 3 if {
 #  supported.
 hardware := 2 if {
 	input.sample.svn in data.reference.svn
+	input.sample.platform_version.major == data.reference.major_version
+	input.sample.platform_version.minor >= data.reference.minimum_minor_version
 }
 
 ##### SNP

@@ -208,7 +208,9 @@ mod tests {
         json!({
             "reference": {
                 "svn": [svn.to_string()],
-                "launch_digest": [launch_digest]
+                "launch_digest": [launch_digest],
+                "major_version": 1,
+                "minimum_minor_version": 1
             }
         })
         .to_string()
@@ -218,7 +220,11 @@ mod tests {
         json!({
             "sample": {
                 "svn": svn.to_string(),
-                "launch_digest": launch_digest
+                "launch_digest": launch_digest,
+                "platform_version": {
+                    "major": 1,
+                    "minor": 4
+                }
             }
         })
         .to_string()
