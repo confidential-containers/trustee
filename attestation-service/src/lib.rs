@@ -10,54 +10,18 @@ pub mod token;
 
 use crate::token::AttestationTokenBroker;
 
-pub use kbs_types::{Attestation, Tee};
+pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
-use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
-use strum::{AsRefStr, Display, EnumString};
+
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
-
-/// Hash algorithms used to calculate runtime/init data binding
-#[derive(Debug, Display, EnumString, AsRefStr)]
-pub enum HashAlgorithm {
-    #[strum(ascii_case_insensitive)]
-    Sha256,
-
-    #[strum(ascii_case_insensitive)]
-    Sha384,
-
-    #[strum(ascii_case_insensitive)]
-    Sha512,
-}
-
-impl HashAlgorithm {
-    fn accumulate_hash(&self, materials: Vec<u8>) -> Vec<u8> {
-        match self {
-            HashAlgorithm::Sha256 => {
-                let mut hasher = Sha256::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-            HashAlgorithm::Sha384 => {
-                let mut hasher = Sha384::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-            HashAlgorithm::Sha512 => {
-                let mut hasher = Sha512::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-        }
-    }
-}
 
 pub type TeeEvidence = serde_json::Value;
 pub type TeeClass = String;

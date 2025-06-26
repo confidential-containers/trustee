@@ -3,12 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-mod hash;
-
 use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context, Result};
-use hash::HashAlgorithm;
+use kbs_types::HashAlgorithm;
 use serde_json::{Map, Value};
 use sha2::{digest::FixedOutput, Digest, Sha256, Sha384, Sha512};
 
