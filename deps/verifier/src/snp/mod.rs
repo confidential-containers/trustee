@@ -381,27 +381,27 @@ pub(crate) fn verify_report_tcb(
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     let claims_map = json!({
         // policy fields
-        "policy_abi_major": format!("{}",report.policy.abi_major()),
-        "policy_abi_minor": format!("{}", report.policy.abi_minor()),
-        "policy_smt_allowed": format!("{}", report.policy.smt_allowed()),
-        "policy_migrate_ma": format!("{}", report.policy.migrate_ma_allowed()),
-        "policy_debug_allowed": format!("{}", report.policy.debug_allowed()),
-        "policy_single_socket": format!("{}", report.policy.single_socket_required()),
+        "policy_abi_major": report.policy.abi_major(),
+        "policy_abi_minor": report.policy.abi_minor(),
+        "policy_smt_allowed": report.policy.smt_allowed(),
+        "policy_migrate_ma": report.policy.migrate_ma_allowed(),
+        "policy_debug_allowed": report.policy.debug_allowed(),
+        "policy_single_socket": report.policy.single_socket_required(),
 
         // versioning info
-        "reported_tcb_bootloader": format!("{}", report.reported_tcb.bootloader),
-        "reported_tcb_tee": format!("{}", report.reported_tcb.tee),
-        "reported_tcb_snp": format!("{}", report.reported_tcb.snp),
-        "reported_tcb_microcode": format!("{}", report.reported_tcb.microcode),
+        "reported_tcb_bootloader": report.reported_tcb.bootloader,
+        "reported_tcb_tee": report.reported_tcb.tee,
+        "reported_tcb_snp": report.reported_tcb.snp,
+        "reported_tcb_microcode": report.reported_tcb.microcode,
 
         // platform info
-        "platform_tsme_enabled": format!("{}", report.plat_info.tsme_enabled()),
-        "platform_smt_enabled": format!("{}", report.plat_info.smt_enabled()),
+        "platform_tsme_enabled": report.plat_info.tsme_enabled(),
+        "platform_smt_enabled": report.plat_info.smt_enabled(),
 
         // measurements
-        "measurement": format!("{}", STANDARD.encode(report.measurement)),
-        "report_data": format!("{}", STANDARD.encode(report.report_data)),
-        "init_data": format!("{}", STANDARD.encode(report.host_data)),
+        "measurement": STANDARD.encode(report.measurement),
+        "report_data": STANDARD.encode(report.report_data),
+        "init_data": STANDARD.encode(report.host_data),
     });
 
     claims_map as TeeEvidenceParsedClaim
