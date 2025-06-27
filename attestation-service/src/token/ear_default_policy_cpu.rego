@@ -66,14 +66,14 @@ hardware := 2 if {
 #
 # For this, we compare all the configuration fields.
 configuration := 2 if {
-	input.snp.policy_debug_allowed == "0"
-	input.snp.policy_migrate_ma == "0"
-	input.snp.platform_smt_enabled in data.reference.snp_smt_enabled
-	input.snp.platform_tsme_enabled in data.reference.snp_tsme_enabled
-	input.snp.policy_abi_major in data.reference.snp_guest_abi_major
-	input.snp.policy_abi_minor in data.reference.snp_guest_abi_minor
-	input.snp.policy_single_socket in data.reference.snp_single_socket
-	input.snp.policy_smt_allowed in data.reference.snp_smt_allowed
+	input.snp.policy_debug_allowed == false
+	input.snp.policy_migrate_ma == false
+	input.snp.platform_smt_enabled == data.reference.snp_smt_enabled
+	input.snp.platform_tsme_enabled == data.reference.snp_tsme_enabled
+	input.snp.policy_abi_major == data.reference.snp_guest_abi_major
+	input.snp.policy_abi_minor == data.reference.snp_guest_abi_minor
+	input.snp.policy_single_socket == data.reference.snp_single_socket
+	input.snp.policy_smt_allowed == data.reference.snp_smt_allowed
 }
 
 # For the `configuration` trust claim 3 stands for
@@ -84,8 +84,8 @@ configuration := 2 if {
 # configuration value, but we make sure that some key
 # configurations (like debug_allowed) are set correctly.
 else := 3 if {
-	input.snp.policy_debug_allowed == "0"
-	input.snp.policy_migrate_ma == "0"
+	input.snp.policy_debug_allowed == false
+	input.snp.policy_migrate_ma == false
 }
 
 ##### TDX
