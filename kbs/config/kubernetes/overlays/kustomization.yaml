@@ -4,6 +4,7 @@ namespace: coco-tenant
 
 resources:
 - ../base
+- ../lighthouse
 
 patches:
 - path: patch.yaml
