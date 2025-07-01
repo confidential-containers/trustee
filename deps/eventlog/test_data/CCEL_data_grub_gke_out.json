@@ -291,10 +291,10 @@
     {
       "details": {
         "device_paths": [
-          "Path(2,1,d041030a00000000)",
+          "ACPI(PNP0A03,0)",
           "Pci(0,4)",
           "Path(3,23,010000000000000000000000)",
-          "Path(4,1,0100000000080000000000000000100000000000e9a896cbdcade74bb68e69b6d1ea59cb0202)",
+          "HD(1,GPT,CB96A8E9-ADDC-4BE7-B68E-69B6D1EA59CB,0x800,0x100000)",
           "File(\\EFI\\BOOT\\BOOTX64.EFI)"
         ]
       },
@@ -479,7 +479,7 @@
     {
       "details": {
         "device_paths": [
-          "Path(4,3,f8d1c555cd04b5468a20e56cbb3052d0)"
+          "VenMedia(55C5D1F8-04CD-46B5-8A20-E56CBB3052D0,)"
         ]
       },
       "digests": [
