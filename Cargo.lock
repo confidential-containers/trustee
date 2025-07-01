@@ -588,7 +588,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types?rev=868958e)",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "lazy_static",
  "log",
  "openssl",
@@ -3121,7 +3121,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types?rev=868958e)",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "kms",
  "lazy_static",
  "log",
@@ -3187,7 +3187,7 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.12.0"
-source = "git+https://github.com/virtee/kbs-types?rev=868958e#868958ee919a480cebd3cfeb62dc2ee97cbbd680"
+source = "git+https://github.com/virtee/kbs-types.git?rev=f4055a1#f4055a17979c509d86924c9cb459221e2d45ff12"
 dependencies = [
  "base64 0.22.1",
  "serde",
@@ -6372,7 +6372,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types?rev=868958e)",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "log",
  "openssl",
  "reqwest 0.12.20",
