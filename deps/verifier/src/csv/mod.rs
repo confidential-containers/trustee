@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use reqwest::{get, Response as ReqwestResponse, StatusCode};
+use std::path::Path;
+use tokio::fs;
+
 use log::{debug, warn};
 use thiserror::Error;
 extern crate serde;
@@ -17,17 +21,29 @@ use csv_rs::{
 };
 use serde_json::json;
 
+const DEFAULT_CSV_CERT_DIR: &str = "/opt/hygon/csv";
+
 #[derive(Serialize, Deserialize)]
-struct CertificateChain {
+struct HskCek {
     hsk: ca::Certificate,
     cek: csv::Certificate,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CertificateChain {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hsk_cek: Option<HskCek>,
+
     pek: csv::Certificate,
 }
 
 #[derive(Serialize, Deserialize)]
 struct CsvEvidence {
     attestation_report: AttestationReport,
+
     cert_chain: CertificateChain,
+
+    // Base64 Encoded CSV Serial Number (Used to identify HYGON chip ID)
     serial_number: Vec<u8>,
 }
 
@@ -70,11 +86,44 @@ impl Verifier for CsvVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
-        let tee_evidence = serde_json::from_value::<CsvEvidence>(evidence)?;
+        let CsvEvidence {
+            attestation_report: report,
+            cert_chain,
+            serial_number,
+        } = serde_json::from_value(evidence).context("Deserialize Quote failed.")?;
 
-        verify_report_signature(&tee_evidence.attestation_report, &tee_evidence.cert_chain)?;
+        let chip_id = std::str::from_utf8(&serial_number)?.trim_end_matches('\0');
 
-        let report_raw = restore_attestation_report(tee_evidence.attestation_report)?;
+        let (hsk, cek, pek) = match cert_chain.hsk_cek {
+            Some(hsk_cek) => {
+                debug!("Hygon CSV: hsk cek included in evidence");
+                (hsk_cek.hsk, hsk_cek.cek, cert_chain.pek)
+            }
+            None => {
+                let cert_data = match try_load_hskcek_offline(chip_id).await {
+                    Some(cert_data) => cert_data,
+                    None => download_hskcek_from_kds(chip_id).await?,
+                };
+
+                debug!(
+                    "HSK_CEK: {}",
+                    cert_data
+                        .iter()
+                        .map(|b| format!("{:02x}", b))
+                        .collect::<Vec<String>>()
+                        .join("")
+                );
+
+                let hsk = ca::Certificate::decode(&mut &cert_data[..], ())?;
+                let cek = csv::Certificate::decode(&mut &cert_data[..], ())?;
+                let pek = cert_chain.pek;
+                (hsk, cek, pek)
+            }
+        };
+
+        verify_report_signature(&report, hsk, cek, pek)?;
+
+        let report_raw = restore_attestation_report(report)?;
 
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");
@@ -89,33 +138,63 @@ impl Verifier for CsvVerifier {
             warn!("CSV does not support init data hash mechanism. skip.");
         }
 
-        let claims = parse_tee_evidence(&report_raw, tee_evidence.serial_number.clone())?;
-        Ok((claims, "cpu".to_string()))
+        Ok((
+            parse_tee_evidence(&report_raw, serial_number.clone())?,
+            "cpu".into(),
+        ))
+    }
+}
+
+async fn try_load_hskcek_offline(chip_id: &str) -> Option<Vec<u8>> {
+    let hsk_cek_local_path = format!("{DEFAULT_CSV_CERT_DIR}/hsk_cek/{chip_id}/hsk_cek.cert");
+    let hsk_cek_local_path = Path::new(&hsk_cek_local_path);
+
+    fs::read(hsk_cek_local_path).await.ok()
+}
+
+async fn download_hskcek_from_kds(chip_id: &str) -> Result<Vec<u8>> {
+    let kds_url: String = format!("https://cert.hygon.cn/hsk_cek?snumber={}", chip_id);
+
+    let hsk_cek_rsp: ReqwestResponse = get(kds_url)
+        .await
+        .context("Unable to send request for HSK_CEK")?;
+    match hsk_cek_rsp.status() {
+        StatusCode::OK => {
+            let hsk_cek_bytes: Vec<u8> = hsk_cek_rsp
+                .bytes()
+                .await
+                .context("Unable to parse HSK_CEK")?
+                .to_vec();
+            Ok(hsk_cek_bytes)
+        }
+        status => Err(anyhow!("Unable to fetch HSK_CEK from URL: {status:?}")),
     }
 }
 
 fn verify_report_signature(
     attestation_report: &AttestationReport,
-    cert_chain: &CertificateChain,
+    hsk: ca::Certificate,
+    cek: csv_rs::certs::csv::Certificate,
+    pek: csv_rs::certs::csv::Certificate,
 ) -> Result<(), CsvError> {
     // Verify certificate chain
     let hrk = ca::Certificate::decode(&mut &HRK[..], ())?;
     (&hrk, &hrk)
         .verify()
         .map_err(|err| CsvError::HRKSignatureVerification(err.to_string()))?;
-    (&hrk, &cert_chain.hsk)
+    (&hrk, &hsk)
         .verify()
         .map_err(|err| CsvError::HSKSignatureValidation(err.to_string()))?;
-    (&cert_chain.hsk, &cert_chain.cek)
+    (&hsk, &cek)
         .verify()
         .map_err(|err| CsvError::CEKSignatureValidation(err.to_string()))?;
-    (&cert_chain.cek, &cert_chain.pek)
+    (&cek, &pek)
         .verify()
         .map_err(|err| CsvError::PEKSignatureValidation(err.to_string()))?;
 
     // Verify the TEE Hardware signature.
 
-    (&cert_chain.pek, attestation_report)
+    (&pek, attestation_report)
         .verify()
         .map_err(|err| CsvError::AttestationReportSignatureValidation(err.to_string()))?;
 
