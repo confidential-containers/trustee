@@ -143,7 +143,13 @@ evidence from the HW-TEE platform and organizes it into the following payload:
      * It is valid until the next time an attestation is required. Its hash must
      * be included in the HW-TEE evidence and signed by the HW-TEE hardware.
      */
-    "tee-pubkey": $pubkey
+    /* Initdata plaintext */
+    "init-data": {
+      "format": $initdata-format,
+      "body": $initdata-plaintext
+    },
+    /* Runtime data plaintext */
+    "runtime-data": {},
 
     /* The attestation evidence. Its format is specified by Attestation-Service. */
     "tee-evidence": {}
@@ -155,7 +161,24 @@ The KBS matches the attestation evidence to an attestation challenge with the
 HTTP Cookie that the KBC includes in the HTTP request that contains the
 `Attestation` payload.
 
-- `tee-pubkey`
+- `init-data`
+   Init data is an **OPTIONAL** structured document associated with a TEE instance, typically
+   containing measured configuration settings.
+
+- `init-data.format`
+   The format of init data inside `init-data.body` field. Now `json` and `toml` are
+   supported. The serialization logic please refer to [the doc](./initdata.md).
+
+- `init-data.body`
+   The plaintext of init data.
+
+- `runtime-data`
+   Runtime data is a structured JSON document, and the hash of this data is bound
+   to HW-TEE evidence, ensuring cryptographic integrity and authenticity. Usually,
+   it includes key claims such as `nonce` indicating the `Challenge.nonce` from
+   the KBS and `tee-pubkey`.
+
+- `runtime-data.tee-pubkey`
 
 After KBC receives the attestation challenge, an ephemeral asymmetric key pair
 is generated in HW-TEE. The private key is stored in HW-TEE. The public key and
