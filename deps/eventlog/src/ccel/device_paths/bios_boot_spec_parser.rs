@@ -1,10 +1,15 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{DevicePathParser, DeviceSubTypeParser};
 use anyhow::{anyhow, Result};
 use scroll::{Pread, LE};
 use std::str::from_utf8;
 
 /// Parser for Type 5 - BIOS Boot Specification Device Path.
-/// Define in section 10.3.6 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#bios-boot-specification-device-path>
+/// Defined in section 10.3.6 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#bios-boot-specification-device-path>
 enum BiosSubType {
     Bbs,
 }

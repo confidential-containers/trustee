@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use anyhow::{bail, Result};
 use byteorder::{ByteOrder, LittleEndian};
@@ -9,7 +14,7 @@ const GCE_IPL_PREFIX: [u8; 2] = [0x2e, 0x00];
 /// Parser for EV_IPL event
 /// This event is vendor defined.
 /// For Google Cloud it's prefixed with 2e00
-/// Define in section 10.4.1 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.4.1 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 impl EventDataParser for EvIplParser {
     fn parse(&self, data: Vec<u8>) -> Result<EventDetails> {
         if data.len() < 2 {

@@ -1,10 +1,15 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{DevicePathParser, DeviceSubTypeParser};
 use anyhow::{anyhow, bail, Result};
 use scroll::{Pread, LE};
 use std::net::Ipv4Addr;
 
 /// Parser for Type 3 - Messaging Device Path.
-/// Define in section 10.3.4 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#messaging-device-path>
+/// Defined in section 10.3.4 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#messaging-device-path>
 enum MessagingSubType {
     FibreChannelEx,
     Usb,

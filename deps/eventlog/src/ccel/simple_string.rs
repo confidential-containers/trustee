@@ -1,9 +1,14 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use anyhow::{bail, Result};
 pub struct SimpleStringParser;
 
 /// Parser for EV_EFI_HANDOFF_TABLES2 & EV_EFI_PLATFORM_FIRMWARE_BLOB2
-/// Define in section 10.2.5 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.2.5 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 /// ```text
 /// UEFI_PLATFORM_FIRMWARE_BLOB2 {
 ///     UINT8 BlobDescriptionSize; // PARSED

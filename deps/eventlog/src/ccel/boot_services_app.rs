@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use crate::ccel::device_paths::DevicePath;
 use anyhow::{bail, Result};
@@ -5,7 +10,7 @@ use anyhow::{bail, Result};
 pub struct EvBootServicesAppParser;
 
 /// Parser for EV_IPL event EV_EFI_BOOT_SERVICES_APPLICATION
-/// Define in section 10.2.3 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.2.3 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 /// ```text
 /// UEFI_IMAGE_LOAD_EVENT {
 ///     UEFI_PHYSICAL_ADDRESS ImageLocationInMemory; // PE/COFF image

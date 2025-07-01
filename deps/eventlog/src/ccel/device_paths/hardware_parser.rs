@@ -1,8 +1,13 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{DevicePathParser, DeviceSubTypeParser};
 use anyhow::{anyhow, bail, Result};
 
 /// Parser for Type 1 - Hardware Device Path.
-/// Define in section 10.3.2 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#hardware-device-path>
+/// Defined in section 10.3.2 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#hardware-device-path>
 enum HardwareSubType {
     Pci,
     // Add more subtype parsers here as needed

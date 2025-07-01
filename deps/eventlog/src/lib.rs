@@ -1,3 +1,9 @@
+// Copyright (c) 2024 Alibaba Cloud
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use crate::ccel::tcg_enum::{TcgAlgorithm, TcgEventType};
 use anyhow::{anyhow, bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
