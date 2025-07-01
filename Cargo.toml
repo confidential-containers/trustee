@@ -36,7 +36,8 @@ jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
-kbs-types = "0.12.0"
+# Remove this personal repo once https://github.com/virtee/kbs-types/pull/65 gets merged
+kbs-types = { "git" = "https://github.com/Xynnn007/kbs-types.git", rev = "590f371" }
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"

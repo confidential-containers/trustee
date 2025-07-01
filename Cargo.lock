@@ -560,7 +560,7 @@ dependencies = [
  "const_format",
  "crypto",
  "hex",
- "kbs-types",
+ "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "serde",
  "serde_json",
@@ -588,7 +588,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/Xynnn007/kbs-types.git?rev=590f371)",
  "lazy_static",
  "log",
  "openssl",
@@ -634,7 +634,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle",
- "kbs-types",
+ "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "occlum_dcap",
  "s390_pv",
@@ -1443,7 +1443,7 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr",
- "kbs-types",
+ "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "p256",
  "rand 0.8.5",
  "rand 0.9.1",
@@ -3094,7 +3094,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/Xynnn007/kbs-types.git?rev=590f371)",
  "kms",
  "lazy_static",
  "log",
@@ -3158,6 +3158,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-types"
+version = "0.12.0"
+source = "git+https://github.com/Xynnn007/kbs-types.git?rev=590f371#590f371375580db8c64d8fc971b5517556d819c8"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/guest-components.git?rev=4fbededdbf02ee6381c29b1728993d542fef730d#4fbededdbf02ee6381c29b1728993d542fef730d"
@@ -3168,7 +3179,7 @@ dependencies = [
  "base64 0.22.1",
  "crypto",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "reqwest",
  "resource_uri",
@@ -6258,7 +6269,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/Xynnn007/kbs-types.git?rev=590f371)",
  "log",
  "openssl",
  "reqwest",
