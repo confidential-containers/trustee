@@ -1,10 +1,15 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{DevicePathParser, DeviceSubTypeParser};
 use crate::GUID_SIZE;
 use anyhow::{anyhow, bail, Result};
 use byteorder::{ByteOrder, LittleEndian};
 
 /// Parser for Type 4 — Media Device Path.
-/// Define in section 10.3.5 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#media-device-path>
+/// Defined in section 10.3.5 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#media-device-path>
 enum MediaSubType {
     HardDrive,
     MediaVendor,

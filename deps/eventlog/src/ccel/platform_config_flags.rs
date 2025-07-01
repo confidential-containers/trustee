@@ -1,10 +1,15 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use anyhow::Result;
 
 pub struct EvPlatformConfigFlagsParser;
 
 /// Parser for EV_PLATFORM_CONFIG_FLAGS.
-/// Define in section 10.4.1 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.4.1 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 /// This event field contents are manufacturer implementation-specific.
 impl EventDataParser for EvPlatformConfigFlagsParser {
     fn parse(&self, data: Vec<u8>) -> Result<EventDetails> {
