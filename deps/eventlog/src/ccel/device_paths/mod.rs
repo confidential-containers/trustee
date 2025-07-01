@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::device_paths;
 use anyhow::{anyhow, Result};
 pub mod acpi_parser;

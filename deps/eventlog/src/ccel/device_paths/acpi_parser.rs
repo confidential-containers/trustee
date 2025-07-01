@@ -1,9 +1,14 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{DevicePathParser, DeviceSubTypeParser};
 use anyhow::{anyhow, bail, Result};
 use scroll::{Pread, LE};
 
 /// Parser for Type 2 - ACPI Device Path.
-/// Define in section 10.3.3 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#acpi-device-path>
+/// Defined in section 10.3.3 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#acpi-device-path>
 enum AcpiSubType {
     Acpi,
     // Add more subtype parsers here as needed

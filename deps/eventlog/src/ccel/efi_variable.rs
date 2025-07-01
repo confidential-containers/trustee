@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use crate::GUID_SIZE;
 use anyhow::{anyhow, Result};
@@ -9,7 +14,7 @@ use scroll::{Pread, LE};
 pub struct EvEfiVariableParser;
 
 /// Parser for EV_EFI_VARIABLE_AUTHORITY, EV_EFI_VARIABLE_BOOT2, EV_EFI_VARIABLE_BOOT, EV_EFI_VARIABLE_DRIVER_CONFIG
-/// Define in section 10.4.2 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.4.2 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 /// All defined above structures share below structure:
 /// ```text
 /// UEFI_VARIABLE_DATA {

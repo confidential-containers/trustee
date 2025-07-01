@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Intel Corporation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 use super::{EventDataParser, EventDetails};
 use anyhow::{anyhow, Result};
 use scroll::{Pread, LE};
@@ -5,7 +10,7 @@ use scroll::{Pread, LE};
 pub struct EvEventTagParser;
 
 /// Parser for EV_EVENT_TAG
-/// Define in section 10.2.6 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
+/// Defined in section 10.2.6 of <https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v23_pub.pdf>
 /// ```text
 /// TCG_PCClientTaggedEvent {
 ///     UINT32 taggedEventID; // SKIPPED
