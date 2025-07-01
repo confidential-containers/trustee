@@ -78,6 +78,7 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
         "sampledevice" => Tee::SampleDevice,
         "aztdxvtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
+        "hygondcu" => Tee::HygonDcu,
         other => bail!("tee `{other} not supported`"),
     };
 
