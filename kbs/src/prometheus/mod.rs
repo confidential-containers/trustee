@@ -57,6 +57,105 @@ lazy_static! {
         Histogram::with_opts(response_sizes_opts).unwrap()
     };
 
+    /// KBS Policy Evaluations Total
+    pub(crate) static ref KBS_POLICY_EVALS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_evaluations_total",
+            "Total count of KBS policy evaluations",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Approvals Total
+    pub(crate) static ref KBS_POLICY_APPROVALS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_approvals_total",
+            "Total count of requests approved by KBS policy",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Violations Total
+    pub(crate) static ref KBS_POLICY_VIOLATIONS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_violations_total",
+            "Total count of requests denied by KBS policy",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Policy Errors Total
+    pub(crate) static ref KBS_POLICY_ERRORS: Counter = {
+        let opts = Opts::new(
+            "kbs_policy_errors_total",
+            "Total count of errors during KBS evaluation",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Attestation Requests Total
+    pub(crate) static ref ATTESTATION_REQUESTS: Counter = {
+        let opts = Opts::new(
+            "attestation_requests_total",
+            "Total count of attestation requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Attestation Successes Total
+    pub(crate) static ref ATTESTATION_SUCCESSES: CounterVec = {
+        let opts = Opts::new(
+            "attestation_successes_total",
+            "Total count of attestation successes",
+        );
+        CounterVec::new(opts, &["tee_type"]).unwrap()
+    };
+
+    /// KBS Attestation Failures Total
+    pub(crate) static ref ATTESTATION_FAILURES: CounterVec = {
+        let opts = Opts::new(
+            "attestation_failures_total",
+            "Total count of attestation failures",
+        );
+        CounterVec::new(opts, &["tee_type"]).unwrap()
+    };
+
+    /// KBS Attestation Errors Total
+    pub(crate) static ref ATTESTATION_ERRORS: Counter = {
+        let opts = Opts::new(
+            "attestation_errors_total",
+            "Total count of errors during attestation processing",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Auth Requests Total
+    pub(crate) static ref AUTH_REQUESTS: Counter = {
+        let opts = Opts::new(
+            "auth_requests_total",
+            "Total count of auth requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Auth Successes Total
+    pub(crate) static ref AUTH_SUCCESSES: Counter = {
+        let opts = Opts::new(
+            "auth_successes_total",
+            "Total count of successfully authenticated requests",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
+    /// KBS Auth Errors Total
+    pub(crate) static ref AUTH_ERRORS: Counter = {
+        let opts = Opts::new(
+            "auth_errors_total",
+            "Total count of errors during auth processing",
+        );
+        Counter::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -70,6 +169,17 @@ lazy_static! {
         registry.register(Box::new(REQUEST_DURATION.clone())).unwrap();
         registry.register(Box::new(REQUEST_SIZES.clone())).unwrap();
         registry.register(Box::new(RESPONSE_SIZES.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_EVALS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_APPROVALS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_VIOLATIONS.clone())).unwrap();
+        registry.register(Box::new(KBS_POLICY_ERRORS.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_REQUESTS.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_SUCCESSES.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_FAILURES.clone())).unwrap();
+        registry.register(Box::new(ATTESTATION_ERRORS.clone())).unwrap();
+        registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
+        registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
+        registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
 
         registry
     };
