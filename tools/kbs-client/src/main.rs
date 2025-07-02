@@ -153,14 +153,18 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let kbs_cert = match cli.cert_file {
-        Some(ref p) => vec![std::fs::read_to_string(p).inspect_err(|_|eprintln!("Failed to read:{}",p.display()))?],
+        Some(ref p) => vec![std::fs::read_to_string(p)
+            .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?],
         None => vec![],
     };
 
     match cli.command {
         Commands::Attest { tee_key_file } => {
             let tee_key = match tee_key_file {
-                Some(ref f) => Some(std::fs::read_to_string(f).inspect_err(|_|eprintln!("Failed to read:{}",f.display()))?),
+                Some(ref f) => Some(
+                    std::fs::read_to_string(f)
+                        .inspect_err(|_| eprintln!("Failed to read: {}", f.display()))?,
+                ),
                 None => None,
             };
             let token = kbs_client::attestation(&cli.url, tee_key, kbs_cert.clone()).await?;
@@ -172,11 +176,19 @@ async fn main() -> Result<()> {
             attestation_token,
         } => {
             let tee_key = match tee_key_file {
-                Some(ref f) => Some(std::fs::read_to_string(f).inspect_err(|_|eprintln!("Failed to read:{}",f.display()))?),
+                Some(ref f) => Some(
+                    std::fs::read_to_string(f)
+                        .inspect_err(|_| eprintln!("Failed to read: {}", f.display()))?,
+                ),
                 None => None,
             };
             let token = match attestation_token {
-                Some(ref t) => Some(std::fs::read_to_string(t).inspect_err(|_|eprintln!("Failed to read:{}",t.display()))?.trim().to_string()),
+                Some(ref t) => Some(
+                    std::fs::read_to_string(t)
+                        .inspect_err(|_| eprintln!("Failed to read: {}", t.display()))?
+                        .trim()
+                        .to_string(),
+                ),
                 None => None,
             };
 
@@ -206,7 +218,9 @@ async fn main() -> Result<()> {
         }
         Commands::Config(config) => {
             let auth_private_key_path = &config.auth_private_key;
-            let auth_key = std::fs::read_to_string(auth_private_key_path).inspect_err(|_|eprintln!("Failed to read:{}",auth_private_key_path.display()))?;
+            let auth_key = std::fs::read_to_string(auth_private_key_path).inspect_err(|_| {
+                eprintln!("Failed to read: {}", auth_private_key_path.display())
+            })?;
             match config.command {
                 ConfigCommands::SetAttestationPolicy {
                     r#type,
