@@ -21,7 +21,7 @@ rvps-grpc = ["prost", "tonic"]
 grpc-bin = ["clap", "env_logger", "prost", "tonic"]
 
 # For restful CoCo-AS binary
-restful-bin = ["actix-web/openssl", "clap", "env_logger"]
+restful-bin = ["actix-cors", "actix-web/openssl", "clap", "env_logger"]
 
 [[bin]]
 name = "grpc-as"
