@@ -109,7 +109,6 @@ async fn main() -> Result<(), RestfulError> {
 
     let attestation_service = web::Data::new(Arc::new(RwLock::new(attestation_service)));
     let server = HttpServer::new(move || {
-        let cors = Cors::permissive();
         App::new()
             .wrap(configure_cors())
             .service(web::resource(WebApi::Attestation.as_ref()).route(web::post().to(attestation)))
