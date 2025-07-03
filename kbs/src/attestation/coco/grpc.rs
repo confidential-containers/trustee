@@ -20,8 +20,8 @@ use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
 
 use self::attestation::{
     attestation_service_client::AttestationServiceClient,
-    individual_attestation_request::RuntimeData, AttestationRequest, ChallengeRequest,
-    IndividualAttestationRequest, SetPolicyRequest,
+    individual_attestation_request::{InitData, RuntimeData},
+    AttestationRequest, ChallengeRequest, IndividualAttestationRequest, SetPolicyRequest,
 };
 
 mod attestation {
@@ -106,16 +106,23 @@ impl Attest for GrpcClientPool {
                 .trim_start_matches('"')
                 .to_string();
 
-            verification_requests.push(IndividualAttestationRequest {
+            let mut request = IndividualAttestationRequest {
                 tee,
                 evidence: URL_SAFE_NO_PAD.encode(evidence.tee_evidence.to_string()),
                 runtime_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
-                init_data_hash_algorithm: COCO_AS_HASH_ALGORITHM.into(),
                 runtime_data: Some(RuntimeData::StructuredRuntimeData(
                     evidence.runtime_data.to_string(),
                 )),
                 init_data: None,
-            });
+            };
+
+            if let Some(init_data) = evidence.init_data {
+                if init_data.format != "toml" {
+                    bail!("Unsupported initdata format: {}", init_data.format);
+                }
+                request.init_data = Some(InitData::InitDataToml(init_data.body));
+            }
+            verification_requests.push(request);
         }
 
         let attestation_request = tonic::Request::new(AttestationRequest {
