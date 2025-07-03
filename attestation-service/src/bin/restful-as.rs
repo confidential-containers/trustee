@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpServer, http::header};
 use anyhow::Result;
 use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
 use clap::{arg, command, Parser};
@@ -14,6 +14,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::restful::{attestation, get_challenge, get_policies, set_policy};
+use actix_cors::Cors;
 
 mod restful;
 
@@ -75,6 +76,18 @@ pub enum RestfulError {
     Anyhow(#[from] anyhow::Error),
 }
 
+fn configure_cors() -> Cors {
+    Cors::default()
+        .allow_any_origin()
+        .allowed_methods(vec!["POST", "GET", "OPTIONS"])
+        .allowed_headers(vec![
+                         header::CONTENT_TYPE,
+                         header::AUTHORIZATION,
+        ])
+        .max_age(86400)
+}
+
+
 #[actix_web::main]
 async fn main() -> Result<(), RestfulError> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
@@ -97,6 +110,7 @@ async fn main() -> Result<(), RestfulError> {
     let attestation_service = web::Data::new(Arc::new(RwLock::new(attestation_service)));
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(configure_cors())
             .service(web::resource(WebApi::Attestation.as_ref()).route(web::post().to(attestation)))
             .service(
                 web::resource(WebApi::Policy.as_ref())
