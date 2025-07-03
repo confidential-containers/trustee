@@ -10,6 +10,7 @@ pub mod token;
 
 use crate::token::AttestationTokenBroker;
 
+use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, Tee};
 pub use serde_json::Value;
 
@@ -61,6 +62,13 @@ impl HashAlgorithm {
             }
         }
     }
+}
+
+fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    let mut ser = serde_json::Serializer::with_formatter(&mut buf, CanonicalFormatter::new());
+    value.serialize(&mut ser)?;
+    Ok(buf)
 }
 
 pub type TeeEvidence = serde_json::Value;
@@ -313,7 +321,7 @@ fn parse_runtime_data(
             RuntimeData::Structured(structured) => {
                 // by default serde_json will enforence the alphabet order for keys
                 let hash_materials =
-                    serde_json::to_vec(&structured).context("parse JSON structured data")?;
+                    serialize_canon_json(&structured).context("parse JSON structured data")?;
                 let digest = hash_algorithm.accumulate_hash(hash_materials);
                 Ok((Some(digest), structured))
             }
