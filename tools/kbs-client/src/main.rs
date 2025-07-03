@@ -8,6 +8,7 @@ use anyhow::{bail, Result};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use clap::{Args, Parser, Subcommand};
+use serde_json::json;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -139,11 +140,28 @@ enum ConfigCommands {
     GetReferenceValues,
 
     /// Add a sample reference value to the RVPS.
+    /// The request will be proxied through the KBS
     /// The RVPS must enable the sample extractor
     /// or the reference value will not be registered.
-    /// The sample extractor should only be used in scenarios
-    /// where the RVPS endpoint is not exposed to untrusted users.
-    SetSampleReferenceValue { name: String, value: String },
+    SetSampleReferenceValue {
+        /// The name of the reference value.
+        name: String,
+        /// The reference value itself. This will be
+        /// treated as an integer by default.
+        value: String,
+        /// If set, the value will be parsed as an integer.
+        #[clap(long, action, group = "resource_type")]
+        as_integer: bool,
+        /// If set, the value will be parsed as a bool.
+        #[clap(long, action, group = "resource_type")]
+        as_bool: bool,
+        /// By default the reference value will be a single
+        /// member in a list.
+        /// If this argument is set, the reference value
+        /// will be a single value.
+        #[clap(long, action)]
+        as_single_value: bool,
+    },
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -293,11 +311,30 @@ async fn main() -> Result<()> {
                         STANDARD.encode(resource_bytes)
                     );
                 }
-                ConfigCommands::SetSampleReferenceValue { name, value } => {
+                ConfigCommands::SetSampleReferenceValue {
+                    name,
+                    value,
+                    as_integer,
+                    as_bool,
+                    as_single_value,
+                } => {
+                    let parsed_value: serde_json::Value = if as_integer {
+                        value.parse::<i32>()?.into()
+                    } else if as_bool {
+                        value.parse::<bool>()?.into()
+                    } else {
+                        serde_json::Value::String(value)
+                    };
+
+                    let rv = match as_single_value {
+                        true => parsed_value,
+                        false => json!([parsed_value]),
+                    };
+
                     kbs_client::set_sample_rv(
                         cli.url,
                         name,
-                        value,
+                        rv,
                         auth_key.clone(),
                         kbs_cert.clone(),
                     )
