@@ -36,7 +36,8 @@ jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
-kbs-types = "0.12.0"
+# TODO: Change this to kbs-types release
+kbs-types = { git = "https://github.com/virtee/kbs-types", rev = "868958e" }
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "4fbededdbf02ee6381c29b1728993d542fef730d", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 log = "0.4.17"

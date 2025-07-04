@@ -4,16 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "grpc-bin", "rvps-grpc" ]
-all-verifier = [ "verifier/all-verifier" ]
-tdx-verifier = [ "verifier/tdx-verifier" ]
-sgx-verifier = [ "verifier/sgx-verifier" ]
-az-snp-vtpm-verifier = [ "verifier/az-snp-vtpm-verifier" ]
-az-tdx-vtpm-verifier = [ "verifier/az-tdx-vtpm-verifier" ]
-snp-verifier = [ "verifier/snp-verifier" ]
-csv-verifier = [ "verifier/csv-verifier" ]
-cca-verifier = [ "verifier/cca-verifier" ]
-se-verifier  = [ "verifier/se-verifier" ]
+default = ["grpc-bin", "rvps-grpc"]
+all-verifier = ["verifier/all-verifier"]
+tdx-verifier = ["verifier/tdx-verifier"]
+sgx-verifier = ["verifier/sgx-verifier"]
+az-snp-vtpm-verifier = ["verifier/az-snp-vtpm-verifier"]
+az-tdx-vtpm-verifier = ["verifier/az-tdx-vtpm-verifier"]
+snp-verifier = ["verifier/snp-verifier"]
+csv-verifier = ["verifier/csv-verifier"]
+hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
+cca-verifier = ["verifier/cca-verifier"]
+se-verifier = ["verifier/se-verifier"]
 
 rvps-grpc = ["prost", "tonic"]
 

@@ -28,6 +28,9 @@ pub mod sgx;
 #[cfg(feature = "csv-verifier")]
 pub mod csv;
 
+#[cfg(feature = "hygon-dcu-verifier")]
+pub mod hygon_dcu;
+
 #[cfg(feature = "cca-verifier")]
 pub mod cca;
 
@@ -122,6 +125,16 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
                     Ok(Box::<se::SeVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `se-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
+
+        Tee::HygonDcu => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "hygon-dcu-verifier")] {
+                    Ok(Box::<hygon_dcu::HygonDcuVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `hygon-dcu-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
