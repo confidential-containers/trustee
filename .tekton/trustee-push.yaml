@@ -22,8 +22,6 @@ spec:
     value: kbs/docker/rhel-ubi/Dockerfile
   - name: git-url
     value: '{{source_url}}'
-  - name: image-expires-after
-    value: 5d
   - name: output-image
     value: quay.io/redhat-user-workloads/ose-osc-tenant/trustee/trustee:on-pr-{{revision}}
   - name: revision
@@ -96,11 +94,6 @@ spec:
       description: Build dependencies to be prefetched by Cachi2
       name: prefetch-input
       type: string
-    - default: ""
-      description: Image tag expiration time, time values could be something like
-        1h, 2d, 3w for hours, days, and weeks, respectively.
-      name: image-expires-after
-      type: string
     - default: "false"
       description: Build a source image.
       name: build-source-image
@@ -161,8 +154,6 @@ spec:
         value: $(params.revision)
       - name: ociStorage
         value: $(params.output-image).git
-      - name: ociArtifactExpiresAfter
-        value: $(params.image-expires-after)
       - name: dev-package-managers
         value: "true"
       runAfter:
@@ -192,8 +183,6 @@ spec:
         value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
-      - name: ociArtifactExpiresAfter
-        value: $(params.image-expires-after)
       - name: dev-package-managers
         value: "true"
       runAfter:
@@ -224,8 +213,6 @@ spec:
         value: $(params.hermetic)
       - name: PREFETCH_INPUT
         value: $(params.prefetch-input)
-      - name: IMAGE_EXPIRES_AFTER
-        value: $(params.image-expires-after)
       - name: COMMIT_SHA
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS
@@ -261,8 +248,6 @@ spec:
         value: $(params.output-image)
       - name: COMMIT_SHA
         value: $(tasks.clone-repository.results.commit)
-      - name: IMAGE_EXPIRES_AFTER
-        value: $(params.image-expires-after)
       - name: ALWAYS_BUILD_INDEX
         value: $(params.build-image-index)
       - name: IMAGES
@@ -440,8 +425,6 @@ spec:
         value: $(params.hermetic)
       - name: PREFETCH_INPUT
         value: $(params.prefetch-input)
-      - name: IMAGE_EXPIRES_AFTER
-        value: $(params.image-expires-after)
       - name: COMMIT_SHA
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS
