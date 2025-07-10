@@ -16,7 +16,7 @@ use ear::{Extensions, TrustTier};
 use log::debug;
 use serde_json::json;
 use std::collections::BTreeMap;
-use std::fs;
+use std::{fs, io::Cursor};
 
 pub fn verify(config: Config, token: &Vec<u8>, expected_report_data: &Vec<u8>) -> Result<Ear> {
     debug!("using config: {:?}", config);
@@ -40,7 +40,8 @@ pub fn verify(config: Config, token: &Vec<u8>, expected_report_data: &Vec<u8>) -
         rv_store.display()
     ))?;
 
-    let mut e: Evidence = Evidence::decode(token).context("decoding CCA evidence")?;
+    let cursor = Cursor::new(token);
+    let mut e: Evidence = Evidence::decode(cursor).context("decoding CCA evidence")?;
 
     e.verify(&tas).context("verifying CCA evidence")?;
     e.appraise(&rvs).context("appraising CCA evidence")?;
