@@ -54,7 +54,7 @@ const DENY_ALL_POLICY: &str = "
 pub enum PolicyType {
     AllowAll,
     DenyAll,
-    Custom(String),
+    Custom(&'static str),
 }
 
 pub enum RvpsType {
@@ -62,13 +62,41 @@ pub enum RvpsType {
     Remote,
 }
 
-// Parameters that define test behavior (coming from rstest)
+/// An enum that selects between TestParameter configurations
+/// so that TestParameters can be reused between tests.
+pub enum KbsConfigType {
+    EarTokenBuiltInRvps,
+    SimpleTokenBuiltInRvps,
+    EarTokenRemoteRvps,
+}
+
+/// The KbsConfigType enum can be turned into TestParameters
+impl Into<TestParameters> for KbsConfigType {
+    fn into(self) -> TestParameters {
+        match self {
+            KbsConfigType::EarTokenBuiltInRvps => TestParameters {
+                attestation_token_type: "Ear".to_string(),
+                rvps_type: RvpsType::Builtin,
+            },
+            KbsConfigType::SimpleTokenBuiltInRvps => TestParameters {
+                attestation_token_type: "Simple".to_string(),
+                rvps_type: RvpsType::Builtin,
+            },
+            KbsConfigType::EarTokenRemoteRvps => TestParameters {
+                attestation_token_type: "Ear".to_string(),
+                rvps_type: RvpsType::Remote,
+            },
+        }
+    }
+}
+
+/// Parameters that define test behavior
 pub struct TestParameters {
     pub attestation_token_type: String,
     pub rvps_type: RvpsType,
 }
 
-// Internal state of tests
+/// Internal state of tests
 pub struct TestHarness {
     pub kbs_config: KbsConfig,
     auth_privkey: String,
@@ -215,7 +243,7 @@ impl TestHarness {
         let policy_bytes = match policy {
             PolicyType::AllowAll => ALLOW_ALL_POLICY.as_bytes().to_vec(),
             PolicyType::DenyAll => DENY_ALL_POLICY.as_bytes().to_vec(),
-            PolicyType::Custom(p) => p.into_bytes(),
+            PolicyType::Custom(p) => p.to_string().into_bytes(),
         };
 
         kbs_client::set_resource_policy(

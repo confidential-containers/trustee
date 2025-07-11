@@ -59,7 +59,7 @@ jsonwebtoken = { workspace = true, default-features = false }
 jwt-simple.workspace = true
 kbs-types.workspace = true
 kms = { workspace = true, default-features = false }
-lazy_static = "1.4.0"
+lazy_static.workspace = true
 log.workspace = true
 mobc = { version = "0.8.5", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
