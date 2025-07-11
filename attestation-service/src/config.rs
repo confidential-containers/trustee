@@ -73,6 +73,12 @@ impl TryFrom<&Path> for Config {
     ///        "attestation_token_broker": {
     ///            "type": "Ear",
     ///            "duration_min": 5
+    ///        },
+    ///        "verifier_config": {
+    ///            "tpm_verifier": {
+    ///                "trusted_ak_keys_dir": "/etc/tpm/trusted_ak_keys",
+    ///                "max_trusted_ak_keys": 100
+    ///            }
     ///        }
     ///    }
     type Error = ConfigError;
