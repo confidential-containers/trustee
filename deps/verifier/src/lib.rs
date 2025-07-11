@@ -42,6 +42,9 @@ pub mod se;
 ))]
 pub mod intel_dcap;
 
+#[cfg(feature = "tpm-verifier")]
+pub mod tpm;
+
 pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
@@ -137,7 +140,26 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
             }
         }
 
-        Tee::Tpm => todo!(),
+        Tee::Tpm => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "tpm-verifier")] {
+                    let config_path = std::env::var("TPM_CONFIG_FILE")
+                        .unwrap_or_else(|_| "/etc/tpm_verifier.json".to_string());
+                    let config = match tpm::config::Config::try_from(std::path::Path::new(&config_path)) {
+                        std::result::Result::Ok(c) => c.tpm_verifier,
+                        std::result::Result::Err(e) => {
+                            log::warn!("Failed to load TPM config file: {}. Using default.", e);
+                            tpm::config::TpmVerifierConfig::default()
+                        }
+                    };
+
+                    let verifier = tpm::TpmVerifier::new(config)?;
+                    Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `tpm-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
     }
 }
 
