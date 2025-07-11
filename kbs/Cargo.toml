@@ -40,6 +40,8 @@ nebula-ca-plugin = []
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
+tpm-verifier = ["attestation-service/tpm-verifier"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
