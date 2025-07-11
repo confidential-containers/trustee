@@ -37,7 +37,6 @@ impl ReferenceValueProviderService for RvpsServer {
             .read()
             .await
             .get_digests()
-            .await
             .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
 
         let reference_value_results = serde_json::to_string(&rvs)
@@ -62,7 +61,6 @@ impl ReferenceValueProviderService for RvpsServer {
             .write()
             .await
             .verify_and_extract(&request.message)
-            .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
         let res = ReferenceValueRegisterResponse {};

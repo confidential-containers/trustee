@@ -50,11 +50,11 @@ impl ReferenceValueStorageConfig {
 pub trait ReferenceValueStorage {
     /// Store a reference value. If the given `name` exists,
     /// return the previous `Some<ReferenceValue>`, otherwise return `None`
-    async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>>;
+    fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>>;
 
-    // Retrieve reference value by name
-    async fn get(&self, name: &str) -> Result<Option<ReferenceValue>>;
+    /// Retrieve reference value by name
+    fn get(&self, name: &str) -> Result<Option<ReferenceValue>>;
 
-    // Retrieve reference values
-    async fn get_values(&self) -> Result<Vec<ReferenceValue>>;
+    /// Retrieve reference values
+    fn get_values(&self) -> Result<Vec<ReferenceValue>>;
 }

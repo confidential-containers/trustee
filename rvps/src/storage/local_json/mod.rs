@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::debug;
 use serde::Deserialize;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values.json";
 
@@ -58,9 +58,9 @@ impl LocalJson {
 
 #[async_trait]
 impl ReferenceValueStorage for LocalJson {
-    async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
-        let _ = self.lock.write().await;
-        let file = tokio::fs::read(&self.file_path).await?;
+    fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
+        let lock = self.lock.write();
+        let file = std::fs::read(&self.file_path)?;
         let mut rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
         let mut res = None;
         if let Some(item) = rvs.iter_mut().find(|it| it.name == name) {
@@ -71,21 +71,24 @@ impl ReferenceValueStorage for LocalJson {
         }
 
         let contents = serde_json::to_vec(&rvs)?;
-        tokio::fs::write(&self.file_path, contents).await?;
+        std::fs::write(&self.file_path, contents)?;
+        drop(lock);
         Ok(res)
     }
 
-    async fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
-        let _ = self.lock.read().await;
-        let file = tokio::fs::read(&self.file_path).await?;
+    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+        let lock = self.lock.read();
+        let file = std::fs::read(&self.file_path)?;
+        drop(lock);
         let rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
         let rv = rvs.into_iter().find(|rv| rv.name == name);
         Ok(rv)
     }
 
-    async fn get_values(&self) -> Result<Vec<ReferenceValue>> {
-        let _ = self.lock.read().await;
-        let file = tokio::fs::read(&self.file_path).await?;
+    fn get_values(&self) -> Result<Vec<ReferenceValue>> {
+        let lock = self.lock.read();
+        let file = std::fs::read(&self.file_path)?;
+        drop(lock);
         let rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
         Ok(rvs)
     }

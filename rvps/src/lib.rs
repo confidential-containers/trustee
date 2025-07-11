@@ -66,7 +66,7 @@ impl Rvps {
         })
     }
 
-    pub async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+    pub fn verify_and_extract(&mut self, message: &str) -> Result<()> {
         let message: Message = serde_json::from_str(message).context("parse message")?;
 
         // Judge the version field
@@ -80,7 +80,7 @@ impl Rvps {
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
-            let old = self.storage.set(v.name().to_string(), v.clone()).await?;
+            let old = self.storage.set(v.name().to_string(), v.clone())?;
             if let Some(old) = old {
                 info!("Old Reference value of {} is replaced.", old.name());
             }
@@ -89,9 +89,9 @@ impl Rvps {
         Ok(())
     }
 
-    pub async fn get_digests(&self) -> Result<HashMap<String, Value>> {
+    pub fn get_digests(&self) -> Result<HashMap<String, Value>> {
         let mut rv_map = HashMap::new();
-        let reference_values = self.storage.get_values().await?;
+        let reference_values = self.storage.get_values()?;
 
         for rv in reference_values {
             if rv.expired() {

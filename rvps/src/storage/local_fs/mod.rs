@@ -51,7 +51,7 @@ impl LocalFs {
 
 #[async_trait]
 impl ReferenceValueStorage for LocalFs {
-    async fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
+    fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>> {
         let rv_serde = serde_json::to_vec(&rv)?;
         let res = match self
             .engine
@@ -69,7 +69,7 @@ impl ReferenceValueStorage for LocalFs {
         res
     }
 
-    async fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
         match self.engine.get(name).context("read from sled")? {
             Some(v) => {
                 let v = serde_json::from_slice(&v)?;
@@ -79,7 +79,7 @@ impl ReferenceValueStorage for LocalFs {
         }
     }
 
-    async fn get_values(&self) -> Result<Vec<ReferenceValue>> {
+    fn get_values(&self) -> Result<Vec<ReferenceValue>> {
         let mut values = Vec::new();
 
         for (_k, v) in self.engine.iter().flatten() {
