@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::TeeClaims;
+use crate::{RvpsApi, TeeClaims};
 use anyhow::*;
 use serde::Deserialize;
 use shadow_rs::concatcp;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use strum::Display;
 
 use crate::config::DEFAULT_WORK_DIR;
@@ -58,14 +59,17 @@ impl Default for AttestationTokenConfig {
 }
 
 impl AttestationTokenConfig {
-    pub fn to_token_broker(&self) -> Result<Box<dyn AttestationTokenBroker + Send + Sync>> {
+    pub fn to_token_broker(
+        &self,
+        rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
+    ) -> Result<Box<dyn AttestationTokenBroker + Send + Sync>> {
         match self {
             AttestationTokenConfig::Simple(cfg) => Ok(Box::new(
-                simple::SimpleAttestationTokenBroker::new(cfg.clone())?,
+                simple::SimpleAttestationTokenBroker::new(cfg.clone(), rvps)?,
             )
                 as Box<dyn AttestationTokenBroker + Send + Sync>),
             AttestationTokenConfig::Ear(cfg) => Ok(Box::new(
-                ear_broker::EarAttestationTokenBroker::new(cfg.clone())?,
+                ear_broker::EarAttestationTokenBroker::new(cfg.clone(), rvps)?,
             )
                 as Box<dyn AttestationTokenBroker + Send + Sync>),
         }

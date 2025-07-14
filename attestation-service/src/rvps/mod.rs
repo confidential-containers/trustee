@@ -7,6 +7,7 @@ use log::info;
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
 #[cfg(feature = "rvps-grpc")]
@@ -24,8 +25,8 @@ pub enum RvpsError {
     Status(#[from] tonic::Status),
 
     #[cfg(feature = "rvps-grpc")]
-    #[error("tonic transport error: {0}")]
-    TonicTransport(#[from] tonic::transport::Error),
+    #[error("grpc transport error: {0}")]
+    GrpcError(#[from] grpcio::Error),
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
@@ -40,10 +41,10 @@ type Result<T> = std::result::Result<T, RvpsError>;
 #[async_trait::async_trait]
 pub trait RvpsApi {
     /// Verify the given message and register the reference value included.
-    async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
+    fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
     /// Get the reference values / golden values / expected digests in hex.
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
+    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -60,18 +61,24 @@ impl Default for RvpsConfig {
     }
 }
 
-pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+pub async fn initialize_rvps_client(
+    config: &RvpsConfig,
+) -> Result<Arc<Mutex<dyn RvpsApi + Send + Sync>>> {
     match config {
         RvpsConfig::BuiltIn(config) => {
             info!("launch a built-in RVPS.");
-            Ok(Box::new(builtin::BuiltinRvps::new(config.clone())?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(
+                Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone())?))
+                    as Arc<Mutex<dyn RvpsApi + Send + Sync>>,
+            )
         }
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
             info!("connect to remote RVPS: {}", config.address);
-            Ok(Box::new(grpc::Agent::new(&config.address).await?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(
+                Arc::new(Mutex::new(grpc::Agent::new(&config.address).await?))
+                    as Arc<Mutex<dyn RvpsApi + Send + Sync>>,
+            )
         }
     }
 }

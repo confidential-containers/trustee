@@ -241,7 +241,6 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .await
             .attestation_service
             .query_reference_values()
-            .await
             .map_err(|e| Status::aborted(format!("Failed to query reference values: {e}")))?;
 
         let res = ReferenceValueQueryResponse {
@@ -265,7 +264,6 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .await
             .attestation_service
             .register_reference_value(&request.message)
-            .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
         let res = ReferenceValueRegisterResponse {};

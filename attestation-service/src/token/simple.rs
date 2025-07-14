@@ -26,11 +26,11 @@ use serde_variant::to_variant_name;
 use shadow_rs::concatcp;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
 use crate::token::{AttestationTokenBroker, DEFAULT_TOKEN_WORK_DIR};
-use crate::{TeeClaims, TeeEvidenceParsedClaim};
+use crate::{RvpsApi, TeeClaims, TeeEvidenceParsedClaim};
 
 use super::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION};
 
@@ -105,11 +105,12 @@ pub struct SimpleAttestationTokenBroker {
 }
 
 impl SimpleAttestationTokenBroker {
-    pub fn new(config: Configuration) -> Result<Self> {
+    pub fn new(config: Configuration, rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>) -> Result<Self> {
         let policy_engine = PolicyEngineType::OPA.to_policy_engine(
             Path::new(&config.policy_dir),
             include_str!("simple_default_policy.rego"),
             "default.rego",
+            rvps,
         )?;
         info!("Loading default AS policy \"simple_default_policy.rego\"");
 

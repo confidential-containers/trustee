@@ -1,18 +1,18 @@
+use grpcio::{ChannelBuilder, EnvBuilder};
 use serde::Deserialize;
 use std::collections::HashMap;
-use thiserror::Error;
-use tokio::sync::Mutex;
-
-use self::rvps_api::{
-    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
-    ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
-};
+use std::sync::Arc;
 
 use super::{Result, RvpsApi};
 
-pub mod rvps_api {
-    tonic::include_proto!("reference");
-}
+#[path = "reference.rs"]
+mod reference;
+
+#[path = "reference_grpc.rs"]
+mod reference_grpc;
+
+use reference::{ReferenceValueQueryRequest, ReferenceValueRegisterRequest};
+use reference_grpc::ReferenceValueProviderServiceClient;
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct RvpsRemoteConfig {
@@ -26,53 +26,33 @@ fn default_address() -> String {
     "127.0.0.1:50003".into()
 }
 
-#[derive(Error, Debug)]
-pub enum GrpcRvpsError {
-    #[error("Returned status: {0}")]
-    Status(#[from] tonic::Status),
-
-    #[error("tonic transport error: {0}")]
-    TonicTransport(#[from] tonic::transport::Error),
-}
-
 pub struct Agent {
-    client: Mutex<ReferenceValueProviderServiceClient<tonic::transport::Channel>>,
+    client: ReferenceValueProviderServiceClient,
 }
 
 impl Agent {
     pub async fn new(addr: &str) -> Result<Self> {
-        Ok(Self {
-            client: Mutex::new(
-                ReferenceValueProviderServiceClient::connect(addr.to_string()).await?,
-            ),
-        })
+        let env = Arc::new(EnvBuilder::new().build());
+        let channel = ChannelBuilder::new(env).connect(addr);
+        let client = ReferenceValueProviderServiceClient::new(channel);
+        Ok(Self { client })
     }
 }
 #[async_trait::async_trait]
 impl RvpsApi for Agent {
-    async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
-        let req = tonic::Request::new(ReferenceValueRegisterRequest {
-            message: message.to_string(),
-        });
-        let _ = self
-            .client
-            .lock()
-            .await
-            .register_reference_value(req)
-            .await?;
+    fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+        let mut request = ReferenceValueRegisterRequest::new();
+        request.set_message(message.to_string());
+        self.client.register_reference_value(&request)?;
+
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {});
-        let res = self
-            .client
-            .lock()
-            .await
-            .query_reference_value(req)
-            .await?
-            .into_inner();
-        let trust_digest = serde_json::from_str(&res.reference_value_results)?;
-        Ok(trust_digest)
+    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
+        let request = ReferenceValueQueryRequest::new();
+        let response = self.client.query_reference_value(&request);
+
+        let digest = serde_json::from_str(&response?.reference_value_results)?;
+        Ok(digest)
     }
 }

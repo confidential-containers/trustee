@@ -20,6 +20,7 @@ use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
@@ -122,7 +123,7 @@ pub struct VerificationRequest {
 
 pub struct AttestationService {
     _config: Config,
-    rvps: Box<dyn RvpsApi + Send + Sync>,
+    rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
     token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
 }
 
@@ -139,7 +140,9 @@ impl AttestationService {
             .await
             .map_err(ServiceError::Rvps)?;
 
-        let token_broker = config.attestation_token_broker.to_token_broker()?;
+        let token_broker = config
+            .attestation_token_broker
+            .to_token_broker(rvps.clone())?;
 
         Ok(Self {
             _config: config,
@@ -229,8 +232,9 @@ impl AttestationService {
 
         let reference_data_map = self
             .rvps
+            .lock()
+            .unwrap()
             .get_digests()
-            .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
         debug!("reference_data_map: {:#?}", reference_data_map);
 
@@ -242,18 +246,20 @@ impl AttestationService {
     }
 
     /// Register a new reference value
-    pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
+    pub fn register_reference_value(&mut self, message: &str) -> Result<()> {
         self.rvps
+            .lock()
+            .unwrap()
             .verify_and_extract(message)
-            .await
             .context("register reference value")
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
+    pub fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
         self.rvps
+            .lock()
+            .unwrap()
             .get_digests()
-            .await
             .context("query reference values")
     }
 

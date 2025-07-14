@@ -10,12 +10,16 @@ use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
 
-#[derive(Debug, Clone)]
+use crate::RvpsApi;
+
+#[derive(Clone)]
 pub struct OPA {
     policy_dir_path: PathBuf,
+    rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
 }
 
 impl OPA {
@@ -23,6 +27,7 @@ impl OPA {
         work_dir: PathBuf,
         default_policy: &str,
         default_policy_id: &str,
+        rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
     ) -> Result<Self, PolicyError> {
         let mut policy_dir_path = work_dir;
 
@@ -44,7 +49,10 @@ impl OPA {
             warn!("Default policy file is already populated. Existing policy file will be used.");
         }
 
-        Ok(Self { policy_dir_path })
+        Ok(Self {
+            policy_dir_path,
+            rvps,
+        })
     }
 
     fn is_valid_policy_id(policy_id: &str) -> bool {
@@ -84,6 +92,8 @@ impl PolicyEngine for OPA {
             hex::encode(hex)
         };
 
+        let rvps = self.rvps.clone();
+
         // Add policy as data
         engine
             .add_policy(policy_id.to_string(), policy)
@@ -101,6 +111,23 @@ impl PolicyEngine for OPA {
             .set_input_json(input)
             .context("set input")
             .map_err(PolicyError::SetInputDataFailed)?;
+
+        engine
+            .add_extension(
+                "get_reference_value".to_string(),
+                0,
+                Box::new(move |_params: Vec<regorus::Value>| {
+                    let digest = rvps
+                        .lock()
+                        .unwrap()
+                        .get_digests()?
+                        .into_values()
+                        .collect::<Vec<_>>()[0][0]
+                        .clone();
+                    Ok(regorus::Value::from(digest))
+                }),
+            )
+            .map_err(|_| PolicyError::ExtensionError)?;
 
         let mut rules_result = HashMap::new();
         for rule in evaluation_rules {
