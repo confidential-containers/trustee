@@ -20,7 +20,7 @@ use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use serde_variant::to_variant_name;
 use shadow_rs::concatcp;
 use std::collections::{BTreeMap, HashMap};
@@ -206,14 +206,8 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
         debug!("all_tee_claims: {:#?}", all_tee_claims);
-
-        let reference_data = json!({
-            "reference": reference_data_map,
-        });
-        let reference_data = serde_json::to_string(&reference_data)?;
 
         if policy_ids.len() > 1 {
             warn!("EAR token only accepts the first policy. The rest will be ignored.");
@@ -249,7 +243,7 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims_json, &policy_id, rules)
+                .evaluate("{}", &tcb_claims_json, &policy_id, rules)
                 .await?;
 
             for (k, v) in &policy_results.rules_result {

@@ -69,7 +69,7 @@ impl ReferenceValueStorage for LocalFs {
         res
     }
 
-    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+    fn get(&self, name: String) -> Result<Option<ReferenceValue>> {
         match self.engine.get(name).context("read from sled")? {
             Some(v) => {
                 let v = serde_json::from_slice(&v)?;

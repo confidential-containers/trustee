@@ -208,7 +208,6 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
         // Take claims from all verifiers, flatten them and add them to one map.
         let mut flattened_claims: Map<String, Value> = Map::new();
@@ -216,10 +215,6 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             flattened_claims.append(&mut flatten_claims(tee_claims.tee, &tee_claims.claims)?);
         }
 
-        let reference_data = json!({
-            "reference": reference_data_map,
-        });
-        let reference_data = serde_json::to_string(&reference_data)?;
         let tcb_claims = serde_json::to_string(&flattened_claims)?;
 
         let rules = vec!["allow".to_string()];
@@ -228,7 +223,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         for policy_id in policy_ids {
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims, &policy_id, rules.clone())
+                .evaluate("{}", &tcb_claims, &policy_id, rules.clone())
                 .await?;
 
             // TODO add policy allowlist

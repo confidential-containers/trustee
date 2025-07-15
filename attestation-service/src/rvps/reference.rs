@@ -24,6 +24,8 @@
 
 #[derive(PartialEq,Clone,Default)]
 pub struct ReferenceValueQueryRequest {
+    // message fields
+    pub id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -39,9 +41,166 @@ impl ReferenceValueQueryRequest {
     pub fn new() -> ReferenceValueQueryRequest {
         ::std::default::Default::default()
     }
+
+    // string id = 1;
+
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+    pub fn clear_id(&mut self) {
+        self.id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_id(&mut self, v: ::std::string::String) {
+        self.id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_id(&mut self) -> &mut ::std::string::String {
+        &mut self.id
+    }
+
+    // Take field
+    pub fn take_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ReferenceValueQueryRequest {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.id.is_empty() {
+            os.write_string(1, &self.id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> ReferenceValueQueryRequest {
+        ReferenceValueQueryRequest::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "id",
+                |m: &ReferenceValueQueryRequest| { &m.id },
+                |m: &mut ReferenceValueQueryRequest| { &mut m.id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ReferenceValueQueryRequest>(
+                "ReferenceValueQueryRequest",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static ReferenceValueQueryRequest {
+        static instance: ::protobuf::rt::LazyV2<ReferenceValueQueryRequest> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ReferenceValueQueryRequest::new)
+    }
+}
+
+impl ::protobuf::Clear for ReferenceValueQueryRequest {
+    fn clear(&mut self) {
+        self.id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ReferenceValueQueryRequest {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ReferenceValueQueryRequest {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct ReferenceValuesQueryRequest {
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a ReferenceValuesQueryRequest {
+    fn default() -> &'a ReferenceValuesQueryRequest {
+        <ReferenceValuesQueryRequest as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ReferenceValuesQueryRequest {
+    pub fn new() -> ReferenceValuesQueryRequest {
+        ::std::default::Default::default()
+    }
+}
+
+impl ::protobuf::Message for ReferenceValuesQueryRequest {
     fn is_initialized(&self) -> bool {
         true
     }
@@ -98,41 +257,41 @@ impl ::protobuf::Message for ReferenceValueQueryRequest {
         Self::descriptor_static()
     }
 
-    fn new() -> ReferenceValueQueryRequest {
-        ReferenceValueQueryRequest::new()
+    fn new() -> ReferenceValuesQueryRequest {
+        ReferenceValuesQueryRequest::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let fields = ::std::vec::Vec::new();
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ReferenceValueQueryRequest>(
-                "ReferenceValueQueryRequest",
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ReferenceValuesQueryRequest>(
+                "ReferenceValuesQueryRequest",
                 fields,
                 file_descriptor_proto()
             )
         })
     }
 
-    fn default_instance() -> &'static ReferenceValueQueryRequest {
-        static instance: ::protobuf::rt::LazyV2<ReferenceValueQueryRequest> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(ReferenceValueQueryRequest::new)
+    fn default_instance() -> &'static ReferenceValuesQueryRequest {
+        static instance: ::protobuf::rt::LazyV2<ReferenceValuesQueryRequest> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ReferenceValuesQueryRequest::new)
     }
 }
 
-impl ::protobuf::Clear for ReferenceValueQueryRequest {
+impl ::protobuf::Clear for ReferenceValuesQueryRequest {
     fn clear(&mut self) {
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::fmt::Debug for ReferenceValueQueryRequest {
+impl ::std::fmt::Debug for ReferenceValuesQueryRequest {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for ReferenceValueQueryRequest {
+impl ::protobuf::reflect::ProtobufValue for ReferenceValuesQueryRequest {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -573,15 +732,18 @@ impl ::protobuf::reflect::ProtobufValue for ReferenceValueRegisterResponse {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0freference.proto\x12\treference\"\x1c\n\x1aReferenceValueQueryReque\
-    st\"U\n\x1bReferenceValueQueryResponse\x126\n\x17reference_value_results\
-    \x18\x01\x20\x01(\tR\x15referenceValueResults\"9\n\x1dReferenceValueRegi\
-    sterRequest\x12\x18\n\x07message\x18\x01\x20\x01(\tR\x07message\"\x20\n\
-    \x1eReferenceValueRegisterResponse2\xf8\x01\n\x1dReferenceValueProviderS\
-    ervice\x12f\n\x13QueryReferenceValue\x12%.reference.ReferenceValueQueryR\
-    equest\x1a&.reference.ReferenceValueQueryResponse\"\0\x12o\n\x16Register\
-    ReferenceValue\x12(.reference.ReferenceValueRegisterRequest\x1a).referen\
-    ce.ReferenceValueRegisterResponse\"\0b\x06proto3\
+    \n\x0freference.proto\x12\treference\",\n\x1aReferenceValueQueryRequest\
+    \x12\x0e\n\x02id\x18\x01\x20\x01(\tR\x02id\"\x1d\n\x1bReferenceValuesQue\
+    ryRequest\"U\n\x1bReferenceValueQueryResponse\x126\n\x17reference_value_\
+    results\x18\x01\x20\x01(\tR\x15referenceValueResults\"9\n\x1dReferenceVa\
+    lueRegisterRequest\x12\x18\n\x07message\x18\x01\x20\x01(\tR\x07message\"\
+    \x20\n\x1eReferenceValueRegisterResponse2\xe2\x02\n\x1dReferenceValuePro\
+    viderService\x12f\n\x13QueryReferenceValue\x12%.reference.ReferenceValue\
+    QueryRequest\x1a&.reference.ReferenceValueQueryResponse\"\0\x12h\n\x14Qu\
+    eryReferenceValues\x12&.reference.ReferenceValuesQueryRequest\x1a&.refer\
+    ence.ReferenceValueQueryResponse\"\0\x12o\n\x16RegisterReferenceValue\
+    \x12(.reference.ReferenceValueRegisterRequest\x1a).reference.ReferenceVa\
+    lueRegisterResponse\"\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

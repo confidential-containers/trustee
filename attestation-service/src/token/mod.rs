@@ -25,12 +25,7 @@ const DEFAULT_TOKEN_WORK_DIR: &str = concatcp!(DEFAULT_WORK_DIR, "/token");
 pub trait AttestationTokenBroker: Send + Sync {
     /// Issue an signed attestation token with custom claims.
     /// Return base64 encoded Json Web Token.
-    async fn issue(
-        &self,
-        tee_claims: Vec<TeeClaims>,
-        policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
-    ) -> Result<String>;
+    async fn issue(&self, tee_claims: Vec<TeeClaims>, policy_ids: Vec<String>) -> Result<String>;
 
     async fn set_policy(&self, _policy_id: String, _policy: String) -> Result<()> {
         bail!("Set Policy not support")

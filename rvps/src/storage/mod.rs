@@ -53,7 +53,7 @@ pub trait ReferenceValueStorage {
     fn set(&self, name: String, rv: ReferenceValue) -> Result<Option<ReferenceValue>>;
 
     /// Retrieve reference value by name
-    fn get(&self, name: &str) -> Result<Option<ReferenceValue>>;
+    fn get(&self, name: String) -> Result<Option<ReferenceValue>>;
 
     /// Retrieve reference values
     fn get_values(&self) -> Result<Vec<ReferenceValue>>;

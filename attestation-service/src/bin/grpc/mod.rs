@@ -25,7 +25,7 @@ use crate::rvps_api::{
         ReferenceValueProviderService, ReferenceValueProviderServiceServer,
     },
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
-    ReferenceValueRegisterResponse,
+    ReferenceValueRegisterResponse, ReferenceValuesQueryRequest,
 };
 
 fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
@@ -232,9 +232,9 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
 #[tonic::async_trait]
 impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
-    async fn query_reference_value(
+    async fn query_reference_values(
         &self,
-        _request: Request<ReferenceValueQueryRequest>,
+        _request: Request<ReferenceValuesQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let values = self
             .read()
@@ -249,6 +249,15 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             })?,
         };
         Ok(Response::new(res))
+    }
+
+    async fn query_reference_value(
+        &self,
+        _request: Request<ReferenceValueQueryRequest>,
+    ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
+        Err(Status::unimplemented(format!(
+            "AS does not support querying individual reference values."
+        )))
     }
 
     async fn register_reference_value(

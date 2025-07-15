@@ -11,7 +11,9 @@ mod reference;
 #[path = "reference_grpc.rs"]
 mod reference_grpc;
 
-use reference::{ReferenceValueQueryRequest, ReferenceValueRegisterRequest};
+use reference::{
+    ReferenceValueQueryRequest, ReferenceValueRegisterRequest, ReferenceValuesQueryRequest,
+};
 use reference_grpc::ReferenceValueProviderServiceClient;
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -32,6 +34,7 @@ pub struct Agent {
 
 impl Agent {
     pub async fn new(addr: &str) -> Result<Self> {
+        let addr = addr.trim_start_matches("http://");
         let env = Arc::new(EnvBuilder::new().build());
         let channel = ChannelBuilder::new(env).connect(addr);
         let client = ReferenceValueProviderServiceClient::new(channel);
@@ -48,9 +51,19 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let request = ReferenceValueQueryRequest::new();
+    fn get_digest(&self, id: String) -> Result<serde_json::Value> {
+        let mut request = ReferenceValueQueryRequest::new();
+        request.set_id(id);
+
         let response = self.client.query_reference_value(&request);
+
+        let digest = serde_json::from_str(&response?.reference_value_results)?;
+        Ok(digest)
+    }
+
+    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
+        let request = ReferenceValuesQueryRequest::new();
+        let response = self.client.query_reference_values(&request);
 
         let digest = serde_json::from_str(&response?.reference_value_results)?;
         Ok(digest)

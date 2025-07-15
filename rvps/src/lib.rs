@@ -89,6 +89,13 @@ impl Rvps {
         Ok(())
     }
 
+    pub fn get_digest(&self, id: String) -> Result<Value> {
+        if let Some(rv) = self.storage.get(id.clone())? {
+            return Ok(rv.value);
+        }
+        bail!("Reference Value {id} not found.")
+    }
+
     pub fn get_digests(&self) -> Result<HashMap<String, Value>> {
         let mut rv_map = HashMap::new();
         let reference_values = self.storage.get_values()?;

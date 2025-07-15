@@ -16,7 +16,7 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-use log::{debug, info};
+use log::info;
 use rvps::{RvpsApi, RvpsError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -230,18 +230,7 @@ impl AttestationService {
             });
         }
 
-        let reference_data_map = self
-            .rvps
-            .lock()
-            .unwrap()
-            .get_digests()
-            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
-        debug!("reference_data_map: {:#?}", reference_data_map);
-
-        let attestation_results_token = self
-            .token_broker
-            .issue(tee_claims, policy_ids, reference_data_map)
-            .await?;
+        let attestation_results_token = self.token_broker.issue(tee_claims, policy_ids).await?;
         Ok(attestation_results_token)
     }
 

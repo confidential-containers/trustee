@@ -22,9 +22,15 @@ impl RvpsApi for BuiltinRvps {
         Ok(())
     }
 
-    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let hashes = self.rvps.get_digests()?;
+    fn get_digest(&self, id: String) -> Result<serde_json::Value> {
+        let value = self.rvps.get_digest(id)?;
 
-        Ok(hashes)
+        Ok(value)
+    }
+
+    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
+        let values = self.rvps.get_digests()?;
+
+        Ok(values)
     }
 }

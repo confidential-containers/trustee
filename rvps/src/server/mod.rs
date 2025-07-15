@@ -13,7 +13,7 @@ use crate::rvps_api::reference::reference_value_provider_service_server::{
 };
 use crate::rvps_api::reference::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
-    ReferenceValueRegisterResponse,
+    ReferenceValueRegisterResponse, ReferenceValuesQueryRequest,
 };
 
 pub struct RvpsServer {
@@ -28,15 +28,37 @@ impl RvpsServer {
 
 #[tonic::async_trait]
 impl ReferenceValueProviderService for RvpsServer {
-    async fn query_reference_value(
+    async fn query_reference_values(
         &self,
-        _request: Request<ReferenceValueQueryRequest>,
+        _request: Request<ReferenceValuesQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let rvs = self
             .rvps
             .read()
             .await
             .get_digests()
+            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
+
+        let reference_value_results = serde_json::to_string(&rvs)
+            .map_err(|e| Status::aborted(format!("Serde reference value: {e}")))?;
+        info!("Reference values: {}", reference_value_results);
+
+        let res = ReferenceValueQueryResponse {
+            reference_value_results,
+        };
+        Ok(Response::new(res))
+    }
+
+    async fn query_reference_value(
+        &self,
+        request: Request<ReferenceValueQueryRequest>,
+    ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
+        let request = request.into_inner();
+        let rvs = self
+            .rvps
+            .read()
+            .await
+            .get_digest(request.id)
             .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
 
         let reference_value_results = serde_json::to_string(&rvs)

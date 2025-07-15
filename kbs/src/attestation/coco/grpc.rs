@@ -6,7 +6,7 @@ use anyhow::*;
 use async_trait::async_trait;
 use attestation::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
-    ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
+    ReferenceValueQueryResponse, ReferenceValueRegisterRequest, ReferenceValuesQueryRequest,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{Challenge, Tee};
@@ -190,7 +190,7 @@ impl Attest for GrpcClientPool {
     }
 
     async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {});
+        let req = tonic::Request::new(ReferenceValuesQueryRequest {});
 
         let mut client = self.pool.get().await?;
 
@@ -198,7 +198,7 @@ impl Attest for GrpcClientPool {
             reference_value_results,
         } = client
             .rvps_rpc
-            .query_reference_value(req)
+            .query_reference_values(req)
             .await
             .map_err(|e| anyhow!("Failed to get reference values: {:?}", e))?
             .into_inner();

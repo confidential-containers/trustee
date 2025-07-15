@@ -76,12 +76,12 @@ impl ReferenceValueStorage for LocalJson {
         Ok(res)
     }
 
-    fn get(&self, name: &str) -> Result<Option<ReferenceValue>> {
+    fn get(&self, name: String) -> Result<Option<ReferenceValue>> {
         let lock = self.lock.read();
         let file = std::fs::read(&self.file_path)?;
         drop(lock);
         let rvs: Vec<ReferenceValue> = serde_json::from_slice(&file)?;
-        let rv = rvs.into_iter().find(|rv| rv.name == name);
+        let rv = rvs.clone().into_iter().find(|rv| rv.name == name);
         Ok(rv)
     }
 

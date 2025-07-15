@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
@@ -115,16 +115,22 @@ impl PolicyEngine for OPA {
         engine
             .add_extension(
                 "get_reference_value".to_string(),
-                0,
-                Box::new(move |_params: Vec<regorus::Value>| {
-                    let digest = rvps
+                1,
+                Box::new(move |params: Vec<regorus::Value>| {
+                    let id = params[0].as_string()?.to_string();
+                    debug!("Request for reference value: {id}");
+                    if let Ok(digest) = rvps
                         .lock()
                         .unwrap()
-                        .get_digests()?
-                        .into_values()
-                        .collect::<Vec<_>>()[0][0]
-                        .clone();
-                    Ok(regorus::Value::from(digest))
+                        .get_digest(params[0].as_string()?.to_string())
+                    {
+                        debug!("Reference value: {}, {}", id, digest);
+
+                        return Ok(regorus::Value::from(digest));
+                    } else {
+                        warn!("Failed to get reference value: {}", id);
+                        return Ok(regorus::Value::Null);
+                    };
                 }),
             )
             .map_err(|_| PolicyError::ExtensionError)?;

@@ -45,6 +45,9 @@ pub trait RvpsApi {
 
     /// Get the reference values / golden values / expected digests in hex.
     fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
+
+    /// Get reference value with a particular id.
+    fn get_digest(&self, id: String) -> Result<serde_json::Value>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
