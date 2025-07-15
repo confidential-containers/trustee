@@ -11,13 +11,11 @@ use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use derivative::Derivative;
-use kbs_types::Challenge;
-use kbs_types::Tee;
+use kbs_types::{Challenge, HashAlgorithm, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
 use std::result::Result::Ok;
-use strum::{AsRefStr, Display, EnumString};
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
 const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
@@ -29,18 +27,6 @@ const BASE_AS_ADDR: &str = "/appraisal/v1/attest";
 const AZURE_TDXVM_ADDR: &str = "/appraisal/v1/attest/azure/tdxvm";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
-
-#[derive(Display, EnumString, AsRefStr)]
-pub enum HashAlgorithm {
-    #[strum(ascii_case_insensitive)]
-    Sha256,
-
-    #[strum(ascii_case_insensitive)]
-    Sha384,
-
-    #[strum(ascii_case_insensitive)]
-    Sha512,
-}
 
 #[derive(Deserialize, Debug)]
 struct ItaTeeEvidence {
