@@ -564,7 +564,7 @@ dependencies = [
  "const_format",
  "crypto",
  "hex",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "log",
  "serde",
  "serde_json",
@@ -594,7 +594,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
  "lazy_static",
  "log",
  "openssl",
@@ -641,7 +641,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "log",
  "occlum_dcap",
  "s390_pv",
@@ -1443,7 +1443,7 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "p256",
  "rand 0.8.5",
  "rand 0.9.1",
@@ -3127,7 +3127,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
  "kms",
  "lazy_static",
  "log",
@@ -3181,6 +3181,19 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.12.0"
+source = "git+https://github.com/virtee/kbs-types.git?rev=e3cc706#e3cc706ec4c1a88565598c5ce224da06a03f2265"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "strum",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "kbs-types"
+version = "0.12.0"
 source = "git+https://github.com/virtee/kbs-types.git?rev=f4055a1#f4055a17979c509d86924c9cb459221e2d45ff12"
 dependencies = [
  "base64 0.22.1",
@@ -3201,7 +3214,7 @@ dependencies = [
  "canon-json",
  "crypto",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
  "log",
  "reqwest 0.12.22",
  "resource_uri",
@@ -6336,7 +6349,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
  "log",
  "openssl",
  "reqwest 0.12.22",
