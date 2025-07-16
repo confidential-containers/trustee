@@ -23,15 +23,21 @@ const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
 const ERR_INVALID_TEE: &str = "ITA: Unknown TEE specified";
 
-const BASE_AS_ADDR: &str = "/appraisal/v1/attest";
-const AZURE_TDXVM_ADDR: &str = "/appraisal/v1/attest/azure/tdxvm";
+const BASE_AS_ADDR: &str = "/appraisal/v2/attest";
+const AZURE_ADDR_SUFFIX: &str = "/azure";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
 
-#[derive(Deserialize, Debug)]
-struct ItaTeeEvidence {
-    cc_eventlog: Option<String>,
+#[derive(Serialize, Deserialize, Debug)]
+struct DcapTeeEvidence {
     quote: String,
+    #[serde(skip_deserializing)]
+    runtime_data: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename(deserialize = "cc_eventlog"))]
+    event_log: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -42,14 +48,12 @@ struct AzItaTeeEvidence {
 
 #[derive(Serialize, Debug)]
 struct AttestReqData {
-    quote: String,
-    runtime_data: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    user_data: Option<String>,
     policy_ids: Vec<String>,
     policy_must_match: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    event_log: Option<String>,
+    tdx: Option<DcapTeeEvidence>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sgx: Option<DcapTeeEvidence>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -81,13 +85,6 @@ pub struct IntelTrustAuthority {
 #[async_trait]
 impl Attest for IntelTrustAuthority {
     async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String> {
-        if evidence_to_verify.len() != 1 {
-            bail!("ITA backend does not yet support multi-device attestation.");
-        }
-
-        let runtime_data = evidence_to_verify[0].runtime_data.to_string();
-        let tee = evidence_to_verify[0].tee;
-
         let policy_ids = self.config.policy_ids.clone();
 
         let policy_must_match = match policy_ids.is_empty() {
@@ -95,50 +92,72 @@ impl Attest for IntelTrustAuthority {
             false => !self.config.allow_unmatched_policy.unwrap_or_default(),
         };
 
-        // construct attest request data and attestation url
-        let (req_data, att_url) = match tee {
-            Tee::AzTdxVtpm => {
-                let att_url = format!("{}{AZURE_TDXVM_ADDR}", &self.config.base_url);
-
-                let evidence =
-                    from_value::<AzItaTeeEvidence>(evidence_to_verify[0].tee_evidence.clone())
-                        .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
-
-                let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
-
-                let req_data = AttestReqData {
-                    quote: STANDARD.encode(evidence.td_quote),
-                    runtime_data: STANDARD.encode(hcl_report.var_data()),
-                    user_data: Some(STANDARD.encode(runtime_data)),
-                    policy_ids,
-                    policy_must_match,
-                    event_log: None,
-                };
-
-                (req_data, att_url)
-            }
-            Tee::Tdx | Tee::Sgx => {
-                let att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
-
-                let evidence =
-                    from_value::<ItaTeeEvidence>(evidence_to_verify[0].tee_evidence.clone())
-                        .context(format!("Failed to deserialize TEE: {:?} Evidence", &tee))?;
-
-                let req_data = AttestReqData {
-                    quote: evidence.quote,
-                    runtime_data: STANDARD.encode(runtime_data),
-                    user_data: None,
-                    policy_ids,
-                    policy_must_match,
-                    event_log: evidence.cc_eventlog,
-                };
-
-                (req_data, att_url)
-            }
-            _ => {
-                bail!("Intel Trust Authority: TEE {tee:?} is not supported.");
-            }
+        let mut req_data = AttestReqData {
+            policy_ids,
+            policy_must_match,
+            tdx: None,
+            sgx: None,
         };
+
+        let mut att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
+
+        for independent_evidence in evidence_to_verify {
+            match independent_evidence.tee {
+                Tee::AzTdxVtpm => {
+                    att_url = format!("{att_url}{AZURE_ADDR_SUFFIX}");
+
+                    let evidence =
+                        from_value::<AzItaTeeEvidence>(independent_evidence.tee_evidence.clone())
+                            .context(format!(
+                            "Failed to deserialize TEE: {:?} Evidence",
+                            independent_evidence.tee
+                        ))?;
+
+                    let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
+
+                    req_data.tdx = Some(DcapTeeEvidence {
+                        quote: STANDARD.encode(evidence.td_quote),
+                        runtime_data: STANDARD.encode(hcl_report.var_data()),
+                        user_data: Some(
+                            STANDARD.encode(independent_evidence.runtime_data.to_string()),
+                        ),
+                        event_log: None,
+                    });
+                }
+                Tee::Tdx => {
+                    let mut evidence =
+                        from_value::<DcapTeeEvidence>(independent_evidence.tee_evidence.clone())
+                            .context(format!(
+                                "Failed to deserialize TEE: {:?} Evidence",
+                                independent_evidence.tee
+                            ))?;
+
+                    evidence.runtime_data =
+                        STANDARD.encode(independent_evidence.runtime_data.to_string());
+
+                    req_data.tdx = Some(evidence);
+                }
+                Tee::Sgx => {
+                    let mut evidence =
+                        from_value::<DcapTeeEvidence>(independent_evidence.tee_evidence.clone())
+                            .context(format!(
+                                "Failed to deserialize TEE: {:?} Evidence",
+                                independent_evidence.tee
+                            ))?;
+
+                    evidence.runtime_data =
+                        STANDARD.encode(independent_evidence.runtime_data.to_string());
+
+                    req_data.sgx = Some(evidence);
+                }
+                _ => {
+                    bail!(
+                        "Intel Trust Authority: TEE {0:?} is not supported.",
+                        independent_evidence.tee
+                    );
+                }
+            };
+        }
 
         let attest_req_body = serde_json::to_string(&req_data)
             .context("Failed to serialize attestation request body")?;
