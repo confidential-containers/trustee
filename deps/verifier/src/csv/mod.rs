@@ -4,7 +4,7 @@
 //
 
 use reqwest::{get, Response as ReqwestResponse, StatusCode};
-use std::path::Path;
+use std::{io::Cursor, path::Path};
 use tokio::fs;
 
 use log::{debug, warn};
@@ -114,8 +114,9 @@ impl Verifier for CsvVerifier {
                         .join("")
                 );
 
-                let hsk = ca::Certificate::decode(&mut &cert_data[..], ())?;
-                let cek = csv::Certificate::decode(&mut &cert_data[..], ())?;
+                let mut reader = Cursor::new(cert_data);
+                let hsk = ca::Certificate::decode(&mut reader, ())?;
+                let cek = csv::Certificate::decode(&mut reader, ())?;
                 let pek = cert_chain.pek;
                 (hsk, cek, pek)
             }
@@ -278,4 +279,27 @@ fn parse_tee_evidence(
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{csv::CsvVerifier, InitDataHash, ReportData, Verifier};
+
+    #[tokio::test]
+    async fn test_verify_csv_evidence() {
+        let csv_evidence = tokio::fs::read("test_data/csv_evidence.json")
+            .await
+            .unwrap();
+        let csv_evidence = serde_json::from_slice(&csv_evidence).unwrap();
+        let csv_verifier = CsvVerifier::default();
+
+        csv_verifier
+            .evaluate(
+                csv_evidence,
+                &ReportData::NotProvided,
+                &InitDataHash::NotProvided,
+            )
+            .await
+            .expect("CSV Verifier should evaluate successfully");
+    }
 }
