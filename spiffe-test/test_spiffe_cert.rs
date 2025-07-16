@@ -267,8 +267,145 @@ fn test_attestation_based_spiffe_generation() {
     println!("🎉 Attestation-based SPIFFE ID generation works correctly!");
 }
 
+fn test_negative_cases() {
+    println!("🧪 Testing NEGATIVE cases to ensure tests can actually fail...");
+    
+    let trust_domain = "virtru.com";
+    
+    // Test 1: GPU workload without valid attestation should NOT get GPU SPIFFE ID
+    let mut invalid_gpu = AttestationContext::create_mock_gpu_workload();
+    if let Some(ref mut gpu_claims) = invalid_gpu.gpu_attestation {
+        gpu_claims.attestation_valid = false; // Make attestation invalid
+    }
+    let invalid_spiffe_id = generate_spiffe_id_from_attestation(trust_domain, &invalid_gpu);
+    
+    // This should NOT be a GPU SPIFFE ID
+    assert_ne!(invalid_spiffe_id, "spiffe://virtru.com/gpu/inference", 
+               "❌ Invalid GPU attestation should NOT get gpu/inference SPIFFE ID");
+    assert_eq!(invalid_spiffe_id, "spiffe://virtru.com/workload/default", 
+               "❌ Invalid GPU attestation should fall back to default");
+    println!("✅ Invalid GPU attestation correctly rejected: {}", invalid_spiffe_id);
+    
+    // Test 2: Test has_valid_gpu_attestation logic thoroughly
+    let mut partial_invalid = AttestationContext::create_mock_gpu_workload();
+    if let Some(ref mut gpu_claims) = partial_invalid.gpu_attestation {
+        gpu_claims.secure_boot_enabled = false; // Only one field invalid
+    }
+    assert!(!partial_invalid.has_valid_gpu_attestation(), 
+            "❌ GPU attestation should be invalid when secure_boot_enabled=false");
+    println!("✅ Partial GPU attestation correctly rejected");
+    
+    // Test 3: Unknown workload type should get default SPIFFE ID
+    let unknown_workload = AttestationContext {
+        workload_type: WorkloadType::Unknown,
+        workload_name: "test".to_string(),
+        container_image: "test:latest".to_string(),
+        gpu_attestation: Some(GpuAttestationClaims {
+            gpu_model: "H100".to_string(),
+            attestation_valid: true,
+            secure_boot_enabled: true,
+            measurement_valid: true,
+        }),
+    };
+    let unknown_spiffe_id = generate_spiffe_id_from_attestation(trust_domain, &unknown_workload);
+    assert_eq!(unknown_spiffe_id, "spiffe://virtru.com/workload/default",
+               "❌ Unknown workload type should get default SPIFFE ID even with valid GPU attestation");
+    println!("✅ Unknown workload type correctly gets default: {}", unknown_spiffe_id);
+    
+    println!("🎉 All negative test cases passed - tests can actually fail!");
+}
+
+fn test_certificate_validation_rigor() {
+    println!("🔍 Testing certificate validation more rigorously...");
+    
+    let (ca_cert_file, ca_key_file) = create_test_ca();
+    let ca_cert_data = std::fs::read(ca_cert_file.path()).unwrap();
+    let ca_cert = openssl::x509::X509::from_pem(&ca_cert_data).unwrap();
+    let ca_key_data = std::fs::read(ca_key_file.path()).unwrap();
+    let ca_key = PKey::private_key_from_pem(&ca_key_data).unwrap();
+    
+    // Test with a different SPIFFE ID to ensure we're actually checking
+    let test_spiffe_id = "spiffe://example.com/test/workload";
+    
+    let workload_rsa = Rsa::generate(2048).unwrap();
+    let workload_key = PKey::from_rsa(workload_rsa).unwrap();
+    
+    let mut cert_builder = X509Builder::new().unwrap();
+    cert_builder.set_version(2).unwrap();
+    
+    let mut serial = BigNum::new().unwrap();
+    serial.rand(128, MsbOption::MAYBE_ZERO, false).unwrap();
+    let serial_asn1 = serial.to_asn1_integer().unwrap();
+    cert_builder.set_serial_number(&serial_asn1).unwrap();
+    
+    let mut name_builder = X509NameBuilder::new().unwrap();
+    name_builder.append_entry_by_text("CN", test_spiffe_id).unwrap();
+    let subject_name = name_builder.build();
+    cert_builder.set_subject_name(&subject_name).unwrap();
+    cert_builder.set_issuer_name(ca_cert.subject_name()).unwrap();
+    cert_builder.set_pubkey(&workload_key).unwrap();
+    
+    let not_before = Asn1Time::days_from_now(0).unwrap();
+    let not_after = Asn1Time::days_from_now(1).unwrap();
+    cert_builder.set_not_before(&not_before).unwrap();
+    cert_builder.set_not_after(&not_after).unwrap();
+    
+    // Add the SPIFFE ID in SAN
+    let san_extension = SubjectAlternativeName::new()
+        .uri(test_spiffe_id)
+        .build(&cert_builder.x509v3_context(Some(&ca_cert), None))
+        .unwrap();
+    cert_builder.append_extension(san_extension).unwrap();
+    
+    let key_usage = KeyUsage::new()
+        .digital_signature()
+        .key_encipherment()
+        .build()
+        .unwrap();
+    cert_builder.append_extension(key_usage).unwrap();
+    
+    cert_builder.sign(&ca_key, MessageDigest::sha256()).unwrap();
+    let certificate = cert_builder.build();
+    
+    // Test 1: Verify the EXACT SPIFFE ID is in SAN (not just any URI)
+    let san_names = certificate.subject_alt_names().unwrap();
+    let found_uris: Vec<_> = san_names.iter()
+        .filter_map(|name| name.uri())
+        .collect();
+    
+    assert!(!found_uris.is_empty(), "❌ Certificate should have URI in SAN");
+    assert!(found_uris.contains(&test_spiffe_id), 
+            "❌ Certificate should contain the exact SPIFFE ID '{}', found: {:?}", 
+            test_spiffe_id, found_uris);
+    
+    // Test 2: Verify wrong SPIFFE ID is NOT in SAN
+    let wrong_spiffe_id = "spiffe://wrong.com/bad/id";
+    assert!(!found_uris.contains(&wrong_spiffe_id),
+            "❌ Certificate should NOT contain wrong SPIFFE ID '{}'", wrong_spiffe_id);
+    
+    println!("✅ Certificate contains correct SPIFFE ID: {}", test_spiffe_id);
+    println!("✅ Certificate does NOT contain wrong SPIFFE ID");
+    
+    // Test 3: Try to verify with wrong CA (should fail)
+    let wrong_ca_rsa = Rsa::generate(2048).unwrap();
+    let wrong_ca_key = PKey::from_rsa(wrong_ca_rsa).unwrap();
+    
+    let verification_result = certificate.verify(&wrong_ca_key);
+    match verification_result {
+        Ok(false) => println!("✅ Certificate correctly fails verification with wrong CA"),
+        Ok(true) => panic!("❌ Certificate should NOT verify with wrong CA key!"),
+        Err(_) => println!("✅ Certificate verification with wrong CA produces error (acceptable)"),
+    }
+    
+    println!("🎉 Rigorous certificate validation tests passed!");
+}
+
 fn main() {
     test_spiffe_certificate_generation();
     println!();
     test_attestation_based_spiffe_generation();
+    println!();
+    test_negative_cases();
+    println!();
+    test_certificate_validation_rigor();
 }
