@@ -15,6 +15,7 @@ use kbs_types::{Challenge, HashAlgorithm, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
+use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
@@ -46,6 +47,20 @@ struct AzItaTeeEvidence {
     td_quote: Vec<u8>,
 }
 
+#[derive(Deserialize)]
+struct NvDeviceEvidence {
+    device_evidence_list: Vec<NvDeviceReportAndCert>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+struct NvDeviceReportAndCert {
+    evidence: String,
+    #[serde(skip_deserializing)]
+    gpu_nonce: String,
+    certificate: String,
+    arch: String,
+}
+
 #[derive(Serialize, Debug)]
 struct AttestReqData {
     policy_ids: Vec<String>,
@@ -54,6 +69,8 @@ struct AttestReqData {
     tdx: Option<DcapTeeEvidence>,
     #[serde(skip_serializing_if = "Option::is_none")]
     sgx: Option<DcapTeeEvidence>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nvgpu: Option<NvDeviceReportAndCert>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -97,6 +114,7 @@ impl Attest for IntelTrustAuthority {
             policy_must_match,
             tdx: None,
             sgx: None,
+            nvgpu: None,
         };
 
         let mut att_url = format!("{}{BASE_AS_ADDR}", &self.config.base_url);
@@ -149,6 +167,32 @@ impl Attest for IntelTrustAuthority {
                         STANDARD.encode(independent_evidence.runtime_data.to_string());
 
                     req_data.sgx = Some(evidence);
+                }
+                Tee::Nvidia => {
+                    let evidence =
+                        from_value::<NvDeviceEvidence>(independent_evidence.tee_evidence.clone())
+                            .context(format!(
+                            "Failed to deserialize TEE: {:?} Evidence",
+                            independent_evidence.tee
+                        ))?;
+
+                    if evidence.device_evidence_list.is_empty() {
+                        log::warn!(
+                            "TEE {:?} evidence has empty device list. Drop the evidence.",
+                            independent_evidence.tee
+                        );
+                        continue;
+                    }
+
+                    // only one GPU supported at the moment
+                    let mut nvgpu = evidence.device_evidence_list[0].clone();
+
+                    let runtime_data_hash =
+                        Sha512::digest(independent_evidence.runtime_data.to_string()).to_vec();
+                    nvgpu.gpu_nonce = hex::encode(&runtime_data_hash[0..32]);
+                    nvgpu.evidence = STANDARD.encode(nvgpu.evidence);
+
+                    req_data.nvgpu = Some(nvgpu);
                 }
                 _ => {
                     bail!(
