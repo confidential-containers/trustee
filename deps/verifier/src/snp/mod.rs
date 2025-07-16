@@ -55,7 +55,7 @@ const KDS_VCEK: &str = "/vcek/v1";
 
 /// Attestation report versions supported
 const REPORT_VERSION_MIN: u32 = 3;
-const REPORT_VERSION_MAX: u32 = 4;
+const REPORT_VERSION_MAX: u32 = 5;
 
 pub(crate) static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCertificates>> =
     LazyLock::new(|| {
