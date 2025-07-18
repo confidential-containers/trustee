@@ -17,14 +17,20 @@ impl BuiltinRvps {
 
 #[async_trait]
 impl RvpsApi for BuiltinRvps {
-    async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
-        self.rvps.verify_and_extract(message).await?;
+    fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+        self.rvps.verify_and_extract(message)?;
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let hashes = self.rvps.get_digests().await?;
+    fn get_digest(&self, id: String) -> Result<serde_json::Value> {
+        let value = self.rvps.get_digest(id)?;
 
-        Ok(hashes)
+        Ok(value)
+    }
+
+    fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
+        let values = self.rvps.get_digests()?;
+
+        Ok(values)
     }
 }

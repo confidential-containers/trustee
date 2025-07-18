@@ -82,15 +82,11 @@ impl Attest for BuiltInCoCoAs {
     }
 
     async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {
-        self.inner
-            .write()
-            .await
-            .register_reference_value(message)
-            .await
+        self.inner.write().await.register_reference_value(message)
     }
 
     async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
-        self.inner.read().await.query_reference_values().await
+        self.inner.read().await.query_reference_values()
     }
 }
 
