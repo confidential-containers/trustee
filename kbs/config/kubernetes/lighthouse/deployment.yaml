@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: lighthouse
+spec:
+  containers:
+  - name: lighthouse
+    image: lighthouse-container-image
+    command:
+    - "bin/sh"
+    - "-c"
+    - "while (true); do sleep 10000; done"
+    securityContext:
+      privileged: true 
