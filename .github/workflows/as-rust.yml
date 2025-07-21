@@ -37,7 +37,7 @@ jobs:
       - name: OPA policy.rego fmt and check
         run: |
           opa fmt -d attestation-service/src/token/*.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
-          opa check attestation-service/src/token/*.rego
+          opa check attestation-service/src/token/*.rego --capabilities=attestation-service/tests/capabilities.json
 
       - name: Install protoc
         run: |
