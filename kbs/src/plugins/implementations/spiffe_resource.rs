@@ -1,11 +1,10 @@
-
 use actix_web::http::Method;
 use anyhow::Result;
 use serde::Deserialize;
 
 use super::super::plugin_manager::ClientPlugin;
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct SpiffeResourceConfig { 
     pub trust_domain: String,
 }
@@ -45,7 +44,7 @@ impl ClientPlugin for SpiffeResourcePlugin {
         _path: &str,
         _method: &Method,
     ) -> Result<bool> {
-        Ok(false)
+        Ok(true)
     }
 
     async fn encrypted(
@@ -55,6 +54,6 @@ impl ClientPlugin for SpiffeResourcePlugin {
         _path: &str,
         _method: &Method,
     ) -> Result<bool> {
-        Ok(true)
+        Ok(false)
     }
 }

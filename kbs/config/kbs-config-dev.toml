@@ -1,0 +1,34 @@
+[http_server]
+host = "0.0.0.0"
+insecure_http = true
+
+[attestation_token]
+insecure_key = true
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "./kbs/test-data/attestation-service"
+policy_engine = "opa"
+
+[attestation_service.attestation_token_broker]
+type = "Ear"
+duration_min = 5
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[policy_engine]
+policy_path = "./kbs/test-data/policy.rego"
+
+[admin]
+insecure_api = true
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "./kbs/test-data/repository"
+
+[[plugins]]
+name = "spiffe-resource"
+type = "spiffe-resource"
+trust_domain = "virtru.com"

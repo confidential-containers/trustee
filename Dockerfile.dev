@@ -1,0 +1,13 @@
+# Use an official Rust image.
+FROM rust:1.79
+
+# Install build dependencies needed by KBS.
+# Add any other dependencies you find are needed (e.g., protobuf-compiler, clang).
+RUN apt-get update && apt-get install -y build-essential pkg-config libssl-dev protobuf-compiler
+
+# Set the working directory inside the container.
+WORKDIR /app
+
+# We will mount the source code from your Mac into /app.
+# This command just keeps the container running so we can connect to it.
+CMD ["tail", "-f", "/dev/null"]

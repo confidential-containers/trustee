@@ -27,6 +27,11 @@ name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 
+[[plugins]]
+name = "spiffe-resource"
+type = "spiffe-resource"
+trust_domain = "virtru.com"
+
 # Example configuration for HashiCorp Vault KV v1 backend
 # Supports both read and write operations with HTTPS support
 # [[plugins]]
