@@ -65,7 +65,7 @@ sev = { version = "6.2.1", default-features = false, features = [
 ], optional = true }
 sha2.workspace = true
 tokio = { workspace = true, optional = true }
-intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.22", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.23", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/veraison/rust-apiclient", rev = "fe149cd", optional = true }
 ccatoken = { git = "https://github.com/veraison/rust-ccatoken", rev = "dfe9ca2", optional = true }
