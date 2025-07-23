@@ -1,1 +1,19 @@
 target
+
+# Private keys and certificates - never commit these!
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+ca-key.pem
+ca-cert.pem
+**/ca-key.pem
+**/ca-cert.pem
+test-data/spiffe-ca/ca-key.pem
+test-data/spiffe-ca/ca-cert.pem
+
+# Temporary test certificates
+test-data/spiffe-ca/
+**/spiffe-ca/
