@@ -17,8 +17,8 @@ use crate::{
     plugins::PluginManager,
     policy_engine::PolicyEngine,
     prometheus::{
-        KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS, KBS_POLICY_VIOLATIONS,
-        REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
+        ACTIVE_CONNECTIONS, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
+        KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
     token::TokenVerifier,
     Error, Result,
@@ -344,6 +344,7 @@ async fn prometheus_metrics_middleware(
     // arguably are not very interesting either to a user of KBS metrics.
     let is_kbs_req = req.request().path().starts_with("/kbs");
     if is_kbs_req {
+        ACTIVE_CONNECTIONS.inc();
         REQUEST_TOTAL.inc();
 
         // Consider requests lacking a "content-length" header to be of zero
@@ -368,6 +369,8 @@ async fn prometheus_metrics_middleware(
         if let actix_web::body::BodySize::Sized(len) = res.response().body().size() {
             REQUEST_SIZES.observe(len as f64);
         }
+
+        ACTIVE_CONNECTIONS.dec();
     }
 
     Ok(res)

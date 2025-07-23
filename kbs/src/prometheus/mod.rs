@@ -4,7 +4,9 @@
 //
 
 use lazy_static::lazy_static;
-use prometheus::{Counter, CounterVec, Histogram, HistogramOpts, Opts, Registry, TextEncoder};
+use prometheus::{
+    Counter, CounterVec, Gauge, Histogram, HistogramOpts, Opts, Registry, TextEncoder,
+};
 
 macro_rules! make_counter {
     ($name:literal , $help:literal $(,)?) => {{
@@ -133,6 +135,15 @@ lazy_static! {
         "Total count of errors during auth processing",
     };
 
+    /// KBS Web Server Active Connections
+    pub(crate) static ref ACTIVE_CONNECTIONS: Gauge = {
+        let opts = Opts::new(
+            "http_active_connections",
+            "Count of HTTP connections being processed at the moment",
+        );
+        Gauge::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -157,6 +168,7 @@ lazy_static! {
         registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
         registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
         registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
+        registry.register(Box::new(ACTIVE_CONNECTIONS.clone())).unwrap();
 
         registry
     };
