@@ -45,10 +45,10 @@ The following fields always exist.
 - `tdx.quote.header.reserved`: reserved.
 - `tdx.quote.header.vendor_id`: UID of QE Vendor. QE is a signed software component inside TEE to help to generate tdx quote.
 - `tdx.quote.header.user_data`: Custom attestation key owner data.
-- `tdx.quote.body.mr_config_id`: Software defined ID for non-owner-defined configuration on the guest TD.
-- `tdx.quote.body.mr_owner`: Software defined ID for the guest TD's owner
-- `tdx.quote.body.mr_owner_config`: Software defined ID for owner-defined configuration of the guest TD
-- `tdx.quote.body.mr_td`: software defined ID for non-owner-defined configuration on the guest TD.
+- `tdx.quote.body.mr_config_id`: Software-defined ID for non-owner-defined configuration of the guest TD – e.g., run-time or OS configuration.
+- `tdx.quote.body.mr_owner`: Software-defined ID for the guest TD’s owner.
+- `tdx.quote.body.mr_owner_config`: Software-defined ID for owner-defined configuration of the guest TD – e.g., specific to the workload rather than the run-time or OS.
+- `tdx.quote.body.mr_td`: Measurement of the initial contents of the TD.
 - `tdx.quote.body.mrsigner_seam`: measurement of a 3rd party tdx-module's signer (SHA384 hash). If it is 0, the tdx-module is from Intel.
 - `tdx.quote.body.report_data`: software defined ID for non-owner-defined configuration on the guest TD.
 - `tdx.quote.body.seam_attributes`: for tdx1.0, must be 0.
@@ -56,10 +56,10 @@ The following fields always exist.
 - `tdx.quote.body.mr_seam`: Measurement of the SEAM module
 - `tdx.quote.body.tcb_svn`: TEE hardware tcb version, defined and meaningful to Intel. everytime firmware updates this field will change.
 - `tdx.quote.body.xfam`: TD's XFAM
-- `tdx.quote.body.rtmr_0`: Runtime measurement register 0.
-- `tdx.quote.body.rtmr_1`: Runtime measurement register 1.
-- `tdx.quote.body.rtmr_2`: Runtime measurement register 2.
-- `tdx.quote.body.rtmr_3`: Runtime measurement register 3.
+- `tdx.quote.body.rtmr_0`: Runtime extendable measurement register 0.
+- `tdx.quote.body.rtmr_1`: Runtime extendable measurement register 1.
+- `tdx.quote.body.rtmr_2`: Runtime extendable measurement register 2.
+- `tdx.quote.body.rtmr_3`: Runtime extendable measurement register 3.
 - `tdx.quote.type`: Indicating quote v5 type. 2 means TDX 1.0 quote and 3 means TDX 1.5 quote. Only quote format V5 contains this field.
 - `tdx.quote.size`: Quote body length. Only quote format V5 contains this field.
 - `tdx.quote.body.tee_tcb_svn2`: Array of TEE TCB SVNs (for TD preserving).
