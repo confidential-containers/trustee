@@ -32,3 +32,6 @@ dir_path = "./kbs/test-data/repository"
 name = "spiffe-resource"
 type = "spiffe-resource"
 trust_domain = "virtru.com"
+ca_cert_path = "./kbs/test-data/spiffe-ca/ca.pem"
+ca_key_path = "./kbs/test-data/spiffe-ca/ca-key.pem"
+cert_ttl_hours = 24

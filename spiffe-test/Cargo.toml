@@ -1,0 +1,14 @@
+[package]
+name = "spiffe-test"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[[bin]]
+name = "test_spiffe_cert"
+path = "test_spiffe_cert.rs"
+
+[dependencies]
+openssl = "0.10.73"
+tempfile = "3.20.0"
