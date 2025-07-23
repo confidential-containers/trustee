@@ -15,8 +15,8 @@ use serde_json::{Map, Value};
 use thiserror::Error;
 
 use super::quote::Quote;
-use crate::{eventlog::AAEventlog, tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
-use ::eventlog::CcEventLog;
+use crate::{tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
+use eventlog::CcEventLog;
 
 macro_rules! parse_claim {
     ($map_name: ident, $key_name: literal, $field: ident) => {
@@ -33,7 +33,6 @@ macro_rules! parse_claim {
 pub fn generate_parsed_claim(
     quote: Quote,
     cc_eventlog: Option<CcEventLog>,
-    aa_eventlog: Option<AAEventlog>,
 ) -> Result<TeeEvidenceParsedClaim> {
     let mut quote_map = Map::new();
     let mut quote_body = Map::new();
@@ -132,13 +131,7 @@ pub fn generate_parsed_claim(
 
     let mut claims = Map::new();
 
-    // Claims from AA eventlog
-    if let Some(aael) = aa_eventlog {
-        let aael_map = aael.to_parsed_claims();
-        parse_claim!(claims, "aael", aael_map);
-    }
-
-    // Claims from CC EventLog.
+    // Claims from EventLog.
     if let Some(ccel) = cc_eventlog {
         let result = serde_json::to_value(ccel.clone().log)?;
         claims.insert("uefi_event_logs".to_string(), result);
@@ -254,7 +247,7 @@ mod tests {
 
     use super::{generate_parsed_claim, TdShimPlatformConfigInfo};
 
-    use ::eventlog::CcEventLog;
+    use eventlog::CcEventLog;
     use rstest::rstest;
 
     #[test]
@@ -263,7 +256,7 @@ mod tests {
         let ccel_bin = std::fs::read("./test_data/CCEL_data").expect("read ccel failed");
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
-        let claims = generate_parsed_claim(quote, Some(ccel), None).expect("parse claim failed");
+        let claims = generate_parsed_claim(quote, Some(ccel)).expect("parse claim failed");
         let expected_json_str =
             std::fs::read_to_string("./test_data/parse_tdx_claims_expected.json")
                 .expect("read expected json output failed");
