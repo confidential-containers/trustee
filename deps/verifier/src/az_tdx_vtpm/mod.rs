@@ -64,7 +64,7 @@ impl Verifier for AzTdxVtpm {
         let pcrs: Vec<&[u8; 32]> = evidence.tpm_quote.pcrs_sha256().collect();
         verify_init_data(expected_init_data_hash, &pcrs)?;
 
-        let mut claim = generate_parsed_claim(td_quote, None, None)?;
+        let mut claim = generate_parsed_claim(td_quote, None)?;
         extend_claim(&mut claim, &evidence.tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 

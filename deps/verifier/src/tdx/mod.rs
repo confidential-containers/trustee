@@ -1,10 +1,9 @@
-use ::eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
-use std::str::FromStr;
+use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
 
 use anyhow::anyhow;
 use log::{debug, error, info, warn};
 
-use crate::{eventlog::AAEventlog, tdx::claims::generate_parsed_claim};
+use crate::tdx::claims::generate_parsed_claim;
 
 use super::*;
 use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
@@ -23,8 +22,6 @@ struct TdxEvidence {
     cc_eventlog: Option<String>,
     // Base64 encoded TD quote.
     quote: String,
-    // Eventlog of Attestation Agent
-    aa_eventlog: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -89,7 +86,7 @@ async fn verify_evidence(
 
     info!("MRCONFIGID check succeeded.");
 
-    // Verify Integrity of CC Eventlog
+    // Verify Integrity of Eventlog
     let mut ccel_option = Option::default();
     match &evidence.cc_eventlog {
         Some(el) if !el.is_empty() => {
@@ -122,32 +119,14 @@ async fn verify_evidence(
             ];
 
             ccel.replay_and_match(compare_obj)?;
-            info!("CCEL integrity check succeeded.");
+            info!("EventLog integrity check succeeded.");
         }
         _ => {
-            warn!("No CC Eventlog included inside the TDX evidence.");
+            warn!("No Eventlog included inside the TDX evidence.");
         }
     }
-
-    // Verify Integrity of AA eventlog
-    let aael = match &evidence.aa_eventlog {
-        Some(el) if !el.is_empty() => {
-            let aael =
-                AAEventlog::from_str(el).context("failed to parse AA Eventlog from evidence")?;
-            // We assume we always use PCR 17, rtmr 3 for the application side events.
-
-            aael.integrity_check(quote.rtmr_3())?;
-            info!("CCEL integrity check succeeded.");
-            Some(aael)
-        }
-        _ => {
-            warn!("No AA Eventlog included inside the TDX evidence.");
-            None
-        }
-    };
-
     // Return Evidence parsed claim
-    let mut claim = generate_parsed_claim(quote, ccel_option, aael)?;
+    let mut claim = generate_parsed_claim(quote, ccel_option)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)
@@ -155,11 +134,10 @@ async fn verify_evidence(
 
 #[cfg(test)]
 mod tests {
+    use crate::tdx::claims::generate_parsed_claim;
     use crate::tdx::quote::parse_tdx_quote;
-    use crate::{eventlog::AAEventlog, tdx::claims::generate_parsed_claim};
-    use ::eventlog::CcEventLog;
+    use eventlog::CcEventLog;
     use std::fs;
-    use std::str::FromStr;
 
     #[test]
     fn test_generate_parsed_claim() {
@@ -168,21 +146,12 @@ mod tests {
         let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_tdx_quote(&quote_bin).unwrap();
 
-        let parsed_claim = generate_parsed_claim(quote, Some(ccel), None);
+        let parsed_claim = generate_parsed_claim(quote, Some(ccel));
         assert!(parsed_claim.is_ok());
 
         let _ = fs::write(
             "./test_data/evidence_claim_output.txt",
             format!("{:?}", parsed_claim.unwrap()),
         );
-    }
-
-    #[test]
-    fn test_aael_binding() {
-        let aael_bin = fs::read_to_string("./test_data/aael/AAEL_data_1").unwrap();
-        let aael = AAEventlog::from_str(&aael_bin).unwrap();
-        let quote_bin = fs::read("./test_data/aael/AAEL_quote_tdx").unwrap();
-        let quote = parse_tdx_quote(&quote_bin).unwrap();
-        aael.integrity_check(quote.rtmr_3()).unwrap();
     }
 }
