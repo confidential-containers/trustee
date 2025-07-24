@@ -2,8 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:latest AS builder
-ARG BUILDPLATFORM=linux/amd64
+FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:latest AS builder
 ARG ARCH=x86_64
 
 WORKDIR /usr/src/rvps
