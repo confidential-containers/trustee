@@ -58,7 +58,7 @@ rstest = "0.18.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
 serde_qs = "0.13.0"
-serde_with = { version = "1.11.0", features = ["base64", "hex"] }
+serde_with = { version = "3.14.0", features = ["base64", "hex"] }
 serial_test = { version = "3.2.0", features = ["async"] }
 sha2 = "0.10"
 shadow-rs = "0.19.0"
