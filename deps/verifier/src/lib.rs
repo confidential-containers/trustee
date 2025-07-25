@@ -8,8 +8,6 @@ use log::debug;
 pub mod sample;
 pub mod sample_device;
 
-pub mod eventlog;
-
 #[cfg(feature = "az-snp-vtpm-verifier")]
 pub mod az_snp_vtpm;
 
