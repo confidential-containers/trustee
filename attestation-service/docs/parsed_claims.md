@@ -25,6 +25,7 @@ The following fields are optional. Whether they appear depends on whether there 
 UEFI event log entry contains below fields:
 - `tdx.uefi_event_logs[0].index`: Measurement registry index.
 - `tdx.uefi_event_logs[0].event_type`: Name of the measurement event from [TCG PC Client Platform Firmware Profile Specification Section 10.4.1](https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v22_02dec2020.pdf).
+- `tdx.uefi_event_logs[0].digest_matches_event`: Boolean result of comparison between digest array and event data. List of events (`EV_EFI_ACTION`, `EV_SEPARATOR`, `EV_EFI_VARIABLE_AUTHORITY`, `EV_EFI_GPT_EVENT`, `EV_EVENT_TAG`, `EV_EFI_VARIABLE_DRIVER_CONFIG`) which can be checked in policy against being protected.
 - `tdx.uefi_event_logs[0].digests[0].alg`: Hash algorithm (`RSA`, `TDES`, `SHA-1`, `SHA-256`, `SHA-384`, `SHA-512`).
 - `tdx.uefi_event_logs[0].digests[0].digest`: Digest value calculated for hash defined in previous field.
 - `tdx.uefi_event_logs[0].event`: Base64 encoded raw event data.
