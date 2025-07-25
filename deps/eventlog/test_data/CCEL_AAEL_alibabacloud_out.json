@@ -4,6 +4,7 @@
       "details": {
         "string": "TdxTable"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -18,6 +19,7 @@
       "details": {
         "string": "Fv(XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX)"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -36,6 +38,7 @@
         "variable_data_length": 1,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -54,6 +57,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -72,6 +76,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -90,6 +95,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -108,6 +114,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -120,6 +127,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -134,6 +142,7 @@
       "details": {
         "string": "ACPI DATA"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -148,6 +157,7 @@
       "details": {
         "string": "etc/table-loader"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -162,6 +172,7 @@
       "details": {
         "string": "etc/acpi/rsdp"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -176,6 +187,7 @@
       "details": {
         "string": "etc/acpi/tables"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -194,6 +206,7 @@
         "variable_data_length": 12,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -212,6 +225,7 @@
         "variable_data_length": 144,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -230,6 +244,7 @@
         "variable_data_length": 62,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -248,6 +263,7 @@
         "variable_data_length": 80,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -266,6 +282,7 @@
         "variable_data_length": 84,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -284,6 +301,7 @@
         "variable_data_length": 188,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -302,6 +320,7 @@
         "variable_data_length": 88,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -316,6 +335,7 @@
       "details": {
         "string": "Calling EFI Application from Boot Option"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -328,6 +348,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -340,6 +361,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -360,6 +382,7 @@
           "File(\\EFI\\alinux\\shimx64.efi)"
         ]
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -374,6 +397,7 @@
       "details": {
         "string": "MokList"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -388,6 +412,7 @@
       "details": {
         "string": "MokListX"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -406,6 +431,7 @@
         "variable_data_length": 18,
         "variable_name": "50ab5d60-46e0-0043-abb6-3dd810dd8b23"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -420,6 +446,7 @@
       "details": {
         "string": "MokListTrusted"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -436,6 +463,7 @@
           "File(\\EFI\\alinux\\grubx64.efi)"
         ]
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -450,6 +478,7 @@
       "details": {
         "string": "grub_cmd search --no-floppy --set prefix --file /boot/grub2/grub.cfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -464,6 +493,7 @@
       "details": {
         "string": "grub_cmd set prefix=(hd0,gpt3)/boot/grub2"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -478,6 +508,7 @@
       "details": {
         "string": "grub_cmd configfile (hd0,gpt3)/boot/grub2/grub.cfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -492,6 +523,7 @@
       "details": {
         "string": "grub_cmd set pager=1"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -506,6 +538,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt3)/boot/grub2/grubenv ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -520,6 +553,7 @@
       "details": {
         "string": "grub_cmd load_env -f (hd0,gpt3)/boot/grub2/grubenv"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -534,6 +568,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -548,6 +583,7 @@
       "details": {
         "string": "grub_cmd set default=289800cb8b604e6ba20ec84f5d4e1081-5.10.134-19.1.al8.x86_64"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -562,6 +598,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -576,6 +613,7 @@
       "details": {
         "string": "grub_cmd menuentry_id_option=--id"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -590,6 +628,7 @@
       "details": {
         "string": "grub_cmd export menuentry_id_option"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -604,6 +643,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -618,6 +658,7 @@
       "details": {
         "string": "grub_cmd terminal_output console"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -632,6 +673,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -646,6 +688,7 @@
       "details": {
         "string": "grub_cmd set timeout_style=menu"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -660,6 +703,7 @@
       "details": {
         "string": "grub_cmd set timeout=1"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -674,6 +718,7 @@
       "details": {
         "string": "grub_cmd set tuned_params="
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -688,6 +733,7 @@
       "details": {
         "string": "grub_cmd set tuned_initrd="
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -702,6 +748,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt3)/boot/grub2/user.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -716,6 +763,7 @@
       "details": {
         "string": "grub_cmd insmod increment"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -730,6 +778,7 @@
       "details": {
         "string": "grub_cmd [ -n  -a 0 = 0 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -744,6 +793,7 @@
       "details": {
         "string": "grub_cmd insmod part_gpt"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -758,6 +808,7 @@
       "details": {
         "string": "grub_cmd insmod ext2"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -772,6 +823,7 @@
       "details": {
         "string": "grub_cmd set root=hd0,gpt3"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -786,6 +838,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -800,6 +853,7 @@
       "details": {
         "string": "grub_cmd search --no-floppy --fs-uuid --set=root --hint=hd0,gpt3 33b46ac5-7482-4aa5-8de0-60ab4c3a4c78"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -814,6 +868,7 @@
       "details": {
         "string": "grub_cmd insmod part_gpt"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -828,6 +883,7 @@
       "details": {
         "string": "grub_cmd insmod ext2"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -842,6 +898,7 @@
       "details": {
         "string": "grub_cmd set boot=hd0,gpt3"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -856,6 +913,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -870,6 +928,7 @@
       "details": {
         "string": "grub_cmd search --no-floppy --fs-uuid --set=boot --hint=hd0,gpt3 33b46ac5-7482-4aa5-8de0-60ab4c3a4c78"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -884,6 +943,7 @@
       "details": {
         "string": "grub_cmd [ -z root=UUID=33b46ac5-7482-4aa5-8de0-60ab4c3a4c78 ro  rhgb quiet cgroup.memory=nokmem crashkernel=0M-2G:0M,2G-8G:192M,8G-128G:256M,128G-376G:384M,376G-:448M spec_rstack_overflow=off vring_force_dma_api kfence.sample_interval=100 kfence.booting_max=0-2G:0,2G-32G:2M,32G-:32M preempt=none biosdevname=0 net.ifnames=0 console=tty0 console=ttyS0,115200n8 noibrs nvme_core.io_timeout=4294967295 nvme_core.admin_timeout=4294967295 cryptomgr.notests rcupdate.rcu_cpu_stall_timeout=300  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -898,6 +958,7 @@
       "details": {
         "string": "grub_cmd insmod blscfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -912,6 +973,7 @@
       "details": {
         "string": "grub_cmd blscfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -926,6 +988,7 @@
       "details": {
         "string": "grub_cmd [ 0 = 1 -o  = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -940,6 +1003,7 @@
       "details": {
         "string": "grub_cmd set menu_hide_ok=0"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -954,6 +1018,7 @@
       "details": {
         "string": "grub_cmd [ 0 = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -968,6 +1033,7 @@
       "details": {
         "string": "grub_cmd [  = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -982,6 +1048,7 @@
       "details": {
         "string": "grub_cmd set boot_success=0"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -996,6 +1063,7 @@
       "details": {
         "string": "grub_cmd save_env boot_success boot_indeterminate"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1010,6 +1078,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1024,6 +1093,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1038,6 +1108,7 @@
       "details": {
         "string": "grub_cmd [  -a 0 = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1052,6 +1123,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt3)/boot/grub2/custom.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1066,6 +1138,7 @@
       "details": {
         "string": "grub_cmd [ -z (hd0,gpt3)/boot/grub2 -a -f (hd0,gpt3)/boot/grub2/custom.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1080,6 +1153,7 @@
       "details": {
         "string": "grub_cmd load_video"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1094,6 +1168,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1108,6 +1183,7 @@
       "details": {
         "string": "grub_cmd insmod all_video"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1122,6 +1198,7 @@
       "details": {
         "string": "grub_cmd set gfx_payload=keep"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1136,6 +1213,7 @@
       "details": {
         "string": "grub_cmd insmod gzio"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1150,6 +1228,7 @@
       "details": {
         "string": "grub_cmd linux (hd0,gpt3)/boot/vmlinuz-5.10.134-19.1.al8.x86_64 root=UUID=33b46ac5-7482-4aa5-8de0-60ab4c3a4c78 ro rhgb quiet cgroup.memory=nokmem crashkernel=0M-2G:0M,2G-8G:192M,8G-128G:256M,128G-376G:384M,376G-:448M spec_rstack_overflow=off vring_force_dma_api kfence.sample_interval=100 kfence.booting_max=0-2G:0,2G-32G:2M,32G-:32M preempt=none biosdevname=0 net.ifnames=0 console=tty0 console=ttyS0,115200n8 noibrs nvme_core.io_timeout=4294967295 nvme_core.admin_timeout=4294967295 cryptomgr.notests rcupdate.rcu_cpu_stall_timeout=300"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1164,6 +1243,7 @@
       "details": {
         "string": "grub_linuxefi Kernel"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1178,6 +1258,7 @@
       "details": {
         "string": "grub_kernel_cmdline (hd0,gpt3)/boot/vmlinuz-5.10.134-19.1.al8.x86_64 root=UUID=33b46ac5-7482-4aa5-8de0-60ab4c3a4c78 ro rhgb quiet cgroup.memory=nokmem crashkernel=0M-2G:0M,2G-8G:192M,8G-128G:256M,128G-376G:384M,376G-:448M spec_rstack_overflow=off vring_force_dma_api kfence.sample_interval=100 kfence.booting_max=0-2G:0,2G-32G:2M,32G-:32M preempt=none biosdevname=0 net.ifnames=0 console=tty0 console=ttyS0,115200n8 noibrs nvme_core.io_timeout=4294967295 nvme_core.admin_timeout=4294967295 cryptomgr.notests rcupdate.rcu_cpu_stall_timeout=300"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1192,6 +1273,7 @@
       "details": {
         "string": "grub_cmd initrd (hd0,gpt3)/boot/initramfs-5.10.134-19.1.al8.x86_64.img"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1206,6 +1288,7 @@
       "details": {
         "string": "grub_linuxefi Initrd"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1220,6 +1303,7 @@
       "details": {
         "string": "Exit Boot Services Invocation"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1234,6 +1318,7 @@
       "details": {
         "string": "Exit Boot Services Returned with Success"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1254,6 +1339,7 @@
         "string": "coco.com some-operation some-content",
         "unicode_name": "AAEL"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -1279,6 +1365,7 @@
         "string": "coco.com some-operation {\"key\": \"value\", \"nested-key\": {\"sub-key\": \"value\"}}",
         "unicode_name": "AAEL"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
