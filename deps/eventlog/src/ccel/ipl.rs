@@ -34,7 +34,13 @@ impl EventDataParser for EvIplParser {
                 .collect();
             String::from_utf16_lossy(&utf16_words)
         } else {
-            String::from_utf8(data.to_vec())?.replace('\0', "")
+            let cutoff = data.iter().position(|&b| b == 0x00).unwrap_or(data.len());
+            let slice = &data[..cutoff];
+
+            match std::str::from_utf8(slice) {
+                Ok(s) => s.to_string(),
+                Err(_) => hex::encode(data),
+            }
         };
         Ok(EventDetails::from_string(event_desc))
     }
