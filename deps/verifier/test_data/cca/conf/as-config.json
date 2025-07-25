@@ -7,9 +7,7 @@
   },
   "attestation_token_broker": {
     "type": "Ear",
-    "policy_dir": "/opt/confidential-containers/attestation-service/cca"
-  },
-  "attestation_token_config": {
+    "policy_dir": "/opt/confidential-containers/attestation-service/cca",
     "duration_min": 5
   }
 }
