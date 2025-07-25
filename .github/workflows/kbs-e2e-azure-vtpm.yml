@@ -4,48 +4,13 @@ on:
   push:
     branches:
     - main
-  # Note on repository checkout: pull_request_target sets `GITHUB_SHA` to the
-  # "last commit on the PR base branch", meaning that by default `actions/checkout`
-  # is going to checkout the repository main branch. In order to pick up the pull
-  # request code, this workflow uses the `github.event.pull_request.head.sha`
-  # property to get the last commit on the HEAD branch. One limitation of this approach
-  # is that, unlike the `pull_request` event, the checked pull request isn't necessarily
-  # rebased to main (so it is up to the workflow to ensure the pull request is rebased
-  # **before* the workflow is triggering)
-  pull_request_target:
-    types:
-    - opened
-    - synchronize
-    - reopened
-    # This workflow will be run if the pull request is labeled 'test_e2e'
-    - labeled
-    branches:
-    - 'main'
 
 jobs:
-  authorize:
+  checkout:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'test_e2e')
-    steps:
-    - run: "true"
-
-  checkout-and-rebase:
-    runs-on: ubuntu-24.04
-    needs: authorize
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        # fetch main on push, otherwise the head of the PR
-        ref: ${{ github.event_name == 'push' && 'main' || github.event.pull_request.head.sha }}
-
-    - name: Rebase the source
-      if: github.event_name != 'push'
-      run: |
-        git config --global user.name "GH Actions Workflow"
-        git config --global user.email "<rebase@gh-actions-workflow>"
-        ./kbs/hack/ci-helper.sh rebase-atop-of-the-latest-target-branch
 
     - name: Archive source
       run: git archive -o kbs.tar.gz HEAD
@@ -56,8 +21,7 @@ jobs:
 
   tdx-e2e-test:
     needs:
-    - authorize
-    - checkout-and-rebase
+    - checkout
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       runs-on-test: '["self-hosted","azure-cvm-tdx"]'
@@ -66,8 +30,7 @@ jobs:
 
   snp-e2e-test:
     needs:
-    - authorize
-    - checkout-and-rebase
+    - checkout
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       runs-on-test: '["self-hosted","azure-cvm"]'
