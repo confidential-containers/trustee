@@ -2,14 +2,18 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use log::{debug, warn};
 use sha2::{Digest, Sha384};
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::time::Duration;
+use std::{collections::HashMap, thread};
+
+use crate::rvps::RvpsClient;
 
 use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
 
@@ -58,10 +62,11 @@ impl OPA {
 impl PolicyEngine for OPA {
     async fn evaluate(
         &self,
-        data: &str,
+        data: Option<&str>,
         input: &str,
         policy_id: &str,
         evaluation_rules: Vec<String>,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<EvaluationResult, PolicyError> {
         let policy_dir_path = self
             .policy_dir_path
@@ -89,18 +94,69 @@ impl PolicyEngine for OPA {
             .add_policy(policy_id.to_string(), policy)
             .map_err(PolicyError::LoadPolicyFailed)?;
 
-        let data =
-            regorus::Value::from_json_str(data).map_err(PolicyError::JsonSerializationFailed)?;
+        if let Some(data) = data {
+            let data = regorus::Value::from_json_str(data)
+                .map_err(PolicyError::JsonSerializationFailed)?;
 
-        engine
-            .add_data(data)
-            .map_err(PolicyError::LoadReferenceDataFailed)?;
+            engine
+                .add_data(data)
+                .map_err(PolicyError::LoadReferenceDataFailed)?;
+        }
 
         // Add TCB claims as input
         engine
             .set_input_json(input)
             .context("set input")
             .map_err(PolicyError::SetInputDataFailed)?;
+
+        if let Some(rvps_client) = rvps_client {
+            engine
+                .add_extension(
+                    "query_reference_value".to_string(),
+                    1,
+                    Box::new(move |params: Vec<regorus::Value>| {
+                        let id = params[0].as_string()?.to_string();
+                        debug!("Request for reference value: {id}");
+                        let (tx, rx) = mpsc::channel::<Result<serde_json::Value>>();
+
+                        let fut = async |rvps_client: RvpsClient,
+                                         reference_value_id: String|
+                               -> Result<_> {
+                            let rv = rvps_client
+                                .lock()
+                                .await
+                                .query_reference_value(&reference_value_id)
+                                .await?;
+                            Ok(rv)
+                        };
+
+                        let rvps_client = rvps_client.clone();
+                        let reference_value_id = params[0].as_string()?.to_string();
+                        let _ = thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_current_thread()
+                                .enable_all()
+                                .build()
+                                .expect("failed to build runtime");
+
+                            let res = rt.block_on(fut(rvps_client, reference_value_id));
+
+                            tx.send(res)
+                        });
+
+                        // We wait for 10 seconds at most.
+                        match rx.recv_timeout(Duration::from_secs(10)) {
+                            Ok(Ok(v)) => {
+                                let json_value = serde_json::to_value(v)?;
+                                let value: regorus::Value = serde_json::from_value(json_value)?;
+                                Ok(value)
+                            }
+                            Ok(Err(e)) => bail!("Failed to get Reference Value from RVPS: {e:?}"),
+                            Err(e) => bail!("Failed to get Reference Value from RVPS: {e:?}"),
+                        }
+                    }),
+                )
+                .expect("Only duplicated extension insertion can cause panic");
+        }
 
         let mut rules_result = HashMap::new();
         for rule in evaluation_rules {
@@ -256,10 +312,11 @@ mod tests {
 
         let output = opa
             .evaluate(
-                &dummy_reference(svn_a, digest_a),
+                Some(&dummy_reference(svn_a, digest_a)),
                 &dummy_input(svn_b, digest_b),
                 &default_policy_id,
                 ear_rules,
+                None,
             )
             .await
             .unwrap();
