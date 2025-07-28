@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use std::sync::Arc;
+
 use log::info;
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 #[cfg(feature = "rvps-grpc")]
 pub mod grpc;
@@ -63,18 +66,18 @@ impl Default for RvpsConfig {
     }
 }
 
-pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+pub type RvpsClient = Arc<Mutex<dyn RvpsApi + Send + Sync>>;
+
+pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<RvpsClient> {
     match config {
         RvpsConfig::BuiltIn(config) => {
             info!("launch a built-in RVPS.");
-            Ok(Box::new(builtin::BuiltinRvps::new(config.clone())?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone())?)) as RvpsClient)
         }
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
             info!("connect to remote RVPS: {}", config.address);
-            Ok(Box::new(grpc::Agent::new(&config.address).await?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(Arc::new(Mutex::new(grpc::Agent::new(&config.address).await?)) as RvpsClient)
         }
     }
 }
