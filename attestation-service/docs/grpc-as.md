@@ -109,7 +109,7 @@ Or you can run the binary in a podman container:
 # Build the grpc-as container image
 podman build \
     -t grpc-as \
-    -f attestation-service/podman/as-grpc/Containerfile \
+    -f attestation-service/docker/as-grpc/Dockerfile \
     .
 
 # Run the grpc-as container

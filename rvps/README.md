@@ -82,7 +82,7 @@ docker run -d -p 50003:50003 rvps --address 0.0.0.0:50003
 Or we can build RVPS as a podman image
 
 ```bash
-cd .. && podman build -t rvps -f rvps/podman/Containerfile .
+cd .. && podman build -t rvps -f rvps/docker/Dockerfile .
 ```
 
 Run
