@@ -105,7 +105,7 @@ docker build \
   -t coco-as:restful \
   -f attestation-service/docker/as-restful/Dockerfile \
   --build-arg VERIFIER=all-verifier \
-  . 
+  .
 ```
 
 Or you can run the binary in a podman container:
@@ -113,7 +113,7 @@ Or you can run the binary in a podman container:
 # Build the restful-as container image
 podman build \
     -t restful-as \
-    -f attestation-service/podman/restful-as/Containerfile \
+    -f attestation-service/docker/as-restful/Dockerfile \
     .
 
 # Run the restful-as container
