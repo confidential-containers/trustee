@@ -20,9 +20,8 @@ use extractors::Extractors;
 pub use serde_json::Value;
 
 use anyhow::{bail, Context, Result};
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";
@@ -89,18 +88,13 @@ impl Rvps {
         Ok(())
     }
 
-    pub async fn get_digests(&self) -> Result<HashMap<String, Value>> {
-        let mut rv_map = HashMap::new();
-        let reference_values = self.storage.get_values().await?;
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
+        let reference_value = self
+            .storage
+            .get(reference_value_id)
+            .await?
+            .map(|rv| rv.value());
 
-        for rv in reference_values {
-            if rv.expired() {
-                warn!("Reference value of {} is expired.", rv.name());
-                continue;
-            }
-
-            rv_map.insert(rv.name().to_string(), rv.value());
-        }
-        Ok(rv_map)
+        Ok(reference_value)
     }
 }
