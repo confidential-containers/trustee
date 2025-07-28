@@ -78,16 +78,6 @@ impl ReferenceValueStorage for LocalFs {
             None => Ok(None),
         }
     }
-
-    async fn get_values(&self) -> Result<Vec<ReferenceValue>> {
-        let mut values = Vec::new();
-
-        for (_k, v) in self.engine.iter().flatten() {
-            values.push(serde_json::from_slice(&v)?);
-        }
-
-        Ok(values)
-    }
 }
 
 #[cfg(test)]
