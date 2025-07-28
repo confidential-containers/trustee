@@ -109,7 +109,7 @@ tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 serial_test = "3.0"
-toml = "0.8"
+toml = "0.9"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
