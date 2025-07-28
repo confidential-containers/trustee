@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::TeeClaims;
+use crate::{rvps::RvpsClient, TeeClaims};
 use anyhow::*;
 use serde::Deserialize;
 use shadow_rs::concatcp;
@@ -28,7 +28,7 @@ pub trait AttestationTokenBroker: Send + Sync {
         &self,
         tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<String>;
 
     async fn set_policy(&self, _policy_id: String, _policy: String) -> Result<()> {
