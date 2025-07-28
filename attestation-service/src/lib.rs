@@ -7,6 +7,7 @@ pub mod config;
 pub mod ear_token;
 pub mod policy_engine;
 pub mod rvps;
+use crate::rvps::RvpsClient;
 
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
@@ -14,7 +15,7 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-use rvps::{RvpsApi, RvpsError};
+use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -122,7 +123,7 @@ pub struct VerificationRequest {
 
 pub struct AttestationService {
     config: Config,
-    rvps: Box<dyn RvpsApi + Send + Sync>,
+    rvps: RvpsClient,
     token_broker: EarAttestationTokenBroker,
 }
 
