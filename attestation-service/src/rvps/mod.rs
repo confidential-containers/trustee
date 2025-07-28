@@ -5,7 +5,7 @@
 
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
-use std::collections::HashMap;
+use serde_json::Value;
 use thiserror::Error;
 use tracing::{info, instrument};
 
@@ -29,6 +29,9 @@ pub enum RvpsError {
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
+
+    #[error("Reference value not found")]
+    ReferenceValueNotFound,
 }
 
 type Result<T> = std::result::Result<T, RvpsError>;
@@ -43,7 +46,7 @@ pub trait RvpsApi {
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
     /// Get the reference values / golden values / expected digests in hex.
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
