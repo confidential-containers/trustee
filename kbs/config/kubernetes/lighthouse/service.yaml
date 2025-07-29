@@ -1,0 +1,12 @@
+# Service to expose the lighthouse
+apiVersion: v1
+kind: Service
+metadata:
+  name: lighthouse
+spec:
+  selector:
+    app: lighthouse
+  ports:
+  - protocol: UDP
+    port: 4242
+    targetPort: 4242

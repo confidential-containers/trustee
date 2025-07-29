@@ -16,3 +16,6 @@ auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
 name = "resource"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
+
+[[plugins]]
+name = "nebula-ca"
