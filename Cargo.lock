@@ -748,9 +748,9 @@ dependencies = [
 
 [[package]]
 name = "az-tdx-vtpm"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80875afa68553e2035bc45836d00101ab80c94ec386de66f2fb14af480514711"
+checksum = "101bfd86d4413f7267cfa003e9103abda811c67832007200b12b8a396102f5ab"
 dependencies = [
  "az-cvm-vtpm",
  "base64-url",
