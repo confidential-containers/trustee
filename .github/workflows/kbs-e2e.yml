@@ -35,20 +35,20 @@ jobs:
       OS_VERSION: ubuntu-22.04
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
 
     - name: Extract tarball
       run: tar xzf ./artifact/${{ inputs.tarball }}
 
     - name: Install Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
       with:
         components: rustfmt, clippy
         rustflags: ""
         cache: false
 
     - name: Set up rust build cache
-      uses: actions/cache@v4
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       continue-on-error: false
       with:
         path: |
@@ -66,7 +66,7 @@ jobs:
     - name: Archive test folder
       run: tar czf test.tar.gz kbs/test
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         path: test.tar.gz
         overwrite: true
@@ -77,7 +77,7 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runs-on-test) }}
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
         name: artifacts-${{ inputs.tee }}
 
@@ -85,7 +85,7 @@ jobs:
       run: tar xzf ./test.tar.gz
 
     - name: Set up SGX/TDX certificates cache
-      uses: actions/cache@v4
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       with:
         path: /root/.dcap-qcnl
         key: ${{ runner.os }}-dcap-qcnl
