@@ -8,6 +8,8 @@ on:
       - 'Cargo.toml'
   create:
 
+permissions: {}
+
 jobs:
   check_as_image_build:
     uses: ./.github/workflows/build-as-image.yml

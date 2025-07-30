@@ -18,6 +18,9 @@ on:
       - 'Cargo.toml'
   create:
 
+permissions:
+  contents: read
+
 jobs:
   basic_ci:
     if: github.event_name == 'pull_request' || github.event_name == 'push'

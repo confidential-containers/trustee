@@ -5,6 +5,9 @@ on:
     branches: 
       - main
 
+permissions:
+  contents: read
+
 env:
   TEST_SECRET_CONTENT: shhhhh
   TEST_SECRET_PATH: test-org/test-repo/test-secret

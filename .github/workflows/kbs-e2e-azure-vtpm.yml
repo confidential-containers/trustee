@@ -5,9 +5,15 @@ on:
     branches:
     - main
 
+permissions:
+  contents: read
+
 jobs:
   checkout:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
