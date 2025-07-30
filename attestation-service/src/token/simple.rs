@@ -18,8 +18,7 @@ use openssl::{
     hash::MessageDigest,
     pkey::{PKey, Private},
 };
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{distr::Alphanumeric, rng, Rng};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use serde_variant::to_variant_name;
@@ -276,7 +275,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         let now = time::OffsetDateTime::now_utc();
         let exp = now + time::Duration::minutes(self.config.duration_min);
 
-        let id: String = thread_rng()
+        let id: String = rng()
             .sample_iter(&Alphanumeric)
             .take(10)
             .map(char::from)
