@@ -3,6 +3,8 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions: {}
+
 jobs:
   check_kbs_image_build:
     uses: ./.github/workflows/build-kbs-image.yml

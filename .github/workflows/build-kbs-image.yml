@@ -8,6 +8,10 @@ on:
         type: string
         required: false
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build_kbs_image:
     strategy:
