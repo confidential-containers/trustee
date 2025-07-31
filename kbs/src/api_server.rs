@@ -200,12 +200,15 @@ pub(crate) async fn api(
             Ok(HttpResponse::Ok().finish())
         }
         #[cfg(feature = "as")]
+        // Reference value querying API is exposed as
+        // GET /reference-value/<reference_value_id>
         "reference-value" if request.method() == Method::GET => {
             core.admin_auth.validate_auth(&request)?;
+            let reference_value_id = additional_path.trim_start_matches('/');
             let reference_values = serde_json::to_string(
                 &core
                     .attestation_service
-                    .query_reference_values()
+                    .query_reference_value(reference_value_id)
                     .await
                     .map_err(|e| Error::RvpsError {
                         message: format!("Failed to get reference_values: {e}").to_string(),
