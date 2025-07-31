@@ -35,6 +35,8 @@ result := {
 
 # GPUs verified by NRAS
 hardware := 2 if {
+	input.nvidia
+
 	input.nvidia.x_nvidia_gpu_attestation_report_cert_chain.x_nvidia_cert_ocsp_status == "good"
 	input.nvidia.x_nvidia_gpu_attestation_report_cert_chain.x_nvidia_cert_status == "valid"
 
@@ -48,8 +50,8 @@ hardware := 2 if {
 configuration := 2 if {
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
-	input.nvidia.x_nvidia_gpu_vbios_version in data.reference.allowed_vbios_versions
-	input.nvidia.x_nvidia_gpu_driver_version in data.reference.allowed_driver_versions
+	input.nvidia.x_nvidia_gpu_vbios_version in query_reference_value("allowed_vbios_versions")
+	input.nvidia.x_nvidia_gpu_driver_version in query_reference_value("allowed_driver_versions")
 }
 
 else := 3 if {
