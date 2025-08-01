@@ -15,6 +15,7 @@ serde.workspace = true
 serde_json.workspace = true
 serde_with = { workspace = true, optional = true }
 sha2.workspace = true
+sm3 = "0.4.2"
 
 [build-dependencies]
 shadow-rs.workspace = true
