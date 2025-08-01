@@ -1530,7 +1530,7 @@ dependencies = [
 [[package]]
 name = "csv-rs"
 version = "0.1.0"
-source = "git+https://github.com/openanolis/csv-rs?rev=b3e0243#b3e02434be23aa00a5e2f090f08cf2500d9e331a"
+source = "git+https://github.com/openanolis/csv-rs?rev=b67a07e#b67a07e4a42030ecd1b35bb281f3e778aeefec81"
 dependencies = [
  "bincode",
  "bitfield 0.13.2",
@@ -2016,6 +2016,7 @@ dependencies = [
  "serde_with",
  "sha2",
  "shadow-rs",
+ "sm3",
  "tokio",
  "tonic-build",
 ]
@@ -5394,6 +5395,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sm3"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebb9a3b702d0a7e33bc4d85a14456633d2b165c2ad839c5fd9a8417c1ab15860"
+dependencies = [
+ "digest",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6321,7 +6331,7 @@ dependencies = [
  "ccatoken",
  "cfg-if",
  "codicon",
- "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b3e0243)",
+ "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b67a07e)",
  "ear",
  "eventlog",
  "hex",

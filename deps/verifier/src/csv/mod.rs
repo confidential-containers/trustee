@@ -3,20 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use base64::Engine;
+use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
 use reqwest::{get, Response as ReqwestResponse, StatusCode};
 use std::{io::Cursor, path::Path};
 use tokio::fs;
 
-use log::{debug, warn};
+use log::{debug, info, warn};
 use thiserror::Error;
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
 use async_trait::async_trait;
-use base64::Engine;
 use codicon::Decoder;
 use csv_rs::{
-    api::guest::{AttestationReport, Body},
+    api::guest::{AttestationReport, AttestationReportWrapper},
     certs::{ca, csv, Verifiable},
 };
 use serde_json::json;
@@ -39,12 +40,18 @@ struct CertificateChain {
 
 #[derive(Serialize, Deserialize)]
 struct CsvEvidence {
-    attestation_report: AttestationReport,
+    attestation_report: AttestationReportWrapper,
 
     cert_chain: CertificateChain,
 
     // Base64 Encoded CSV Serial Number (Used to identify HYGON chip ID)
     serial_number: Vec<u8>,
+
+    /// Base64 encoded Eventlog
+    /// This might include the
+    /// - CCEL: <https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#cc-event-log-acpi-table>
+    /// - AAEL in TCG2 encoding: <https://github.com/confidential-containers/trustee/blob/main/kbs/docs/confidential-containers-eventlog.md>
+    cc_eventlog: Option<String>,
 }
 
 #[derive(Error, Debug)]
@@ -87,11 +94,13 @@ impl Verifier for CsvVerifier {
         expected_init_data_hash: &InitDataHash,
     ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
         let CsvEvidence {
-            attestation_report: report,
+            attestation_report: report_wrapper,
             cert_chain,
             serial_number,
+            cc_eventlog,
         } = serde_json::from_value(evidence).context("Deserialize Quote failed.")?;
 
+        let report = AttestationReport::try_from(&report_wrapper)?;
         let chip_id = std::str::from_utf8(&serial_number)?.trim_end_matches('\0');
 
         let (hsk, cek, pek) = match cert_chain.hsk_cek {
@@ -124,13 +133,11 @@ impl Verifier for CsvVerifier {
 
         verify_report_signature(&report, hsk, cek, pek)?;
 
-        let report_raw = restore_attestation_report(report)?;
-
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");
             let expected_report_data =
                 regularize_data(expected_report_data, 64, "REPORT_DATA", "CSV");
-            if expected_report_data != report_raw.body.report_data {
+            if expected_report_data != report.tee_info().report_data() {
                 return Err(CsvError::ReportDataMismatch.into());
             }
         }
@@ -139,10 +146,114 @@ impl Verifier for CsvVerifier {
             warn!("CSV does not support init data hash mechanism. skip.");
         }
 
-        Ok((
-            parse_tee_evidence(&report_raw, serial_number.clone())?,
-            "cpu".into(),
-        ))
+        match &report {
+            AttestationReport::V1(attestation_report_v1) => {
+                let anonce = attestation_report_v1.tee_info.anonce;
+                let policy = attestation_report_v1.tee_info.policy.xor(&anonce);
+                let claims = json!({
+                    "version": "1",
+                    "policy": {
+                        "nodbg": policy.nodbg(),
+                        "noks": policy.noks(),
+                        "es": policy.es(),
+                        "nosend": policy.nosend(),
+                        "domain": policy.domain(),
+                        "csv": policy.csv(),
+                        "csv3": policy.csv3(),
+                        "asid_reuse": policy.asid_reuse(),
+                        "hsk_version": policy.hsk_version(),
+                        "cek_version": policy.cek_version(),
+                        "api_major": policy.api_major(),
+                        "api_minor": policy.api_minor(),
+                    },
+                    "user_pubkey_digest": hex::encode(report.tee_info().user_pubkey_digest()),
+                    "vm_id": hex::encode(report.tee_info().vm_id()),
+                    "vm_version": hex::encode(report.tee_info().vm_version()),
+                    "report_data": hex::encode(report.tee_info().report_data()),
+                    "mnonce": hex::encode(report.tee_info().mnonce()),
+                    "measure": hex::encode(report.tee_info().measure()),
+                    "sig_usage": hex::encode(report.tee_info().sig_usage().to_le_bytes()),
+                    "sig_algo": hex::encode(report.tee_info().sig_algo().to_le_bytes()),
+                    "anonce": hex::encode(anonce.to_le_bytes()),
+                    "serial_number": String::from_utf8(serial_number)?.trim_end_matches('\0'),
+                });
+                Ok((claims, "cpu".to_string()))
+            }
+            AttestationReport::V2(attestation_report_v2) => {
+                let policy = attestation_report_v2.tee_info.policy;
+                let mut claims = json!({
+                    "version": "2",
+                    "policy": {
+                        "nodbg": policy.nodbg(),
+                        "noks": policy.noks(),
+                        "es": policy.es(),
+                        "nosend": policy.nosend(),
+                        "domain": policy.domain(),
+                        "csv": policy.csv(),
+                        "csv3": policy.csv3(),
+                        "asid_reuse": policy.asid_reuse(),
+                        "hsk_version": policy.hsk_version(),
+                        "cek_version": policy.cek_version(),
+                        "api_major": policy.api_major(),
+                        "api_minor": policy.api_minor(),
+                    },
+                    "user_pubkey_digest": hex::encode(report.tee_info().user_pubkey_digest()),
+                    "vm_id": hex::encode(report.tee_info().vm_id()),
+                    "vm_version": hex::encode(report.tee_info().vm_version()),
+                    "report_data": hex::encode(report.tee_info().report_data()),
+                    "mnonce": hex::encode(report.tee_info().mnonce()),
+                    "measure": hex::encode(report.tee_info().measure()),
+                    "sig_usage": hex::encode(report.tee_info().sig_usage().to_le_bytes()),
+                    "sig_algo": hex::encode(report.tee_info().sig_algo().to_le_bytes()),
+                    "build": attestation_report_v2.tee_info.build,
+                    "rtmr_version": attestation_report_v2.tee_info.rtmr_version,
+                    "reserved0": hex::encode(attestation_report_v2.tee_info.reserved0),
+                    "rtmr0": hex::encode(attestation_report_v2.tee_info.rtmr0),
+                    "rtmr1": hex::encode(attestation_report_v2.tee_info.rtmr1),
+                    "rtmr2": hex::encode(attestation_report_v2.tee_info.rtmr2),
+                    "rtmr3": hex::encode(attestation_report_v2.tee_info.rtmr3),
+                    "rtmr4": hex::encode(attestation_report_v2.tee_info.rtmr4),
+                    "reserved1": hex::encode(attestation_report_v2.tee_info.reserved1),
+                    "serial_number": String::from_utf8(serial_number)?.trim_end_matches('\0'),
+                });
+                if let Some(el) = cc_eventlog {
+                    let ccel_data = base64::engine::general_purpose::STANDARD.decode(el)?;
+                    let ccel = CcEventLog::try_from(ccel_data)
+                        .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
+                    let compare_obj: Vec<ReferenceMeasurement> = vec![
+                        ReferenceMeasurement {
+                            index: 1,
+                            algorithm: TcgAlgorithm::Sm3,
+                            reference: attestation_report_v2.tee_info.rtmr1.to_vec(),
+                        },
+                        ReferenceMeasurement {
+                            index: 2,
+                            algorithm: TcgAlgorithm::Sm3,
+                            reference: attestation_report_v2.tee_info.rtmr2.to_vec(),
+                        },
+                        ReferenceMeasurement {
+                            index: 3,
+                            algorithm: TcgAlgorithm::Sm3,
+                            reference: attestation_report_v2.tee_info.rtmr3.to_vec(),
+                        },
+                        ReferenceMeasurement {
+                            index: 4,
+                            algorithm: TcgAlgorithm::Sm3,
+                            reference: attestation_report_v2.tee_info.rtmr4.to_vec(),
+                        },
+                    ];
+
+                    ccel.replay_and_match(compare_obj)?;
+                    info!("EventLog integrity check succeeded.");
+
+                    claims.as_object_mut().expect("Must be an object").insert(
+                        "uefi_event_logs".to_string(),
+                        serde_json::to_value(ccel.clone().log)?,
+                    );
+                }
+                Ok((claims, "cpu".to_string()))
+            }
+        }
     }
 }
 
@@ -156,6 +267,7 @@ async fn try_load_hskcek_offline(chip_id: &str) -> Option<Vec<u8>> {
 async fn download_hskcek_from_kds(chip_id: &str) -> Result<Vec<u8>> {
     let kds_url: String = format!("https://cert.hygon.cn/hsk_cek?snumber={}", chip_id);
 
+    debug!("KDS URL: {kds_url}");
     let hsk_cek_rsp: ReqwestResponse = get(kds_url)
         .await
         .context("Unable to send request for HSK_CEK")?;
@@ -195,90 +307,11 @@ fn verify_report_signature(
 
     // Verify the TEE Hardware signature.
 
-    (&pek, attestation_report)
+    (&pek, &attestation_report.tee_info())
         .verify()
         .map_err(|err| CsvError::AttestationReportSignatureValidation(err.to_string()))?;
 
     Ok(()).map_err(|err| CsvError::VerifyReportSignature(err.to_string()))
-}
-
-fn xor_with_anonce(data: &mut [u8], anonce: &u32) {
-    let mut anonce_array = [0u8; 4];
-    anonce_array[..].copy_from_slice(&anonce.to_le_bytes());
-
-    for (index, item) in data.iter_mut().enumerate() {
-        *item ^= anonce_array[index % 4];
-    }
-}
-
-fn restore_attestation_report(report: AttestationReport) -> Result<AttestationReport> {
-    let body = &report.body;
-    let mut user_pubkey_digest = body.user_pubkey_digest;
-    xor_with_anonce(&mut user_pubkey_digest, &report.anonce);
-    let mut vm_id = body.vm_id;
-    xor_with_anonce(&mut vm_id, &report.anonce);
-    let mut vm_version = body.vm_version;
-    xor_with_anonce(&mut vm_version, &report.anonce);
-    let mut report_data = body.report_data;
-    xor_with_anonce(&mut report_data, &report.anonce);
-    let mut mnonce = body.mnonce;
-    xor_with_anonce(&mut mnonce, &report.anonce);
-    let mut measure = body.measure;
-    xor_with_anonce(&mut measure, &report.anonce);
-
-    let policy = report.body.policy.xor(&report.anonce);
-
-    Ok(AttestationReport {
-        body: Body {
-            user_pubkey_digest,
-            vm_id,
-            vm_version,
-            report_data,
-            mnonce,
-            measure,
-            policy,
-        },
-        ..report
-    })
-}
-
-// Dump the CSV information from the report.
-fn parse_tee_evidence(
-    report: &AttestationReport,
-    serial_number: Vec<u8>,
-) -> Result<TeeEvidenceParsedClaim> {
-    let body = &report.body;
-    let claims_map = json!({
-        // policy fields
-        "policy_nodbg": format!("{}",body.policy.nodbg()),
-        "policy_noks": format!("{}", body.policy.noks()),
-        "policy_es": format!("{}", body.policy.es()),
-        "policy_nosend": format!("{}", body.policy.nosend()),
-        "policy_domain": format!("{}", body.policy.domain()),
-        "policy_csv": format!("{}", body.policy.csv()),
-        "policy_csv3": format!("{}", body.policy.csv3()),
-        "policy_asid_reuse": format!("{}", body.policy.asid_reuse()),
-        "policy_hsk_version": format!("{}", body.policy.hsk_version()),
-        "policy_cek_version": format!("{}", body.policy.cek_version()),
-        "policy_api_major": format!("{}", body.policy.api_major()),
-        "policy_api_minor": format!("{}", body.policy.api_minor()),
-
-        // launch info inject with pdh and session data
-        "user_pubkey_digest": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.user_pubkey_digest)),
-        "vm_id": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.vm_id)),
-        "vm_version": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.vm_version)),
-
-        // Chip ID
-        "serial_number": format!("{}", base64::engine::general_purpose::STANDARD.encode(serial_number)),
-
-        // measurement
-        "measurement": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.measure)),
-
-        // report data
-        "report_data": format!("{}", base64::engine::general_purpose::STANDARD.encode(body.report_data)),
-    });
-
-    Ok(claims_map as TeeEvidenceParsedClaim)
 }
 
 #[cfg(test)]
