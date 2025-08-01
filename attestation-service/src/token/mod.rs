@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::TeeClaims;
+use crate::{RvpsApi, TeeClaims};
 use anyhow::*;
 use serde::Deserialize;
 use shadow_rs::concatcp;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use strum::Display;
 
 use crate::config::DEFAULT_WORK_DIR;
@@ -24,12 +25,7 @@ const DEFAULT_TOKEN_WORK_DIR: &str = concatcp!(DEFAULT_WORK_DIR, "/token");
 pub trait AttestationTokenBroker: Send + Sync {
     /// Issue an signed attestation token with custom claims.
     /// Return base64 encoded Json Web Token.
-    async fn issue(
-        &self,
-        tee_claims: Vec<TeeClaims>,
-        policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
-    ) -> Result<String>;
+    async fn issue(&self, tee_claims: Vec<TeeClaims>, policy_ids: Vec<String>) -> Result<String>;
 
     async fn set_policy(&self, _policy_id: String, _policy: String) -> Result<()> {
         bail!("Set Policy not support")
@@ -58,14 +54,17 @@ impl Default for AttestationTokenConfig {
 }
 
 impl AttestationTokenConfig {
-    pub fn to_token_broker(&self) -> Result<Box<dyn AttestationTokenBroker + Send + Sync>> {
+    pub fn to_token_broker(
+        &self,
+        rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
+    ) -> Result<Box<dyn AttestationTokenBroker + Send + Sync>> {
         match self {
             AttestationTokenConfig::Simple(cfg) => Ok(Box::new(
-                simple::SimpleAttestationTokenBroker::new(cfg.clone())?,
+                simple::SimpleAttestationTokenBroker::new(cfg.clone(), rvps)?,
             )
                 as Box<dyn AttestationTokenBroker + Send + Sync>),
             AttestationTokenConfig::Ear(cfg) => Ok(Box::new(
-                ear_broker::EarAttestationTokenBroker::new(cfg.clone())?,
+                ear_broker::EarAttestationTokenBroker::new(cfg.clone(), rvps)?,
             )
                 as Box<dyn AttestationTokenBroker + Send + Sync>),
         }

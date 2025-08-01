@@ -32,9 +32,14 @@ default configuration := 36
 # "Only a recognized genuine set of approved executables have
 #  been loaded during the boot process."
 executables := 3 if {
+	# Short circuit the rest of the conditions, if the platform is not set.
+	# Creating a simple entry like this will skip executing the first
+	# extension in the block.
+	input.sample
+
 	# The sample attester does not report any launch digest.
 	# This is an example of how a real platform might validate executables.
-	input.sample.launch_digest in data.reference.launch_digest
+	input.sample.launch_digest in get_reference_value("launch_digest")
 }
 
 # For the `hardware` trust claim, the value 2 stands for
@@ -42,23 +47,28 @@ executables := 3 if {
 #  verifications needed to demonstrate that these are genuine/
 #  supported.
 hardware := 2 if {
-	input.sample.svn in data.reference.svn
-	input.sample.platform_version.major == data.reference.major_version
-	input.sample.platform_version.minor >= data.reference.minimum_minor_version
+	input.sample
+	input.sample.svn in get_reference_value("svn")
+	input.sample.platform_version.major == get_reference_value("major_version")
+	input.sample.platform_version.minor >= get_reference_value("minimum_minor_version")
 }
 
 ##### SNP
 executables := 3 if {
+	input.snp
+
 	# In the future, we might calculate this measurement here various components
-	input.snp.measurement in data.reference.snp_launch_measurement
+	input.snp.measurement in get_reference_value("snp_launch_measurement")
 }
 
 hardware := 2 if {
+	input.snp
+
 	# Check the reported TCB to validate the ASP FW
-	input.snp.reported_tcb_bootloader in data.reference.snp_bootloader
-	input.snp.reported_tcb_microcode in data.reference.snp_microcode
-	input.snp.reported_tcb_snp in data.reference.snp_snp_svn
-	input.snp.reported_tcb_tee in data.reference.snp_tee_svn
+	input.snp.reported_tcb_bootloader in get_reference_value("snp_bootloader")
+	input.snp.reported_tcb_microcode in get_reference_value("snp_microcode")
+	input.snp.reported_tcb_snp in get_reference_value("snp_snp_svn")
+	input.snp.reported_tcb_tee in get_refence_value("snp_tee_svn")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -68,12 +78,11 @@ hardware := 2 if {
 configuration := 2 if {
 	input.snp.policy_debug_allowed == false
 	input.snp.policy_migrate_ma == false
-	input.snp.platform_smt_enabled == data.reference.snp_smt_enabled
-	input.snp.platform_tsme_enabled == data.reference.snp_tsme_enabled
-	input.snp.policy_abi_major == data.reference.snp_guest_abi_major
-	input.snp.policy_abi_minor == data.reference.snp_guest_abi_minor
-	input.snp.policy_single_socket == data.reference.snp_single_socket
-	input.snp.policy_smt_allowed == data.reference.snp_smt_allowed
+	input.snp.platform_smt_enabled == get_reference_value("snp_smt_enabled")
+	input.snp.policy_abi_major == get_reference_value("snp_guest_abi_major")
+	input.snp.policy_abi_minor == get_reference_value("snp_guest_abi_minor")
+	input.snp.policy_single_socket == get_reference_value("snp_single_socket")
+	input.snp.policy_smt_allowed == get_reference_value("snp_smt_allowed")
 }
 
 # For the `configuration` trust claim 3 stands for
@@ -90,18 +99,22 @@ else := 3 if {
 
 ##### TDX
 executables := 3 if {
+	input.tdx
+
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
-	input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
+	input.tdx.quote.body.rtmr_1 in get_reference_value("rtmr_1")
+	input.tdx.quote.body.rtmr_2 in get_reference_value("rtmr_2")
 	tdx_uefi_event_tdvfkernel_ok
 	tdx_uefi_event_tdvfkernelparams_ok
 }
 
 # Support for Grub boot used by GKE
 else := 4 if {
+	input.tdx
+
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
-	input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
+	input.tdx.quote.body.rtmr_1 in get_reference_value("rtmr_1")
+	input.tdx.quote.body.rtmr_2 in get_reference_value("rtmr_2")
 }
 
 hardware := 2 if {
@@ -110,9 +123,9 @@ hardware := 2 if {
 	input.tdx.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
 	# Check TDX Module version and its hash. Also check OVMF code hash.
-	input.tdx.quote.body.mr_seam in data.reference.mr_seam
-	input.tdx.quote.body.tcb_svn in data.reference.tcb_svn
-	input.tdx.quote.body.mr_td in data.reference.mr_td
+	input.tdx.quote.body.mr_seam in get_reference_value("mr_seam")
+	input.tdx.quote.body.tcb_svn in get_reference_value("tcb_svn")
+	input.tdx.quote.body.mr_td in get_reference_value("mr_td")
 
 	# Check TCB status
 	input.tdx.tcb_status == "OK"
@@ -134,16 +147,16 @@ hardware := 2 if {
 configuration := 2 if {
 	# Check the TD has the expected attributes (e.g., debug not enabled) and features.
 	input.tdx.td_attributes.debug == false
-	input.tdx.quote.body.xfam in data.reference.xfam
+	input.tdx.quote.body.xfam in get_reference_value("xfam")
 }
 
 tdx_uefi_event_tdvfkernel_ok if {
 	event := input.tdx.uefi_event_logs[_]
 	event.type_name == "EV_EFI_BOOT_SERVICES_APPLICATION"
-	"File(kernel)" in event.details.device_paths
+	"File(kernel)" in get_reference_value("device_paths")
 
 	digest := event.digests[_]
-	digest.digest == data.reference.tdvfkernel
+	digest.digest == get_reference_value("tdvfkernel")
 }
 
 tdx_uefi_event_tdvfkernelparams_ok if {
@@ -152,21 +165,24 @@ tdx_uefi_event_tdvfkernelparams_ok if {
 	event.details.string == "LOADED_IMAGE::LoadOptions"
 
 	digest := event.digests[_]
-	digest.digest == data.reference.tdvfkernelparams
+	digest.digest == get_reference_value("tdvfkernelparams")
 }
 
 ##### Azure vTPM SNP
 executables := 3 if {
-	input.azsnpvtpm.measurement in data.reference.measurement
-	input.azsnpvtpm.tpm.pcr11 in data.reference.snp_pcr11
+	input.azsnptvpm
+	input.azsnpvtpm.measurement in get_reference_value("measurement")
+	input.azsnpvtpm.tpm.pcr11 in get_reference_value("snp_pcr11")
 }
 
 hardware := 2 if {
+	input.azsnptvpm
+
 	# Check the reported TCB to validate the ASP FW
-	input.azsnpvtpm.reported_tcb_bootloader in data.reference.tcb_bootloader
-	input.azsnpvtpm.reported_tcb_microcode in data.reference.tcb_microcode
-	input.azsnpvtpm.reported_tcb_snp in data.reference.tcb_snp
-	input.azsnpvtpm.reported_tcb_tee in data.reference.tcb_tee
+	input.azsnpvtpm.reported_tcb_bootloader in get_reference_value("tcb_bootloader")
+	input.azsnpvtpm.reported_tcb_microcode in get_reference_value("tcb_microcode")
+	input.azsnpvtpm.reported_tcb_snp in get_reference_value("tcb_snp")
+	input.azsnpvtpm.reported_tcb_tee in get_reference_value("tcb_tee")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -174,17 +190,19 @@ hardware := 2 if {
 #
 # For this, we compare all the configuration fields.
 configuration := 2 if {
-	input.azsnpvtpm.platform_smt_enabled in data.reference.smt_enabled
-	input.azsnpvtpm.platform_tsme_enabled in data.reference.tsme_enabled
-	input.azsnpvtpm.policy_abi_major in data.reference.abi_major
-	input.azsnpvtpm.policy_abi_minor in data.reference.abi_minor
-	input.azsnpvtpm.policy_single_socket in data.reference.single_socket
-	input.azsnpvtpm.policy_smt_allowed in data.reference.smt_allowed
+	input.azsnptvpm
+	input.azsnpvtpm.platform_smt_enabled in get_reference_value("smt_enabled")
+	input.azsnpvtpm.platform_tsme_enabled in get_reference_value("tsme_enabled")
+	input.azsnpvtpm.policy_abi_major in get_reference_value("abi_major")
+	input.azsnpvtpm.policy_abi_minor in get_reference_value("abi_minor")
+	input.azsnpvtpm.policy_single_socket in get_reference_value("single_socket")
+	input.azsnpvtpm.policy_smt_allowed in get_reference_value("smt_allowed")
 }
 
 ##### Azure vTPM TDX
 executables := 3 if {
-	input.aztdxvtpm.tpm.pcr11 in data.reference.tdx_pcr11
+	input.azsnptvpm
+	input.aztdxvtpm.tpm.pcr11 in get_reference_value("tdx_pcr11")
 }
 
 hardware := 2 if {
@@ -193,13 +211,14 @@ hardware := 2 if {
 	input.aztdxvtpm.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
 	# Check TDX Module version and its hash. Also check OVMF code hash.
-	input.aztdxvtpm.quote.body.mr_seam in data.reference.mr_seam
-	input.aztdxvtpm.quote.body.tcb_svn in data.reference.tcb_svn
-	input.aztdxvtpm.quote.body.mr_td in data.reference.mr_td
+	input.aztdxvtpm.quote.body.mr_seam in get_reference_value("mr_seam")
+	input.aztdxvtpm.quote.body.tcb_svn in get_reference_value("tcb_svn")
+	input.aztdxvtpm.quote.body.mr_td in get_reference_value("mr_td")
 }
 
 configuration := 2 if {
-	input.aztdxvtpm.quote.body.xfam in data.reference.xfam
+	input.azsnptvpm
+	input.aztdxvtpm.quote.body.xfam in get_reference_value("xfam")
 }
 
 ##### SE TODO

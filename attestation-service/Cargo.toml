@@ -16,7 +16,8 @@ hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
 cca-verifier = ["verifier/cca-verifier"]
 se-verifier = ["verifier/se-verifier"]
 
-rvps-grpc = ["prost", "tonic"]
+rvps-grpc = ["grpcio"]
+rvps-rebuild-grpc = ["protoc-grpcio"]
 
 # For building gRPC CoCo-AS binary
 grpc-bin = ["clap", "env_logger", "prost", "tonic"]
@@ -43,6 +44,7 @@ clap = { workspace = true, optional = true }
 ear.workspace = true
 env_logger = { workspace = true, optional = true }
 futures = "0.3.17"
+grpcio = { version = "0.13.0", optional = true, features = ["openssl"] }
 hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
@@ -50,6 +52,7 @@ lazy_static.workspace = true
 log.workspace = true
 openssl.workspace = true
 prost = { workspace = true, optional = true }
+protobuf = "=2.28.0"
 rand = "0.8.5"
 reference-value-provider-service.path = "../rvps"
 regorus.workspace = true
@@ -71,6 +74,7 @@ verifier = { path = "../deps/verifier", default-features = false }
 actix-cors = { version = "0.7", optional = true}
 
 [build-dependencies]
+protoc-grpcio = { version = "3.0.0", optional = true }
 shadow-rs.workspace = true
 tonic-build.workspace = true
 

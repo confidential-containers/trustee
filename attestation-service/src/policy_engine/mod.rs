@@ -5,11 +5,13 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use strum::EnumString;
 use thiserror::Error;
 
 pub mod opa;
+
+use crate::RvpsApi;
 
 #[derive(Error, Debug)]
 pub enum PolicyError {
@@ -47,6 +49,8 @@ pub enum PolicyError {
     JsonSerializationFailed(#[source] anyhow::Error),
     #[error("Policy claim value not valid (must be between -127 and 127)")]
     InvalidClaimValue,
+    #[error("Failed to register OPA extension")]
+    ExtensionError,
 }
 
 #[derive(Debug, EnumString, Deserialize)]
@@ -61,12 +65,14 @@ impl PolicyEngineType {
         work_dir: &Path,
         default_policy: &str,
         default_policy_id: &str,
+        rvps: Arc<Mutex<dyn RvpsApi + Send + Sync>>,
     ) -> Result<Arc<dyn PolicyEngine>> {
         match self {
             PolicyEngineType::OPA => Ok(Arc::new(opa::OPA::new(
                 work_dir.to_path_buf(),
                 default_policy,
                 default_policy_id,
+                rvps,
             )?) as Arc<dyn PolicyEngine>),
         }
     }
