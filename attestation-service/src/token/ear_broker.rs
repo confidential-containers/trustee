@@ -20,7 +20,7 @@ use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use serde_variant::to_variant_name;
 use shadow_rs::concatcp;
 use std::collections::{BTreeMap, HashMap};
@@ -29,6 +29,7 @@ use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
+use crate::rvps::RvpsClient;
 use crate::token::DEFAULT_TOKEN_WORK_DIR;
 use crate::{AttestationTokenBroker, TeeClaims};
 
@@ -205,14 +206,9 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<String> {
         debug!("all_tee_claims: {:#?}", all_tee_claims);
-
-        let reference_data = json!({
-            "reference": reference_data_map,
-        });
-        let reference_data = serde_json::to_string(&reference_data)?;
 
         if policy_ids.len() > 1 {
             warn!("EAR token only accepts the first policy. The rest will be ignored.");
@@ -248,7 +244,13 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims_json, &policy_id, rules)
+                .evaluate(
+                    None,
+                    &tcb_claims_json,
+                    &policy_id,
+                    rules,
+                    rvps_client.clone(),
+                )
                 .await?;
 
             for (k, v) in &policy_results.rules_result {
@@ -460,6 +462,7 @@ pub fn transform_claims(
 mod tests {
     use assert_json_diff::assert_json_eq;
     use jsonwebtoken::DecodingKey;
+    use serde_json::json;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -484,7 +487,7 @@ mod tests {
                     init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                HashMap::new(),
+                None,
             )
             .await
             .unwrap();
@@ -516,7 +519,7 @@ mod tests {
                     init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                HashMap::new(),
+                None,
             )
             .await
             .unwrap();

@@ -30,13 +30,13 @@ impl RvpsServer {
 impl ReferenceValueProviderService for RvpsServer {
     async fn query_reference_value(
         &self,
-        _request: Request<ReferenceValueQueryRequest>,
+        request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let rvs = self
             .rvps
             .read()
             .await
-            .get_digests()
+            .query_reference_value(&request.into_inner().reference_value_id)
             .await
             .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
 

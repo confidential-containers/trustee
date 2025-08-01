@@ -29,6 +29,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
+use crate::rvps::RvpsClient;
 use crate::token::{AttestationTokenBroker, DEFAULT_TOKEN_WORK_DIR};
 use crate::{TeeClaims, TeeEvidenceParsedClaim};
 
@@ -207,7 +208,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<String> {
         // Take claims from all verifiers, flatten them and add them to one map.
         let mut flattened_claims: Map<String, Value> = Map::new();
@@ -215,10 +216,6 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
             flattened_claims.append(&mut flatten_claims(tee_claims.tee, &tee_claims.claims)?);
         }
 
-        let reference_data = json!({
-            "reference": reference_data_map,
-        });
-        let reference_data = serde_json::to_string(&reference_data)?;
         let tcb_claims = serde_json::to_string(&flattened_claims)?;
 
         let rules = vec!["allow".to_string()];
@@ -227,7 +224,13 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         for policy_id in policy_ids {
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims, &policy_id, rules.clone())
+                .evaluate(
+                    None,
+                    &tcb_claims,
+                    &policy_id,
+                    rules.clone(),
+                    rvps_client.clone(),
+                )
                 .await?;
 
             // TODO add policy allowlist
@@ -425,8 +428,6 @@ fn flatten_helper(parent: &mut Map<String, Value>, child: &serde_json::Value, pr
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use crate::TeeClaims;
     use assert_json_diff::assert_json_eq;
     use kbs_types::Tee;
@@ -456,7 +457,7 @@ mod tests {
                     init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                HashMap::new(),
+                None,
             )
             .await
             .unwrap();
