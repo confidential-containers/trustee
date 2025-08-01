@@ -11,6 +11,7 @@ use scroll::{Pread, LE};
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use sm3::Sm3;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -164,6 +165,7 @@ fn accumulate_hash(alg: TcgAlgorithm, materials: Vec<u8>, digest: &[u8]) -> Resu
         TcgAlgorithm::Sha256 => hash_with::<Sha256>(&materials, digest),
         TcgAlgorithm::Sha384 => hash_with::<Sha384>(&materials, digest),
         TcgAlgorithm::Sha512 => hash_with::<Sha512>(&materials, digest),
+        TcgAlgorithm::Sm3 => hash_with::<Sm3>(&materials, digest),
         _ => bail!("Unsupported Hash algorithm {:?}", alg),
     };
 
