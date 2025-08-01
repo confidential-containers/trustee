@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
   run:
