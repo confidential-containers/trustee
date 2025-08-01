@@ -1,0 +1,1218 @@
+{
+  "uefi_event_logs": [
+    {
+      "details": {
+        "unicode_name": "SecureBoot",
+        "unicode_name_length": 10,
+        "variable_data": "",
+        "variable_data_length": 0,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b4ca5cb300a44b541cf7978203bc2d769622e695dc18549bd23b8378fcdef522"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAoAAAAAAAAAAAAAAAAAAABTAGUAYwB1AHIAZQBCAG8AbwB0AA==",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_DRIVER_CONFIG"
+    },
+    {
+      "details": {
+        "unicode_name": "PK",
+        "unicode_name_length": 2,
+        "variable_data": "",
+        "variable_data_length": 0,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "205702258aeaecaf68533e90c2c6cb17cdc1bc34f5c99e0564bb57f5ed3a0e27"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAIAAAAAAAAAAAAAAAAAAABQAEsA",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_DRIVER_CONFIG"
+    },
+    {
+      "details": {
+        "unicode_name": "KEK",
+        "unicode_name_length": 3,
+        "variable_data": "",
+        "variable_data_length": 0,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "97f842cf8be3ef0c9b1e5fb6d4ab4af26b2943e5ce349883afdf607e81707f7a"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAMAAAAAAAAAAAAAAAAAAABLAEUASwA=",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_DRIVER_CONFIG"
+    },
+    {
+      "details": {
+        "unicode_name": "db",
+        "unicode_name_length": 2,
+        "variable_data": "",
+        "variable_data_length": 0,
+        "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "f78247933758602a0e2ba38cdc7efb4b55d4a17f9aec21df6af56d6c7389bb05"
+        }
+      ],
+      "event": "y7IZ1zo9lkWjvNrQDmdlbwIAAAAAAAAAAAAAAAAAAABkAGIA",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_DRIVER_CONFIG"
+    },
+    {
+      "details": {
+        "unicode_name": "dbx",
+        "unicode_name_length": 3,
+        "variable_data": "",
+        "variable_data_length": 0,
+        "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "e77ef9cdb81c85e0f9b1a19f7859b762b7b6baafbf4a195eca0b868fa20f8df2"
+        }
+      ],
+      "event": "y7IZ1zo9lkWjvNrQDmdlbwMAAAAAAAAAAAAAAAAAAABkAGIAeAA=",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_DRIVER_CONFIG"
+    },
+    {
+      "details": {},
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "afcc870fa20c507995499794371e8c25e3a7310fa72200c109379973ae236845"
+        }
+      ],
+      "event": "AAAAAA==",
+      "index": 1,
+      "type_name": "EV_SEPARATOR"
+    },
+    {
+      "details": {
+        "unicode_name": "BootOrder",
+        "unicode_name_length": 9,
+        "variable_data": "CAAHAAAAAQACAAMABAAFAAYA",
+        "variable_data_length": 18,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b76edb1b065435857489ac389d72a180b7cd85992c048b1f1ef6c05865758a0d"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAkAAAAAAAAAEgAAAAAAAABCAG8AbwB0AE8AcgBkAGUAcgAIAAcAAAABAAIAAwAEAAUABgA=",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0008",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAGoAQQBuAG8AbABpAHMAIABPAFMAAAAEASoAAQAAAAAIAAAAAAAAAMASAAAAAAANRv1u37RtQZZ2CqAp8OlCAgIEBDwAXABFAEYASQBcAGEAbgBvAGwAaQBzAC4AYgBhAGsAXABzAGgAaQBtAHgANgA0AC4AZQBmAGkAAAB//wQA",
+        "variable_data_length": 132,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "ef29c5aedd2c44c5539604b592b2c403707763173127cc6ec9ab80d8302df4ce"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAhAAAAAAAAABCAG8AbwB0ADAAMAAwADgAAQAAAGoAQQBuAG8AbABpAHMAIABPAFMAAAAEASoAAQAAAAAIAAAAAAAAAMASAAAAAAANRv1u37RtQZZ2CqAp8OlCAgIEBDwAXABFAEYASQBcAGEAbgBvAGwAaQBzAC4AYgBhAGsAXABzAGgAaQBtAHgANgA0AC4AZQBmAGkAAAB//wQA",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0007",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAGIAQQBuAG8AbABpAHMAIABPAFMAAAAEASoAAQAAAAAIAAAAAAAAAMASAAAAAAANRv1u37RtQZZ2CqAp8OlCAgIEBDQAXABFAEYASQBcAGEAbgBvAGwAaQBzAFwAcwBoAGkAbQB4ADYANAAuAGUAZgBpAAAAf/8EAA==",
+        "variable_data_length": 124,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b41ee000e9c4730cba3825f0bc40d14b8cbd155675ff438ddc9c9d62b4a30d62"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAfAAAAAAAAABCAG8AbwB0ADAAMAAwADcAAQAAAGIAQQBuAG8AbABpAHMAIABPAFMAAAAEASoAAQAAAAAIAAAAAAAAAMASAAAAAAANRv1u37RtQZZ2CqAp8OlCAgIEBDQAXABFAEYASQBcAGEAbgBvAGwAaQBzAFwAcwBoAGkAbQB4ADYANAAuAGUAZgBpAAAAf/8EAA==",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0000",
+        "unicode_name_length": 8,
+        "variable_data": "CQEAACwAVQBpAEEAcABwAAAABAcUAMm9uHzr+DRPquo+5K9lFqEEBhQAIaosRhR2A0WDboq29GYjMX//BAA=",
+        "variable_data_length": 62,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "c3116e37611507bb0a8959327527f6c96523c4479070be2b5d0aece22404e784"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAPgAAAAAAAABCAG8AbwB0ADAAMAAwADAACQEAACwAVQBpAEEAcABwAAAABAcUAMm9uHzr+DRPquo+5K9lFqEEBhQAIaosRhR2A0WDboq29GYjMX//BAA=",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0001",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAB4AVQBFAEYASQAgAFEARQBNAFUAIABRAEUATQBVACAASABBAFIARABEAEkAUwBLACAAAAACAQwA0EEDCgAAAAABAQYAAAIDAggAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+        "variable_data_length": 102,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "d0f560980d8a22bc2d5848fa292fc3a5410d012e6a7b1cf6f3f7e1b63deec287"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAZgAAAAAAAABCAG8AbwB0ADAAMAAwADEAAQAAAB4AVQBFAEYASQAgAFEARQBNAFUAIABRAEUATQBVACAASABBAFIARABEAEkAUwBLACAAAAACAQwA0EEDCgAAAAABAQYAAAIDAggAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0002",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAFYAVQBFAEYASQAgAFAAWABFAHYANAAgACgATQBBAEMAOgA1ADIANQA0ADAAMAAxADIAMwA0ADUANgApAAAAAgEMANBBAwoAAAAAAQEGAAADAwslAFJUABI0VgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMMGwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+        "variable_data_length": 168,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "1a475ffdd6693e3e15f44c0a84a4f4d7017a6a5188b6bfe24431d29ccaa63c59"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAqAAAAAAAAABCAG8AbwB0ADAAMAAwADIAAQAAAFYAVQBFAEYASQAgAFAAWABFAHYANAAgACgATQBBAEMAOgA1ADIANQA0ADAAMAAxADIAMwA0ADUANgApAAAAAgEMANBBAwoAAAAAAQEGAAADAwslAFJUABI0VgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMMGwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0003",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAHcAVQBFAEYASQAgAFAAWABFAHYANgAgACgATQBBAEMAOgA1ADIANQA0ADAAMAAxADIAMwA0ADUANgApAAAAAgEMANBBAwoAAAAAAQEGAAADAwslAFJUABI0VgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMNPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+        "variable_data_length": 201,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "226fa299aea858090c944ed8d35d035b627353f1d44ace4e99d5b7d6a1226949"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAyQAAAAAAAABCAG8AbwB0ADAAMAAwADMAAQAAAHcAVQBFAEYASQAgAFAAWABFAHYANgAgACgATQBBAEMAOgA1ADIANQA0ADAAMAAxADIAMwA0ADUANgApAAAAAgEMANBBAwoAAAAAAQEGAAADAwslAFJUABI0VgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMNPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0004",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAFoAVQBFAEYASQAgAEgAVABUAFAAdgA0ACAAKABNAEEAQwA6ADUAMgA1ADQAMAAwADEAMgAzADQANQA2ACkAAAACAQwA0EEDCgAAAAABAQYAAAMDCyUAUlQAEjRWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwwbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAxgEAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+        "variable_data_length": 174,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "e5431d01e74fba877bf7c79291b03372e5fbd0f1bda902c8e208b09366b48a08"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAArgAAAAAAAABCAG8AbwB0ADAAMAAwADQAAQAAAFoAVQBFAEYASQAgAEgAVABUAFAAdgA0ACAAKABNAEEAQwA6ADUAMgA1ADQAMAAwADEAMgAzADQANQA2ACkAAAACAQwA0EEDCgAAAAABAQYAAAMDCyUAUlQAEjRWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwwbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAxgEAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0005",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAAHsAVQBFAEYASQAgAEgAVABUAFAAdgA2ACAAKABNAEEAQwA6ADUAMgA1ADQAMAAwADEAMgAzADQANQA2ACkAAAACAQwA0EEDCgAAAAABAQYAAAMDCyUAUlQAEjRWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAw08AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAxgEAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+        "variable_data_length": 207,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "5b015e9c8f019c89be7d4dda7e36f952fbb2cad0bffeb07cc6f301eaed3a3922"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAzwAAAAAAAABCAG8AbwB0ADAAMAAwADUAAQAAAHsAVQBFAEYASQAgAEgAVABUAFAAdgA2ACAAKABNAEEAQwA6ADUAMgA1ADQAMAAwADEAMgAzADQANQA2ACkAAAACAQwA0EEDCgAAAAABAQYAAAMDCyUAUlQAEjRWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAw08AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAxgEAH//BABOrAiBEZ9ZTYUO4hpSLFmy",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "unicode_name": "Boot0006",
+        "unicode_name_length": 8,
+        "variable_data": "AQAAACwARQBGAEkAIABJAG4AdABlAHIAbgBhAGwAIABTAGgAZQBsAGwAAAAEBxQAyb24fOv4NE+q6j7kr2UWoQQGFACDpQR8Pp4cT61l4FJo0LTRf/8EAA==",
+        "variable_data_length": 88,
+        "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "faf30d2e01b7cb766ccaf2c4b001ed8102a34697671834109ac007b70136c260"
+        }
+      ],
+      "event": "Yd/ki8qT0hGqDQDgmAMrjAgAAAAAAAAAWAAAAAAAAABCAG8AbwB0ADAAMAAwADYAAQAAACwARQBGAEkAIABJAG4AdABlAHIAbgBhAGwAIABTAGgAZQBsAGwAAAAEBxQAyb24fOv4NE+q6j7kr2UWoQQGFACDpQR8Pp4cT61l4FJo0LTRf/8EAA==",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_BOOT"
+    },
+    {
+      "details": {
+        "string": "Calling EFI Application from Boot Option"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "0c45a5c3c304d73f1a9d73d4fe03190cf1861e89ba5b958752aba51c6fb5fc5a"
+        }
+      ],
+      "event": "Q2FsbGluZyBFRkkgQXBwbGljYXRpb24gZnJvbSBCb290IE9wdGlvbg==",
+      "index": 2,
+      "type_name": "EV_EFI_ACTION"
+    },
+    {
+      "details": {},
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "afcc870fa20c507995499794371e8c25e3a7310fa72200c109379973ae236845"
+        }
+      ],
+      "event": "AAAAAA==",
+      "index": 2,
+      "type_name": "EV_SEPARATOR"
+    },
+    {
+      "details": {
+        "string": "Returning from EFI Application from Boot Option"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "161d83f5e00b64d2bb59f66f51d6725757e289f4311d22377455b0060f0814a2"
+        }
+      ],
+      "event": "UmV0dXJuaW5nIGZyb20gRUZJIEFwcGxpY2F0aW9uIGZyb20gQm9vdCBPcHRpb24=",
+      "index": 2,
+      "type_name": "EV_EFI_ACTION"
+    },
+    {
+      "details": {
+        "string": "Calling EFI Application from Boot Option"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "0c45a5c3c304d73f1a9d73d4fe03190cf1861e89ba5b958752aba51c6fb5fc5a"
+        }
+      ],
+      "event": "Q2FsbGluZyBFRkkgQXBwbGljYXRpb24gZnJvbSBCb290IE9wdGlvbg==",
+      "index": 2,
+      "type_name": "EV_EFI_ACTION"
+    },
+    {
+      "details": {},
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "863c0b3f4bfd42d575f2111d65412c8dfc2ddadff05a33209b726654119b4a5f"
+        }
+      ],
+      "event": "RUZJIFBBUlQAAAEAXAAAAFRk8GkAAAAAAQAAAAAAAAD//z8GAAAAACIAAAAAAAAA3v8/BgAAAAAbET8xJSiYR5WA/xs28dqMAgAAAAAAAACAAAAAgAAAAE21X0EDAAAAAAAAAChzKsEf+NIRuksAoMk+yTsNRv1u37RtQZZ2CqAp8OlCAAgAAAAAAAD/xxIAAAAAAAAAAAAAAAAARQBGAEkAIABTAHkAcwB0AGUAbQAgAFAAYQByAHQAaQB0AGkAbwBuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArz3GD4OEckeOeT1p2Ed95I+kRZDShilPuk2oqOXWrZUAyBIAAAAAAP/HMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB509bmB/XCRKI8I48qPfkoktj8xTdlq0O8DqT3DgLfWQDIMgAAAAAA//c/BgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "index": 2,
+      "type_name": "EV_EFI_GPT_EVENT"
+    },
+    {
+      "details": {
+        "device_paths": [
+          "ACPI(PNP0A03,0)",
+          "Pci(0,2)",
+          "Path(3,2,00000000)",
+          "HD(1,GPT,6EFD460D-B4DF-416D-9676-0AA029F0E942,0x800,0x12c000)",
+          "File(\\EFI\\anolis\\shimx64.efi)"
+        ]
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "73ce7699eeb49be3921196bc6bce506adb8d7ab8c6194eb7a20b939451f4d84a"
+        }
+      ],
+      "event": "GNBifQAAAADwlA4AAAAAAAAAAAAAAAAAfAAAAAAAAAACAQwA0EEDCgAAAAABAQYAAAIDAggAAAAAAAQBKgABAAAAAAgAAAAAAAAAwBIAAAAAAA1G/W7ftG1BlnYKoCnw6UICAgQENABcAEUARgBJAFwAYQBuAG8AbABpAHMAXABzAGgAaQBtAHgANgA0AC4AZQBmAGkAAAB//wQA",
+      "index": 2,
+      "type_name": "EV_EFI_BOOT_SERVICES_APPLICATION"
+    },
+    {
+      "details": {
+        "string": "MokList"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "ea9e5e0a8e5a19bc3d7b1ea0f250a6d2500208278a99dec5baba3cacf53ac351"
+        }
+      ],
+      "event": "TW9rTGlzdAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "MokListX"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "9938145964640087730b5a8978b4af58bed8ee6b14abf302f8c7e8b66f91a6d2"
+        }
+      ],
+      "event": "TW9rTGlzdFgA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "unicode_name": "SbatLevel",
+        "unicode_name_length": 9,
+        "variable_data": "c2JhdCwxLDIwMjEwMzAyMTgK",
+        "variable_data_length": 18,
+        "variable_name": "50ab5d60-46e0-0043-abb6-3dd810dd8b23"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "54ec273cb36f668364085a297dc41c0d479e439934fac9d22246f28fa7fb719f"
+        }
+      ],
+      "event": "UKtdYEbgAEOrtj3YEN2LIwkAAAAAAAAAEgAAAAAAAABTAGIAYQB0AEwAZQB2AGUAbABzYmF0LDEsMjAyMTAzMDIxOAo=",
+      "index": 1,
+      "type_name": "EV_EFI_VARIABLE_AUTHORITY"
+    },
+    {
+      "details": {
+        "string": "MokListTrusted"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "799b719ac031fc89c6d8925a487dad07308f837b7ab7bbc7cebd3a4118fd2f38"
+        }
+      ],
+      "event": "TW9rTGlzdFRydXN0ZWQA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "device_paths": [
+          "File(\\EFI\\anolis\\grubx64.efi)"
+        ]
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "38381eeb74dcd60fc3a8a0418a514f6962f218b57cc689599f34351f67e5ef26"
+        }
+      ],
+      "event": "GJAzfQAAAADw5yEAAAAAAAAAAAAAAAAAOAAAAAAAAAAEBDQAXABFAEYASQBcAGEAbgBvAGwAaQBzAFwAZwByAHUAYgB4ADYANAAuAGUAZgBpAAAAf/8EAA==",
+      "index": 2,
+      "type_name": "EV_EFI_BOOT_SERVICES_APPLICATION"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set pager=1"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "a39effb1bce1f98b192cfe29077101abd8154c665fc26b94a123d148fbe88905"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHBhZ2VyPTEAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -f (hd0,gpt1)/EFI/anolis/grubenv ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "8933c87c7254a6bfc8f5083136d02197bafa0ce1bc6e05eecd1d780a92b3bb4e"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAtZiAoaGQwLGdwdDEpL0VGSS9hbm9saXMvZ3J1YmVudiBdAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd load_env -f (hd0,gpt1)/EFI/anolis/grubenv"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "f3bf7d48abf756ff0dbba169a7ba1a622952d3f646d08106ee5e214c962259f0"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgbG9hZF9lbnYgLWYgKGhkMCxncHQxKS9FRkkvYW5vbGlzL2dydWJlbnYAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [  ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "49d51e5c4c590c5d80b615d1cff4685b4a2a9b078ab3c13e67b72e75ac219e5b"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAgXQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set default=39b82bd543874491a0f3d7cacd27826c-5.10.134-anolis-rtmr-attestation"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "d4f42f08b3d89713b09611b0714d048cb1e681dd9aca02d3bd885a43b10c2eba"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IGRlZmF1bHQ9MzliODJiZDU0Mzg3NDQ5MWEwZjNkN2NhY2QyNzgyNmMtNS4xMC4xMzQtYW5vbGlzLXJ0bXItYXR0ZXN0YXRpb24AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AIw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd menuentry_id_option=--id"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "f357b90ad36c248efa80152e27143ab31e33e1a5ca0fa725ea4f8140da5b319e"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgbWVudWVudHJ5X2lkX29wdGlvbj0tLWlkAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd export menuentry_id_option"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "c0cbb1bb8deb1faf4ddf1e526c852e977a2247d4fb0465750ef76be40ab1c61c"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgZXhwb3J0IG1lbnVlbnRyeV9pZF9vcHRpb24AZw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [  ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "49d51e5c4c590c5d80b615d1cff4685b4a2a9b078ab3c13e67b72e75ac219e5b"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAgXQAj",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd terminal_output console"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "39badadb89d842811d3ae6b75a6e598e33d2f73ae46c02d3c9c02b048979255c"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgdGVybWluYWxfb3V0cHV0IGNvbnNvbGUAbw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AIw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set timeout_style=menu"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "c5f6cf53402a0548171df6f99992f1e181ec81fe4e09d5f99512fca0750e872d"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHRpbWVvdXRfc3R5bGU9bWVudQCw",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set timeout=5"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "80a7e6420433800e5307e3bad8889952bbb38a2e9701d1841d6478efb446ab15"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHRpbWVvdXQ9NQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set tuned_params="
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "8f4a599975cee5e2a200b00cb2cabcac0b954cc7d52ac8e5632771457f8ef059"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHR1bmVkX3BhcmFtcz0AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set tuned_initrd="
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "4c187b98f26d298b468fcd61bf93d4acabdee1afa6dada74d9392b9ed5543652"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHR1bmVkX2luaXRyZD0AIw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -f (hd0,gpt1)/EFI/alinux/user.cfg ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b049b482e2389f9be4ee35dd769ee71fae41cae93e490d65f2780272c41b52db"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAtZiAoaGQwLGdwdDEpL0VGSS9hbGludXgvdXNlci5jZmcgXQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod increment"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "76e2a3a7f564e07fe56fae648610076aa9c563991d81f4bba512bb4c9d9ad51e"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIGluY3JlbWVudAAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -n  -a 1 = 0 ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "27641ed7bf286c5380211a688fab4e11d94893cedd1509010d6dc7ec3bc86963"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAtbiAgLWEgMSA9IDAgXQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod part_gpt"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "9046308867aef4f23ecc69ad443e6b089e052816bbf260062f29db3d8bdc9919"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIHBhcnRfZ3B0AHc=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod xfs"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b0e85e96628144b09c1d1931dd591c4263cce69dcfca97571cbad6c84b7f3a58"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIHhmcwAt",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set root=hd0,gpt2"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "f5da68274e2b92ef374e975d26af572571c0d05aebd60dfd909f9b5b23fd924d"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IHJvb3Q9aGQwLGdwdDIAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd search --no-floppy --fs-uuid --set=root --hint-bios=hd0,gpt2 --hint-efi=hd0,gpt2 --hint-baremetal=ahci0,gpt2 823bbd30-fed9-4e18-9343-4d58bfc5fd69"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "4f91da13fd925185aff5858d61d8701b95d03bfa71b6cd2c05da813894971cf4"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2VhcmNoIC0tbm8tZmxvcHB5IC0tZnMtdXVpZCAtLXNldD1yb290IC0taGludC1iaW9zPWhkMCxncHQyIC0taGludC1lZmk9aGQwLGdwdDIgLS1oaW50LWJhcmVtZXRhbD1haGNpMCxncHQyIDgyM2JiZDMwLWZlZDktNGUxOC05MzQzLTRkNThiZmM1ZmQ2OQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod part_gpt"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "9046308867aef4f23ecc69ad443e6b089e052816bbf260062f29db3d8bdc9919"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIHBhcnRfZ3B0AG0=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod fat"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "013774f83e493e0679ede9b7843b1361ca9b52cb48868c32a7730a5dcd28cc47"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIGZhdAAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set boot=hd0,gpt1"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "aba1123a6068c130b05097168e1c936231aec71e890613ad009c65113111eb84"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IGJvb3Q9aGQwLGdwdDEAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd search --no-floppy --fs-uuid --set=boot --hint-bios=hd0,gpt1 --hint-efi=hd0,gpt1 --hint-baremetal=ahci0,gpt1 1156-350B"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "de7f70b028f85ce5396aa07a260dbede7210cde09878bd00153372a934bceeb9"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2VhcmNoIC0tbm8tZmxvcHB5IC0tZnMtdXVpZCAtLXNldD1ib290IC0taGludC1iaW9zPWhkMCxncHQxIC0taGludC1lZmk9aGQwLGdwdDEgLS1oaW50LWJhcmVtZXRhbD1haGNpMCxncHQxIDExNTYtMzUwQgAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -z root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200  ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "cdb20e90a3db92ba7eb01d066402a106abba38ecc05e0d2f8f931ee02496b904"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAteiByb290PS9kZXYvbWFwcGVyL2FvLXJvb3Qgcm8gY3Jhc2hrZXJuZWw9YXV0byByZXN1bWU9L2Rldi9tYXBwZXIvYW8tc3dhcCByZC5sdm0ubHY9YW8vcm9vdCByZC5sdm0ubHY9YW8vc3dhcCByaGdiIGVhcmx5cHJpbnRrIGNvbnNvbGU9dHR5UzAsMTE1MjAwICBdAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod blscfg"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "a04571f1facd6f5db5dac0514cd9437084183a601c250b7905d4c4068eed74e8"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIGJsc2NmZwAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd blscfg"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "faef18e72a0ea8451cc37a6e33e24e7a708458096667a9a13258b967e4a3b0c2"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgYmxzY2ZnAGY=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ 1 = 1 -o 0 = 1 ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "bd044ea37a9e6e7bc6db51d5440a273101e51190e4b31bd6b1f1aaa908b1a608"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAxID0gMSAtbyAwID0gMSBdAGw=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set menu_hide_ok=1"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "b3429a93740167a8a68903aa1bfae3a2e0128bb22168a3458a1b9e98c96d300d"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IG1lbnVfaGlkZV9vaz0xAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ 1 = 1 ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "2590b06635918cb4b497071e4b108614d865835195b8a9646ccf6cc034b149ac"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAxID0gMSBdAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set boot_indeterminate=0"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "963d04006c4e0ed836a2eb96ea2cc53a3f267b303501d06f2ed9781902f8f5dc"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IGJvb3RfaW5kZXRlcm1pbmF0ZT0wAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set boot_success=0"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "664c1fe10cfed5b17f8c83ec89fb2498b3661106930eb2764ade78109f5c8d42"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IGJvb3Rfc3VjY2Vzcz0wAG8=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd save_env boot_success boot_indeterminate"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "5007b3ce9959b057b7ffa55a51d8fcbee34d7e92872caa9de0a5e029e56fde0d"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2F2ZV9lbnYgYm9vdF9zdWNjZXNzIGJvb3RfaW5kZXRlcm1pbmF0ZQBz",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [  ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "49d51e5c4c590c5d80b615d1cff4685b4a2a9b078ab3c13e67b72e75ac219e5b"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAgXQBo",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [  -a 1 = 1 ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "1b54c671b6364986932e2a26da7300430fe8e5b3864012da1c1e49ccf334deb7"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAgLWEgMSA9IDEgXQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd menuentry System setup --id uefi-firmware {\n\tfwsetup\n}"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "4d1f757a823f9b7fe195d4e161c4ce96e256989cc474caa7d0e0a434cc145430"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgbWVudWVudHJ5IFN5c3RlbSBzZXR1cCAtLWlkIHVlZmktZmlybXdhcmUgewoJZndzZXR1cAp9AAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -f (hd0,gpt1)/EFI/anolis/custom.cfg ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "2c503f44cce74e4385423ed753a7b2fad0f42691528eea8dd18d206a554d8010"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAtZiAoaGQwLGdwdDEpL0VGSS9hbm9saXMvY3VzdG9tLmNmZyBdAAA=",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ -z (hd0,gpt1)/EFI/anolis -a -f (hd0,gpt1)/EFI/alinux/custom.cfg ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "18bb8936812e98504afa3452ea8458ba25ef19ec1b30b450a382ef474ed8700e"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyAteiAoaGQwLGdwdDEpL0VGSS9hbm9saXMgLWEgLWYgKGhkMCxncHQxKS9FRkkvYWxpbnV4L2N1c3RvbS5jZmcgXQAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd load_video"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "63cc4ce979f213d9f71a93b4277bf36c95d1ec54663f641233fa79b4b5cd183c"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgbG9hZF92aWRlbwAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd [ xy = xy ]"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "498a861d308cddf37de2bb05963739fd5984593a7ca587c4b5edf816f628bf7a"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgWyB4eSA9IHh5IF0AAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod all_video"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "de8564716bef9c6c971ba04f50bcd1b10a20e103a4b0d8c9fb218b92c1f715fc"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIGFsbF92aWRlbwAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd set gfx_payload=keep"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "c9eef8824efbf671f25251594d2318ea8ba13a7c03eab76a6ffc70148059b9ad"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgc2V0IGdmeF9wYXlsb2FkPWtlZXAAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd insmod gzio"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "6a1007c86dc8ee319275e7f0638668cfbba0eb3dfb974d2bd8d37dc0433d8fd9"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5zbW9kIGd6aW8Abw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd linux (hd0,gpt2)/vmlinuz-5.10.134-anolis-rtmr-attestation root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "785c4c15828fba0ace7022c754daca9d11e02f214d087bd4cae865cbb2e480f2"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgbGludXggKGhkMCxncHQyKS92bWxpbnV6LTUuMTAuMTM0LWFub2xpcy1ydG1yLWF0dGVzdGF0aW9uIHJvb3Q9L2Rldi9tYXBwZXIvYW8tcm9vdCBybyBjcmFzaGtlcm5lbD1hdXRvIHJlc3VtZT0vZGV2L21hcHBlci9hby1zd2FwIHJkLmx2bS5sdj1hby9yb290IHJkLmx2bS5sdj1hby9zd2FwIHJoZ2IgZWFybHlwcmludGsgY29uc29sZT10dHlTMCwxMTUyMDAAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_linuxefi Kernel"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "104fdb3e261f836a1894c0cb89d11bb8d837c1eb09f2119347ecb019d21f60ac"
+        }
+      ],
+      "event": "Z3J1Yl9saW51eGVmaSBLZXJuZWwAnw==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_kernel_cmdline (hd0,gpt2)/vmlinuz-5.10.134-anolis-rtmr-attestation root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "c699a5c1fe70b3d1912588602bd35fc8de0022011aee12ce9f304e9a9e7e7e2d"
+        }
+      ],
+      "event": "Z3J1Yl9rZXJuZWxfY21kbGluZSAoaGQwLGdwdDIpL3ZtbGludXotNS4xMC4xMzQtYW5vbGlzLXJ0bXItYXR0ZXN0YXRpb24gcm9vdD0vZGV2L21hcHBlci9hby1yb290IHJvIGNyYXNoa2VybmVsPWF1dG8gcmVzdW1lPS9kZXYvbWFwcGVyL2FvLXN3YXAgcmQubHZtLmx2PWFvL3Jvb3QgcmQubHZtLmx2PWFvL3N3YXAgcmhnYiBlYXJseXByaW50ayBjb25zb2xlPXR0eVMwLDExNTIwMABv",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_cmd initrd (hd0,gpt2)/initramfs-5.10.134-anolis-rtmr-attestation.img"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "f07cab0ec6cd0b768d5f43e243849c689c09fd69e759076dee3032540a0c0563"
+        }
+      ],
+      "event": "Z3J1Yl9jbWQgaW5pdHJkIChoZDAsZ3B0MikvaW5pdHJhbWZzLTUuMTAuMTM0LWFub2xpcy1ydG1yLWF0dGVzdGF0aW9uLmltZwAA",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "grub_linuxefi Initrd"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "7d6d8b5b5692bbad7807c9e10ba10c8ea1a213a017ae45c21db3e6d01c29816c"
+        }
+      ],
+      "event": "Z3J1Yl9saW51eGVmaSBJbml0cmQAAA==",
+      "index": 3,
+      "type_name": "EV_IPL"
+    },
+    {
+      "details": {
+        "string": "Exit Boot Services Invocation"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "7f502fbbfffb4d84bf6dc743fbf59c8bc89ccf90ddcae22196b52b9a3247dd1f"
+        }
+      ],
+      "event": "RXhpdCBCb290IFNlcnZpY2VzIEludm9jYXRpb24=",
+      "index": 2,
+      "type_name": "EV_EFI_ACTION"
+    },
+    {
+      "details": {
+        "string": "Exit Boot Services Returned with Success"
+      },
+      "digests": [
+        {
+          "alg": "SM3",
+          "digest": "94949e0c7e1e83e4609c1f5077b0500f2b638d9ca5fc7d2ffd836283ca511fa3"
+        }
+      ],
+      "event": "RXhpdCBCb290IFNlcnZpY2VzIFJldHVybmVkIHdpdGggU3VjY2Vzcw==",
+      "index": 2,
+      "type_name": "EV_EFI_ACTION"
+    }
+  ]
+}

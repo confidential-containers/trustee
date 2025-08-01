@@ -11,6 +11,7 @@ use scroll::{Pread, LE};
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use sm3::Sm3;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -164,6 +165,7 @@ fn accumulate_hash(alg: TcgAlgorithm, materials: Vec<u8>, digest: &[u8]) -> Resu
         TcgAlgorithm::Sha256 => hash_with::<Sha256>(&materials, digest),
         TcgAlgorithm::Sha384 => hash_with::<Sha384>(&materials, digest),
         TcgAlgorithm::Sha512 => hash_with::<Sha512>(&materials, digest),
+        TcgAlgorithm::Sm3 => hash_with::<Sm3>(&materials, digest),
         _ => bail!("Unsupported Hash algorithm {:?}", alg),
     };
 
@@ -383,6 +385,7 @@ mod tests {
         "./test_data/CCEL_AAEL_alibabacloud",
         "./test_data/CCEL_AAEL_alibabacloud_out.json"
     )]
+    #[case("./test_data/CCEL_data_csv", "./test_data/CCEL_data_csv_out.json")]
     fn test_query_digest(#[case] test_data: &str, #[case] expected_data: &str) {
         let ccel_bin = fs::read(test_data).expect("open test data");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse CCEL eventlog");
