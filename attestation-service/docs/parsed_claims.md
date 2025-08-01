@@ -124,6 +124,10 @@ Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kern
 - `se.attestation_phkh`: SE attestation public host key hash
 - `se.user_data`: Optional custom attestation owner data, could be key:value pairs collected on guest.
 
+## NVIDIA
+
+- `TBD`
+
 ## AMD SEV-SNP
 
 - `snp.measurement` Launch Digest covering initial guest memory
