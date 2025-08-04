@@ -3083,6 +3083,7 @@ dependencies = [
  "az-cvm-vtpm",
  "base64 0.22.1",
  "cfg-if",
+ "chrono",
  "clap",
  "concat-kdf",
  "config",

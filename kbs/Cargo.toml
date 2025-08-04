@@ -113,3 +113,4 @@ toml = "0.9"
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
+chrono.workspace = true
