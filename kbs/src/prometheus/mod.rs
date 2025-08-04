@@ -144,6 +144,20 @@ lazy_static! {
         Gauge::with_opts(opts).unwrap()
     };
 
+    /// KBS Build Info
+    pub(crate) static ref BUILD_INFO: Gauge = {
+        let opts = Opts::new(
+                "build_info",
+                "KBS binary build info",
+            )
+            .const_labels(std::collections::HashMap::from([
+                ("version".to_owned(), env!("CARGO_PKG_VERSION").to_owned()),
+                ("git_hash".to_owned(), env!("KBS_GIT_HASH").to_owned()),
+                ("build_date".to_owned(), env!("KBS_BUILD_DATE").to_owned())
+            ]));
+        Gauge::with_opts(opts).unwrap()
+    };
+
     /// Prometheus instance to get the metrics
     static ref INSTANCE: Registry = {
         let registry = Registry::default();
@@ -169,6 +183,7 @@ lazy_static! {
         registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
         registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
         registry.register(Box::new(ACTIVE_CONNECTIONS.clone())).unwrap();
+        registry.register(Box::new(BUILD_INFO.clone())).unwrap();
 
         registry
     };

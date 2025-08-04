@@ -17,7 +17,7 @@ use crate::{
     plugins::PluginManager,
     policy_engine::PolicyEngine,
     prometheus::{
-        ACTIVE_CONNECTIONS, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
+        ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
     token::TokenVerifier,
@@ -76,6 +76,8 @@ impl ApiServer {
         #[cfg(feature = "as")]
         let attestation_service =
             crate::attestation::AttestationService::new(config.attestation_service.clone()).await?;
+
+        BUILD_INFO.inc();
 
         Ok(Self {
             config,
