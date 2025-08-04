@@ -29,6 +29,8 @@ jobs:
     needs:
     - checkout
     uses: ./.github/workflows/kbs-e2e.yml
+    permissions:
+      packages: write
     with:
       runs-on-test: '["self-hosted","azure-cvm-tdx"]'
       tee: aztdxvtpm
@@ -38,6 +40,8 @@ jobs:
     needs:
     - checkout
     uses: ./.github/workflows/kbs-e2e.yml
+    permissions:
+      packages: write
     with:
       runs-on-test: '["self-hosted","azure-cvm"]'
       tee: azsnpvtpm

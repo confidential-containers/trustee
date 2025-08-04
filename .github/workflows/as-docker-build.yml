@@ -13,4 +13,7 @@ permissions: {}
 jobs:
   check_as_image_build:
     uses: ./.github/workflows/build-as-image.yml
+    permissions:
+      contents: read
+      packages: write
     secrets: inherit
