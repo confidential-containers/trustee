@@ -301,9 +301,9 @@ mod tests {
         #[case] hw_exp: i8,
     ) {
         let opa = OPA {
-            policy_dir_path: PathBuf::from("./src/token/"),
+            policy_dir_path: PathBuf::from("./tests/policy/"),
         };
-        let default_policy_id = "ear_default_policy_cpu".to_string();
+        let default_policy_id = "ear_sample".to_string();
 
         let ear_rules = TrustVector::new()
             .into_iter()
