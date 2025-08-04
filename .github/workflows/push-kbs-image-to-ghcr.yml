@@ -11,6 +11,7 @@ jobs:
   build_and_push_kbs_image:
     permissions:
       packages: write
+      contents: read
     uses: ./.github/workflows/build-kbs-image.yml
     with:
       build_option: --push
