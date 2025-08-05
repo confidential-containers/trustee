@@ -38,6 +38,7 @@ LABEL org.opencontainers.image.source="https://github.com/confidential-container
 
 # Install Openssl Suites
 RUN apt-get update && apt-get install openssl -y && \
+    apt install --reinstall ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
