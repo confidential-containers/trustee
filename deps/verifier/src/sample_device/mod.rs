@@ -29,7 +29,7 @@ impl Verifier for SampleDeviceVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let tee_evidence = serde_json::from_value::<SampleDeviceEvidence>(evidence)
             .context("Deserialize Quote failed.")?;
 
@@ -40,7 +40,7 @@ impl Verifier for SampleDeviceVerifier {
         debug!("TEE-Evidence<sample_device>: {:?}", tee_evidence);
 
         let claims = parse_tee_evidence(&tee_evidence)?;
-        Ok((claims, "gpu".to_string()))
+        Ok(vec![(claims, "gpu".to_string())])
     }
 }
 

@@ -41,7 +41,7 @@ impl Verifier for AzTdxVtpm {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("unexpected empty report data");
         };
@@ -68,7 +68,7 @@ impl Verifier for AzTdxVtpm {
         extend_claim(&mut claim, &evidence.tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
-        Ok((claim, "cpu".to_string()))
+        Ok(vec![(claim, "cpu".to_string())])
     }
 }
 
