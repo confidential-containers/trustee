@@ -161,12 +161,15 @@ impl PolicyEngine for OPA {
         let mut rules_result = HashMap::new();
         for rule in evaluation_rules {
             let whole_rule = format!("data.policy.{rule}");
-            let Ok(claim_value) = engine.eval_rule(whole_rule) else {
-                debug!("Policy `{policy_id}` does not check {rule}");
-                continue;
-            };
-
-            rules_result.insert(rule.to_string(), claim_value);
+            match engine.eval_rule(whole_rule) {
+                Ok(claim_value) => {
+                    let _ = rules_result.insert(rule.to_string(), claim_value);
+                }
+                Err(e) if e.to_string().contains("Failed to get Reference Value") => {
+                    return Err(PolicyError::EvalPolicyFailed(e));
+                }
+                _ => debug!("Policy `{policy_id}` does not check {rule}"),
+            }
         }
 
         let res = EvaluationResult {
