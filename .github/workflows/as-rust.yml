@@ -39,9 +39,9 @@ jobs:
           version: latest
 
       - name: OPA policy.rego fmt and check
+        working-directory: attestation-service
         run: |
-          opa fmt -d attestation-service/src/token/*.rego | awk '{ print } END { if (NR!=0) { print "run `opa fmt -w <path_to_rego>` to fix this"; exit 1 } }'
-          opa check attestation-service/src/token/*.rego
+          make opa-check
 
       - name: Install protoc
         run: |
