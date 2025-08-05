@@ -27,6 +27,8 @@ const SECRET_PATH: &str = "default/test/secret";
 //
 #[case::policy_contraindicated(KbsConfigType::EarTokenRemoteRvps, PolicyType::Custom(CHECK_CONTRAINDICATED_POLICY), vec![], false, Result::Err(anyhow!("request unauthorized")))]
 #[case::policy_not_contraindicated(KbsConfigType::EarTokenRemoteRvps, PolicyType::Custom(CHECK_CONTRAINDICATED_POLICY), vec![("svn",json!(["1"])),("launch_digest", json!(["abcde"])), ("major_version", 1.into()), ("minimum_minor_version", 1.into())], false, Result::Ok(SECRET_BYTES))]
+#[case::policy_not_affirming(KbsConfigType::EarTokenRemoteRvps, PolicyType::Custom(include_str!("../../kbs/sample_policies/affirming.rego")), vec![], false, Result::Err(anyhow!("request unauthorized")))]
+#[case::policy_affirming(KbsConfigType::EarTokenRemoteRvps, PolicyType::Custom(include_str!("../../kbs/sample_policies/affirming.rego")), vec![("svn",json!(["1"])),("launch_digest", json!(["abcde"])), ("major_version", 1.into()), ("minimum_minor_version", 1.into())], false, Result::Ok(SECRET_BYTES))]
 //
 // Tests that use the sample device
 //

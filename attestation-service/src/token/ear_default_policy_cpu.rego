@@ -47,6 +47,17 @@ hardware := 2 if {
 	input.sample.platform_version.minor >= data.reference.minimum_minor_version
 }
 
+# For the 'configuration' trust claim 2 stands for
+# "The configuration is a known and approved config."
+#
+# In this case, check that debug mode isn't turned on.
+# The sample platform is just an example.
+# For the sample platform, the debug claim is always false.
+# The sample platform should only be used for testing.
+configuration := 2 if {
+	input.sample.debug == false
+}
+
 ##### SNP
 executables := 3 if {
 	# In the future, we might calculate this measurement here various components
