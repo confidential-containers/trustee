@@ -222,7 +222,7 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
     if common_name == "VCEK"
-        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != *report.chip_id
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
     {
         bail!("Chip ID mismatch");
     }
