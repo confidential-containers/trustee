@@ -10,7 +10,6 @@
 use anyhow::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use log::info;
 use openssl::rsa::Rsa;
 use openssl::sign::Signer;
 use openssl::x509::X509;
@@ -105,13 +104,17 @@ pub struct SimpleAttestationTokenBroker {
 }
 
 impl SimpleAttestationTokenBroker {
-    pub fn new(config: Configuration) -> Result<Self> {
-        let policy_engine = PolicyEngineType::OPA.to_policy_engine(
-            Path::new(&config.policy_dir),
-            include_str!("simple_default_policy.rego"),
-            "default.rego",
-        )?;
-        info!("Loading default AS policy \"simple_default_policy.rego\"");
+    pub async fn new(config: Configuration) -> Result<Self> {
+        let policy_engine =
+            PolicyEngineType::OPA.to_policy_engine(Path::new(&config.policy_dir))?;
+
+        let default_policy = include_str!("simple_default_policy.rego").to_string();
+        let default_policy =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_policy);
+
+        policy_engine
+            .set_policy("default".to_string(), default_policy, false)
+            .await?;
 
         if config.signer.is_none() {
             log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
@@ -315,7 +318,7 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
 
     async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
         self.policy_engine
-            .set_policy(policy_id, policy)
+            .set_policy(policy_id, policy, true)
             .await
             .map_err(Error::from)
     }
@@ -444,7 +447,7 @@ mod tests {
         // use default config with no signer.
         // this will sign the token with an ephemeral key.
         let config = Configuration::default();
-        let broker = SimpleAttestationTokenBroker::new(config).unwrap();
+        let broker = SimpleAttestationTokenBroker::new(config).await.unwrap();
 
         let _token = broker
             .issue(

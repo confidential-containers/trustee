@@ -56,18 +56,11 @@ pub enum PolicyEngineType {
 }
 
 impl PolicyEngineType {
-    pub fn to_policy_engine(
-        &self,
-        work_dir: &Path,
-        default_policy: &str,
-        default_policy_id: &str,
-    ) -> Result<Arc<dyn PolicyEngine>> {
+    pub fn to_policy_engine(&self, work_dir: &Path) -> Result<Arc<dyn PolicyEngine>> {
         match self {
-            PolicyEngineType::OPA => Ok(Arc::new(opa::OPA::new(
-                work_dir.to_path_buf(),
-                default_policy,
-                default_policy_id,
-            )?) as Arc<dyn PolicyEngine>),
+            PolicyEngineType::OPA => {
+                Ok(Arc::new(opa::OPA::new(work_dir.to_path_buf())?) as Arc<dyn PolicyEngine>)
+            }
         }
     }
 }
@@ -103,7 +96,16 @@ pub trait PolicyEngine: Send + Sync {
         evaluation_rules: Vec<String>,
     ) -> Result<EvaluationResult, PolicyError>;
 
-    async fn set_policy(&self, policy_id: String, policy: String) -> Result<(), PolicyError>;
+    /// Add an additional policy to the AS that can be referenced by given policy id.
+    /// The policy is expected to be provided as base 64.
+    /// If overwrite is set to false, the policy will not be written if
+    /// a policy with the same ID already exists.
+    async fn set_policy(
+        &self,
+        policy_id: String,
+        policy: String,
+        overwrite: bool,
+    ) -> Result<(), PolicyError>;
 
     /// The result is a map. The key is the policy id, and the
     /// value is the digest of the policy (using **Sha384**).
