@@ -72,13 +72,6 @@ async fn get_secret(
     harness.set_policy(policy).await?;
 
     if enable_sample_device {
-        // We don't yet ship a default device attestation policy,
-        // so if we are running a test with the sample device,
-        // add a very basic gpu policy.
-        harness
-            .set_attestation_policy(DEVICE_AS_POLICY.to_string(), "default_gpu".to_string())
-            .await?;
-
         // setting env vars is unsafe because it can effect other threads and processes
         // we are running the tests in serial here, so it should be fine, but be sure to
         // unset this in the wrapper function to not mess up the next test.
@@ -152,16 +145,5 @@ default allow = false
 allow if {
     input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
     input[\"submods\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
-}
-";
-
-const DEVICE_AS_POLICY: &str = "
-package policy
-import rego.v1
-
-default hardware := 97
-
-hardware := 2 if {
-    input.sampledevice.svn in data.reference.device_svn
 }
 ";

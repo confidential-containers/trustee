@@ -139,7 +139,7 @@ impl AttestationService {
             .await
             .map_err(ServiceError::Rvps)?;
 
-        let token_broker = config.attestation_token_broker.to_token_broker()?;
+        let token_broker = config.attestation_token_broker.to_token_broker().await?;
 
         Ok(Self {
             _config: config,
