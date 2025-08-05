@@ -16,4 +16,5 @@ jobs:
     permissions:
       contents: read
       packages: write
-    secrets: inherit
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,13 +6,16 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   checkout:
+    permissions:
+      packages: write
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
 
     - name: Archive source
       run: git archive -o kbs.tar.gz HEAD
@@ -24,6 +27,9 @@ jobs:
   e2e-test-amd64:
     needs: checkout
     uses: ./.github/workflows/kbs-e2e.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       tee: sample
       tarball: kbs.tar.gz
@@ -37,3 +43,6 @@ jobs:
       runs-on-test: '["ubuntu-22.04-arm"]'
       tarball: kbs.tar.gz
       kbs-client-features: "sample_only,cca-attester"
+    permissions:
+      contents: read
+      packages: write

@@ -7,13 +7,18 @@ on:
         description: 'Build option for the image'
         type: string
         required: false
+    secrets:
+      GHCR_TOKEN:
+        description: 'GitHub token for GHCR'
+        required: true
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build_kbs_image:
+    permissions:
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +73,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -77,14 +84,17 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.GHCR_TOKEN }}
 
     - name: Build Container Image KBS (${{ matrix.name }})
       run: |
         commit_sha=${{ github.sha }}
         docker buildx build --platform "${{ matrix.target_platform }}" --provenance false \
-          -f "${{ matrix.docker_file }}" ${{ inputs.build_option }} \
+          -f "${{ matrix.docker_file }}" \
+          ${INPUTS_BUILD_OPTION:+"$INPUTS_BUILD_OPTION"} \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${{ matrix.target_arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${{ matrix.target_arch }}" \
           --build-arg BUILDPLATFORM="${{ matrix.build_platform }}" \
           --build-arg ARCH="${{ matrix.target_arch }}" .
+      env:
+        INPUTS_BUILD_OPTION: ${{ inputs.build_option }}
