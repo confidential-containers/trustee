@@ -209,22 +209,25 @@ impl AttestationService {
                 None => InitDataHash::NotProvided,
             };
 
-            let (claims_from_tee_evidence, tee_class) = verifier
+            let claims = verifier
                 .evaluate(verification_request.evidence, &report_data, &init_data_hash)
                 .await
                 .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+
             info!(
                 "{:?} Verifier/endorsement check passed.",
                 verification_request.tee
             );
 
-            tee_claims.push(TeeClaims {
-                tee: verification_request.tee,
-                tee_class,
-                claims: claims_from_tee_evidence,
-                init_data_claims,
-                runtime_data_claims,
-            });
+            for (claims_from_tee_evidence, tee_class) in claims {
+                tee_claims.push(TeeClaims {
+                    tee: verification_request.tee,
+                    tee_class,
+                    claims: claims_from_tee_evidence,
+                    init_data_claims: init_data_claims.clone(),
+                    runtime_data_claims: runtime_data_claims.clone(),
+                });
+            }
         }
 
         let reference_data_map = self
