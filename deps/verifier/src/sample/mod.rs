@@ -79,6 +79,11 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
             "major": 1,
             "minor": 4,
         },
+
+        // An example of a claim representing the platform configuration.
+        // The sample platform is in a sense only for debugging.
+        // This claim will always be set to false and is only for testing.
+        "debug": false,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)

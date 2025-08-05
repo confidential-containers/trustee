@@ -4,5 +4,12 @@ import rego.v1
 default allow = false
 
 allow if {
-    input["submods"]["cpu0"]["ear.status"] == "affirming"
+    not any_not_affirming
+    count(input.submods) > 0
+
+}
+
+any_not_affirming if {
+    some _, submod in input.submods
+    submod["ear.status"] != "affirming"
 }
