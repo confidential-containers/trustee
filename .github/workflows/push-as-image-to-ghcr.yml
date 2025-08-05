@@ -15,7 +15,8 @@ jobs:
     uses: ./.github/workflows/build-as-image.yml
     with:
       build_option: --push
-    secrets: inherit
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish_multi_arch_image:
     needs: build_and_push_as_image

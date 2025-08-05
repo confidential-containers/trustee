@@ -11,4 +11,5 @@ jobs:
       contents: read
       packages: write
     uses: ./.github/workflows/build-kbs-image.yml
-    secrets: inherit
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
