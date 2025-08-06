@@ -32,37 +32,37 @@ macro_rules! make_histogram {
 lazy_static! {
     /// Resource Path Read Metrics
     pub(crate) static ref RESOURCE_READS_TOTAL: CounterVec = make_counter_vec!{
-        "resource_reads_total", "KBS resource read count", ["resource_path"]
+        "kbs_resource_reads_total", "KBS resource read count", ["resource_path"]
     };
 
     /// Resource Path Write Metrics
     pub(crate) static ref RESOURCE_WRITES_TOTAL: CounterVec = make_counter_vec!{
-        "resource_writes_total", "KBS resource write count", ["resource_path"]
+        "kbs_resource_writes_total", "KBS resource write count", ["resource_path"]
     };
 
     /// KBS Web Server Requests Metrics
     pub(crate) static ref REQUEST_TOTAL: Counter = make_counter!{
-        "http_requests_total",
+        "kbs_http_requests_total",
         "Total HTTP requests count",
     };
 
     /// KBS Web Server Requests Metrics
     pub(crate) static ref REQUEST_DURATION: Histogram = make_histogram!{
-        "http_request_duration_seconds",
+        "kbs_http_request_duration_seconds",
         "Distribution of request handling duration",
         vec![0.0005, 0.001, 0.005, 0.01, 0.05, 0.5, 1.0],
     };
 
     /// KBS Web Server Request Sizes
     pub(crate) static ref REQUEST_SIZES: Histogram = make_histogram!{
-        "http_request_size_bytes",
+        "kbs_http_request_size_bytes",
         "Distribution of request body sizes",
         prometheus::exponential_buckets(32.0, 4.0, 5).unwrap(),
     };
 
     /// KBS Web Server Response Sizes
     pub(crate) static ref RESPONSE_SIZES: Histogram = make_histogram!{
-        "http_response_size_bytes",
+        "kbs_http_response_size_bytes",
         "Distribution of response body sizes",
         prometheus::exponential_buckets(32.0, 4.0, 5).unwrap(),
     };
@@ -93,52 +93,52 @@ lazy_static! {
 
     /// KBS Attestation Requests Total
     pub(crate) static ref ATTESTATION_REQUESTS: Counter = make_counter!{
-        "attestation_requests_total",
+        "kbs_attestation_requests_total",
         "Total count of attestation requests",
     };
 
     /// KBS Attestation Successes Total
     pub(crate) static ref ATTESTATION_SUCCESSES: CounterVec = make_counter_vec!{
-        "attestation_successes_total",
+        "kbs_attestation_successes_total",
         "Total count of attestation successes",
         ["tee_type"],
     };
 
     /// KBS Attestation Failures Total
     pub(crate) static ref ATTESTATION_FAILURES: CounterVec = make_counter_vec!{
-        "attestation_failures_total",
+        "kbs_attestation_failures_total",
         "Total count of attestation failures",
         ["tee_type"],
     };
 
     /// KBS Attestation Errors Total
     pub(crate) static ref ATTESTATION_ERRORS: Counter = make_counter!{
-        "attestation_errors_total",
+        "kbs_attestation_errors_total",
         "Total count of errors during attestation processing",
     };
 
     /// KBS Auth Requests Total
     pub(crate) static ref AUTH_REQUESTS: Counter = make_counter!{
-        "auth_requests_total",
+        "kbs_auth_requests_total",
         "Total count of auth requests",
     };
 
     /// KBS Auth Successes Total
     pub(crate) static ref AUTH_SUCCESSES: Counter = make_counter!{
-        "auth_successes_total",
+        "kbs_auth_successes_total",
         "Total count of successfully authenticated requests",
     };
 
     /// KBS Auth Errors Total
     pub(crate) static ref AUTH_ERRORS: Counter = make_counter!{
-        "auth_errors_total",
+        "kbs_auth_errors_total",
         "Total count of errors during auth processing",
     };
 
     /// KBS Web Server Active Connections
     pub(crate) static ref ACTIVE_CONNECTIONS: Gauge = {
         let opts = Opts::new(
-            "http_active_connections",
+            "kbs_http_active_connections",
             "Count of HTTP connections being processed at the moment",
         );
         Gauge::with_opts(opts).unwrap()
@@ -147,7 +147,7 @@ lazy_static! {
     /// KBS Build Info
     pub(crate) static ref BUILD_INFO: Gauge = {
         let opts = Opts::new(
-                "build_info",
+                "kbs_build_info",
                 "KBS binary build info",
             )
             .const_labels(std::collections::HashMap::from([
