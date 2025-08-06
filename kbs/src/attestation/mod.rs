@@ -8,6 +8,9 @@ pub mod coco;
 #[cfg(feature = "intel-trust-authority-as")]
 pub mod intel_trust_authority;
 
+#[cfg(feature = "keylime-as")]
+pub mod keylime;
+
 pub mod backend;
 pub mod config;
 pub mod session;
