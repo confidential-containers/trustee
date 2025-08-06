@@ -22,7 +22,6 @@ use openssl::pkey::PKey;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::mem::offset_of;
 use thiserror::Error;
 use x509_parser::prelude::*;
 
@@ -222,7 +221,7 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
     if common_name == "VCEK"
-        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != *report.chip_id
     {
         bail!("Chip ID mismatch");
     }
@@ -248,8 +247,10 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // verify report signature
     let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
     // Get the offset of the signature field in the report struct
-    let signature_offset = offset_of!(AttestationReport, signature);
-    let data = &bincode::serialize(&report)?[..signature_offset];
+    let mut raw_report_bytes = Vec::with_capacity(1184); // ATT_REP_FW_LEN
+    report.write_bytes(&mut raw_report_bytes)
+        .map_err(|e| anyhow::anyhow!("Failed to write report bytes: {}", e))?;
+    let data = &raw_report_bytes[..0x2a0];
 
     let pub_key = EcKey::try_from(vcek.0.public_key()?)?;
     let signed = sig.verify(&sha384(data), &pub_key)?;
