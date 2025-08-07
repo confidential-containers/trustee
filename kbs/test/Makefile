@@ -73,7 +73,7 @@ install-dev-dependencies: install-dependencies
 .PHONY: install-dependencies
 install-dependencies:
 	if [ "${ARCH}" = "x86_64" ]; then \
-	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
+	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg --yes && \
 	echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] $(SGX_REPO_URL) $(CODENAME) main" \
 		| sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
 	sudo apt-get update && \
