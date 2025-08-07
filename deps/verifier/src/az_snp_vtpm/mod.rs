@@ -12,7 +12,7 @@ use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek};
-use az_snp_vtpm::hcl::HclReport;
+use az_snp_vtpm::hcl::{HclReport, SNP_REPORT_SIZE};
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
 use az_snp_vtpm::vtpm::QuoteError;
@@ -27,6 +27,7 @@ use x509_parser::prelude::*;
 
 const HCL_VMPL_VALUE: u32 = 0;
 const INITDATA_PCR: usize = 8;
+const SNP_REPORT_SIGNATURE_OFFSET: usize = 0x2a0; // 672 bytes
 
 struct AzVendorCertificates {
     ca_chain: AmdChain,
@@ -247,10 +248,11 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // verify report signature
     let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
     // Get the offset of the signature field in the report struct
-    let mut raw_report_bytes = Vec::with_capacity(1184); // ATT_REP_FW_LEN
-    report.write_bytes(&mut raw_report_bytes)
-        .map_err(|e| anyhow::anyhow!("Failed to write report bytes: {}", e))?;
-    let data = &raw_report_bytes[..0x2a0];
+    let mut raw_report_bytes = [0u8; SNP_REPORT_SIZE];
+    report
+        .write_bytes(&mut raw_report_bytes[..])
+        .context("Failed to write report bytes")?;
+    let data = &raw_report_bytes[..SNP_REPORT_SIGNATURE_OFFSET];
 
     let pub_key = EcKey::try_from(vcek.0.public_key()?)?;
     let signed = sig.verify(&sha384(data), &pub_key)?;
