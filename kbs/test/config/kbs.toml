@@ -15,6 +15,7 @@ policy_engine = "opa"
 [attestation_service.attestation_token_broker]
 type = "Ear"
 duration_min = 5
+policy_dir = "./work/attestation-service/token/ear/policies"
 
 [attestation_service.attestation_token_broker.signer]
 key_path = "./work/token.key"
@@ -22,6 +23,10 @@ cert_path = "./work/token-cert-chain.pem"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
+file_path = "./work/attestation-service/reference_values"
 
 [policy_engine]
 policy_path = "./work/kbs-policy.rego"
