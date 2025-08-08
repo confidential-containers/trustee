@@ -110,6 +110,8 @@ jobs:
     - name: Set TPM permissions
       if: inputs.tee == 'aztdxvtpm' || inputs.tee == 'azsnpvtpm'
       run: |
+        sudo apt-get update
+        sudo apt-get install -y tpm2-tools --no-install-recommends
         sudo chgrp tss /dev/tpm0
         sudo usermod -a -G tss "$USER"
         sg tss -c tpm2_pcrread
