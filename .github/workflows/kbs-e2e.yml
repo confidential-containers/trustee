@@ -109,6 +109,7 @@ jobs:
       run: |
         sudo chgrp tss /dev/tpm0
         sudo usermod -a -G tss "$USER"
+        sg tss -c tpm2_pcrread
 
     - name: Run e2e test
       working-directory: kbs/test
