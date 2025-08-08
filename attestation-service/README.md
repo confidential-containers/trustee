@@ -14,6 +14,7 @@ Today, the AS can validate evidence from the following TEEs:
 - Intel TDX with vTPM on Azure
 - AMD SEV-SNP with vTPM on Azure
 - IBM Secure Execution (SE): [Attestation Service with IBM SE](../deps/verifier/src/se/README.md)
+- NVIDIA
 
 # Overview
 ```
@@ -82,6 +83,7 @@ Please refer to the individual verifiers for the specific format of the evidence
 - Arm CCA: [CcaEvidence](../deps/verifier/src/cca/mod.rs)
 - Hygon CSV: [CsvEvidence](../deps/verifier/src/csv/mod.rs)
 - IBM Secure Execution (SE): [SeEvidence](../deps/verifier/src/se/mod.rs)
+- NVIDIA: [NvDeviceEvidence](../deps/verifier/src/nvidia/mod.rs)
 
 ## Output
 
@@ -135,6 +137,7 @@ Supported Verifier Drivers:
 - `cca`: Verifier Driver for Confidential Compute Architecture (Arm CCA).
 - `csv`: Verifier Driver for China Security Virtualization (Hygon CSV).
 - `se`: Verifier Driver for IBM Secure Execution (SE).
+- `nvidia`: Verifier Driver for NVIDIA Devices.
 
 ### Policy Engine
 
