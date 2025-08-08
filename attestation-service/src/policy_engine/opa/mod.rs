@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
@@ -19,29 +19,12 @@ pub struct OPA {
 }
 
 impl OPA {
-    pub fn new(
-        work_dir: PathBuf,
-        default_policy: &str,
-        default_policy_id: &str,
-    ) -> Result<Self, PolicyError> {
+    pub fn new(work_dir: PathBuf) -> Result<Self, PolicyError> {
         let mut policy_dir_path = work_dir;
 
         policy_dir_path.push("opa");
         if !policy_dir_path.as_path().exists() {
             fs::create_dir_all(&policy_dir_path).map_err(PolicyError::CreatePolicyDirFailed)?;
-        }
-
-        let mut default_policy_path = PathBuf::from(
-            &policy_dir_path
-                .to_str()
-                .ok_or_else(|| PolicyError::PolicyDirPathToStringFailed)?,
-        );
-        default_policy_path.push(default_policy_id);
-        if !default_policy_path.as_path().exists() {
-            fs::write(&default_policy_path, default_policy)
-                .map_err(PolicyError::WriteDefaultPolicyFailed)?;
-        } else {
-            warn!("Default policy file is already populated. Existing policy file will be used.");
         }
 
         Ok(Self { policy_dir_path })
@@ -145,11 +128,33 @@ impl PolicyEngine for OPA {
                 .ok_or_else(|| PolicyError::PolicyDirPathToStringFailed)?,
         );
 
-        policy_file_path.push(format!("{}.rego", policy_id));
+        policy_file_path.push(format!("{policy_id}.rego"));
 
         tokio::fs::write(&policy_file_path, policy_bytes)
             .await
             .map_err(PolicyError::WritePolicyFileFailed)
+    }
+
+    async fn set_default_policy(&self, policy_id: &str, policy: &str) -> Result<(), PolicyError> {
+        // Don't set the policy if there is already a policy set for the given id.
+        let mut policy_file_path = PathBuf::from(
+            &self
+                .policy_dir_path
+                .to_str()
+                .ok_or_else(|| PolicyError::PolicyDirPathToStringFailed)?,
+        );
+
+        policy_file_path.push(format!("{policy_id}.rego"));
+
+        if policy_file_path.exists() {
+            warn!("Policy {policy_id} already exists, so the default policy will not be written.");
+            return Ok(());
+        }
+
+        info!("Loading default AS policy {policy_id}");
+
+        let default_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(policy);
+        self.set_policy(policy_id.to_string(), default_b64).await
     }
 
     async fn list_policies(&self) -> Result<HashMap<String, PolicyDigest>, PolicyError> {
@@ -286,7 +291,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_policy_management() {
-        let opa = OPA::new(PathBuf::from("tests/tmp"), "default", "default.rego").unwrap();
+        let opa = OPA::new(PathBuf::from("tests/tmp")).unwrap();
         let policy = "package policy
 default allow = true"
             .to_string();
@@ -301,7 +306,7 @@ default allow = true"
             .await
             .is_ok());
         let policy_list = opa.list_policies().await.unwrap();
-        assert_eq!(policy_list.len(), 2);
+        assert_eq!(policy_list.len(), 1);
         let test_policy = opa.get_policy("test".to_string()).await.unwrap();
         assert_eq!(test_policy, get_policy_output);
         assert!(opa.list_policies().await.is_ok());
