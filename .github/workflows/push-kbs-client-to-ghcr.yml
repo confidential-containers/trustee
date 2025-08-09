@@ -54,7 +54,7 @@ jobs:
       run: |
         commit_sha=${{ github.sha }}
         oras push \
-          ghcr.io/confidential-containers/staged-images/kbs-client:sample_only-${commit_sha}-${{ matrix.arch }},latest-${{ matrix.arch }} \
+          ghcr.io/confidential-containers/staged-images/kbs-client:${commit_sha}-${{ matrix.arch }},latest-${{ matrix.arch }} \
           kbs-client
         if [ "${{ matrix.arch }}" = "x86_64" ]; then
           oras push ghcr.io/confidential-containers/staged-images/kbs-client:latest kbs-client
