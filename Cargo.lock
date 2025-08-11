@@ -712,9 +712,9 @@ dependencies = [
 
 [[package]]
 name = "az-cvm-vtpm"
-version = "0.7.1"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f7ef43d012a8cf77739366d7ccdb895fb284e03bb1579d8d1792644ef3e6148"
+checksum = "9b3d0900c6757c9674b05b0479236458297026e25fb505186dc8d7735091a21c"
 dependencies = [
  "bincode",
  "jsonwebkey",
@@ -723,11 +723,11 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev 4.0.0",
+ "sev 6.2.1",
  "sha2",
  "thiserror 2.0.12",
  "tss-esapi",
- "zerocopy 0.7.35",
+ "zerocopy 0.8.26",
 ]
 
 [[package]]
@@ -5266,8 +5266,6 @@ dependencies = [
  "iocuddle",
  "lazy_static",
  "libc",
- "openssl",
- "rdrand",
  "serde",
  "serde-big-array",
  "serde_bytes",
