@@ -41,15 +41,11 @@ impl Extractor for SwidExtractor {
             .attribute((RIMIM_NS, "PlatformManufacturerStr"))
             .ok_or(anyhow!("Could not find manufacturer information."))?
             .replace(" ", "_");
-        let product = meta
-            .attribute((RIMIM_NS, "PlatformModel"))
-            .ok_or(anyhow!("Could not find product information."))?;
-        let version = meta
-            .attribute("colloquialVersion")
-            .ok_or(anyhow!("Could not find version information."))?
-            .replace(".", "_");
+        let edition = meta
+            .attribute("edition")
+            .ok_or(anyhow!("Could not find edition information."))?;
 
-        let rv_name_prefix = format!("{manufacturer}.{product}.{version}");
+        let rv_name_prefix = format!("{manufacturer}.{edition}");
         info!("Extracting reference values for {rv_name_prefix}");
 
         // Parse the payload to find reference values.
@@ -107,7 +103,7 @@ mod tests {
 
         let mut found = false;
         for rv in rvs {
-            if rv.name == "NVIDIA_Corporation.GH100.96_00_74_00_1C.Measurement_12.hash1" {
+            if rv.name == "NVIDIA_Corporation.GPU.Measurement_12.hash1" {
                 if rv.value() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
                     found = true;
                     break
