@@ -41,15 +41,11 @@ impl Extractor for SwidExtractor {
             .attribute((RIMIM_NS, "PlatformManufacturerStr"))
             .ok_or(anyhow!("Could not find manufacturer information."))?
             .replace(" ", "_");
-        let product = meta
-            .attribute((RIMIM_NS, "PlatformModel"))
-            .ok_or(anyhow!("Could not find product information."))?;
-        let version = meta
-            .attribute("colloquialVersion")
-            .ok_or(anyhow!("Could not find version information."))?
-            .replace(".", "_");
+        let edition = meta
+            .attribute("edition")
+            .ok_or(anyhow!("Could not find edition information."))?;
 
-        let rv_name_prefix = format!("{manufacturer}.{product}.{version}");
+        let rv_name_prefix = format!("{manufacturer}.{edition}");
         info!("Extracting reference values for {rv_name_prefix}");
 
         // Parse the payload to find reference values.
@@ -63,11 +59,20 @@ impl Extractor for SwidExtractor {
             .filter(|n| n.has_tag_name((SWID_NS, "Resource")))
             .filter(|n| n.attribute("type").unwrap_or("") == "Measurement")
         {
-            let measurement_name = resource
-                .attribute("name")
+            let measurement_index = resource
+                .attribute("index")
                 .ok_or(anyhow!("Could not find measurement name"))?;
 
-            // Resource may have multiple hash attributes
+            let name = format!("{rv_name_prefix}.measurement_{measurement_index}");
+
+            // Rego does not like dashes
+            let name = name.replace("-", "_");
+
+            // Resource may have multiple hash attributes.
+            // Add these to a list that the policy can check
+            // with the `in` operator.
+            let mut measurement_value = vec![];
+
             let mut hash_index = 0;
             loop {
                 let Some(hash) =
@@ -76,17 +81,31 @@ impl Extractor for SwidExtractor {
                     break;
                 };
 
+                // If the hash only contains '0', move onto the next resource.
+                // This could mean that the RIM is attesting that the hash should
+                // be '0', but more commonly it means that there is no measurement
+                // at this index.
+                if hash.chars().all(|c| c == '0') {
+                    hash_index += 1;
+                    continue;
+                }
+
                 let hash_value = serde_json::Value::String(hash.to_string());
-                let name = format!("{rv_name_prefix}.{measurement_name}.hash{hash_index}");
-
-                // Rego does not like dashes
-                let name = name.replace("-", "_");
-
-                let rv = ReferenceValue::new()?.set_name(&name).set_value(hash_value);
-                rvs.push(rv);
+                measurement_value.push(hash_value);
 
                 hash_index += 1;
             }
+
+            // If the measurement has no non-zero hashes, skip it.
+            // This will avoid collisions between multiple manifests
+            // representing the same TCB.
+            if measurement_value.is_empty() {
+                continue;
+            }
+            let rv = ReferenceValue::new()?
+                .set_name(&name)
+                .set_value(serde_json::Value::Array(measurement_value));
+            rvs.push(rv);
         }
         debug!("Reference Values Extracted: {:?}", rvs);
         Ok(rvs)
@@ -107,8 +126,8 @@ mod tests {
 
         let mut found = false;
         for rv in rvs {
-            if rv.name == "NVIDIA_Corporation.GH100.96_00_74_00_1C.Measurement_12.hash1" {
-                if rv.value() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
+            if rv.name == "NVIDIA_Corporation.GPU.measurement_12" {
+                if rv.value()[0].as_str().unwrap() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
                     found = true;
                     break
                 }
