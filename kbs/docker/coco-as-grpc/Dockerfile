@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:latest AS builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:latest AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
@@ -24,8 +24,10 @@ RUN cd kbs && make AS_FEATURE=coco-as-grpc ALIYUN=${ALIYUN} ARCH=${ARCH} NEBULA_
 
 # Download and install Nebula
 RUN if [ "${NEBULA_CA_PLUGIN}" = "true" ]; then \
-       curl -fSLO https://github.com/slackhq/nebula/releases/download/${NEBULA_VERSION}/nebula-$(echo ${BUILDPLATFORM} | sed 's/\//-/').tar.gz && \
-       tar -C /usr/local/bin -xzf nebula-$(echo "${BUILDPLATFORM}" | sed 's/\//-/').tar.gz; \
+       curl -fSLO https://github.com/slackhq/nebula/releases/download/${NEBULA_VERSION}/nebula-$(echo ${BUILDPLATFORM:-linux/amd64}} | sed 's/\//-/').tar.gz && \
+       tar -C /usr/local/bin -xzf nebula-$(echo "${BUILDPLATFORM:-linux/amd64}}" | sed 's/\//-/').tar.gz; \
+    else \
+       touch /usr/local/bin/nebula-cert-dummy; \
     fi
 
 FROM ubuntu:22.04
@@ -34,3 +36,4 @@ LABEL org.opencontainers.image.source="https://github.com/confidential-container
 
 COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs
 COPY --from=builder /usr/local/bin/nebula-cert* /usr/local/bin/nebula-cert
+RUN rm -rf /usr/local/bin/nebula-cert-dummy

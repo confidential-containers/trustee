@@ -34,8 +34,13 @@ impl EventDataParser for EvIplParser {
                 .collect();
             String::from_utf16_lossy(&utf16_words)
         } else {
-            let len_minus_stop = data.len() - 1;
-            String::from_utf8(data[0..len_minus_stop].to_vec())?
+            let cutoff = data.iter().position(|&b| b == 0x00).unwrap_or(data.len());
+            let slice = &data[..cutoff];
+
+            match std::str::from_utf8(slice) {
+                Ok(s) => s.to_string(),
+                Err(_) => hex::encode(data),
+            }
         };
         Ok(EventDetails::from_string(event_desc))
     }
@@ -47,8 +52,8 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case("4d6f", EventDetails::from_string(String::from("M")))]
-    #[case("4d6f6b", EventDetails::from_string(String::from("Mo")))]
+    #[case("4d6f", EventDetails::from_string(String::from("Mo")))]
+    #[case("4d6f6b", EventDetails::from_string(String::from("Mok")))]
     #[case("4d6f6b4c69737400", EventDetails::from_string(String::from("MokList")))]
     #[case(
         "4d6f6b4c6973745800",
@@ -69,6 +74,10 @@ mod tests {
     #[case::gcloud(
         "2e0073006200610074000000",
         EventDetails::from_string(String::from("sbat"))
+    )]
+    #[case::alibabacloud(
+        "677275625f636d64207365742070616765723d310000",
+        EventDetails::from_string(String::from("grub_cmd set pager=1"))
     )]
     fn test_ipl_parser(#[case] test_data: &str, #[case] expected_result: EventDetails) {
         let parser = EvIplParser;

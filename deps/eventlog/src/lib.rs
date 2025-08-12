@@ -8,7 +8,6 @@ use crate::ccel::tcg_enum::{TcgAlgorithm, TcgEventType};
 use anyhow::{anyhow, bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use scroll::{Pread, LE};
-use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -65,11 +64,8 @@ pub struct EventDetails {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_paths: Option<Vec<String>>,
 
-    #[serde(
-        serialize_with = "serialize_json_string_vec",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub data: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -112,24 +108,6 @@ where
     S: Serializer,
 {
     serializer.serialize_str(&hex::encode(digest))
-}
-
-fn serialize_json_string_vec<S>(vec: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match vec {
-        Some(inner_vec) => {
-            let mut seq = serializer.serialize_seq(Some(inner_vec.len()))?;
-            for json_str in inner_vec {
-                let json_value: Value =
-                    serde_json::from_str(json_str).map_err(serde::ser::Error::custom)?;
-                seq.serialize_element(&json_value)?;
-            }
-            seq.end()
-        }
-        None => serializer.serialize_none(),
-    }
 }
 
 impl CcEventLog {
@@ -401,11 +379,14 @@ mod tests {
         "./test_data/CCEL_data_grub_gke",
         "./test_data/CCEL_data_grub_gke_out.json"
     )]
+    #[case(
+        "./test_data/CCEL_AAEL_alibabacloud",
+        "./test_data/CCEL_AAEL_alibabacloud_out.json"
+    )]
     fn test_query_digest(#[case] test_data: &str, #[case] expected_data: &str) {
         let ccel_bin = fs::read(test_data).expect("open test data");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse CCEL eventlog");
         let json = serde_json::to_value(&ccel).unwrap();
-
         let expected_json_str =
             fs::read_to_string(expected_data).expect("read expected json output failed");
         let expected: Value =

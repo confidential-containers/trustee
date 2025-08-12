@@ -1,3 +1,4 @@
+use crate::intel_dcap::error::describe_error;
 use crate::TeeEvidenceParsedClaim;
 use anyhow::{anyhow, bail};
 use intel_tee_quote_verification_rs::{
@@ -11,6 +12,8 @@ use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
 use std::time::{Duration, SystemTime};
+
+mod error;
 
 pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
@@ -31,8 +34,8 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
                 debug!("Info: sgx_qv_set_enclave_load_policy successfully returned.")
             }
             err => warn!(
-                "Error: sgx_qv_set_enclave_load_policy failed: {:#04x}",
-                err as u32
+                "Error: sgx_qv_set_enclave_load_policy failed: {}",
+                describe_error(err)
             ),
         }
     });
@@ -53,8 +56,8 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
             }
         }
         Err(e) => bail!(
-            "tee_get_quote_supplemental_data_size failed: {:#04x}",
-            e as u32
+            "tee_get_quote_supplemental_data_size failed: {}",
+            describe_error(e)
         ),
     }
 
@@ -65,7 +68,7 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
             Some(c)
         }
         Err(e) => {
-            warn!("tee_qv_get_collateral failed: {:#04x}", e as u32);
+            warn!("tee_qv_get_collateral failed: {}", describe_error(e));
             None
         }
     };
@@ -89,7 +92,7 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
         None,
         p_supplemental_data,
     )
-    .map_err(|e| anyhow!("tee_verify_quote failed: {:#04x}", e as u32))?;
+    .map_err(|e| anyhow!("tee_verify_quote failed: {}", describe_error(e)))?;
 
     debug!("tee_verify_quote successfully returned.");
 

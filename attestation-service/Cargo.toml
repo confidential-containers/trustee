@@ -22,7 +22,7 @@ rvps-grpc = ["prost", "tonic"]
 grpc-bin = ["clap", "env_logger", "prost", "tonic"]
 
 # For restful CoCo-AS binary
-restful-bin = ["actix-web/openssl", "clap", "env_logger"]
+restful-bin = ["actix-cors", "actix-web/openssl", "clap", "env_logger"]
 
 [[bin]]
 name = "grpc-as"
@@ -46,7 +46,7 @@ futures = "0.3.17"
 hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
-lazy_static = "1.4.0"
+lazy_static.workspace = true
 log.workspace = true
 openssl.workspace = true
 prost = { workspace = true, optional = true }
@@ -68,6 +68,7 @@ toml.workspace = true
 tonic = { workspace = true, optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 verifier = { path = "../deps/verifier", default-features = false }
+actix-cors = { version = "0.7", optional = true}
 
 [build-dependencies]
 shadow-rs.workspace = true

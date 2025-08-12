@@ -16,8 +16,6 @@ use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
 
-use super::{SpiffeResourceConfig, SpiffeResourcePlugin};
-
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -75,9 +73,6 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
-
-    #[serde(alias = "spiffe-resource")]
-    SpiffeResource(SpiffeResourceConfig),
 }
 
 impl Display for PluginsConfig {
@@ -89,8 +84,6 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
-            PluginsConfig::SpiffeResource(_) => f.write_str("spiffe-resource"), 
-
         }
     }
 }
@@ -121,11 +114,6 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 let pkcs11 = Pkcs11Backend::try_from(pkcs11_config)
                     .context("Initialize 'pkcs11' plugin failed")?;
                 Arc::new(pkcs11) as _
-            }
-            PluginsConfig::SpiffeResource(spiffe_resource_config) => {
-                let spiffe_resource = SpiffeResourcePlugin::try_from(spiffe_resource_config)
-                    .context("Initialize 'spiffe-resource' plugin failed")?;
-                Arc::new(spiffe_resource) as _
             }
         };
 

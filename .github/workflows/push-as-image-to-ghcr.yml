@@ -5,10 +5,13 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
   build_and_push_as_image:
     permissions:
       packages: write
+      contents: read
     uses: ./.github/workflows/build-as-image.yml
     with:
       build_option: --push
@@ -35,10 +38,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
     - name: Login to GHCR Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}

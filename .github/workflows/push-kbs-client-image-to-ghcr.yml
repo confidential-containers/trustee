@@ -5,10 +5,13 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
   build_and_push_kbs_client_image:
     permissions:
       packages: write
+      contents: read
     uses: ./.github/workflows/build-kbs-client-image.yml
     with:
       build_option: --push
@@ -24,7 +27,7 @@ jobs:
 
     steps:
     - name: Login to GHCR Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}

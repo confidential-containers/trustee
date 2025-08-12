@@ -11,7 +11,7 @@ pub mod token;
 use crate::token::AttestationTokenBroker;
 
 use canon_json::CanonicalFormatter;
-pub use kbs_types::{Attestation, Tee};
+pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -19,50 +19,10 @@ use config::Config;
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
-use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
-
-/// Hash algorithms used to calculate runtime/init data binding
-#[derive(Debug, Display, EnumString, AsRefStr, Serialize, Deserialize)]
-pub enum HashAlgorithm {
-    #[strum(ascii_case_insensitive)]
-    #[serde(rename = "sha256")]
-    Sha256,
-
-    #[strum(ascii_case_insensitive)]
-    #[serde(rename = "sha384")]
-    Sha384,
-
-    #[strum(ascii_case_insensitive)]
-    #[serde(rename = "sha512")]
-    Sha512,
-}
-
-impl HashAlgorithm {
-    fn accumulate_hash(&self, materials: Vec<u8>) -> Vec<u8> {
-        match self {
-            HashAlgorithm::Sha256 => {
-                let mut hasher = Sha256::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-            HashAlgorithm::Sha384 => {
-                let mut hasher = Sha384::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-            HashAlgorithm::Sha512 => {
-                let mut hasher = Sha512::new();
-                hasher.update(materials);
-                hasher.finalize().to_vec()
-            }
-        }
-    }
-}
 
 fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
@@ -322,7 +282,7 @@ fn parse_runtime_data(
                 // by default serde_json will enforence the alphabet order for keys
                 let hash_materials =
                     serialize_canon_json(&structured).context("parse JSON structured data")?;
-                let digest = hash_algorithm.accumulate_hash(hash_materials);
+                let digest = hash_algorithm.digest(&hash_materials);
                 Ok((Some(digest), structured))
             }
         },
@@ -339,7 +299,7 @@ fn parse_init_data(data: Option<InitDataInput>) -> Result<(Option<Vec<u8>>, Valu
             InitDataInput::Toml(structured) => {
                 let initdata = toml::from_str::<Initdata>(&structured)
                     .context("parse TOML structured data")?;
-                let digest = initdata.algorithm.accumulate_hash(structured.into_bytes());
+                let digest = initdata.algorithm.digest(&structured.into_bytes());
                 let claims = serde_json::to_value(initdata.data)?;
                 Ok((Some(digest), claims))
             }

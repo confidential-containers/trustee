@@ -3,7 +3,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions: {}
+
 jobs:
   check_kbs_image_build:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/build-kbs-image.yml
     secrets: inherit

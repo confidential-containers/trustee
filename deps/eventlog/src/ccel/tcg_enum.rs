@@ -30,6 +30,9 @@ pub enum TcgAlgorithm {
 
     #[serde(rename = "SHA-512")]
     Sha512 = 0xD,
+
+    #[serde(rename = "SM3")]
+    Sm3 = 0x12,
 }
 
 impl TcgAlgorithm {
@@ -39,6 +42,7 @@ impl TcgAlgorithm {
             TcgAlgorithm::Sha256 => Ok(32),
             TcgAlgorithm::Sha384 => Ok(48),
             TcgAlgorithm::Sha512 => Ok(64),
+            TcgAlgorithm::Sm3 => Ok(32),
             _ => Err(anyhow!(
                 "Failed to get digest size for unsupported algorithm: {:?}",
                 alg
@@ -58,6 +62,7 @@ impl TryFrom<u32> for TcgAlgorithm {
             0xB => Ok(TcgAlgorithm::Sha256),
             0xC => Ok(TcgAlgorithm::Sha384),
             0xD => Ok(TcgAlgorithm::Sha512),
+            0x12 => Ok(TcgAlgorithm::Sm3),
             _ => Err(()),
         }
     }
