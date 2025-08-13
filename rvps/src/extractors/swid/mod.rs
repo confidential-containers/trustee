@@ -6,10 +6,14 @@
 use anyhow::*;
 use base64::Engine;
 use log::{debug, info};
+use serde::Deserialize;
 
 use crate::ReferenceValue;
 
 use super::Extractor;
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct SwidExtractorConfig;
 
 #[derive(Default)]
 pub struct SwidExtractor;
@@ -17,6 +21,12 @@ pub struct SwidExtractor;
 const SWID_NS: &str = "http://standards.iso.org/iso/19770/-2/2015/schema.xsd";
 const RIMIM_NS: &str = "https://trustedcomputinggroup.org/resource/tcg-reference-integrity-manifest-rim-information-model/";
 const HASH_NS: &str = "http://www.w3.org/2001/04/xmlenc#sha384";
+
+impl SwidExtractor {
+    pub fn new(_config: Option<SwidExtractorConfig>) -> Result<SwidExtractor> {
+        Ok(SwidExtractor)
+    }
+}
 
 impl Extractor for SwidExtractor {
     fn verify_and_extract(&self, provenance_base64: &str) -> Result<Vec<ReferenceValue>> {
@@ -41,7 +51,8 @@ impl Extractor for SwidExtractor {
             .attribute((RIMIM_NS, "PlatformManufacturerStr"))
             .ok_or(anyhow!("Could not find manufacturer information."))?
             .replace(" ", "_");
-        let edition = meta.attribute("edition")
+        let edition = meta
+            .attribute("edition")
             .ok_or(anyhow!("Could not find edition information."))?;
 
         let rv_name_prefix = format!("{manufacturer}.{edition}");
