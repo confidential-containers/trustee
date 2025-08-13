@@ -5,38 +5,64 @@
 
 //! Extractors for RVPS.
 
-pub mod extractor_modules;
-
 use anyhow::*;
+use log::warn;
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use self::extractor_modules::{ExtractorInstance, ExtractorModuleList};
 use super::{Message, ReferenceValue};
 
-#[derive(Default)]
-pub struct Extractors {
-    /// A map of provenance types to Extractor initializers
-    extractors_module_list: ExtractorModuleList,
+pub mod sample;
+pub mod swid;
 
+#[cfg(feature = "in-toto")]
+pub mod in_toto;
+
+/// Extractor is a standard interface that all provenance extractors
+/// need to implement. Here reference_value can be modified in the
+/// handler, added any field if needed.
+pub trait Extractor {
+    fn verify_and_extract(&self, provenance: &str) -> Result<Vec<ReferenceValue>>;
+}
+
+pub type ExtractorInstance = Box<dyn Extractor + Sync + Send>;
+
+pub struct Extractors {
     /// A map of provenance types to Extractor instances
-    extractors_instance_map: HashMap<String, ExtractorInstance>,
+    extractor_map: HashMap<String, ExtractorInstance>,
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct ExtractorsConfig {
+    swid_extractor: Option<swid::SwidExtractorConfig>,
 }
 
 impl Extractors {
-    /// Register an `Extractor` instance to `Extractors`. The `Extractor` is responsible for
-    /// handling specific kind of provenance (as `extractor_name` indicates).
-    fn register_instance(&mut self, extractor_name: String, extractor_instance: ExtractorInstance) {
-        self.extractors_instance_map
-            .insert(extractor_name, extractor_instance);
-    }
+    pub fn new(config: Option<ExtractorsConfig>) -> Result<Self> {
+        let mut extractor_map: HashMap<String, ExtractorInstance> = HashMap::new();
 
-    /// Instantiate an `Extractor` of given type `extractor_name`. This method will
-    /// instantiate an `Extractor` instance and then register it.
-    fn instantiate_extractor(&mut self, extractor_name: String) -> Result<()> {
-        let instantiate_func = self.extractors_module_list.get_func(&extractor_name)?;
-        let extractor_instance = (instantiate_func)();
-        self.register_instance(extractor_name, extractor_instance);
-        Ok(())
+        extractor_map.insert(
+            "sample".to_string(),
+            Box::new(sample::SampleExtractor::default()),
+        );
+
+        let swid_config = config.clone().map(|c| c.swid_extractor).unwrap_or(None);
+        if config.is_none() {
+            warn!("No configuration for SWID extractor provided. Default will be used.");
+        }
+
+        extractor_map.insert(
+            "swid".to_string(),
+            Box::new(swid::SwidExtractor::new(swid_config)?),
+        );
+
+        #[cfg(feature = "in-toto")]
+        extractor_map.insert(
+            "in-toto".to_string(),
+            Box::new(in_toto::InTotoExtractor::new()),
+        );
+
+        Ok(Extractors { extractor_map })
     }
 
     /// Process the message, by verifying the provenance
@@ -45,16 +71,12 @@ impl Extractors {
     /// reference values.
     /// Each ReferenceValue digest is expected to be base64 encoded.
     pub fn process(&mut self, message: Message) -> Result<Vec<ReferenceValue>> {
-        let typ = message.r#type;
+        let extractor_type = message.r#type;
 
-        if self.extractors_instance_map.get_mut(&typ).is_none() {
-            self.instantiate_extractor(typ.clone())?;
+        if let Some(extractor) = self.extractor_map.get_mut(&extractor_type) {
+            return extractor.verify_and_extract(&message.payload);
         }
-        let extractor_instance = self
-            .extractors_instance_map
-            .get_mut(&typ)
-            .ok_or_else(|| anyhow!("The Extractor instance does not existing!"))?;
 
-        extractor_instance.verify_and_extract(&message.payload)
+        bail!("Could not find extractor for {extractor_type}");
     }
 }
