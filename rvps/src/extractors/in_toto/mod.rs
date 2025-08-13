@@ -223,7 +223,7 @@ pub mod test {
     use sha2::{Digest, Sha256};
     use walkdir::WalkDir;
 
-    use crate::{extractors::extractor_modules::Extractor, ReferenceValue};
+    use crate::{extractors::Extractor, ReferenceValue};
 
     use super::{InTotoExtractor, Provenance, INTOTO_VERSION};
 

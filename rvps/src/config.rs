@@ -5,12 +5,16 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use crate::extractors::ExtractorsConfig;
 use crate::storage::ReferenceValueStorageConfig;
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Config {
     #[serde(default)]
     pub storage: ReferenceValueStorageConfig,
+
+    #[serde(default)]
+    pub extractors: Option<ExtractorsConfig>,
 }
 
 impl Config {
