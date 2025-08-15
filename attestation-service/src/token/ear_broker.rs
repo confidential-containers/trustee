@@ -252,7 +252,7 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
                 .await?;
 
             for (k, v) in &policy_results.rules_result {
-                let claim_value = v.as_i8().context("Policy claim value not i8")?;
+                let claim_value = (*v).as_i8().context("Policy claim value not i8")?;
                 debug!("Policy claim: {}: {}", k, claim_value);
 
                 appraisal
