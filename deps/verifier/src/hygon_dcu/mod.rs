@@ -32,7 +32,7 @@ impl Verifier for HygonDcuVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let tee_evidence = serde_json::from_value::<DcuEvidence>(evidence)?;
 
         let expected_report_data = match expected_report_data {
@@ -53,7 +53,7 @@ impl Verifier for HygonDcuVerifier {
         }
 
         let claims = parse_tee_evidence(tee_evidence.attestation_reports)?;
-        Ok((claims, "dcu".to_string()))
+        Ok(vec![(claims, "dcu".to_string())])
     }
 }
 

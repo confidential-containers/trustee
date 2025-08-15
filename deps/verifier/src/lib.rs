@@ -191,7 +191,7 @@ pub trait Verifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)>;
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>>;
 
     /// Generate the supplemental challenge
     ///
