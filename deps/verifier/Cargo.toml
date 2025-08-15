@@ -34,7 +34,7 @@ async-trait.workspace = true
 az-snp-vtpm = { version = "=0.7.1", default-features = false, features = [
     "verifier",
 ], optional = true }
-az-tdx-vtpm = { version = "=0.7.1", default-features = false, features = [
+az-tdx-vtpm = { version = "=0.7.4", default-features = false, features = [
     "verifier",
 ], optional = true }
 base64 = "0.22.1"
