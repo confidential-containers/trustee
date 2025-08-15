@@ -9,7 +9,6 @@ use attestation_service::{
     VerificationRequest,
 };
 use kbs_types::{Challenge, Tee};
-use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
@@ -89,8 +88,15 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
-        self.inner.read().await.query_reference_values().await
+    async fn query_reference_value(
+        &self,
+        reference_value_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
+        self.inner
+            .read()
+            .await
+            .query_reference_value(reference_value_id)
+            .await
     }
 }
 
