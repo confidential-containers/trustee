@@ -57,7 +57,7 @@ pub struct Rvps {
 impl Rvps {
     /// Instantiate a new RVPS
     pub fn new(config: Config) -> Result<Self> {
-        let extractors = Extractors::default();
+        let extractors = Extractors::new(config.extractors)?;
         let storage = config.storage.to_storage()?;
 
         Ok(Rvps {
