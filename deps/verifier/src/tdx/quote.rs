@@ -411,8 +411,8 @@ mod tests {
     /// This unit test requires two packages, s.t. `libsgx-dcap-quote-verify-dev` and `libsgx-dcap-default-qpl`
     /// On ubuntu 22.04, you need to run the following scripts to install.
     /// ```shell
-    /// curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee intel-sgx-deb.key | apt-key add - && \
-    /// echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    /// curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
+    /// echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     /// apt-get update && \
     /// apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify
     /// ```
