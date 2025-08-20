@@ -17,6 +17,7 @@ pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/attester_user_data/tee-pubkey
 pub const TOKEN_TEE_PUBKEY_PATH_COCO: &str = "/customized_claims/runtime_data/tee-pubkey";
 pub const TOKEN_TEE_PUBKEY_PATH_EAR: &str =
     "/submods/cpu0/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_VALUE: &str = "/tee-pubkey";
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct AttestationTokenVerifierConfig {
@@ -81,6 +82,7 @@ impl TokenVerifier {
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_ITA_VTPM.into());
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_COCO.into());
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_EAR.into());
+        extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_VALUE.into());
 
         Ok(Self {
             verifier,
@@ -96,6 +98,9 @@ impl TokenVerifier {
         for path in &self.extra_teekey_paths {
             if let Some(pkey_value) = claim.pointer(path) {
                 debug!("Extract tee public key from {path}");
+                if let Value::String(s) = pkey_value {
+                    return serde_json::from_str(s).map_err(|_| Error::TeePubKeyParseFailed);
+                }
                 return TeePubKey::deserialize(pkey_value).map_err(|_| Error::TeePubKeyParseFailed);
             }
         }
