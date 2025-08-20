@@ -98,6 +98,9 @@ impl TokenVerifier {
         for path in &self.extra_teekey_paths {
             if let Some(pkey_value) = claim.pointer(path) {
                 debug!("Extract tee public key from {path}");
+                if let Value::String(s) = pkey_value {
+                    return serde_json::from_str(s).map_err(|_| Error::TeePubKeyParseFailed);
+                }
                 return TeePubKey::deserialize(pkey_value).map_err(|_| Error::TeePubKeyParseFailed);
             }
         }
