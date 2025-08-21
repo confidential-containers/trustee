@@ -20,8 +20,8 @@ REQUEST := $(MAKEFILE_DIR)/request.json
 
 .PHONY: install-dependencies
 install-dependencies:
-	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo apt-key add - && \
-	echo "deb [arch=amd64] $(SGX_REPO_URL) jammy main" \
+	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
+	echo "deb [arch=amd64  signed-by=/usr/share/keyrings/intel-sgx.gpg] $(SGX_REPO_URL) jammy main" \
 		| sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
 	sudo apt-get update && \
 	sudo apt-get install -y \
