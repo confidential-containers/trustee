@@ -2,7 +2,10 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:latest AS builder
+# rust:1.89.0
+FROM --platform=${BUILDPLATFORM:-linux/amd64} \
+    docker.io/library/rust@sha256:6e6d04bd50cd4c433a805c58c13f186a508c5b5417b9b61cae40ec28e0593c51 \
+    AS builder
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier
 
@@ -29,7 +32,9 @@ RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
     rustup target add ${RUSTC_TARGET}; fi; \
     cargo install --path attestation-service --bin restful-as --features restful-bin,${VERIFIER} --locked ${TARGET_FLAG}
 
-FROM ubuntu:22.04
+# ubuntu:24.04
+FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier
 
