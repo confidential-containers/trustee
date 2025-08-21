@@ -1,4 +1,7 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:latest AS builder
+# rust:1.89.0
+FROM --platform=${BUILDPLATFORM:-linux/amd64} \
+    docker.io/library/rust@sha256:6e6d04bd50cd4c433a805c58c13f186a508c5b5417b9b61cae40ec28e0593c51 \
+    AS builder
 ARG BUILDPLATFORM=linux/amd64
 ARG ARCH=x86_64
 ARG ALIYUN=false
@@ -30,7 +33,8 @@ RUN if [ "${NEBULA_CA_PLUGIN}" = "true" ]; then \
        touch /usr/local/bin/nebula-cert-dummy; \
     fi
 
-FROM ubuntu:22.04
+# ubuntu:24.04
+FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/kbs"
 
