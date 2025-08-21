@@ -1,4 +1,7 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:slim AS builder
+# rust:1.89.0-slim
+FROM --platform=${BUILDPLATFORM:-linux/amd64} \
+    docker.io/library/rust@sha256:6c828d9865870a3bc8c02919d73803df22cac59b583d8f2cb30a296abe64748f \
+    AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
@@ -41,7 +44,8 @@ COPY . .
 RUN cd kbs && make AS_FEATURE=coco-as-builtin ALIYUN=${ALIYUN} ARCH=${ARCH} && \
     make ARCH=${ARCH} install-kbs
 
-FROM ubuntu:22.04
+# ubuntu:24.04
+FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
 ARG ARCH=x86_64
 
 WORKDIR /tmp
@@ -49,6 +53,7 @@ WORKDIR /tmp
 RUN apt-get update && \
     apt-get install -y \
     curl \
+    gnupg \
     gnupg-agent && \
     if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
