@@ -594,7 +594,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=e3cc706)",
  "lazy_static",
  "log",
  "openssl",
@@ -3102,7 +3102,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken",
  "jwt-simple",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=e3cc706)",
  "kms",
  "lazy_static",
  "log",
@@ -3156,7 +3156,7 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.12.0"
-source = "git+https://github.com/virtee/kbs-types.git?rev=e3cc706#e3cc706ec4c1a88565598c5ce224da06a03f2265"
+source = "git+https://github.com/confidential-containers/kbs-types.git?rev=e3cc706#e3cc706ec4c1a88565598c5ce224da06a03f2265"
 dependencies = [
  "base64 0.22.1",
  "serde",
@@ -6350,7 +6350,7 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
  "jsonwebtoken",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=e3cc706)",
  "log",
  "openssl",
  "reqwest 0.12.22",
