@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::ccel::tcg_enum::{TcgAlgorithm, TcgEventType};
+use crate::ccel::tcg_enum::{DigestMatch, TcgAlgorithm, TcgEventType};
 use anyhow::{anyhow, bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use scroll::{Pread, LE};
@@ -28,6 +28,7 @@ pub struct CcEventLog {
 #[derive(Debug, Clone, Serialize)]
 pub struct EventlogEntry {
     pub details: EventDetails,
+    pub digest_matches_event: DigestMatch,
     pub digests: Vec<ElDigest>,
     pub event: String,
     pub index: u32,
@@ -286,12 +287,20 @@ fn parse_eventlog_entry(
     index += event_data_size;
 
     let event = STANDARD.encode(&event_data_raw);
+    let digest_matches_event = if event_type.can_verify_digest() {
+        event_type
+            .get_parser()
+            .compare_digests(&event_data_raw, &digests)?
+    } else {
+        DigestMatch::Unsupported
+    };
     let event_result = event_type.get_parser().parse(event_data_raw)?;
 
     Ok((
         Some(EventlogEntry {
             index: target_measurement_registry,
             event_type,
+            digest_matches_event,
             digests,
             event,
             details: event_result,

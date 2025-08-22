@@ -249,4 +249,23 @@ impl TcgEventType {
             _ => Box::new(EvBlankParser),
         }
     }
+
+    pub(crate) fn can_verify_digest(&self) -> bool {
+        matches!(
+            self,
+            Self::EvSeparator
+                | Self::EvEfiAction
+                | Self::EvEfiVariableAuthority
+                | Self::EvEfiGptEvent
+                | Self::EvEventTag
+                | Self::EvEfiVariableDriverConfig
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum DigestMatch {
+    Match,
+    Mismatch,
+    Unsupported,
 }
