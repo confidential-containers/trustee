@@ -153,6 +153,7 @@ impl TestHarness {
         // Setup RVPS either remotely or builtin
         let rvps_config = match &test_parameters.rvps_type {
             RvpsType::Builtin => RvpsConfig::BuiltIn(RvpsCrateConfig {
+                extractors: None,
                 storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                     file_path: rv_path,
                 }),
@@ -160,6 +161,7 @@ impl TestHarness {
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
                 let service = Rvps::new(RVPSConfig {
+                    extractors: None,
                     storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                         file_path: rv_path,
                     }),
