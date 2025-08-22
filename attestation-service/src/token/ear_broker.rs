@@ -13,7 +13,7 @@ use ear::{
 };
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
-use log::{debug, info, warn};
+use log::{debug, warn};
 use openssl::bn::{BigNum, BigNumContext};
 use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
@@ -144,13 +144,17 @@ pub struct EarAttestationTokenBroker {
 }
 
 impl EarAttestationTokenBroker {
-    pub fn new(config: Configuration) -> Result<Self> {
-        let policy_engine = PolicyEngineType::OPA.to_policy_engine(
-            Path::new(&config.policy_dir),
-            include_str!("ear_default_policy_cpu.rego"),
-            "default_cpu.rego",
-        )?;
-        info!("Loading default AS policy \"default_cpu.rego\"");
+    pub async fn new(config: Configuration) -> Result<Self> {
+        let policy_engine =
+            PolicyEngineType::OPA.to_policy_engine(Path::new(&config.policy_dir))?;
+
+        policy_engine
+            .set_default_policy("default_cpu", include_str!("ear_default_policy_cpu.rego"))
+            .await?;
+
+        policy_engine
+            .set_default_policy("default_gpu", include_str!("ear_default_policy_gpu.rego"))
+            .await?;
 
         if config.signer.is_none() {
             log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
@@ -472,7 +476,7 @@ mod tests {
         // use default config with no signer.
         // this will sign the token with an ephemeral key.
         let config = Configuration::default();
-        let broker = EarAttestationTokenBroker::new(config).unwrap();
+        let broker = EarAttestationTokenBroker::new(config).await.unwrap();
 
         let _token = broker
             .issue(
@@ -505,7 +509,7 @@ mod tests {
         let mut config = Configuration::default();
         config.signer = Some(signer);
 
-        let broker = EarAttestationTokenBroker::new(config).unwrap();
+        let broker = EarAttestationTokenBroker::new(config).await.unwrap();
         let token = broker
             .issue(
                 vec![TeeClaims {

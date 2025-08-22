@@ -75,7 +75,7 @@ impl Verifier for CCA {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let config_file =
             std::env::var(CCA_CONFIG_FILE).unwrap_or_else(|_| DEFAULT_CCA_CONFIG.to_string());
 
@@ -129,7 +129,7 @@ impl Verifier for CCA {
         // Return Evidence parsed claim
         let claims = cca_generate_parsed_claim(tcb)
             .map_err(|e| anyhow!("error from CCA Verifier: {:?}", e))?;
-        Ok((claims, "cpu".to_string()))
+        Ok(vec![(claims, "cpu".to_string())])
     }
 }
 
