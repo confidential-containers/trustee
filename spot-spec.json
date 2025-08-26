@@ -1,0 +1,7 @@
+{
+  "ImageId": "ami-0a7d80731ae1b2435",
+  "InstanceType": "p5.48xlarge",
+  "KeyName": "queenie-h100-east1",
+  "SecurityGroupIds": ["sg-0be88ba55e4983396"],
+  "UserData": ""
+}

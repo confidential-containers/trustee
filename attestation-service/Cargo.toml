@@ -15,6 +15,7 @@ csv-verifier = ["verifier/csv-verifier"]
 hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
 cca-verifier = ["verifier/cca-verifier"]
 se-verifier = ["verifier/se-verifier"]
+nvtrust-verifier = ["verifier/nvtrust-verifier"]
 
 rvps-grpc = ["prost", "tonic"]
 

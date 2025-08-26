@@ -587,8 +587,6 @@ impl ClientPlugin for SpiffeResourcePlugin {
     }
 }
 
-impl SpiffeResourcePlugin {
-
 // Tests temporarily disabled for demo
 /*
 #[cfg(test)]

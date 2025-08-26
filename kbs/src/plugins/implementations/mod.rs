@@ -8,6 +8,7 @@ pub mod nebula_ca;
 pub mod pkcs11;
 pub mod resource;
 pub mod sample;
+pub mod spiffe_resource;
 
 #[cfg(feature = "nebula-ca-plugin")]
 pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
@@ -15,3 +16,4 @@ pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
 pub use pkcs11::{Pkcs11Backend, Pkcs11Config};
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
+pub use spiffe_resource::{SpiffeResourcePlugin, SpiffeResourceConfig};

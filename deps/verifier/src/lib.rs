@@ -35,6 +35,9 @@ pub mod cca;
 #[cfg(feature = "se-verifier")]
 pub mod se;
 
+#[cfg(feature = "nvtrust-verifier")]
+pub mod nvtrust;
+
 #[cfg(any(
     feature = "az-tdx-vtpm-verifier",
     feature = "tdx-verifier",
@@ -45,7 +48,15 @@ pub mod intel_dcap;
 pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
-        Tee::Nvidia => todo!(),
+        Tee::Nvidia => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "nvtrust-verifier")] {
+                    Ok(Box::<nvtrust::NvtrustVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `nvtrust-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {

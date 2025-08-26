@@ -21,6 +21,9 @@ coco-as-builtin = ["coco-as", "attestation-service/default"]
 # Use built-in CoCo-AS as backend attestation service without verifier
 coco-as-builtin-no-verifier = ["coco-as"]
 
+# Use built-in CoCo-AS with NVTrust verifier support
+coco-as-builtin-nvtrust = ["coco-as", "attestation-service/nvtrust-verifier"]
+
 # Use remote gRPC CoCo-AS as backend attestation service
 coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-build", "prost"]
 
