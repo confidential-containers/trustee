@@ -20,9 +20,31 @@ type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
 pub trait ClientPlugin: Send + Sync {
-    /// This function is the entry to a client plugin. The function
-    /// marks `&self` rather than `&mut self`, because it will leave
-    /// state and synchronization issues down to the concrete plugin.
+    /// Plugins fulfill requests using this function
+    /// and following REST semantics.
+    ///
+    /// A request is provided to the plugin in parts.
+    /// The @path is the base of the request and usually represents
+    /// some object that the plugin will provide.
+    ///
+    /// The @query is a query string passed in addition to the path
+    /// that can represent additional parameters not expressed
+    /// in the path.
+    ///
+    /// The request @method can be GET or POST. GET requests are typically
+    /// used from inside the guest to retrieve a resource.
+    /// POST requests are usually made by admins configuring a resource.
+    /// The @body of the request is also provided, but this should only
+    /// be used with POST requests.
+    ///
+    /// The @init_data field provides measured guest configuration
+    /// if it is provided by the guest and validated by the
+    /// attestation agent.
+    ///
+    ///
+    /// The handle function takes `&self` rather than `&mut self`,
+    /// because individual plugin backends are expected to
+    /// implement their own synchronization logic.
     ///
     /// TODO: change body from Vec slice into Reader to apply for large
     /// body stream.
@@ -32,6 +54,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &str,
         path: &str,
         method: &Method,
+        init_data: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
