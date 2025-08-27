@@ -41,22 +41,22 @@ UEFI event log entry contains below fields:
 
 The following fields always exist.
 - `tdx.quote.header.version`: The quote format version. Now supports 4 and 5.
-- `tdx.quote.header.att_key_type`: enum of the algorithm used in signature.
+- `tdx.quote.header.att_key_type`: Enum of the algorithm used in signature.
 - `tdx.quote.header.tee_type`: TDX is always 0x81.
-- `tdx.quote.header.reserved`: reserved.
+- `tdx.quote.header.reserved`: Reserved.
 - `tdx.quote.header.vendor_id`: UID of QE Vendor. QE is a signed software component inside TEE to help to generate tdx quote.
 - `tdx.quote.header.user_data`: Custom attestation key owner data.
 - `tdx.quote.body.mr_config_id`: Software-defined ID for non-owner-defined configuration of the guest TD – e.g., run-time or OS configuration.
 - `tdx.quote.body.mr_owner`: Software-defined ID for the guest TD’s owner.
 - `tdx.quote.body.mr_owner_config`: Software-defined ID for owner-defined configuration of the guest TD – e.g., specific to the workload rather than the run-time or OS.
 - `tdx.quote.body.mr_td`: Measurement of the initial contents of the TD.
-- `tdx.quote.body.mrsigner_seam`: measurement of a 3rd party tdx-module's signer (SHA384 hash). If it is 0, the tdx-module is from Intel.
-- `tdx.quote.body.report_data`: software defined ID for non-owner-defined configuration on the guest TD.
-- `tdx.quote.body.seam_attributes`: for tdx1.0, must be 0.
+- `tdx.quote.body.mrsigner_seam`: Measurement of a 3rd party tdx-module's signer (SHA384 hash). If it is 0, the tdx-module is from Intel.
+- `tdx.quote.body.report_data`: Software defined ID for non-owner-defined configuration on the guest TD.
+- `tdx.quote.body.seam_attributes`: For tdx1.0, must be 0.
 - `tdx.quote.body.td_attributes`: TD's attributes.
-- `tdx.quote.body.mr_seam`: Measurement of the SEAM module
+- `tdx.quote.body.mr_seam`: Measurement of the SEAM module.
 - `tdx.quote.body.tcb_svn`: TEE hardware tcb version, defined and meaningful to Intel. everytime firmware updates this field will change.
-- `tdx.quote.body.xfam`: TD's XFAM
+- `tdx.quote.body.xfam`: TD's XFAM.
 - `tdx.quote.body.rtmr_0`: Runtime extendable measurement register 0.
 - `tdx.quote.body.rtmr_1`: Runtime extendable measurement register 1.
 - `tdx.quote.body.rtmr_2`: Runtime extendable measurement register 2.
@@ -70,9 +70,22 @@ The following fields always exist.
 - `tdx.td_attributes.key_locker`: A boolean value that indicates whether the TD is allowed to use Key Locker.
 - `tdx.td_attributes.perfmon`: A boolean value that indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
 - `tdx.td_attributes.protection_keys`: A boolean value that indicates whether the TD is allowed to use Supervisor Protection Keys.
-- `tdx.td_attributes.septve_disable`:  A boolean value that determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
-- `tdx.advisory_ids`: List of Intel® Product Security Center Advisories
-- `tdx.collateral_expiration_status`:  Expected 0, if none of the inputted collateral has expired as compared to the inputted expiration_check_date.
+- `tdx.td_attributes.septve_disable`: A boolean value that determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+- `tdx.advisory_ids`: List of Intel® Product Security Center Advisories.
+- `tdx.collateral_expiration_status`: Expected 0, if none of the inputted collateral has expired as compared to the inputted expiration_check_date.
+- `tdx.earliest_expiration_date`: Date time value in RFC3339 format - The earliest nextUpdate value, or expiration date, among all collaterals.
+- `tdx.earliest_issue_date`: Date time value in RFC3339 format - The earliest issueDate among all collaterals.
+- `tdx.is_cached_keys`: A boolean value that indicates whether platform root keys are cached by SGX Registration Backend. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.is_dynamic_platform`: A boolean value that indicates whether a platform can be extended with additional packages. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.is_smt_enabled`: A boolean value that indicates whether a platform has SMT (simultaneous multithreading) enabled. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.latest_issue_date`: Date time value in RFC3339 format - The latest issueDate value among all collaterals.
+- `tdx.pck_crl_num`: Indication of the freshness of the PCK cert used.
+- `tdx.platform_provider_id`: The Platform Provisioning ID.
+- `tdx.root_ca_crl_num`: Indication of the freshness of the Root CA cert used.
+- `tdx.root_key_id`: ID of the collateral’s root signer (hash of Root CA’s public key SHA-384).
+- `tdx.sgx_type`: The type of memory used in SGX. Can be one of (`Standard`, `Scalable`, `Scalable with Integrity`).
+- `tdx.tcb_date`: Date time value in RFC3339 format - Earliest date between tcbInfo and qeIdentity.
+- `tdx.tcb_eval_num`: Indication of the freshness of the reference values used.
 
 ## Intel SGX
 

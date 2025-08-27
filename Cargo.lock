@@ -6372,6 +6372,7 @@ dependencies = [
  "shadow-rs",
  "strum",
  "thiserror 2.0.12",
+ "time",
  "tokio",
  "tonic-build",
  "veraison-apiclient",

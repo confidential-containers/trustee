@@ -434,13 +434,13 @@ mod tests {
     #[tokio::test]
     #[case(
         "./test_data/tdx_quote_4.dat",
-        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986"],"collateral_expiration_status":"0","tcb_status":"OutOfDate"}"#
+        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986"],"collateral_expiration_status":"0","earliest_expiration_date":"2025-09-23T15:02:05Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-08-25T15:30:45Z","pck_crl_num":1,"platform_provider_id":"df4c32a9d8d86009aaf380ec43cfcefb","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-02-15T00:00:00Z","tcb_eval_num":1,"tcb_status":"OutOfDate"}"#
     )]
     #[ignore]
     #[tokio::test]
     #[case(
         "./test_data/tdx_quote_5.dat",
-        r#"{"advisory_ids":[],"collateral_expiration_status":"1","tcb_status":"OK"}"#
+        r#"{"advisory_ids":[],"collateral_expiration_status":"1","earliest_expiration_date":"2024-10-08T23:59:59Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-08-24T15:19:12Z","pck_crl_num":1,"platform_provider_id":"f06984c8d9343452b997c48b36d6e678","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-08-09T00:00:00Z","tcb_eval_num":1,"tcb_status":"OK"}"#
     )]
     async fn test_verify_tdx_quote(#[case] quote: &str, #[case] expected_output: &str) {
         let quote_bin = fs::read(quote).unwrap();
