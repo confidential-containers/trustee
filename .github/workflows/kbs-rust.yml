@@ -6,6 +6,9 @@ on:
       - "main"
     paths:
       - 'kbs/**'
+      - 'attestation-service/**'
+      - 'deps/**'
+      - 'rvps/**'
       - '.github/workflows/kbs-rust.yml'
       - 'Cargo.toml'
   pull_request:
@@ -13,6 +16,9 @@ on:
       - 'kbs/**'
       - '.github/workflows/kbs-rust.yml'
       - 'Cargo.toml'
+      - 'attestation-service/**'
+      - 'deps/**'
+      - 'rvps/**'
 
 permissions:
   contents: read
