@@ -84,7 +84,7 @@ The following fields always exist.
 - `tdx.sgx_type`: The type of memory used in SGX. Can be one of (`Standard`, `Scalable`, `Scalable with Integrity`).
 - `tdx.tcb_date`: Date time value in RFC3339 format - Earliest date between tcbInfo and qeIdentity.
 - `tdx.tcb_eval_num`: Indication of the freshness of the reference values used.
-- `tdx.tcb_status`: TCB status which can be one of: `OK`, `Min`, `OutOfDate`, `OutOfDateConfigurationNeeded`, `InvalidSignature`, `Revoked`, `Unspecified`, `SoftwareHardeningNeeded`, `ConfigurationAndSoftwareHardeningNeeded`, `TdRelaunchAdvised`, `TdRelaunchAdvisedConfigurationNeeded`, `Max`
+- `tdx.tcb_status`: TCB Level Status. The Platform TCB Report provides an array of allowed values which must include one of the following `UpToDate` or `OutOfDate`. If `OutOfDate` is reported, then one or more of tcbInfo or qeIdentity is OutOfDate. The tcb_status may also include `ConfigurationNeeded`, `SWHardeningNeeded`, `TDRelaunchAdvised`, and/or `Revoked`.
 
 ## Intel SGX
 
