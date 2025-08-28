@@ -25,7 +25,7 @@ impl Verifier for SeVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let se_verifier = VERIFIER
             .get_or_try_init(|| async { SeVerifierImpl::new() })
             .await?;
@@ -36,7 +36,7 @@ impl Verifier for SeVerifier {
             warn!("IBM SE verifier does not support verify report data hash, will ignore the input `report_data`.");
         }
         let claims = se_verifier.evaluate(evidence)?;
-        Ok((claims, "cpu".to_string()))
+        Ok(vec![(claims, "cpu".to_string())])
     }
 
     async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
