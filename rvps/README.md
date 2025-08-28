@@ -136,7 +136,7 @@ RVPS_ADDR=127.0.0.1:50003
 rvps --address $RVPS_ADDR
 ```
 
-Create a test message in [sample format](./src/extractors/extractor_modules/sample/README.md)
+Create a test message in [sample format](./src/extractors/sample/README.md)
 ```bash
 cat << EOF > sample
 {

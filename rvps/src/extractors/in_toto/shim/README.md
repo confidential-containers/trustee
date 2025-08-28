@@ -4,7 +4,7 @@ This is a wrapper of in-toto-golang for rust
 
 ## Usage
 
-The function `verify()` is the rust wrapper of golang func `verifyGo` in [intoto.go](../../../../../cgo/intoto.go).
+The function `verify()` is the rust wrapper of golang func `verifyGo` in [intoto.go](../../../../cgo/intoto.go).
 
 The interface looks like the following
 
