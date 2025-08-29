@@ -716,7 +716,7 @@ version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b3d0900c6757c9674b05b0479236458297026e25fb505186dc8d7735091a21c"
 dependencies = [
- "bincode",
+ "bincode 1.3.3",
  "jsonwebkey",
  "memoffset",
  "openssl",
@@ -737,7 +737,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e5f1a3838d56871fc7a37c1ffcaa892777fbebb246f7ddec18c12e14b6d6aa9"
 dependencies = [
  "az-cvm-vtpm",
- "bincode",
+ "bincode 1.3.3",
  "clap",
  "openssl",
  "serde",
@@ -754,7 +754,7 @@ checksum = "04849677b3c0704d4593d89940cde0dc0caad2202bf9fb29352e153782b91ff8"
 dependencies = [
  "az-cvm-vtpm",
  "base64-url",
- "bincode",
+ "bincode 1.3.3",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -823,6 +823,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "bincode"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
+dependencies = [
+ "bincode_derive",
+ "serde",
+ "unty",
+]
+
+[[package]]
+name = "bincode_derive"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf95709a440f45e986983918d0e8a1f30a9b1df04918fc828670606804ac3c09"
+dependencies = [
+ "virtue",
 ]
 
 [[package]]
@@ -1500,7 +1520,7 @@ name = "csv-rs"
 version = "0.1.0"
 source = "git+https://github.com/panpingsheng/csv-rs.git?rev=7538198#753819821493b0299ec8db622e10802eb6243c07"
 dependencies = [
- "bincode",
+ "bincode 1.3.3",
  "bitfield 0.13.2",
  "bitflags 1.3.2",
  "codicon",
@@ -1526,7 +1546,7 @@ name = "csv-rs"
 version = "0.1.0"
 source = "git+https://github.com/openanolis/csv-rs?rev=b67a07e#b67a07e4a42030ecd1b35bb281f3e778aeefec81"
 dependencies = [
- "bincode",
+ "bincode 1.3.3",
  "bitfield 0.13.2",
  "bitflags 1.3.2",
  "codicon",
@@ -3266,7 +3286,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -5245,12 +5265,12 @@ dependencies = [
 
 [[package]]
 name = "sev"
-version = "6.2.1"
+version = "6.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1750ba11a6a6bba3c220da714caa0226aa34e417dce3975d2953062240717dea"
+checksum = "420c6c161b5d6883d8195584a802b114af6c884ed56d937d994e30f7f81d54ec"
 dependencies = [
  "base64 0.22.1",
- "bincode",
+ "bincode 2.0.1",
  "bitfield 0.19.1",
  "bitflags 2.9.1",
  "byteorder",
@@ -6213,6 +6233,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
+name = "unty"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
+
+[[package]]
 name = "ureq"
 version = "2.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6324,7 +6350,7 @@ dependencies = [
  "az-snp-vtpm",
  "az-tdx-vtpm",
  "base64 0.22.1",
- "bincode",
+ "bincode 1.3.3",
  "bitflags 2.9.1",
  "byteorder",
  "ccatoken",
@@ -6364,6 +6390,12 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "virtue"
+version = "0.0.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "051eb1abcf10076295e815102942cc58f9d5e3b4560e46e53c21e8ff6f3af7b1"
 
 [[package]]
 name = "walkdir"

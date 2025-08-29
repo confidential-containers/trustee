@@ -59,7 +59,7 @@ scroll = { version = "0.13.0", default-features = false, features = [
 serde.workspace = true
 serde_json.workspace = true
 serde_with = { workspace = true, optional = true }
-sev = { version = "6.2.1", default-features = false, features = [
+sev = { version = "6.3.1", default-features = false, features = [
     "openssl",
     "snp",
 ], optional = true }
