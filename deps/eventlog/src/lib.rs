@@ -28,6 +28,7 @@ pub struct CcEventLog {
 #[derive(Debug, Clone, Serialize)]
 pub struct EventlogEntry {
     pub details: EventDetails,
+    pub digest_matches_event: bool,
     pub digests: Vec<ElDigest>,
     pub event: String,
     pub index: u32,
@@ -286,12 +287,16 @@ fn parse_eventlog_entry(
     index += event_data_size;
 
     let event = STANDARD.encode(&event_data_raw);
+    let digest_matches_event = event_type
+        .get_parser()
+        .compare_digests(&event_data_raw, &digests)?;
     let event_result = event_type.get_parser().parse(event_data_raw)?;
 
     Ok((
         Some(EventlogEntry {
             index: target_measurement_registry,
             event_type,
+            digest_matches_event,
             digests,
             event,
             details: event_result,

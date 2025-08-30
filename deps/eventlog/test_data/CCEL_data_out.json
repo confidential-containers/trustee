@@ -4,6 +4,7 @@
       "details": {
         "string": ""
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -16,6 +17,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -28,6 +30,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -42,6 +45,7 @@
       "details": {
         "string": "td_payload"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -56,6 +60,7 @@
       "details": {
         "string": "td_payload_info root=/dev/vda1 console=hvc0 rw"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",

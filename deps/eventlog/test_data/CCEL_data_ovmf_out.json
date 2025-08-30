@@ -4,6 +4,7 @@
       "details": {
         "string": "TdxTable"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -18,6 +19,7 @@
       "details": {
         "string": "Fv(XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX)"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -36,6 +38,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -54,6 +57,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -72,6 +76,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -90,6 +95,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -108,6 +114,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -120,6 +127,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -134,6 +142,7 @@
       "details": {
         "string": "ACPI DATA"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -148,6 +157,7 @@
       "details": {
         "string": "ACPI DATA"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -162,6 +172,7 @@
       "details": {
         "string": "ACPI DATA"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -179,6 +190,7 @@
           "File(kernel)"
         ]
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -197,6 +209,7 @@
         "variable_data_length": 2,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -215,6 +228,7 @@
         "variable_data_length": 62,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -229,6 +243,7 @@
       "details": {
         "string": "Calling EFI Application from Boot Option"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -241,6 +256,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -255,6 +271,7 @@
       "details": {
         "string": "LOADED_IMAGE::LoadOptions"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -269,6 +286,7 @@
       "details": {
         "string": "Linux initrd"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SHA-384",
@@ -283,6 +301,7 @@
       "details": {
         "string": "Exit Boot Services Invocation"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",
@@ -297,6 +316,7 @@
       "details": {
         "string": "Exit Boot Services Returned with Success"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SHA-384",

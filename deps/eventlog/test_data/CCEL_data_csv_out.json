@@ -8,6 +8,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -26,6 +27,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -44,6 +46,7 @@
         "variable_data_length": 0,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -62,6 +65,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -80,6 +84,7 @@
         "variable_data_length": 0,
         "variable_name": "cbb219d7-3a3d-9645-a3bc-dad00e67656f"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -92,6 +97,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -110,6 +116,7 @@
         "variable_data_length": 18,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -128,6 +135,7 @@
         "variable_data_length": 132,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -146,6 +154,7 @@
         "variable_data_length": 124,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -164,6 +173,7 @@
         "variable_data_length": 62,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -182,6 +192,7 @@
         "variable_data_length": 102,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -200,6 +211,7 @@
         "variable_data_length": 168,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -218,6 +230,7 @@
         "variable_data_length": 201,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -236,6 +249,7 @@
         "variable_data_length": 174,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -254,6 +268,7 @@
         "variable_data_length": 207,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -272,6 +287,7 @@
         "variable_data_length": 88,
         "variable_name": "61dfe48b-ca93-d211-aa0d-00e098032b8c"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -286,6 +302,7 @@
       "details": {
         "string": "Calling EFI Application from Boot Option"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -298,6 +315,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -312,6 +330,7 @@
       "details": {
         "string": "Returning from EFI Application from Boot Option"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -326,6 +345,7 @@
       "details": {
         "string": "Calling EFI Application from Boot Option"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -338,6 +358,7 @@
     },
     {
       "details": {},
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -358,6 +379,7 @@
           "File(\\EFI\\anolis\\shimx64.efi)"
         ]
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -372,6 +394,7 @@
       "details": {
         "string": "MokList"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -386,6 +409,7 @@
       "details": {
         "string": "MokListX"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -404,6 +428,7 @@
         "variable_data_length": 18,
         "variable_name": "50ab5d60-46e0-0043-abb6-3dd810dd8b23"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -418,6 +443,7 @@
       "details": {
         "string": "MokListTrusted"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -434,6 +460,7 @@
           "File(\\EFI\\anolis\\grubx64.efi)"
         ]
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -448,6 +475,7 @@
       "details": {
         "string": "grub_cmd set pager=1"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -462,6 +490,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt1)/EFI/anolis/grubenv ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -476,6 +505,7 @@
       "details": {
         "string": "grub_cmd load_env -f (hd0,gpt1)/EFI/anolis/grubenv"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -490,6 +520,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -504,6 +535,7 @@
       "details": {
         "string": "grub_cmd set default=39b82bd543874491a0f3d7cacd27826c-5.10.134-anolis-rtmr-attestation"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -518,6 +550,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -532,6 +565,7 @@
       "details": {
         "string": "grub_cmd menuentry_id_option=--id"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -546,6 +580,7 @@
       "details": {
         "string": "grub_cmd export menuentry_id_option"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -560,6 +595,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -574,6 +610,7 @@
       "details": {
         "string": "grub_cmd terminal_output console"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -588,6 +625,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -602,6 +640,7 @@
       "details": {
         "string": "grub_cmd set timeout_style=menu"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -616,6 +655,7 @@
       "details": {
         "string": "grub_cmd set timeout=5"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -630,6 +670,7 @@
       "details": {
         "string": "grub_cmd set tuned_params="
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -644,6 +685,7 @@
       "details": {
         "string": "grub_cmd set tuned_initrd="
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -658,6 +700,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt1)/EFI/alinux/user.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -672,6 +715,7 @@
       "details": {
         "string": "grub_cmd insmod increment"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -686,6 +730,7 @@
       "details": {
         "string": "grub_cmd [ -n  -a 1 = 0 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -700,6 +745,7 @@
       "details": {
         "string": "grub_cmd insmod part_gpt"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -714,6 +760,7 @@
       "details": {
         "string": "grub_cmd insmod xfs"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -728,6 +775,7 @@
       "details": {
         "string": "grub_cmd set root=hd0,gpt2"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -742,6 +790,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -756,6 +805,7 @@
       "details": {
         "string": "grub_cmd search --no-floppy --fs-uuid --set=root --hint-bios=hd0,gpt2 --hint-efi=hd0,gpt2 --hint-baremetal=ahci0,gpt2 823bbd30-fed9-4e18-9343-4d58bfc5fd69"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -770,6 +820,7 @@
       "details": {
         "string": "grub_cmd insmod part_gpt"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -784,6 +835,7 @@
       "details": {
         "string": "grub_cmd insmod fat"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -798,6 +850,7 @@
       "details": {
         "string": "grub_cmd set boot=hd0,gpt1"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -812,6 +865,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -826,6 +880,7 @@
       "details": {
         "string": "grub_cmd search --no-floppy --fs-uuid --set=boot --hint-bios=hd0,gpt1 --hint-efi=hd0,gpt1 --hint-baremetal=ahci0,gpt1 1156-350B"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -840,6 +895,7 @@
       "details": {
         "string": "grub_cmd [ -z root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -854,6 +910,7 @@
       "details": {
         "string": "grub_cmd insmod blscfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -868,6 +925,7 @@
       "details": {
         "string": "grub_cmd blscfg"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -882,6 +940,7 @@
       "details": {
         "string": "grub_cmd [ 1 = 1 -o 0 = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -896,6 +955,7 @@
       "details": {
         "string": "grub_cmd set menu_hide_ok=1"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -910,6 +970,7 @@
       "details": {
         "string": "grub_cmd [ 1 = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -924,6 +985,7 @@
       "details": {
         "string": "grub_cmd set boot_indeterminate=0"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -938,6 +1000,7 @@
       "details": {
         "string": "grub_cmd set boot_success=0"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -952,6 +1015,7 @@
       "details": {
         "string": "grub_cmd save_env boot_success boot_indeterminate"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -966,6 +1030,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -980,6 +1045,7 @@
       "details": {
         "string": "grub_cmd [  ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -994,6 +1060,7 @@
       "details": {
         "string": "grub_cmd [  -a 1 = 1 ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1008,6 +1075,7 @@
       "details": {
         "string": "grub_cmd menuentry System setup --id uefi-firmware {\n\tfwsetup\n}"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1022,6 +1090,7 @@
       "details": {
         "string": "grub_cmd [ -f (hd0,gpt1)/EFI/anolis/custom.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1036,6 +1105,7 @@
       "details": {
         "string": "grub_cmd [ -z (hd0,gpt1)/EFI/anolis -a -f (hd0,gpt1)/EFI/alinux/custom.cfg ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1050,6 +1120,7 @@
       "details": {
         "string": "grub_cmd load_video"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1064,6 +1135,7 @@
       "details": {
         "string": "grub_cmd [ xy = xy ]"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1078,6 +1150,7 @@
       "details": {
         "string": "grub_cmd insmod all_video"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1092,6 +1165,7 @@
       "details": {
         "string": "grub_cmd set gfx_payload=keep"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1106,6 +1180,7 @@
       "details": {
         "string": "grub_cmd insmod gzio"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1120,6 +1195,7 @@
       "details": {
         "string": "grub_cmd linux (hd0,gpt2)/vmlinuz-5.10.134-anolis-rtmr-attestation root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1134,6 +1210,7 @@
       "details": {
         "string": "grub_linuxefi Kernel"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1148,6 +1225,7 @@
       "details": {
         "string": "grub_kernel_cmdline (hd0,gpt2)/vmlinuz-5.10.134-anolis-rtmr-attestation root=/dev/mapper/ao-root ro crashkernel=auto resume=/dev/mapper/ao-swap rd.lvm.lv=ao/root rd.lvm.lv=ao/swap rhgb earlyprintk console=ttyS0,115200"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1162,6 +1240,7 @@
       "details": {
         "string": "grub_cmd initrd (hd0,gpt2)/initramfs-5.10.134-anolis-rtmr-attestation.img"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1176,6 +1255,7 @@
       "details": {
         "string": "grub_linuxefi Initrd"
       },
+      "digest_matches_event": false,
       "digests": [
         {
           "alg": "SM3",
@@ -1190,6 +1270,7 @@
       "details": {
         "string": "Exit Boot Services Invocation"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",
@@ -1204,6 +1285,7 @@
       "details": {
         "string": "Exit Boot Services Returned with Success"
       },
+      "digest_matches_event": true,
       "digests": [
         {
           "alg": "SM3",

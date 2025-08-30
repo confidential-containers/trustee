@@ -97,6 +97,8 @@ fn format_guid(guid: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ccel::tcg_enum::TcgAlgorithm;
+    use crate::ElDigest;
     use rstest::rstest;
 
     #[rstest]
@@ -140,5 +142,19 @@ mod tests {
 
         assert!(actual_result.is_err());
         assert_eq!(actual_result.unwrap_err().to_string(), expected_result);
+    }
+
+    #[rstest]
+    #[case("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", vec![ElDigest{alg: TcgAlgorithm::Sha384, digest: hex::decode("c8e35a6c3e58e6ded418409bd560c57e6deca272f9a47c3542e3fa1c02ca40a6047179801dbe03cc3552111efe26b1e6").unwrap()}], true)]
+    fn test_digest_calculation(
+        #[case] test_data: &str,
+        #[case] digests: Vec<ElDigest>,
+        #[case] expected_result: bool,
+    ) {
+        let parser = EvEfiVariableParser;
+        let actual_result = parser.compare_digests(&STANDARD.decode(test_data).unwrap(), &digests);
+
+        assert!(actual_result.is_ok());
+        assert_eq!(actual_result.unwrap(), expected_result);
     }
 }
