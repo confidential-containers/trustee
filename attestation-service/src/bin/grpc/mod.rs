@@ -234,13 +234,13 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     async fn query_reference_value(
         &self,
-        _request: Request<ReferenceValueQueryRequest>,
+        request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let values = self
             .read()
             .await
             .attestation_service
-            .query_reference_values()
+            .query_reference_value(&request.into_inner().reference_value_id)
             .await
             .map_err(|e| Status::aborted(format!("Failed to query reference values: {e}")))?;
 
