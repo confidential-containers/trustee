@@ -1,5 +1,7 @@
 use std::process::exit;
 
+use shadow_rs::{BuildPattern, ShadowBuilder};
+
 fn real_main() -> Result<(), String> {
     #[cfg(feature = "grpc-bin")]
     tonic_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
@@ -15,5 +17,8 @@ fn main() -> shadow_rs::SdResult<()> {
         exit(1);
     }
 
-    shadow_rs::new()
+    let _ = ShadowBuilder::builder()
+        .build_pattern(BuildPattern::RealTime)
+        .build()?;
+    Ok(())
 }
