@@ -1,5 +1,7 @@
 use std::process::exit;
 
+use shadow_rs::{BuildPattern, ShadowBuilder};
+
 fn real_main() -> Result<(), String> {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     println!("cargo:rerun-if-changed={out_dir}");
@@ -43,5 +45,8 @@ fn main() -> shadow_rs::SdResult<()> {
         exit(1);
     }
 
-    shadow_rs::new()
+    let _ = ShadowBuilder::builder()
+        .build_pattern(BuildPattern::RealTime)
+        .build()?;
+    Ok(())
 }
