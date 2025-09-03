@@ -24,7 +24,7 @@ impl Verifier for Sample {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let tee_evidence = serde_json::from_value::<SampleTeeEvidence>(evidence)
             .context("Deserialize Quote failed.")?;
 
@@ -35,7 +35,7 @@ impl Verifier for Sample {
         debug!("TEE-Evidence<sample>: {:?}", tee_evidence);
 
         let claims = parse_tee_evidence(&tee_evidence)?;
-        Ok((claims, "cpu".to_string()))
+        Ok(vec![(claims, "cpu".to_string())])
     }
 }
 
@@ -79,6 +79,11 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
             "major": 1,
             "minor": 4,
         },
+
+        // An example of a claim representing the platform configuration.
+        // The sample platform is in a sense only for debugging.
+        // This claim will always be set to false and is only for testing.
+        "debug": false,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)

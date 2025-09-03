@@ -34,7 +34,7 @@ impl Verifier for Tdx {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
             .context("Deserialize TDX Evidence failed.")?;
 
@@ -42,7 +42,7 @@ impl Verifier for Tdx {
             .await
             .map_err(|e| anyhow!("TDX Verifier: {:?}", e))?;
 
-        Ok((claims, "cpu".to_string()))
+        Ok(vec![(claims, "cpu".to_string())])
     }
 }
 

@@ -37,7 +37,7 @@ impl Verifier for SgxVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<(TeeEvidenceParsedClaim, TeeClass)> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let tee_evidence =
             serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
 
@@ -47,7 +47,7 @@ impl Verifier for SgxVerifier {
             .await
             .map_err(|e| anyhow!("SGX Verifier: {:?}", e))?;
 
-        Ok((claims, "cpu".to_string()))
+        Ok(vec![(claims, "cpu".to_string())])
     }
 }
 
