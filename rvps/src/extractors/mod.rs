@@ -41,10 +41,7 @@ impl Extractors {
     pub fn new(config: Option<ExtractorsConfig>) -> Result<Self> {
         let mut extractor_map: HashMap<String, ExtractorInstance> = HashMap::new();
 
-        extractor_map.insert(
-            "sample".to_string(),
-            Box::new(sample::SampleExtractor::default()),
-        );
+        extractor_map.insert("sample".to_string(), Box::new(sample::SampleExtractor));
 
         let swid_config = config.clone().map(|c| c.swid_extractor).unwrap_or(None);
         if config.is_none() {
