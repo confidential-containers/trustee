@@ -10,36 +10,27 @@ struct SgxQlQvResultWrapper(pub sgx_ql_qv_result_t);
 impl SgxQlQvResultWrapper {
     pub fn as_str_arr(&self) -> Value {
         let mapping = match self.0 {
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => vec!["UpToDate"],
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED => {
-                vec!["UpToDate", "ConfigurationNeeded"]
-            }
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE => vec!["OutOfDate"],
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK => "OK",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_MIN => "Min",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE => "OutOfDate",
             sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED => {
-                vec!["OutOfDate", "ConfigurationNeeded"]
+                "OutOfDateConfigurationNeeded"
             }
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_REVOKED => vec!["Revoked"],
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED => {
-                vec!["UpToDate", "SWHardeningNeeded"]
-            }
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_INVALID_SIGNATURE => "InvalidSignature",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_REVOKED => "Revoked",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_UNSPECIFIED => "Unspecified",
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED => "SoftwareHardeningNeeded",
             sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED => {
-                vec!["UpToDate", "SWHardeningNeeded", "ConfigurationNeeded"]
+                "ConfigurationAndSoftwareHardeningNeeded"
             }
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED => vec!["TDRelaunchAdvised"],
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED => "TdRelaunchAdvised",
             sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
-                vec!["TDRelaunchAdvised", "ConfigurationNeeded"]
+                "TdRelaunchAdvisedConfigurationNeeded"
             }
-            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_MAX
-            | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_INVALID_SIGNATURE
-            | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_UNSPECIFIED => {
-                vec!["No Platform TCB Report Generated"]
-            }
+            sgx_ql_qv_result_t::SGX_QL_QV_RESULT_MAX => "Max",
         };
 
-        mapping
-            .into_iter()
-            .map(|s| Value::String(s.to_string()))
-            .collect()
+        Value::String(mapping.to_string())
     }
 }
 
@@ -188,7 +179,7 @@ mod tests {
           "sgx_type": "Scalable",
           "tcb_date": "2024-03-13T00:00:00Z",
           "tcb_eval_num": 1,
-          "tcb_status": ["UpToDate"]
+          "tcb_status": "OK"
         });
 
         assert_json_eq!(expected, claims);
