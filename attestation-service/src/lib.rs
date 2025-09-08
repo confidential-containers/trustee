@@ -8,7 +8,7 @@ pub mod policy_engine;
 pub mod rvps;
 pub mod token;
 
-use crate::token::AttestationTokenBroker;
+use crate::{rvps::RvpsClient, token::AttestationTokenBroker};
 
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
@@ -16,8 +16,8 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-use log::{debug, info};
-use rvps::{RvpsApi, RvpsError};
+use log::info;
+use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -122,7 +122,7 @@ pub struct VerificationRequest {
 
 pub struct AttestationService {
     _config: Config,
-    rvps: Box<dyn RvpsApi + Send + Sync>,
+    rvps_client: RvpsClient,
     token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
 }
 
@@ -135,7 +135,7 @@ impl AttestationService {
                 .map_err(ServiceError::CreateDir)?;
         }
 
-        let rvps = rvps::initialize_rvps_client(&config.rvps_config)
+        let rvps_client = rvps::initialize_rvps_client(&config.rvps_config)
             .await
             .map_err(ServiceError::Rvps)?;
 
@@ -143,7 +143,7 @@ impl AttestationService {
 
         Ok(Self {
             _config: config,
-            rvps,
+            rvps_client,
             token_broker,
         })
     }
@@ -227,32 +227,29 @@ impl AttestationService {
             });
         }
 
-        let reference_data_map = self
-            .rvps
-            .get_digests()
-            .await
-            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
-        debug!("reference_data_map: {:#?}", reference_data_map);
-
         let attestation_results_token = self
             .token_broker
-            .issue(tee_claims, policy_ids, reference_data_map)
+            .issue(tee_claims, policy_ids, Some(self.rvps_client.clone()))
             .await?;
         Ok(attestation_results_token)
     }
 
     /// Register a new reference value
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
-        self.rvps
+        self.rvps_client
+            .lock()
+            .await
             .verify_and_extract(message)
             .await
             .context("register reference value")
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
-        self.rvps
-            .get_digests()
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value> {
+        self.rvps_client
+            .lock()
+            .await
+            .query_reference_value(reference_value_id)
             .await
             .context("query reference values")
     }

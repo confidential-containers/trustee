@@ -71,9 +71,9 @@ pub enum KbsConfigType {
 }
 
 /// The KbsConfigType enum can be turned into TestParameters
-impl Into<TestParameters> for KbsConfigType {
-    fn into(self) -> TestParameters {
-        match self {
+impl From<KbsConfigType> for TestParameters {
+    fn from(val: KbsConfigType) -> Self {
+        match val {
             KbsConfigType::EarTokenBuiltInRvps => TestParameters {
                 attestation_token_type: "Ear".to_string(),
                 rvps_type: RvpsType::Builtin,
