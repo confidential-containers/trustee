@@ -62,7 +62,7 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           target/
-        key: rust-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+        key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
 
     - name: Build bins
       working-directory: kbs/test
