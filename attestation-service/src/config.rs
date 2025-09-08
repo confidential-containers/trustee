@@ -93,6 +93,7 @@ mod tests {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -105,6 +106,7 @@ mod tests {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -121,6 +123,7 @@ mod tests {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,
@@ -136,6 +139,7 @@ mod tests {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,
