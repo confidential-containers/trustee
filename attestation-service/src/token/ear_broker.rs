@@ -255,9 +255,15 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
                 let claim_value = v.as_i8().context("Policy claim value not i8")?;
                 debug!("Policy claim: {}: {}", k, claim_value);
 
+                // The definition of Trustworthiness Claims in AR4SI
+                // (https://www.ietf.org/archive/id/draft-ietf-rats-ar4si-09.html#name-supportable-trustworthiness-cl)
+                // uses hyphens while the policy engine uses underscores.
+                // so we need to convert underscores to hyphens here.
+                let k = k.replace('_', "-");
+
                 appraisal
                     .trust_vector
-                    .mut_by_name(k)
+                    .mut_by_name(&k)
                     .unwrap()
                     .set(claim_value);
             }
