@@ -314,6 +314,7 @@ mod tests {
                             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config{
                                 file_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
                             }),
+                            extractors: None,
                         }),
                         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration{
                             duration_min: 5,
