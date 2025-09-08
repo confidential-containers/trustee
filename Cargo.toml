@@ -41,7 +41,7 @@ kbs-types = { "git" = "https://github.com/virtee/kbs-types.git", rev = "e3cc706"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "591d0bb", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 lazy_static = "1.4.0"
-log = "0.4.17"
+log = "0.4.28"
 openssl = "0.10.73"
 p256 = "0.13.2"
 prost = "0.13"
