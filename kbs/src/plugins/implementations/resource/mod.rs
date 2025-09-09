@@ -26,6 +26,7 @@ impl ClientPlugin for ResourceStorage {
         _query: &str,
         path: &str,
         method: &Method,
+        _init_data: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let resource_desc = path
             .strip_prefix('/')
