@@ -194,6 +194,7 @@ pub(crate) async fn api(
             .map_err(From::from),
         #[cfg(feature = "as")]
         "attestation-policy" if request.method() == Method::POST => {
+            core.admin_auth.validate_auth(&request)?;
             core.attestation_service.set_policy(&body).await?;
 
             Ok(HttpResponse::Ok().finish())
