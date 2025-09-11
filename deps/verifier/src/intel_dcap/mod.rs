@@ -101,7 +101,6 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE_CONFIG_NEEDED
-        | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_REVOKED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_SW_HARDENING_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED
