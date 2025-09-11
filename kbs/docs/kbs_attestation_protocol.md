@@ -74,7 +74,7 @@ The payload format of the request is as follows:
   "version": "0.1.1",
   /*
    * Type of HW-TEE platforms where KBC is located,
-   * e.g. "intel-tdx", "amd-sev-snp", etc.
+   * e.g. "tdx", "sev", "snp", etc.
    */
   "tee": "$tee",
   /* Reserved fields to support some special requests sent by HW-TEE. */
