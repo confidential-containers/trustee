@@ -206,6 +206,7 @@ impl TestHarness {
             admin: AdminConfig {
                 auth_public_key: None,
                 insecure_api: true,
+                admin_api_read_only: false,
             },
             policy_engine: PolicyEngineConfig {
                 policy_path: kbs_policy_path,

@@ -2,7 +2,10 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use actix_web::{http::header::Header, HttpRequest};
+use actix_web::{
+    http::{header::Header, Method},
+    HttpRequest,
+};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use config::AdminConfig;
 use jwt_simple::{
@@ -19,12 +22,21 @@ use log::warn;
 #[derive(Default, Clone)]
 pub struct Admin {
     public_key: Option<Ed25519PublicKey>,
+    admin_api_read_only: bool,
 }
 
 impl TryFrom<AdminConfig> for Admin {
     type Error = Error;
 
     fn try_from(value: AdminConfig) -> Result<Self> {
+        if value.admin_api_read_only {
+            warn!("admin API is disabled");
+            return Ok(Self {
+                public_key: None,
+                admin_api_read_only: true,
+            });
+        }
+
         if value.insecure_api {
             warn!("insecure admin APIs are enabled");
             return Ok(Admin::default());
@@ -35,12 +47,19 @@ impl TryFrom<AdminConfig> for Admin {
         let key = Ed25519PublicKey::from_pem(&user_public_key_pem)?;
         Ok(Self {
             public_key: Some(key),
+            admin_api_read_only: false,
         })
     }
 }
 
 impl Admin {
     pub(crate) fn validate_auth(&self, request: &HttpRequest) -> Result<()> {
+        if self.admin_api_read_only
+            && (request.method() != Method::GET || request.method() != Method::HEAD)
+        {
+            return Err(Error::AdminApiReadOnly);
+        }
+
         let Some(public_key) = &self.public_key else {
             return Ok(());
         };

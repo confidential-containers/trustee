@@ -19,6 +19,9 @@ pub enum Error {
     #[error("`auth_public_key` is not set in the config file")]
     NoPublicKeyGiven,
 
+    #[error("`admin_api_read_only` limits the admin API to read-only operations (GET/HEAD)")]
+    AdminApiReadOnly,
+
     #[error("Failed to parse admin public key")]
     ParsePublicKey(#[from] jwt_simple::Error),
 
