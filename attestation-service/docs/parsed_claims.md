@@ -85,7 +85,15 @@ The following fields always exist.
 - `tdx.sgx_type`: The type of memory used in SGX. Can be one of (`Standard`, `Scalable`, `Scalable with Integrity`).
 - `tdx.tcb_date`: Date time value in RFC3339 format - Earliest date between tcbInfo and qeIdentity.
 - `tdx.tcb_eval_num`: Indication of the freshness of the reference values used.
-- `tdx.tcb_status`: TCB Level Status. The Platform TCB Report provides an array of allowed values which must include one of the following `UpToDate` or `OutOfDate`. If `OutOfDate` is reported, then one or more of tcbInfo or qeIdentity is OutOfDate. The tcb_status may also include `ConfigurationNeeded`, `SWHardeningNeeded`, `TDRelaunchAdvised`, and/or `Revoked`.
+- `tdx.tcb_status`: TCB Level Status can have any one of the following values:
+  - `UpToDate` - The attesting platform is patched with the latest firmware and software and no known security advisories apply.
+  - `SWHardeningNeeded` - The platform firmware and software are at the latest security patching level but there are vulnerabilities that can only be mitigated by software changes to the enclave or TD.
+  - `ConfigurationNeeded` - The platform firmware and software are at the latest security patching level but there are platform hardware configurations required to mitigate vulnerabilities.
+  - `ConfigurationAndSWHardeningNeeded` - This status is combination of `SWHardeningNeeded` and `ConfigurationNeeded`.
+  - `OutOfDate` - The attesting platform software and/or firmware is not patched in accordance with the latest TCB Recovery (TCB-R).
+  - `OutOfDateConfigurationNeeded` - The attesting platform is not patched in accordance with the latest TCB-R. Hardware configuration is needed.
+  - `TDRelaunchAdvised` - The platform firmware and software are at the latest security patching level but the TD was launched prior to the application of new TDX TCB components using a TD Preserving update. Re-launching the TD will change the attestation result.
+  - `TDRelaunchAdvisedConfigurationNeeded` - The platform firmware and software are at the latest security patching level but there are platform hardware configurations that may expose the TD to vulnerabilities. Re-launching the TD will change the attestation result.
 
 ## Intel SGX
 

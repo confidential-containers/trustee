@@ -115,7 +115,7 @@ hardware := 2 if {
 	input.tdx.quote.body.mr_td in data.reference.mr_td
 
 	# Check TCB status
-	input.tdx.tcb_status == "OK"
+	input.tdx.tcb_status == "UpToDate"
 
 	# Check collateral expiration status
 	input.tdx.collateral_expiration_status == "0"
