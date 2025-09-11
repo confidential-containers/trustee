@@ -97,7 +97,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 
 | Property       | Type                    | Description                                          | Required | Default |
 |----------------|-------------------------|------------------------------------------------------|----------|---------|
-| `type`         | String                  | Type of token to issue (`Ear` or `Simple`)               | No       | `Ear`   |
+| `type`         | String                  | Type of token to issue (`Ear` or `Simple`(will be deprecated in `v0.15.0`))               | No       | `Ear`   |
 
 When `type` field is set to `Ear`, the following extra properties can be set:
 | Property       | Type                    | Description                                          | Required | Default |

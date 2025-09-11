@@ -6,7 +6,7 @@ Different token brokers will use the policy engine to evaluate different claims.
 The simple token broker only evaluates the claim `allowed` while the EAR broker
 implements a set of claims described below.
 
-## Simple
+## Simple (Will be deprecated in v0.15.0)
 
 The simple token broker only evaluates one claim, which is `allowed`.
 Policies that are used with the simple token broker should evaulate
