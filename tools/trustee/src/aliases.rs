@@ -1,5 +1,6 @@
 use std::env;
 use std::path::Path;
+use anyhow::Result;
 
 // Aliases module for trustee CLI
 //
