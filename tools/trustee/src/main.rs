@@ -15,20 +15,21 @@ async fn main() {
 
     #[cfg(feature = "aliases")]
     match aliases::match_alias() {
-        Ok(_) => return,
+        Ok(_) => return, // the alias ran, nothing more to do
         Err(e) => {
             debug!("matching alias failed: {}", e)
+            // keep going
         }
     }
 
     #[cfg(feature = "plugins")]
-    match std::env::args().nth(1) {
-        Some(command) => {
-            if !<cli::Commands as clap::Subcommand>::has_subcommand(&command) {
-                plugins::exec();
-            }
+    // when there is no subcommand matching the CLI argument (unrecognized subcommand),
+    // run the plugins
+    if let Some(command) = std::env::args().nth(1) {
+        if !<cli::Commands as clap::Subcommand>::has_subcommand(&command) {
+            plugins::exec();
+            // if no plugin matches, exec() returns and the flow continues below
         }
-        None => {}
     }
 
     if let Err(e) = cli::cli_default().await {
