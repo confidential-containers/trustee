@@ -377,9 +377,89 @@ test-vault-ssl: vault-kbs start-vault-ssl
 	cd $(PROJECT_DIR) && \
 	cargo test --features vault vault_ssl -- --ignored
 
+# TPM variables  
+TPM_CONFIG_FILE := $(WORK_DIR)/tpm-config.json
+TPM_EVIDENCE_FILE := $(WORK_DIR)/tpm-evidence.json
+
+# TPM Policy for testing
+define TPM_POLICY_REGO
+package policy
+
+default allow = false
+
+allow {
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["tpm"]
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["tpm"]["pcr00"]
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["tpm"]["pcr08"]
+}
+endef
+export TPM_POLICY_REGO
+
+# TPM dependencies installation
+.PHONY: install-swtpm-dependencies
+install-swtpm-dependencies:
+	sudo apt-get update && \
+	sudo apt-get install -y \
+		swtpm \
+		swtpm-tools \
+		tpm2-tools
+
+# Setup swtpm
+.PHONY: setup-swtpm
+setup-swtpm:
+	@printf "${BOLD}Setting up swtpm${SGR0}\n"
+	./setup-swtpm.sh setup
+
+
+
+# Build KBS
+tpm-kbs: 
+	cd $(PROJECT_DIR) && \
+	make background-check-kbs  && \
+	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/tpm-kbs
+
+# TPM verifier e2e test
+.PHONY: test-tpm-verifier
+test-tpm-verifier: client $(ATTESTATION_TOKEN) tpm-kbs
+	@printf "${BOLD}starting TPM verifier e2e test${SGR0}\n"
+	{ \
+		env TPM_CONFIG_FILE="$(abspath $(TPM_CONFIG_FILE))" \
+		"$(CURDIR)/tpm-kbs" --config-file "$(KBS_CONFIG_PATH)/kbs.toml" \
+		& echo $$! > tpm-kbs.PID; \
+	} && \
+	sleep 3 && \
+	echo "$$TPM_POLICY_REGO" > $(WORK_DIR)/tpm-policy.rego && \
+	./client \
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		config \
+		--auth-private-key "$(KBS_KEY)" \
+		set-resource-policy \
+		--policy-file $(WORK_DIR)/tpm-policy.rego && \
+	./client \
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		get-resource \
+		--attestation-token "$(ATTESTATION_TOKEN)" \
+		--tee-key-file "$(TEE_KEY)" \
+		--path "$(REPOSITORY_SECRET)" \
+		| base64 -d > "$(ROUNDTRIP_FILE)" && \
+	diff "$(ROUNDTRIP_FILE)" "$(SECRET_FILE)" && \
+	kill $$(cat tpm-kbs.PID) && rm tpm-kbs.PID
+	@printf "${BOLD}TPM verifier e2e test passed${SGR0}\n"
+
+# Cleanup TPM-related files
+.PHONY: clean-tpm
+clean-tpm:
+	rm -rf \		
+		$(WORK_DIR)/ak.* \
+		tpm-kbs \
+		tpm-kbs.PID
+
+	./setup-swtpm.sh setup
 
 .PHONY: clean
-clean:
+clean: clean-tpm
 	rm -rf \
 		kbs \
 		client \

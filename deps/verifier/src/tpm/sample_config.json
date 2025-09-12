@@ -1,0 +1,6 @@
+{
+  "tpm_verifier": {
+    "trusted_ak_keys_dir": "/etc/tpm/trusted_ak_keys",
+    "max_trusted_ak_keys": 100
+  }
+}
