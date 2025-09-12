@@ -35,9 +35,11 @@ fn get_config(
     allow_all: bool,
     trustee_home_dir: &Path,
 ) -> Result<KbsConfig> {
-    let mut config = config_file
-        .map(|config_file| KbsConfig::try_from(config_file.as_path()).unwrap())
-        .unwrap_or_default();
+    let mut config = if let Some(path) = config_file {
+        KbsConfig::try_from(path.as_path())?
+    } else {
+        KbsConfig::default()
+    };
 
     config.policy_engine.policy_path =
         replace_base_dir(config.policy_engine.policy_path.as_path(), trustee_home_dir);
