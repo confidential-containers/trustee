@@ -25,12 +25,12 @@ fn get_alias_basename() -> Option<String> {
 
 /// match_alias selects and runs a cli according to the name the program is being called with.
 pub fn match_alias() -> Result<(), String> {
-    let alias = get_alias_basename().unwrap_or_default();
+    let alias = get_alias_basename().ok_or("couldn't get basename for alias matching")?;
 
     match alias.as_str() {
         "true" => {}
         // add your new aliases here
-        alias => return Err(format!("not a known alias: {alias}")),
+        unknown_alias => return Err(format!("not a known alias: {unknown_alias}")),
     }
 
     Ok(())
