@@ -646,7 +646,7 @@ dependencies = [
  "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f)",
  "log",
  "num-traits",
- "nvml-wrapper",
+ "nvml-wrapper 0.11.0 (git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331)",
  "occlum_dcap",
  "picky-asn1 0.10.1",
  "picky-asn1-der 0.5.2",
@@ -3665,16 +3665,41 @@ dependencies = [
 [[package]]
 name = "nvml-wrapper"
 version = "0.11.0"
-source = "git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331#7e0752f331d37a62a46ef2fb6329a33fae36dd8d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d5c6c0ef9702176a570f06ad94f3198bc29c524c8b498f1b9346e1b1bdcbb3a"
 dependencies = [
  "bitflags 2.9.1",
  "libloading",
- "nvml-wrapper-sys",
+ "nvml-wrapper-sys 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_derive",
  "static_assertions",
  "thiserror 1.0.69",
  "wrapcenum-derive",
+]
+
+[[package]]
+name = "nvml-wrapper"
+version = "0.11.0"
+source = "git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331#7e0752f331d37a62a46ef2fb6329a33fae36dd8d"
+dependencies = [
+ "bitflags 2.9.1",
+ "libloading",
+ "nvml-wrapper-sys 0.9.0 (git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331)",
+ "serde",
+ "serde_derive",
+ "static_assertions",
+ "thiserror 1.0.69",
+ "wrapcenum-derive",
+]
+
+[[package]]
+name = "nvml-wrapper-sys"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd23dbe2eb8d8335d2bce0299e0a07d6a63c089243d626ca75b770a962ff49e6"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
@@ -6462,6 +6487,7 @@ dependencies = [
  "codicon",
  "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b67a07e)",
  "ear",
+ "env_logger 0.10.2",
  "eventlog",
  "hex",
  "intel-tee-quote-verification-rs",
@@ -6469,7 +6495,9 @@ dependencies = [
  "jsonwebtoken",
  "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=e3cc706)",
  "log",
+ "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl",
+ "p384",
  "reqwest 0.12.22",
  "rstest",
  "s390_pv",
