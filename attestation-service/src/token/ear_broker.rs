@@ -7,10 +7,7 @@ use anyhow::*;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ear::{
-    Algorithm, Appraisal, Ear, ExtensionKind, ExtensionValue, Extensions, RawValue, TrustVector,
-    VerifierID,
-};
+use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, TrustVector, VerifierID};
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
 use log::{debug, warn};
@@ -309,8 +306,8 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
             .ok_or(anyhow!("Token expiration overflow."))?;
 
         let mut extensions = Extensions::new();
-        extensions.register("exp", 4, ExtensionKind::Integer)?;
-        extensions.set_by_name("exp", ExtensionValue::Integer(exp.unix_timestamp()))?;
+        extensions.register("exp", 4, RawValueKind::Integer)?;
+        extensions.set_by_name("exp", RawValue::Integer(exp.unix_timestamp()))?;
 
         let ear = Ear {
             profile: self.config.profile_name.clone(),
@@ -447,7 +444,7 @@ pub fn transform_claims(
         if let Some(init_data) = claims_map.remove("init_data") {
             output_claims.insert(
                 "init_data".to_string(),
-                RawValue::Text(init_data.as_str().unwrap().to_string()),
+                RawValue::String(init_data.as_str().unwrap().to_string()),
             );
 
             let transformed_claims: RawValue =
@@ -458,7 +455,7 @@ pub fn transform_claims(
         if let Some(report_data) = claims_map.remove("report_data") {
             output_claims.insert(
                 "report_data".to_string(),
-                RawValue::Text(report_data.as_str().unwrap().to_string()),
+                RawValue::String(report_data.as_str().unwrap().to_string()),
             );
 
             let transformed_claims: RawValue =
