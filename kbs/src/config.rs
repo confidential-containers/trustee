@@ -320,6 +320,7 @@ mod tests {
                                 file_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
                             }),
                             extractors: None,
+                            read_only: false,
                         }),
                         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration{
                             duration_min: 5,
