@@ -146,6 +146,28 @@ Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kern
 - `se.attestation_phkh`: SE attestation public host key hash
 - `se.user_data`: Optional custom attestation owner data, could be key:value pairs collected on guest.
 
+## NVIDIA
+
+Hopper GPU H100
+
+- `arch`: Device architecture. Only `Hopper` is supported
+- `measurements`: List of measurements and its respective index
+- `uuid`: Device UUID
+- `config.board_id`: Board ID
+- `config.chip_sku`: Chip SKU (Stock Keeping Unit)
+- `config.chip_sku_mod`: Chip SKU mod
+- `config.cpr_info`: Compute Protected Region info
+- `config.driver_version`: NVIDIA driver version
+- `config.fwid`: Firmware ID. Found in the report and the signing certificate
+- `config.gpu_info`: GPU information
+- `config.measurement_count`: One measurement_count for each entry in `measurements`. Each measurement_count indicates how many times the respective measurement was extended to get to its current value
+- `config.nvdec0_status`: NVIDIA decoder status
+- `config.project`: Project
+- `config.project_sku`: Project SKU
+- `config.project_sku_mod`: Project SKU mod
+- `config.protected_pcie_status`: Protected PCIe status
+- `config.vbios_version`: Device VBIOS version
+
 ## AMD SEV-SNP
 
 - `snp.measurement` Launch Digest covering initial guest memory
