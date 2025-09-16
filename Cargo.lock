@@ -90,7 +90,7 @@ dependencies = [
  "mime",
  "percent-encoding",
  "pin-project-lite",
- "rand 0.9.1",
+ "rand 0.9.2",
  "sha1",
  "smallvec",
  "tokio",
@@ -554,17 +554,18 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "anyhow",
  "async-trait",
  "attester",
  "base64 0.22.1",
+ "byteorder",
  "config",
  "const_format",
  "crypto",
  "hex",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f)",
  "log",
  "serde",
  "serde_json",
@@ -590,7 +591,7 @@ dependencies = [
  "cfg-if",
  "clap",
  "ear",
- "env_logger",
+ "env_logger 0.10.2",
  "futures",
  "hex",
  "jsonwebtoken",
@@ -626,7 +627,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -636,16 +637,22 @@ dependencies = [
  "cfg-if",
  "codicon",
  "crypto",
- "csv-rs 0.1.0 (git+https://github.com/panpingsheng/csv-rs.git?rev=7538198)",
+ "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs.git?rev=9e92ac7)",
+ "env_logger 0.11.8",
  "hex",
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f)",
  "log",
+ "num-traits",
+ "nvml-wrapper",
  "occlum_dcap",
+ "picky-asn1 0.10.1",
+ "picky-asn1-der 0.5.2",
+ "picky-asn1-x509 0.14.6",
  "s390_pv",
- "scroll 0.12.0",
+ "scroll",
  "serde",
  "serde_json",
  "serde_with",
@@ -655,6 +662,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.12",
  "tokio",
+ "tss-esapi",
 ]
 
 [[package]]
@@ -1443,7 +1451,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "aes-gcm",
  "aes-kw",
@@ -1451,10 +1459,10 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f)",
  "p256",
  "rand 0.8.5",
- "rand 0.9.1",
+ "rand 0.9.2",
  "rsa",
  "serde",
  "serde_json",
@@ -1512,7 +1520,7 @@ dependencies = [
 [[package]]
 name = "csv-rs"
 version = "0.1.0"
-source = "git+https://github.com/panpingsheng/csv-rs.git?rev=7538198#753819821493b0299ec8db622e10802eb6243c07"
+source = "git+https://github.com/openanolis/csv-rs.git?rev=9e92ac7#9e92ac7e73379c1206ce90c98e91b1b5391eb7f8"
 dependencies = [
  "bincode 1.3.3",
  "bitfield 0.13.2",
@@ -1979,6 +1987,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1989,6 +2007,19 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.11.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c863f0904021b108aa8b2f55046443e6b1ebde8fd4a15c399893aae4fa069f"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "env_filter",
+ "jiff",
+ "log",
 ]
 
 [[package]]
@@ -2018,7 +2049,7 @@ dependencies = [
  "hex",
  "log",
  "rstest",
- "scroll 0.13.0",
+ "scroll",
  "serde",
  "serde_json",
  "serde_with",
@@ -2855,7 +2886,7 @@ dependencies = [
  "anyhow",
  "attestation-service",
  "base64 0.22.1",
- "env_logger",
+ "env_logger 0.10.2",
  "kbs",
  "kbs-client",
  "log",
@@ -2956,6 +2987,30 @@ name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
+
+[[package]]
+name = "jiff"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be1f93b8b1eb69c77f24bbb0afdf66f54b632ee39af40ca21c4365a1d7347e49"
+dependencies = [
+ "jiff-static",
+ "log",
+ "portable-atomic",
+ "portable-atomic-util",
+ "serde",
+]
+
+[[package]]
+name = "jiff-static"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03343451ff899767262ec32146f6d559dd759fdadf42ff0e227c7c48f72594b4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
 
 [[package]]
 name = "jobserver"
@@ -3098,7 +3153,7 @@ dependencies = [
  "config",
  "cryptoki",
  "derivative",
- "env_logger",
+ "env_logger 0.10.2",
  "hex",
  "josekit",
  "jsonwebtoken",
@@ -3145,7 +3200,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "clap",
- "env_logger",
+ "env_logger 0.10.2",
  "jwt-simple",
  "kbs_protocol",
  "log",
@@ -3153,6 +3208,20 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "kbs-types"
+version = "0.12.0"
+source = "git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f#900aa8fd2fceb9dc07aa835091bf12076a899ec1"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sm3",
+ "strum",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -3169,20 +3238,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "kbs-types"
-version = "0.12.0"
-source = "git+https://github.com/virtee/kbs-types.git?rev=f4055a1#f4055a17979c509d86924c9cb459221e2d45ff12"
-dependencies = [
- "base64 0.22.1",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3191,7 +3249,7 @@ dependencies = [
  "canon-json",
  "crypto",
  "jwt-simple",
- "kbs-types 0.12.0 (git+https://github.com/virtee/kbs-types.git?rev=f4055a1)",
+ "kbs-types 0.12.0 (git+https://github.com/confidential-containers/kbs-types.git?rev=900aa8f)",
  "log",
  "reqwest 0.12.22",
  "resource_uri",
@@ -3207,7 +3265,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3219,7 +3277,8 @@ dependencies = [
  "log",
  "p12",
  "prost",
- "rand 0.9.1",
+ "protos",
+ "rand 0.9.2",
  "reqwest 0.12.22",
  "resource_uri",
  "ring",
@@ -3601,6 +3660,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "nvml-wrapper"
+version = "0.11.0"
+source = "git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331#7e0752f331d37a62a46ef2fb6329a33fae36dd8d"
+dependencies = [
+ "bitflags 2.9.1",
+ "libloading",
+ "nvml-wrapper-sys",
+ "serde",
+ "serde_derive",
+ "static_assertions",
+ "thiserror 1.0.69",
+ "wrapcenum-derive",
+]
+
+[[package]]
+name = "nvml-wrapper-sys"
+version = "0.9.0"
+source = "git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331#7e0752f331d37a62a46ef2fb6329a33fae36dd8d"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
@@ -3994,12 +4076,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "picky-asn1"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ff038f9360b934342fb3c0a1d6e82c438a2624b51c3c6e3e6d7cf252b6f3ee3"
+dependencies = [
+ "oid",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "picky-asn1-der"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5df7873a9e36d42dadb393bea5e211fe83d793c172afad5fb4ec846ec582793f"
 dependencies = [
- "picky-asn1",
+ "picky-asn1 0.8.0",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
+name = "picky-asn1-der"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dccb53c26f70c082e008818f524bd45d057069517b047bd0c0ee062d6d7d7f2"
+dependencies = [
+ "picky-asn1 0.10.1",
  "serde",
  "serde_bytes",
 ]
@@ -4012,8 +4116,21 @@ checksum = "2c5f20f71a68499ff32310f418a6fad8816eac1a2859ed3f0c5c741389dd6208"
 dependencies = [
  "base64 0.21.7",
  "oid",
- "picky-asn1",
- "picky-asn1-der",
+ "picky-asn1 0.8.0",
+ "picky-asn1-der 0.4.1",
+ "serde",
+]
+
+[[package]]
+name = "picky-asn1-x509"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d493f73cf052073ca1fe38666f74c2396987aa6ea660e77dd624cc6c8f60389e"
+dependencies = [
+ "base64 0.22.1",
+ "oid",
+ "picky-asn1 0.10.1",
+ "picky-asn1-der 0.5.2",
  "serde",
 ]
 
@@ -4093,6 +4210,15 @@ name = "portable-atomic"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f84267b20a16ea918e43c6a88433c2d54fa145c92a811b5b047ccbe153674483"
+
+[[package]]
+name = "portable-atomic-util"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "potential_utf"
@@ -4234,6 +4360,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "protos"
+version = "0.1.0"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
+dependencies = [
+ "prost",
+ "tonic",
+]
+
+[[package]]
 name = "psl-types"
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4278,7 +4413,7 @@ dependencies = [
  "bytes",
  "getrandom 0.3.3",
  "lru-slab",
- "rand 0.9.1",
+ "rand 0.9.2",
  "ring",
  "rustc-hash 2.1.1",
  "rustls",
@@ -4332,9 +4467,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fbfd9d094a40bf3ae768db9361049ace4c0e04a4fd6b359518bd7b73a73dd97"
+checksum = "6db2770f06117d490610c7488547d543617b21bfa07796d7a12f6f1bd53850d1"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.3",
@@ -4468,7 +4603,7 @@ dependencies = [
  "chrono",
  "clap",
  "config",
- "env_logger",
+ "env_logger 0.10.2",
  "log",
  "path-clean",
  "prost",
@@ -4638,7 +4773,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=591d0bb#591d0bb45cd7a2c66f3778428940c40f7eec3b7d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=c35306f#c35306fef5a2e066355d7e9231f97d6fc09f7cd9"
 dependencies = [
  "anyhow",
  "serde",
@@ -5012,31 +5147,11 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scroll"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ab8598aa408498679922eff7fa985c25d58a90771bd6be794434c5277eab1a6"
-dependencies = [
- "scroll_derive 0.12.1",
-]
-
-[[package]]
-name = "scroll"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1257cd4248b4132760d6524d6dda4e053bc648c9070b960929bf50cfb1e7add"
 dependencies = [
- "scroll_derive 0.13.0",
-]
-
-[[package]]
-name = "scroll_derive"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1783eabc414609e28a5ba76aee5ddd52199f7107a0b24c2e9746a1ecc34a683d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.104",
+ "scroll_derive",
 ]
 
 [[package]]
@@ -6131,8 +6246,8 @@ dependencies = [
  "num-derive",
  "num-traits",
  "oid",
- "picky-asn1",
- "picky-asn1-x509",
+ "picky-asn1 0.8.0",
+ "picky-asn1-x509 0.12.0",
  "regex",
  "serde",
  "tss-esapi-sys",
@@ -6358,7 +6473,7 @@ dependencies = [
  "reqwest 0.12.22",
  "rstest",
  "s390_pv",
- "scroll 0.13.0",
+ "scroll",
  "serde",
  "serde_json",
  "serde_with",
@@ -6826,6 +6941,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
 dependencies = [
  "bitflags 2.9.1",
+]
+
+[[package]]
+name = "wrapcenum-derive"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76ff259533532054cfbaefb115c613203c73707017459206380f03b3b3f266e"
+dependencies = [
+ "darling 0.20.11",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
 ]
 
 [[package]]
