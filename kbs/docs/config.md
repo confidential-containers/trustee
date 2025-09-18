@@ -204,10 +204,11 @@ Detailed [documentation](https://docs.trustauthority.intel.com).
 
 The following properties can be set under the `[admin]` section.
 
-| Property          | Type    | Description                                                       | Required | Default |
-|-------------------|---------|-------------------------------------------------------------------|----------|---------|
-| `auth_public_key` | String  | Path to the public key used to authenticate the admin APIs        | No       | None    |
-| `insecure_api`    | Boolean | Whether KBS will not verify the public key when called admin APIs | No       | `false` |
+| Property               | Type    | Description                                                       | Required | Default |
+|------------------------|---------|-------------------------------------------------------------------|----------|---------|
+| `auth_public_key`      | String  | Path to the public key used to authenticate the admin APIs        | No       | None    |
+| `insecure_api`         | Boolean | Whether KBS will not verify the public key when called admin APIs | No       | `false` |
+| `admin_api_read_only`  | Boolean | Limit the admin APIs to only get resources.                       | No       | `false` |
 
 ### Policy Engine Configuration
 

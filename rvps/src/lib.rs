@@ -52,6 +52,7 @@ fn default_version() -> String {
 pub struct Rvps {
     extractors: Extractors,
     storage: Box<dyn ReferenceValueStorage + Send + Sync>,
+    read_only: bool,
 }
 
 impl Rvps {
@@ -63,10 +64,17 @@ impl Rvps {
         Ok(Rvps {
             extractors,
             storage,
+            read_only: config.read_only,
         })
     }
 
     pub async fn verify_and_extract(&mut self, message: &str) -> Result<()> {
+        if self.read_only {
+            bail!(
+                "RVPS is configured in read-only mode. Reference value registration is disabled."
+            );
+        }
+
         let message: Message = serde_json::from_str(message).context("parse message")?;
 
         // Judge the version field
