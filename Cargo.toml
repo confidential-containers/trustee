@@ -35,10 +35,10 @@ hex = "0.4.3"
 jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
 ] }
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "c35306f", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "cc8c14a", default-features = false }
 # TODO: Change this to kbs-types release
 kbs-types = { "git" = "https://github.com/virtee/kbs-types.git", rev = "e3cc706" }
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "c35306f", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "cc8c14a", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
 lazy_static = "1.4.0"
 log = "0.4.28"

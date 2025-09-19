@@ -213,4 +213,17 @@ configuration := 2 if {
 	input.aztdxvtpm.quote.body.xfam in data.reference.xfam
 }
 
+##### TPM
+hardware := 2 if {
+	input.tpm
+}
+
+executables := 3 if {
+	input.tpm.pcr11 in data.reference.tpm_pcr11
+}
+
+configuration := 0 if {
+	input.tpm
+}
+
 ##### SE TODO

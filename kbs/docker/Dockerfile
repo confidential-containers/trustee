@@ -62,6 +62,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libsgx-dcap-default-qpl \
     libsgx-dcap-quote-verify \
+    libtss2-dev \
     libtss2-tctildr0 \
     libtss2-esys-3.0.2-0 ; \
     fi && \

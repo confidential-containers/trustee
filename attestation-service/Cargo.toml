@@ -16,6 +16,7 @@ hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
 cca-verifier = ["verifier/cca-verifier"]
 se-verifier = ["verifier/se-verifier"]
 nvidia-verifier = ["verifier/nvidia-verifier"]
+tpm-verifier = ["verifier/tpm-verifier"]
 
 rvps-grpc = ["prost", "tonic"]
 

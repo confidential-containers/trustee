@@ -377,9 +377,34 @@ test-vault-ssl: vault-kbs start-vault-ssl
 	cd $(PROJECT_DIR) && \
 	cargo test --features vault vault_ssl -- --ignored
 
+# TPM variables  
+TPM_CONFIG_FILE := $(KBS_CONFIG_PATH)/tpm-config.json
+export TPM_CONFIG_FILE
+
+# TPM dependencies installation
+.PHONY: install-swtpm-dependencies
+install-swtpm-dependencies:
+	sudo apt-get update && \
+	sudo apt-get install -y \
+		swtpm \
+		swtpm-tools \
+		tpm2-tools \
+		linux-modules-extra-$(shell uname -r)
+
+# Setup swtpm
+.PHONY: setup-swtpm
+setup-swtpm:
+	@printf "${BOLD}Setting up swtpm${SGR0}\n"
+	sudo ./setup-swtpm.sh setup
+
+
+# Cleanup TPM-related files
+.PHONY: clean-tpm
+clean-tpm:
+	sudo ./setup-swtpm.sh cleanup
 
 .PHONY: clean
-clean:
+clean:  clean-tpm
 	rm -rf \
 		kbs \
 		client \
