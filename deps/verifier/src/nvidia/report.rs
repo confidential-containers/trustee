@@ -114,7 +114,7 @@ impl NvidiaAttestationReport {
 
         verifying_key
             .verify(signed_bytes, &signature)
-            .map_err(|e| anyhow!("NVIDIA report signature failed: {}", e.to_string()))
+            .map_err(|e| anyhow!("NVIDIA report signature failed: {}", e))
     }
 
     pub fn validate_nonce(&self, expected_nonce: &[u8]) -> Result<()> {

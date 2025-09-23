@@ -94,7 +94,7 @@ impl TryFrom<&Path> for KbsConfig {
             .build()?;
 
         c.try_deserialize()
-            .map_err(|e| anyhow!("invalid config: {}", e.to_string()))
+            .map_err(|e| anyhow!("invalid config: {}", e))
     }
 }
 
