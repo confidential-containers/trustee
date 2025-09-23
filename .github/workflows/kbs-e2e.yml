@@ -111,11 +111,11 @@ jobs:
         make install-dependencies
 
     - name: Run e2e test
-      if: inputs.tee != 'aztdxvtpm' && inputs.tee != 'azsnpvtpm'
+      if: inputs.tee != 'aztdxvtpm' && inputs.tee != 'az-snp-vtpm'
       working-directory: kbs/test
       run: make e2e-test
 
     - name: Run e2e test (w/ sudo)
-      if: inputs.tee == 'aztdxvtpm' || inputs.tee == 'azsnpvtpm'
+      if: inputs.tee == 'aztdxvtpm' || inputs.tee == 'az-snp-vtpm'
       working-directory: kbs/test
       run: sudo -E make e2e-test
