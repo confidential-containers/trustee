@@ -3174,7 +3174,7 @@ dependencies = [
  "reqwest 0.12.22",
  "rsa",
  "rstest",
- "scc",
+ "scc 3.1.0",
  "semver",
  "serde",
  "serde_json",
@@ -5094,6 +5094,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "saa"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14e9fa21973077ea653ab459c4746540e49f21fed90f49efa1b5a7dbbc4ca3af"
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5108,7 +5114,17 @@ version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46e6f046b7fef48e2660c57ed794263155d713de679057f2d0c169bfc6e756cc"
 dependencies = [
- "sdd",
+ "sdd 3.0.9",
+]
+
+[[package]]
+name = "scc"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db652791ad0074be7e117e9e778a961cd66e1382c6b160c96a4502971d7211a6"
+dependencies = [
+ "saa",
+ "sdd 4.1.1",
 ]
 
 [[package]]
@@ -5195,6 +5211,12 @@ name = "sdd"
 version = "3.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f5557d2bbddd5afd236ba7856b0e494f5acc7ce805bb0774cc5674b20a06b4"
+
+[[package]]
+name = "sdd"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "289309f6b5c6a090488f188a75e98d96007e763b892018de92b5889eb09a03f4"
 
 [[package]]
 name = "sec1"
@@ -5391,7 +5413,7 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot 0.12.4",
- "scc",
+ "scc 2.4.0",
  "serial_test_derive",
 ]
 
