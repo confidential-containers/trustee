@@ -133,7 +133,7 @@ Supported Verifier Drivers:
 - `tdx`: Verifier Driver for Intel Trust Domain Extention (Intel TDX).
 - `snp`: Verifier Driver for AMD Secure Encrypted Virtualization-Secure Nested Paging (AMD SNP).
 - `sgx`: Verifier Driver for Intel Software Guard Extensions (Intel SGX).
-- `azsnpvtpm`: Verifier Driver for Azure vTPM based on SNP (Azure SNP vTPM)
+- `az-snp-vtpm`: Verifier Driver for Azure vTPM based on SNP (Azure SNP vTPM)
 - `cca`: Verifier Driver for Confidential Compute Architecture (Arm CCA).
 - `csv`: Verifier Driver for China Security Virtualization (Hygon CSV).
 - `se`: Verifier Driver for IBM Secure Execution (SE).

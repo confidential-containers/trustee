@@ -168,16 +168,16 @@ tdx_uefi_event_tdvfkernelparams_ok if {
 
 ##### Azure vTPM SNP
 executables := 3 if {
-	input.azsnpvtpm.measurement in data.reference.measurement
-	input.azsnpvtpm.tpm.pcr11 in data.reference.snp_pcr11
+	input.az_snp_vtpm.measurement in data.reference.measurement
+	input.az_snp_vtpm.tpm.pcr11 in data.reference.snp_pcr11
 }
 
 hardware := 2 if {
 	# Check the reported TCB to validate the ASP FW
-	input.azsnpvtpm.reported_tcb_bootloader in data.reference.tcb_bootloader
-	input.azsnpvtpm.reported_tcb_microcode in data.reference.tcb_microcode
-	input.azsnpvtpm.reported_tcb_snp in data.reference.tcb_snp
-	input.azsnpvtpm.reported_tcb_tee in data.reference.tcb_tee
+	input.az_snp_vtpm.reported_tcb_bootloader in data.reference.tcb_bootloader
+	input.az_snp_vtpm.reported_tcb_microcode in data.reference.tcb_microcode
+	input.az_snp_vtpm.reported_tcb_snp in data.reference.tcb_snp
+	input.az_snp_vtpm.reported_tcb_tee in data.reference.tcb_tee
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -185,12 +185,12 @@ hardware := 2 if {
 #
 # For this, we compare all the configuration fields.
 configuration := 2 if {
-	input.azsnpvtpm.platform_smt_enabled in data.reference.smt_enabled
-	input.azsnpvtpm.platform_tsme_enabled in data.reference.tsme_enabled
-	input.azsnpvtpm.policy_abi_major in data.reference.abi_major
-	input.azsnpvtpm.policy_abi_minor in data.reference.abi_minor
-	input.azsnpvtpm.policy_single_socket in data.reference.single_socket
-	input.azsnpvtpm.policy_smt_allowed in data.reference.smt_allowed
+	input.az_snp_vtpm.platform_smt_enabled in data.reference.smt_enabled
+	input.az_snp_vtpm.platform_tsme_enabled in data.reference.tsme_enabled
+	input.az_snp_vtpm.policy_abi_major in data.reference.abi_major
+	input.az_snp_vtpm.policy_abi_minor in data.reference.abi_minor
+	input.az_snp_vtpm.policy_single_socket in data.reference.single_socket
+	input.az_snp_vtpm.policy_smt_allowed in data.reference.smt_allowed
 }
 
 ##### Azure vTPM TDX

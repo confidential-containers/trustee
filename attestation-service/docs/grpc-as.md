@@ -3,7 +3,7 @@
 `grpc-as` is an Attestation Service application based on gRPC protocol.
 
 Now the following types of evidence are supported:
-- `azsnpvtpm`: Azure SNP vTPM
+- `az-snp-vtpm`: Azure SNP vTPM
 - `sev`: AMD SEV (Not implemented)
 - `sgx`: Intel SGX
 - `snp`: AMD SNP

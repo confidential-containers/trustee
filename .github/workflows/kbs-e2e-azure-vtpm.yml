@@ -49,5 +49,5 @@ jobs:
       contents: read
     with:
       runs-on-test: '["self-hosted","azure-cvm"]'
-      tee: azsnpvtpm
+      tee: az-snp-vtpm
       tarball: kbs.tar.gz

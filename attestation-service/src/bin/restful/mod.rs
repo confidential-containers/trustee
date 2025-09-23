@@ -76,7 +76,7 @@ enum InitDataInput {
 
 fn to_tee(tee: &str) -> anyhow::Result<Tee> {
     let res = match tee {
-        "azsnpvtpm" => Tee::AzSnpVtpm,
+        "az-snp-vtpm" => Tee::AzSnpVtpm,
         "sev" => Tee::Sev,
         "sgx" => Tee::Sgx,
         "snp" => Tee::Snp,

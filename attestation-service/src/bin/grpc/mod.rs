@@ -36,7 +36,7 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
         "tdx" => Tee::Tdx,
         "csv" => Tee::Csv,
         "sample" => Tee::Sample,
-        "azsnpvtpm" => Tee::AzSnpVtpm,
+        "az-snp-vtpm" => Tee::AzSnpVtpm,
         "cca" => Tee::Cca,
         "aztdxvtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
