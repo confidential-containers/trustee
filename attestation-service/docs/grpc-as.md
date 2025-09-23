@@ -11,7 +11,7 @@ Now the following types of evidence are supported:
 - `cca`: Arm CCA
 - `sample`: A fake platform. Only for test and sample
 - `csv`: Hygon CSV
-- `aztdxvtpm`: Azure TDX vTPM
+- `az-tdx-vtpm`: Azure TDX vTPM
 - `se`: IBM Secure Execution
 
 ## Quick Start

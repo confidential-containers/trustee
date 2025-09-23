@@ -96,7 +96,7 @@ Used to declare the type of HW-TEE platform where KBC is located. Currently, kno
 | TEE            | Description                                                       |
 |----------------|-------------------------------------------------------------------|
 | `az-snp-vtpm`  | Microsoft Azure AMD SNP VTPM                                      |
-| `aztdxvtpm`    | Microsoft Azure TDX VTPM                                          |
+| `az-tdx-vtpm`  | Microsoft Azure TDX VTPM                                          |
 | `sev`          | AMD SEV                                                           |
 | `snp`          | AMD SNP                                                           |
 | `sgx`          | Intel SGX                                                         |

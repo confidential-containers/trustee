@@ -37,7 +37,7 @@ jobs:
   #     contents: read
   #   with:
   #     runs-on-test: '["self-hosted","azure-cvm-tdx"]'
-  #     tee: aztdxvtpm
+  #     tee: az-tdx-vtpm
   #     tarball: kbs.tar.gz
 
   snp-e2e-test:
