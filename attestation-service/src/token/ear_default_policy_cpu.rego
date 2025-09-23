@@ -195,22 +195,22 @@ configuration := 2 if {
 
 ##### Azure vTPM TDX
 executables := 3 if {
-	input.aztdxvtpm.tpm.pcr11 in data.reference.tdx_pcr11
+	input.az_tdx_vtpm.tpm.pcr11 in data.reference.tdx_pcr11
 }
 
 hardware := 2 if {
 	# Check the quote is a TDX quote signed by Intel SGX Quoting Enclave
-	input.aztdxvtpm.quote.header.tee_type == "81000000"
-	input.aztdxvtpm.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
+	input.az_tdx_vtpm.quote.header.tee_type == "81000000"
+	input.az_tdx_vtpm.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
 	# Check TDX Module version and its hash. Also check OVMF code hash.
-	input.aztdxvtpm.quote.body.mr_seam in data.reference.mr_seam
-	input.aztdxvtpm.quote.body.tcb_svn in data.reference.tcb_svn
-	input.aztdxvtpm.quote.body.mr_td in data.reference.mr_td
+	input.az_tdx_vtpm.quote.body.mr_seam in data.reference.mr_seam
+	input.az_tdx_vtpm.quote.body.tcb_svn in data.reference.tcb_svn
+	input.az_tdx_vtpm.quote.body.mr_td in data.reference.mr_td
 }
 
 configuration := 2 if {
-	input.aztdxvtpm.quote.body.xfam in data.reference.xfam
+	input.az_tdx_vtpm.quote.body.xfam in data.reference.xfam
 }
 
 ##### SE TODO

@@ -85,7 +85,7 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
         "csv" => Tee::Csv,
         "sample" => Tee::Sample,
         "sampledevice" => Tee::SampleDevice,
-        "aztdxvtpm" => Tee::AzTdxVtpm,
+        "az-tdx-vtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
         "hygondcu" => Tee::HygonDcu,
         other => bail!("tee `{other} not supported`"),
