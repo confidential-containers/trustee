@@ -121,7 +121,7 @@ pub struct VerificationRequest {
 }
 
 pub struct AttestationService {
-    _config: Config,
+    config: Config,
     rvps: Box<dyn RvpsApi + Send + Sync>,
     token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
 }
@@ -142,7 +142,7 @@ impl AttestationService {
         let token_broker = config.attestation_token_broker.to_token_broker().await?;
 
         Ok(Self {
-            _config: config,
+            config,
             rvps,
             token_broker,
         })
@@ -188,7 +188,10 @@ impl AttestationService {
         }
 
         for verification_request in verification_requests {
-            let verifier = verifier::to_verifier(&verification_request.tee)?;
+            let verifier = verifier::to_verifier(
+                &verification_request.tee,
+                self.config.clone().verifier_config,
+            )?;
 
             let (report_data, runtime_data_claims) = parse_runtime_data(
                 verification_request.runtime_data,
@@ -265,7 +268,7 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee)?;
+        let verifier = verifier::to_verifier(&tee, self.config.clone().verifier_config)?;
         verifier
             .generate_supplemental_challenge(tee_parameters)
             .await

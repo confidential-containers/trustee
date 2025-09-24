@@ -193,6 +193,7 @@ impl TestHarness {
                     work_dir: work_dir.path().to_path_buf(),
                     rvps_config,
                     attestation_token_broker: attestation_token_config,
+                    verifier_config: None,
                 }),
                 timeout: 5,
             },

@@ -32,6 +32,9 @@ pub const DMTF_MEASUREMENT_SPECIFICATION_VALUE: u8 = 1;
 #[derive(Default, Debug)]
 pub struct Nvidia {}
 
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct NvidiaVerifierConfig {}
+
 #[derive(Debug, Default, Deserialize)]
 struct NvDeviceEvidence {
     device_evidence_list: Vec<NvDeviceReportAndCert>,
@@ -71,6 +74,12 @@ impl NvDeviceReportAndCertClaim {
             measurements,
             config: attestation_report.response.opaque_data.clone(),
         }
+    }
+}
+
+impl Nvidia {
+    pub fn new(_config: Option<NvidiaVerifierConfig>) -> Self {
+        Nvidia {}
     }
 }
 

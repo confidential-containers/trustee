@@ -196,6 +196,7 @@ mod tests {
                             signer: None,
                             ..Default::default()
                         }),
+                        verifier_config: None,
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -312,6 +313,7 @@ mod tests {
                             duration_min: 5,
                             ..Default::default()
                         }),
+                        verifier_config: None,
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -442,6 +444,7 @@ mod tests {
                             policy_dir: "/opt/confidential-containers/attestation-service/simple-policies".into(),
                             ..Default::default()
                         }),
+                        verifier_config: None,
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
