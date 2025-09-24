@@ -4,6 +4,7 @@ use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use log::debug;
+use serde::Deserialize;
 
 pub mod sample;
 pub mod sample_device;
@@ -45,7 +46,13 @@ pub mod nvidia;
 ))]
 pub mod intel_dcap;
 
-pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct VerifierConfig {
+    #[cfg(feature = "nvidia-verifier")]
+    nvidia_verifier: Option<nvidia::NvidiaVerifierConfig>,
+}
+
+pub fn to_verifier(tee: &Tee, _config: Option<VerifierConfig>) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {
@@ -144,7 +151,8 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
         Tee::Nvidia => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "nvidia-verifier")] {
-                    Ok(Box::<nvidia::Nvidia>::default() as Box<dyn Verifier + Send + Sync>)
+                    let nvidia_config = _config.map(|c| c.nvidia_verifier).unwrap_or(None);
+                    Ok(Box::<nvidia::Nvidia>::new(nvidia::Nvidia::new(nvidia_config)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `nvidia-verifier` is not enabled for `verifier` crate.")
                 }
