@@ -138,7 +138,7 @@ impl StorageBackend for Pkcs11Backend {
 
         // check that object has a readable value attribute
         let value_attribute = vec![AttributeType::Value];
-        let attribute_map = session.get_attribute_info_map(object, value_attribute.clone())?;
+        let attribute_map = session.get_attribute_info_map(object, &value_attribute)?;
         let Some(AttributeInfo::Available(_size)) = attribute_map.get(&AttributeType::Value) else {
             bail!("Key does not have value attribute available.");
         };
