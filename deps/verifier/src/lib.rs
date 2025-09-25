@@ -52,7 +52,10 @@ pub struct VerifierConfig {
     nvidia_verifier: Option<nvidia::NvidiaVerifierConfig>,
 }
 
-pub fn to_verifier(tee: &Tee, _config: Option<VerifierConfig>) -> Result<Box<dyn Verifier + Send + Sync>> {
+pub fn to_verifier(
+    tee: &Tee,
+    _config: Option<VerifierConfig>,
+) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {

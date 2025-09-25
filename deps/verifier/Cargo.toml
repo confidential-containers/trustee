@@ -26,7 +26,7 @@ csv-verifier = ["codicon", "csv-rs", "eventlog", "openssl", "tokio/fs"]
 hygon-dcu-verifier = ["csv-rs"]
 cca-verifier = ["ear", "jsonwebtoken", "veraison-apiclient", "ccatoken"]
 se-verifier = ["openssl", "pv", "serde_with", "tokio/sync"]
-nvidia-verifier = [ "nvml-wrapper", "p384" ]
+nvidia-verifier = [ "nvml-wrapper", "p384", "jsonwebtoken"]
 
 [dependencies]
 anyhow.workspace = true

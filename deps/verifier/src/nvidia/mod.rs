@@ -4,6 +4,8 @@
 //
 
 pub mod cert_chain;
+pub mod nras_jwks;
+pub mod nras_response;
 pub mod report;
 pub mod spdm_request;
 pub mod spdm_response;
@@ -14,10 +16,13 @@ use base64::Engine;
 use log::trace;
 use nvml_wrapper::enums::device::DeviceArchitecture;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use super::*;
+use crate::nvidia::nras_jwks::NrasJwks;
+use crate::nvidia::nras_response::NrasResponse;
 use crate::nvidia::report::NvidiaAttestationReport;
 
 const HOPPER_SIGNATURE_LENGTH: usize = 96;
@@ -29,18 +34,38 @@ pub const SPDM_NONCE_SIZE: usize = 32;
 // Only measurements encoded in the DMTF_MEASUREMENT layout are supported
 pub const DMTF_MEASUREMENT_SPECIFICATION_VALUE: u8 = 1;
 
+/// Accessing NRAS requires entering into a licensing agreement with NVIDIA.
+/// Using Trustee with the NRAS remote verifier assumes that you have done this.
+pub const NRAS_URL: &str = "https://nras.attestation.nvidia.com/v4/attest";
+
 #[derive(Default, Debug)]
-pub struct Nvidia {}
+pub struct Nvidia {
+    verifier_type: NvidiaVerifierType,
+}
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
-pub struct NvidiaVerifierConfig {}
+pub struct NvidiaVerifierConfig {
+    verifier: NvidiaVerifierType,
+}
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub enum NvidiaVerifierType {
+    #[default]
+    Local,
+    Remote(NvidiaRemoteVerifierConfig),
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct NvidiaRemoteVerifierConfig {
+    verifier_url: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
 struct NvDeviceEvidence {
     device_evidence_list: Vec<NvDeviceReportAndCert>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct NvDeviceReportAndCert {
     arch: DeviceArchitecture,
     uuid: String,
@@ -78,8 +103,120 @@ impl NvDeviceReportAndCertClaim {
 }
 
 impl Nvidia {
-    pub fn new(_config: Option<NvidiaVerifierConfig>) -> Self {
-        Nvidia {}
+    pub fn new(config: Option<NvidiaVerifierConfig>) -> Self {
+        if let Some(cfg) = config {
+            Nvidia {
+                verifier_type: cfg.verifier,
+            }
+        } else {
+            Nvidia {
+                verifier_type: NvidiaVerifierType::Local,
+            }
+        }
+    }
+
+    async fn evaluate_device_remotely(
+        &self,
+        device: NvDeviceReportAndCert,
+        expected_nonce_vec: Vec<u8>,
+        config: &NvidiaRemoteVerifierConfig,
+    ) -> Result<(TeeEvidenceParsedClaim, String)> {
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+
+        let (tee_class, endpoint) = match device.arch {
+            DeviceArchitecture::Hopper => ("gpu", "gpu"),
+            _ => todo!(),
+        };
+
+        let evidence_b64 = b64_engine.encode(hex::decode(device.evidence)?);
+
+        // We could batch devices with the same architecture together into one request,
+        // but for now, check one device at a time.
+        let request_url = format!(
+            "{}/{}",
+            config.verifier_url.clone().unwrap_or(NRAS_URL.to_string()),
+            endpoint
+        );
+
+        let request_json = json!({
+            "nonce": hex::encode(expected_nonce_vec),
+            "arch": device.arch.to_string().to_uppercase(),
+            "evidence_list": [
+                {
+                    "evidence": evidence_b64,
+                    "certificate": device.certificate,
+                }
+            ],
+            "claims_version": "3.0"
+        });
+
+        // We can reuse this client for multiple requests, but for now create a new one.
+        let client = reqwest::Client::new();
+        let res = client.post(request_url).json(&request_json).send().await?;
+
+        if !res.status().is_success() {
+            bail!(
+                "Request Failed with {}. Details: {}",
+                res.status(),
+                res.text().await?
+            )
+        };
+
+        // We could store this in the struct to avoid multiple calls
+        // to the JWKs endpoint, but for now do it here for simplicity.
+        // The struct doesn't live very long anyway.
+        let jwks = NrasJwks::new().await?;
+
+        let response = NrasResponse::from_str(&res.text().await?)?;
+        response.validate(&jwks)?;
+
+        let claims = response.claims()?;
+
+        // Check that the nonce matches the expected report data.
+        // Consider moving this logic into the NrasResponse struct.
+        let nonce_ok = claims
+            .pointer("/x-nvidia-gpu-attestation-report-nonce-match")
+            .ok_or_else(|| anyhow!("Couldn't find nonce status."))?;
+        let nonce_ok = nonce_ok
+            .as_bool()
+            .ok_or_else(|| anyhow!("Nonce status malformed"))?;
+        if !nonce_ok {
+            bail!("Report Data Mismatch");
+        }
+
+        Ok((claims, tee_class.to_string()))
+    }
+
+    fn evaluate_device_locally(
+        &self,
+        device: NvDeviceReportAndCert,
+        expected_nonce_vec: Vec<u8>,
+    ) -> Result<(TeeEvidenceParsedClaim, String)> {
+        // Only Hopper GPU is supported for local verification.
+        if device.arch != DeviceArchitecture::Hopper {
+            bail!("Device architecture not supported");
+        }
+
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+
+        let cert_chain_vec: Vec<u8> = b64_engine.decode(device.certificate)?;
+        let report_vec: Vec<u8> = hex::decode(device.evidence)?;
+
+        let report = NvidiaAttestationReport::try_new(
+            report_vec.as_slice(),
+            HOPPER_SIGNATURE_LENGTH,
+            cert_chain_vec.as_slice(),
+            expected_nonce_vec.as_slice(),
+        )?;
+        trace!("{}", &report);
+
+        // Build the device claims
+        let device_claims =
+            NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
+        let value = serde_json::to_value(device_claims)
+            .context("serializing NVIDIA evidence claims into JSON")?;
+
+        Ok((value as TeeEvidenceParsedClaim, "gpu".to_string()))
     }
 }
 
@@ -95,38 +232,25 @@ impl Verifier for Nvidia {
             .context("Failed to deserialize the NVIDIA device evidence")?;
         let mut all_devices_claims: Vec<(TeeEvidenceParsedClaim, String)> = Vec::new();
 
+        let ReportData::Value(expected_nonce) = expected_report_data else {
+            bail!("Nvidia report data not provided");
+        };
+        let expected_nonce_vec: Vec<u8> =
+            regularize_data(expected_nonce, SPDM_NONCE_SIZE, "REPORT_DATA", "NVIDIA");
+
         for device in devices.device_evidence_list {
-            // Only Hopper GPU is supported.
-            if device.arch != DeviceArchitecture::Hopper {
-                bail!("Device architecture not supported");
-            }
-
-            let b64_engine = base64::engine::general_purpose::STANDARD;
-
-            let cert_chain_vec: Vec<u8> = b64_engine.decode(device.certificate)?;
-            let report_vec: Vec<u8> = hex::decode(device.evidence)?;
-
-            let ReportData::Value(expected_nonce) = expected_report_data else {
-                bail!("Nvidia report data not provided");
+            // we will need to pass some more stuff in, like the nonce
+            let claims = match &self.verifier_type {
+                NvidiaVerifierType::Local => {
+                    self.evaluate_device_locally(device, expected_nonce_vec.clone())?
+                }
+                NvidiaVerifierType::Remote(config) => {
+                    self.evaluate_device_remotely(device, expected_nonce_vec.clone(), config)
+                        .await?
+                }
             };
-            let expected_nonce_vec: Vec<u8> =
-                regularize_data(expected_nonce, SPDM_NONCE_SIZE, "REPORT_DATA", "NVIDIA");
 
-            let report = NvidiaAttestationReport::try_new(
-                report_vec.as_slice(),
-                HOPPER_SIGNATURE_LENGTH,
-                cert_chain_vec.as_slice(),
-                expected_nonce_vec.as_slice(),
-            )?;
-            trace!("{}", &report);
-
-            // Build the device claims
-            let device_claims =
-                NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
-            let value = serde_json::to_value(device_claims)
-                .context("serializing NVIDIA evidence claims into JSON")?;
-
-            all_devices_claims.push((value as TeeEvidenceParsedClaim, "gpu".to_string()));
+            all_devices_claims.push(claims);
         }
 
         Ok(all_devices_claims)
@@ -135,6 +259,7 @@ impl Verifier for Nvidia {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use std::fs;
 
     use super::*;
@@ -157,7 +282,7 @@ mod tests {
             "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb";
         let expected_nonce_vec: Vec<u8> = hex::decode(expected_nonce).unwrap();
 
-        // The report certificate chain is stored in PERM format
+        // The report certificate chain is stored in PEM format
         let cert_chain_bytes = include_bytes!("../../test_data/nvidia/hopper_cert_chain_case1.txt");
 
         // The attestation report is stored in text and hex encoded.
@@ -185,5 +310,60 @@ mod tests {
             include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt");
 
         assert_eq!(expected_claim.to_string(), json);
+    }
+
+    #[rstest]
+    #[case::local_verifier(true)]
+    #[ignore]
+    #[case::remote_verifier(false)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_evaluation(#[case] local_verifier: bool) {
+        let b64_engine = base64::engine::general_purpose::STANDARD;
+
+        let device_uuid: &str = "1111-2222-33333-444444-555555";
+
+        let expected_nonce: &str =
+            "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb";
+        let expected_nonce_vec: Vec<u8> = hex::decode(expected_nonce).unwrap();
+
+        // The report certificate chain is stored in PEM format
+        let cert_chain_bytes = include_bytes!("../../test_data/nvidia/hopper_cert_chain_case1.txt");
+        let cert_chain = b64_engine.encode(cert_chain_bytes);
+
+        // The attestation report is stored in text and hex encoded.
+        let report_str = include_str!("../../test_data/nvidia/hopperAttestationReport.txt");
+
+        // Create evidence as it would come from an attester
+        let report = NvDeviceReportAndCert {
+            arch: DeviceArchitecture::Hopper,
+            uuid: device_uuid.to_string(),
+            evidence: report_str.to_string(),
+            certificate: cert_chain.to_string(),
+        };
+
+        let evidence = NvDeviceEvidence {
+            device_evidence_list: vec![report],
+        };
+
+        let evidence = serde_json::to_value(evidence).unwrap();
+
+        let report_data = ReportData::Value(&expected_nonce_vec);
+        let init_data = InitDataHash::NotProvided;
+
+        let verifier_type = match local_verifier {
+            true => NvidiaVerifierType::Local,
+            false => NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None }),
+        };
+
+        let verifier_config = Some(NvidiaVerifierConfig {
+            verifier: verifier_type,
+        });
+        let verifier = Nvidia::new(verifier_config);
+        let claims = verifier
+            .evaluate(evidence, &report_data, &init_data)
+            .await
+            .unwrap();
+
+        println!("{:?}", serde_json::to_string(&claims));
     }
 }
