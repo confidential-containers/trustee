@@ -7,7 +7,7 @@ documentation.workspace = true
 edition.workspace = true
 
 [features]
-default = ["coco-as-builtin", "coco-as-grpc", "intel-trust-authority-as"]
+default = ["coco-as-builtin", "coco-as-grpc", "intel-trust-authority-as", "pkcs11"]
 
 # Support a backend attestation service for KBS
 as = []
