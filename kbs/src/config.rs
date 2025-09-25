@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::admin::config::{AdminConfig, DEFAULT_INSECURE_API};
+use crate::admin::config::AdminConfig;
 use crate::plugins::PluginsConfig;
 use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
@@ -18,6 +18,7 @@ const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
 const DEFAULT_PAYLOAD_REQUEST_SIZE: u32 = 2;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct HttpServerConfig {
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
     pub sockets: Vec<SocketAddr>,
@@ -49,7 +50,7 @@ impl Default for HttpServerConfig {
 }
 
 /// Contains all configurable KBS properties.
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Default)]
 pub struct KbsConfig {
     /// Attestation token result broker config.
     #[serde(default)]
@@ -82,14 +83,6 @@ impl TryFrom<&Path> for KbsConfig {
     /// `config` crate. See `KbsConfig` for schema information.
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
         let c = Config::builder()
-            .set_default("admin.insecure_api", DEFAULT_INSECURE_API)?
-            .set_default("http_server.insecure_http", DEFAULT_INSECURE_HTTP)?
-            .set_default("http_server.sockets", vec![DEFAULT_SOCKET])?
-            .set_default(
-                "http_server.payload_request_size",
-                DEFAULT_PAYLOAD_REQUEST_SIZE,
-            )?
-            .set_default("attestation_service.policy_ids", Vec::<&str>::new())?
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
 
@@ -113,10 +106,9 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::{
-        admin::config::AdminConfig,
+        admin::config::{AdminConfig, DEFAULT_INSECURE_API},
         config::{
-            HttpServerConfig, DEFAULT_INSECURE_API, DEFAULT_INSECURE_HTTP,
-            DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
+            HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
             implementations::{
