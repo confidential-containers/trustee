@@ -94,6 +94,7 @@ mod tests {
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
+            read_only: false,
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -107,6 +108,7 @@ mod tests {
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
+            read_only: false,
         }),
         attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
             duration_min: 5,
@@ -124,6 +126,7 @@ mod tests {
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
+            read_only: false,
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,
@@ -140,6 +143,7 @@ mod tests {
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
+            read_only: false,
         }),
         attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
             duration_min: 5,

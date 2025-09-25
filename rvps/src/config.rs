@@ -15,6 +15,9 @@ pub struct Config {
 
     #[serde(default)]
     pub extractors: Option<ExtractorsConfig>,
+
+    #[serde(default)]
+    pub read_only: bool,
 }
 
 impl Config {
