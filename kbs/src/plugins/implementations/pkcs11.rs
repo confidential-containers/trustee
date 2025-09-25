@@ -286,7 +286,7 @@ mod tests {
     async fn write_and_read_resource() {
         let config = Pkcs11Config {
             module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
-            slot_index: Some(1),
+            slot_index: 1,
             // This pin must be set for SoftHSM
             pin: "test".to_string(),
         };
@@ -318,7 +318,7 @@ mod tests {
     async fn wrap_and_unwrap_data() {
         let config = Pkcs11Config {
             module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
-            slot_index: Some(1),
+            slot_index: 1,
             // This pin must be set for SoftHSM
             pin: "test".to_string(),
         };
