@@ -129,10 +129,7 @@ impl StorageBackend for Pkcs11Backend {
         let objects = session.find_objects(&attributes)?;
 
         if objects.is_empty() {
-            bail!(
-                "Could not find object with label {}",
-                resource_desc.to_string()
-            );
+            bail!("Could not find object with label {}", resource_desc);
         }
         let object = objects[0];
 
