@@ -650,7 +650,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "strum",
  "tempfile",
@@ -725,7 +725,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "thiserror 2.0.16",
  "tss-esapi",
@@ -743,7 +743,7 @@ dependencies = [
  "clap",
  "openssl",
  "serde",
- "sev",
+ "sev 6.3.1",
  "thiserror 2.0.16",
  "ureq",
 ]
@@ -5474,6 +5474,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "sev"
+version = "7.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2ff74d7e7d1cc172f3a45adec74fbeee928d71df095b85aaaf66eb84e1e31e6"
+dependencies = [
+ "base64 0.22.1",
+ "bitfield 0.19.2",
+ "bitflags 2.9.4",
+ "byteorder",
+ "dirs 6.0.0",
+ "hex",
+ "iocuddle",
+ "lazy_static",
+ "libc",
+ "openssl",
+ "rdrand",
+ "static_assertions",
+ "uuid",
+]
+
+[[package]]
 name = "sgx_types"
 version = "1.1.5"
 source = "git+https://github.com/occlum/occlum?tag=v0.29.7#b5a32a8d8a81de2458c2b0d06b07ddce6fd10a44"
@@ -6546,7 +6567,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "serial_test",
- "sev",
+ "sev 7.1.0",
  "sha2",
  "shadow-rs",
  "strum",
