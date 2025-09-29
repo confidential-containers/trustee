@@ -148,7 +148,7 @@ Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kern
 
 ## NVIDIA
 
-Hopper GPU H100
+The local verifier only supports Hopper and returns the following claims.
 
 - `arch`: Device architecture. Only `Hopper` is supported
 - `measurements`: List of measurements and its respective index
@@ -167,6 +167,10 @@ Hopper GPU H100
 - `config.project_sku_mod`: Project SKU mod
 - `config.protected_pcie_status`: Protected PCIe status
 - `config.vbios_version`: Device VBIOS version
+
+The remote verifier exports the claims that come from NRAS, which are listed [here](https://github.com/NVIDIA/nvtrust/blob/main/guest_tools/attestation_troubleshooting_guide.md#version-30).
+Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
+along with the full set of detached claims.
 
 ## AMD SEV-SNP
 
