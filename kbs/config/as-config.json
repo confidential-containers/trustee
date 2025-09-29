@@ -7,6 +7,10 @@
     },
     "attestation_token_broker": {
 	"type": "Ear",
-        "duration_min": 5
+        "duration_min": 5,
+	"signer": {
+	    "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
+	    "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
+	}
     }
 }

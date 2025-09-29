@@ -3,7 +3,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [attestation_token]
-insecure_key = true
+trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/ca-cert.pem"]
 
 [attestation_service]
 type = "coco_as_grpc"
