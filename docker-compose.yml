@@ -38,6 +38,7 @@ services:
     - ./kbs/data/attestation-service:/opt/confidential-containers/attestation-service:rw
     - ./kbs/config/as-config.json:/etc/as-config.json:rw
     - ./kbs/config/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf:rw
+    - ./kbs/config:/opt/confidential-containers/kbs/user-keys
     command: [
       "grpc-as",
       "--socket",
@@ -101,6 +102,17 @@ services:
           if [ ! -s /opt/confidential-containers/kbs/user-keys/private.key ]; then
             /usr/bin/openssl genpkey -algorithm ed25519 > /opt/confidential-containers/kbs/user-keys/private.key &&
             /usr/bin/openssl pkey -in /opt/confidential-containers/kbs/user-keys/private.key -pubout -out /opt/confidential-containers/kbs/user-keys/public.pub;
+          fi
+          cd /opt/confidential-containers/kbs/user-keys
+          if [ ! -s token.key ]; then
+            openssl genrsa -traditional -out ca.key 2048
+            openssl req -new -key ca.key -out ca-req.csr -subj \"/O=CNCF/OU=CoCo/CN=KBS-compose-root\"
+            openssl req -x509 -days 3650 -key ca.key -in ca-req.csr -out ca-cert.pem
+            openssl ecparam -name prime256v1 -genkey -noout -out token.key
+            openssl req -new -key token.key -out token-req.csr -subj \"/O=CNCF/OU=CoCo/CN=CoCo-AS\"
+            openssl x509 -req -in token-req.csr -CA ca-cert.pem -CAkey ca.key -CAcreateserial -out token-cert.pem -extensions req_ext
+            cat token-cert.pem ca-cert.pem > token-cert-chain.pem;
           fi"
+
     volumes:
       - ./kbs/config:/opt/confidential-containers/kbs/user-keys
