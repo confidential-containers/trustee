@@ -29,21 +29,29 @@ use super::{
     Error, Result,
 };
 
-static KBS_MAJOR_VERSION: u64 = 0;
-static KBS_MINOR_VERSION: u64 = 4;
-static KBS_PATCH_VERSION: u64 = 0;
-
 lazy_static! {
-    static ref VERSION_REQ: VersionReq = {
-        let kbs_version = Version {
-            major: KBS_MAJOR_VERSION,
-            minor: KBS_MINOR_VERSION,
-            patch: KBS_PATCH_VERSION,
+    static ref SUPPORTED_PROTOCOL_VERSIONS: Vec<VersionReq> = {
+        let mut versions = Vec::new();
+
+        let v0_4_0 = Version {
+            major: 0,
+            minor: 4,
+            patch: 0,
             pre: Prerelease::EMPTY,
             build: BuildMetadata::EMPTY,
         };
+        versions.push(VersionReq::parse(&format!("={v0_4_0}")).unwrap());
 
-        VersionReq::parse(&format!("={kbs_version}")).unwrap()
+        let v0_2_0 = Version {
+            major: 0,
+            minor: 2,
+            patch: 0,
+            pre: Prerelease::EMPTY,
+            build: BuildMetadata::EMPTY,
+        };
+        versions.push(VersionReq::parse(&format!("={v0_2_0}")).unwrap());
+
+        versions
     };
 }
 
@@ -214,11 +222,14 @@ impl AttestationService {
         let version = Version::parse(&request.version)
             .inspect_err(|_| AUTH_ERRORS.inc())
             .context("failed to parse KBS version")?;
-        if !VERSION_REQ.matches(&version) {
+        if !SUPPORTED_PROTOCOL_VERSIONS
+            .iter()
+            .any(|req| req.matches(&version))
+        {
             AUTH_ERRORS.inc();
             bail!(
-                "KBS Client Protocol Version Mismatch: expect {} while the request is {}",
-                *VERSION_REQ,
+                "Unsupported KBS Protocol Version: supported versions are {:?}, but got {}",
+                *SUPPORTED_PROTOCOL_VERSIONS,
                 request.version
             );
         }
@@ -263,10 +274,7 @@ impl AttestationService {
 
         let session_id = cookie.value();
 
-        let attestation: Attestation = serde_json::from_slice(attestation)
-            .inspect_err(|_| ATTESTATION_ERRORS.inc())
-            .context("deserialize Attestation")?;
-        let (tee, nonce) = {
+        let (tee, nonce, protocol_version) = {
             let session = self
                 .session_map
                 .sessions
@@ -299,13 +307,31 @@ impl AttestationService {
                     .body(body));
             }
 
-            let attestation_str = serde_json::to_string_pretty(&attestation)
-                .inspect_err(|_| ATTESTATION_ERRORS.inc())
-                .context("Failed to serialize Attestation")?;
-            debug!("Attestation: {attestation_str}");
-
-            (session.request().tee, session.challenge().nonce.to_string())
+            (
+                session.request().tee,
+                session.challenge().nonce.to_string(),
+                session.request().version.clone(),
+            )
         };
+
+        // Handle different generations of attestation messages.
+        let attestation: Attestation = match protocol_version.as_str() {
+            "0.4.0" => serde_json::from_slice(attestation)
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
+                .context("deserialize Attestation")?,
+            "0.2.0" => attestation_from_v0_2_0(attestation, nonce.clone())
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
+                .context("deserialize Attestation")?,
+            _ => {
+                ATTESTATION_ERRORS.inc();
+                bail!("Unexpected Protocol Version at Attestation Endpoint")
+            }
+        };
+
+        let attestation_str = serde_json::to_string_pretty(&attestation)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to serialize Attestation")?;
+        debug!("Attestation: {attestation_str}");
 
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
@@ -318,11 +344,22 @@ impl AttestationService {
             "nonce": nonce,
         });
 
-        let primary_runtime_data = json!({
-            "tee-pubkey": attestation.runtime_data.tee_pubkey,
-            "nonce": nonce,
-            "additional-evidence": attestation.tee_evidence.additional_evidence,
-        });
+        let primary_runtime_data = match protocol_version.as_str() {
+            // For v0.2.0, the runtime data did not include additional evidence
+            "0.2.0" => {
+                json!({
+                    "tee-pubkey": attestation.runtime_data.tee_pubkey,
+                    "nonce": nonce,
+                })
+            }
+            _ => {
+                json!({
+                    "tee-pubkey": attestation.runtime_data.tee_pubkey,
+                    "nonce": nonce,
+                    "additional-evidence": attestation.tee_evidence.additional_evidence,
+                })
+            }
+        };
 
         let mut primary_evidence = IndependentEvidence {
             tee,
@@ -441,6 +478,51 @@ impl AttestationService {
 
         Ok(values)
     }
+}
+
+/// Generate an attestation message from an old v0.2.0 attestation message.
+/// The nonce from the session must be provided to formulate a new
+/// attestation message.
+/// The mapping bewteen the old and new message is described below.
+fn attestation_from_v0_2_0(attestation: &[u8], nonce: String) -> anyhow::Result<Attestation> {
+    // Old Attestation struct.
+    // Define this inline so we don't accidentally use it
+    // anywhere else.
+    #[derive(Clone, Deserialize, Debug)]
+    pub struct AttestationV0_2_0 {
+        #[serde(rename = "tee-pubkey")]
+        pub tee_pubkey: kbs_types::TeePubKey,
+        #[serde(rename = "tee-evidence")]
+        pub tee_evidence: serde_json::Value,
+    }
+
+    let attestation_v0_2_0: AttestationV0_2_0 = serde_json::from_slice(attestation)?;
+
+    // New attestation struct
+    Ok(Attestation {
+        // Plaintext Init-Data wasn't yet supported
+        init_data: None,
+        runtime_data: kbs_types::RuntimeData {
+            // The new attestation report includes the nonce in the runtime data.
+            // At first this might seem odd since the nonce is provided to the
+            // client by Trustee.
+            // The idea is that the runtime_data should reflect all the information
+            // that is used to calculate the runtime data hash (i.e. pubkey and nonce).
+            // The nonce in the runtime data here is compared to the one in the session.
+            // Since the old message didn't have the nonce at all, we must receive it
+            // from the caller.
+            nonce,
+            // The tee public key is the same
+            tee_pubkey: attestation_v0_2_0.tee_pubkey,
+        },
+        tee_evidence: kbs_types::CompositeEvidence {
+            // The tee_evidence becomes the primary evidence
+            primary_evidence: attestation_v0_2_0.tee_evidence,
+            // Additional evidence is empty because there was no
+            // multi-device attestation support.
+            additional_evidence: "".to_string(),
+        },
+    })
 }
 
 #[cfg(test)]
