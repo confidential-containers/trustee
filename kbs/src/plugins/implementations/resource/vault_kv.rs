@@ -4,8 +4,8 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
-use derivative::Derivative;
 use base64::prelude::*;
+use derivative::Derivative;
 use log::info;
 use serde::Deserialize;
 use std::collections::HashMap;
