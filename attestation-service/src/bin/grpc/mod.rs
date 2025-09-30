@@ -6,7 +6,6 @@ use attestation_service::{
 };
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use log::{debug, info};
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
@@ -14,6 +13,8 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
+use tracing::{debug, info, instrument, Span};
+use uuid::Uuid;
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
 use crate::as_api::{
@@ -70,6 +71,7 @@ impl AttestationServer {
             None => Config::default(),
         };
 
+        debug!("Attestation Service config: {config:#?}");
         let service = Service::new(config).await?;
 
         Ok(Self {
@@ -80,11 +82,15 @@ impl AttestationServer {
 
 #[tonic::async_trait]
 impl AttestationService for Arc<RwLock<AttestationServer>> {
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn set_attestation_policy(
         &self,
         request: Request<SetPolicyRequest>,
     ) -> Result<Response<SetPolicyResponse>, Status> {
         let request: SetPolicyRequest = request.into_inner();
+
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
 
         info!("SetPolicy API called.");
         debug!("SetPolicyInput: {request:#?}");
@@ -96,22 +102,25 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Set Attestation Policy Failed: {e}")))?;
 
+        info!("SetPolicy succeeded.");
         Ok(Response::new(SetPolicyResponse {}))
     }
 
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn attestation_evaluate(
         &self,
         request: Request<AttestationRequest>,
     ) -> Result<Response<AttestationResponse>, Status> {
         let request: AttestationRequest = request.into_inner();
 
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
+
         info!("AttestationEvaluate API called.");
 
         let mut verification_requests: Vec<VerificationRequest> = vec![];
 
         for verification_request in request.verification_requests {
-            debug!("Evidence: {}", &verification_request.evidence);
-
             let tee = to_kbs_tee(&verification_request.tee)
                 .map_err(|e| Status::aborted(format!("parse TEE type: {e}")))?;
             let evidence = URL_SAFE_NO_PAD
@@ -192,19 +201,22 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Attestation evaluation failed: {e:?}")))?;
 
-        debug!("Attestation Token: {}", &attestation_token);
-
+        debug!(token = attestation_token, "Attestation Token");
+        info!("AttestationEvaluate succeeded.");
         let res = AttestationResponse { attestation_token };
         Ok(Response::new(res))
     }
 
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn get_attestation_challenge(
         &self,
         request: Request<ChallengeRequest>,
     ) -> Result<Response<ChallengeResponse>, Status> {
         let request: ChallengeRequest = request.into_inner();
-        info!("get_attestation_challenge API called.");
-        debug!("get_attestation_challenge: {request:#?}");
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
+        info!("GetAttestationChallenge API called.");
+        debug!("GetAttestationChallenge: {request:#?}");
 
         let inner_tee = request
             .inner
@@ -225,6 +237,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Challenge: {e:?}")))?;
 
+        info!("GetAttestationChallenge succeeded.");
         let res = ChallengeResponse {
             attestation_challenge,
         };
@@ -234,10 +247,15 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
 
 #[tonic::async_trait]
 impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn query_reference_value(
         &self,
         _request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
+        info!("GetReferenceValue API called.");
+
         let values = self
             .read()
             .await
@@ -251,15 +269,19 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
                 Status::aborted(format!("Failed to serialize reference values: {e}"))
             })?,
         };
+
+        info!("GetReferenceValue succeeded.");
         Ok(Response::new(res))
     }
 
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn register_reference_value(
         &self,
         request: Request<ReferenceValueRegisterRequest>,
     ) -> Result<Response<ReferenceValueRegisterResponse>, Status> {
         let request = request.into_inner();
-
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
         info!("RegisterReferenceValue API called.");
         debug!("registering reference value: {}", request.message);
 
@@ -270,6 +292,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
 
+        info!("RegisterReferenceValue succeeded.");
         let res = ReferenceValueRegisterResponse {};
         Ok(Response::new(res))
     }

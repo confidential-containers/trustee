@@ -5,12 +5,12 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::warn;
 use serde_json::Value;
 use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use tracing::warn;
 
 use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
 
