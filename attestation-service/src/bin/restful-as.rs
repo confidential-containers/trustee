@@ -1,23 +1,26 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
+use actix_cors::Cors;
 use actix_web::{http::header, web, App, HttpServer};
 use anyhow::Result;
 use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
 use clap::{arg, command, Parser};
-use log::info;
 use openssl::{
     pkey::PKey,
     ssl::{SslAcceptor, SslMethod},
 };
+use shadow_rs::shadow;
 use strum::{AsRefStr, EnumString};
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tracing::{debug, error, info};
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 use crate::restful::{attestation, get_challenge, get_policies, set_policy};
 
-use actix_cors::Cors;
-
 mod restful;
+
+shadow!(build);
 
 /// RESTful-AS command-line arguments.
 #[derive(Debug, Parser)]
@@ -99,12 +102,10 @@ fn configure_cors(allowed_origin: &[String]) -> Cors {
 
         for ori in &origins {
             if ori.starts_with("http://") || ori.starts_with("https://") {
-                log::info!("Allowed CORS origin: {ori:?}");
+                info!("Allowed CORS origin: {ori:?}");
                 cors = cors.allowed_origin(ori.as_str());
             } else {
-                log::error!(
-                    "Invalid CORS origin format: '{ori}'. Must start with http:// or https://"
-                );
+                error!("Invalid CORS origin format: '{ori}'. Must start with http:// or https://");
             }
         }
     };
@@ -114,8 +115,35 @@ fn configure_cors(allowed_origin: &[String]) -> Cors {
 
 #[actix_web::main]
 async fn main() -> Result<(), RestfulError> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let env_filter = match std::env::var_os("RUST_LOG") {
+        Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
+        None => EnvFilter::new("warn,attestation_service=info,restful_as=info"),
+    };
 
+    let version = format!(
+        r"
+ ________  ________  ________  ________  ________  ________      
+|\   ____\|\   __  \|\   ____\|\   __  \|\   __  \|\   ____\     
+\ \  \___|\ \  \|\  \ \  \___|\ \  \|\  \ \  \|\  \ \  \___|_    
+ \ \  \    \ \  \\\  \ \  \    \ \  \\\  \ \   __  \ \_____  \   
+  \ \  \____\ \  \\\  \ \  \____\ \  \\\  \ \  \ \  \|____|\  \  
+   \ \_______\ \_______\ \_______\ \_______\ \__\ \__\____\_\  \ 
+    \|_______|\|_______|\|_______|\|_______|\|__|\|__|\_________\
+                                                     \|_________|
+                                                                                    
+version: v{}
+commit: {}
+buildtime: {}
+loglevel: {env_filter}
+",
+        build::PKG_VERSION,
+        build::COMMIT_HASH,
+        build::BUILD_TIME,
+    );
+
+    Subscriber::builder().with_env_filter(env_filter).init();
+
+    info!("Welcome to Confidential Containers Attestation Service (RESTful version)!\n\n{version}");
     let cli = Cli::parse();
 
     let config = match cli.config_file {
@@ -128,7 +156,7 @@ async fn main() -> Result<(), RestfulError> {
             Config::default()
         }
     };
-
+    debug!("Attestation Service config: {config:#?}");
     let attestation_service = AttestationService::new(config).await?;
 
     let allowed_origin = cli.allowed_origin.clone();
@@ -163,11 +191,11 @@ async fn main() -> Result<(), RestfulError> {
             builder
                 .set_certificate_chain_file(pubkey_cert)
                 .map_err(RestfulError::SetHttpsCert)?;
-            log::info!("starting HTTPS server at https://{}", cli.socket);
+            info!("starting HTTPS server at https://{}", cli.socket);
             server.bind_openssl(cli.socket, builder)?.run()
         }
         _ => {
-            log::info!("starting HTTP server at http://{}", cli.socket);
+            info!("starting HTTP server at http://{}", cli.socket);
             server
                 .bind((cli.socket.ip().to_string(), cli.socket.port()))?
                 .run()

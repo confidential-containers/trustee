@@ -14,12 +14,12 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 use tokio::fs;
+use tracing::{debug, info};
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
@@ -36,7 +36,7 @@ pub type TeeClass = String;
 
 /// Tee Claims are the output of the verifier plus some metadata
 /// that identifies the TEE type and class.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TeeClaims {
     tee: Tee,
     tee_class: TeeClass,
@@ -218,12 +218,15 @@ impl AttestationService {
                 .await
                 .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
-            info!(
-                "{:?} Verifier/endorsement check passed.",
-                verification_request.tee
-            );
-
             for (claims_from_tee_evidence, tee_class) in claims {
+                info!(
+                    tee =? verification_request.tee,
+                    tee_class = tee_class,
+                    "Verifier/endorsement check passed. claims = {}, initdata claims = {}, runtime claims = {}",
+                    serde_json::to_string(&claims_from_tee_evidence)?,
+                    serde_json::to_string(&init_data_claims)?,
+                    serde_json::to_string(&runtime_data_claims)?,
+                );
                 tee_claims.push(TeeClaims {
                     tee: verification_request.tee,
                     tee_class,
@@ -239,7 +242,10 @@ impl AttestationService {
             .get_digests()
             .await
             .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
-        debug!("reference_data_map: {:#?}", reference_data_map);
+        debug!(
+            "Reference data map get from RVPS: {}",
+            serde_json::to_string(&reference_data_map)?,
+        );
 
         let attestation_results_token = self
             .token_broker

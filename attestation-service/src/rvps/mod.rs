@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use log::info;
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
 use std::collections::HashMap;
 use thiserror::Error;
+use tracing::{info, instrument};
 
 #[cfg(feature = "rvps-grpc")]
 pub mod grpc;
@@ -60,6 +60,7 @@ impl Default for RvpsConfig {
     }
 }
 
+#[instrument(skip_all, name = "Initialize RVPS")]
 pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
     match config {
         RvpsConfig::BuiltIn(config) => {

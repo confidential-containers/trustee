@@ -2,8 +2,9 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 use clap::Parser;
-use log::info;
 use shadow_rs::shadow;
+use tracing::info;
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 pub mod as_api {
     tonic::include_proto!("attestation");
@@ -32,16 +33,35 @@ pub struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let env_filter = match std::env::var_os("RUST_LOG") {
+        Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
+        None => EnvFilter::new("warn,attestation_service=info,grpc_as=info"),
+    };
 
     let version = format!(
-        "\nv{}\ncommit: {}\nbuildtime: {}",
+        r"
+ ________  ________  ________  ________  ________  ________      
+|\   ____\|\   __  \|\   ____\|\   __  \|\   __  \|\   ____\     
+\ \  \___|\ \  \|\  \ \  \___|\ \  \|\  \ \  \|\  \ \  \___|_    
+ \ \  \    \ \  \\\  \ \  \    \ \  \\\  \ \   __  \ \_____  \   
+  \ \  \____\ \  \\\  \ \  \____\ \  \\\  \ \  \ \  \|____|\  \  
+   \ \_______\ \_______\ \_______\ \_______\ \__\ \__\____\_\  \ 
+    \|_______|\|_______|\|_______|\|_______|\|__|\|__|\_________\
+                                                     \|_________|
+                                                                                    
+version: v{}
+commit: {}
+buildtime: {}
+loglevel: {env_filter}
+",
         build::PKG_VERSION,
         build::COMMIT_HASH,
-        build::BUILD_TIME
+        build::BUILD_TIME,
     );
 
-    info!("CoCo AS: {version}");
+    Subscriber::builder().with_env_filter(env_filter).init();
+
+    info!("Welcome to Confidential Containers Attestation Service (gRPC version)!\n{version}");
 
     let cli = Cli::parse();
 

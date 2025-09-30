@@ -10,7 +10,6 @@ use base64::Engine;
 use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, VerifierID};
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
-use log::{debug, warn};
 use openssl::bn::{BigNum, BigNumContext};
 use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
@@ -22,6 +21,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
+use tracing::{debug, info, warn};
 
 use crate::ear_token::EarTokenConfiguration;
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
@@ -61,7 +61,7 @@ impl EarAttestationTokenBroker {
             .await?;
 
         if config.signer.is_none() {
-            log::info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
+            info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
             return Ok(Self {
                 private_key: generate_ec_keys()?.0,
                 config,
@@ -114,8 +114,6 @@ impl EarAttestationTokenBroker {
         policy_ids: Vec<String>,
         reference_data_map: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
-        debug!("all_tee_claims: {:#?}", all_tee_claims);
-
         let reference_data = json!({
             "reference": reference_data_map,
         });

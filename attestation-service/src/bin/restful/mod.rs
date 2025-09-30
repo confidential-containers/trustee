@@ -8,12 +8,13 @@ use attestation_service::{
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::Tee;
-use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use strum::AsRefStr;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tracing::{debug, error, info, instrument, Span};
+use uuid::Uuid;
 
 #[derive(Error, Debug, AsRefStr)]
 pub enum Error {
@@ -123,10 +124,13 @@ fn parse_init_data(data: InitDataInput) -> Result<InnerInitDataInput> {
 }
 
 /// This handler uses json extractor
+#[instrument(skip_all, fields(request_id = tracing::field::Empty))]
 pub async fn attestation(
     request: web::Json<AttestationRequest>,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
+    let request_id = Uuid::new_v4().to_string();
+    Span::current().record("request_id", tracing::field::display(&request_id));
     info!("Attestation API called.");
 
     let request = request.into_inner();
@@ -186,6 +190,8 @@ pub async fn attestation(
         .evaluate(verification_requests, policy_ids)
         .await
         .context("attestation report evaluate")?;
+    debug!("Attestation Token: {token}");
+    info!("AttestationEvaluate succeeded.");
     Ok(HttpResponse::Ok().body(token))
 }
 
@@ -196,10 +202,13 @@ pub struct SetPolicyInput {
 }
 
 /// This handler uses json extractor with limit
+#[instrument(skip_all, fields(request_id = tracing::field::Empty))]
 pub async fn set_policy(
     input: web::Json<SetPolicyInput>,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
+    let request_id = Uuid::new_v4().to_string();
+    Span::current().record("request_id", tracing::field::display(&request_id));
     info!("Set Policy API called.");
     let input = input.into_inner();
 
@@ -210,19 +219,22 @@ pub async fn set_policy(
         .set_policy(input.policy_id, input.policy)
         .await
         .context("set policy")?;
-
+    info!("SetPolicy succeeded.");
     Ok(HttpResponse::Ok().body(""))
 }
 
 /// This handler uses json extractor
+#[instrument(skip_all, fields(request_id = tracing::field::Empty))]
 pub async fn get_challenge(
     request: web::Json<ChallengeRequest>,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
-    info!("get_challenge API called.");
+    let request_id = Uuid::new_v4().to_string();
+    Span::current().record("request_id", tracing::field::display(&request_id));
+    info!("GetChallenge API called.");
     let request: ChallengeRequest = request.into_inner();
 
-    debug!("get_challenge: {request:#?}");
+    debug!("GetChallenge: {request:#?}");
     let inner_tee = request
         .inner
         .get("tee")
@@ -241,6 +253,7 @@ pub async fn get_challenge(
         .generate_supplemental_challenge(tee, tee_params.to_string())
         .await
         .context("generate challenge")?;
+    info!("GetChallenge succeeded.");
     Ok(HttpResponse::Ok().body(challenge))
 }
 
@@ -255,24 +268,29 @@ pub async fn get_challenge(
 ///     ...
 /// ]
 /// ```
+#[instrument(skip_all, fields(request_id = tracing::field::Empty))]
 pub async fn get_policies(
     request: HttpRequest,
     cocoas: web::Data<Arc<RwLock<AttestationService>>>,
 ) -> Result<HttpResponse> {
-    info!("get policy.");
+    let request_id = Uuid::new_v4().to_string();
+    Span::current().record("request_id", tracing::field::display(&request_id));
+    info!("GetPolicy called.");
 
     match request.match_info().get("policy_id") {
         Some(policy_id) => {
+            info!("Get specific policy: {policy_id}");
             let policy = cocoas
                 .read()
                 .await
                 .get_policy(policy_id.to_string())
                 .await
                 .context("get policy")?;
-
+            info!("GetPolicy succeeded.");
             Ok(HttpResponse::Ok().body(policy))
         }
         None => {
+            info!("Get all policies");
             let policy_list = cocoas
                 .read()
                 .await
@@ -285,7 +303,7 @@ pub async fn get_policies(
 
             let policy_list =
                 serde_json::to_string(&policy_list).context("serialize response body")?;
-
+            info!("GetPolicy succeeded.");
             Ok(HttpResponse::Ok().body(policy_list))
         }
     }
