@@ -4,7 +4,6 @@
 
 Now the following types of evidence are supported:
 - `az-snp-vtpm`: Azure SNP vTPM
-- `sev`: AMD SEV (Not implemented)
 - `sgx`: Intel SGX
 - `snp`: AMD SNP
 - `tdx`: Intel TDX

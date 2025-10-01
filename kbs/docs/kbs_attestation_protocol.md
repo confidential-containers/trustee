@@ -74,7 +74,7 @@ The payload format of the request is as follows:
   "version": "0.1.1",
   /*
    * Type of HW-TEE platforms where KBC is located,
-   * e.g. "tdx", "sev", "snp", etc.
+   * e.g. "tdx" or "snp", etc.
    */
   "tee": "$tee",
   /* Reserved fields to support some special requests sent by HW-TEE. */
@@ -97,7 +97,6 @@ Used to declare the type of HW-TEE platform where KBC is located. Currently, kno
 |----------------|-------------------------------------------------------------------|
 | `az-snp-vtpm`  | Microsoft Azure AMD SNP VTPM                                      |
 | `az-tdx-vtpm`  | Microsoft Azure TDX VTPM                                          |
-| `sev`          | AMD SEV                                                           |
 | `snp`          | AMD SNP                                                           |
 | `sgx`          | Intel SGX                                                         |
 | `tdx`          | Intel TDX                                                         |
