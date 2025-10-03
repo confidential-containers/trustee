@@ -53,6 +53,12 @@ async fn main() -> Result<()> {
 
     info!("Listen socket: {}", &cli.address);
 
+    if config.read_only {
+        info!("RVPS is running in READ-ONLY mode. Reference value registration is disabled.");
+    } else {
+        info!("RVPS is running in normal mode. Reference value registration is enabled.");
+    }
+
     let socket = cli.address.parse().context("parse socket addr failed")?;
 
     server::start(socket, config).await

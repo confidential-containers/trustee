@@ -3,7 +3,8 @@
     "policy_engine": "opa",
     "rvps_config": {
         "type": "GrpcRemote",
-        "address": "http://rvps:50003"
+        "address": "http://rvps:50003",
+        "read_only": false
     },
     "attestation_token_broker": {
 	"type": "Ear",

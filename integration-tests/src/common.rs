@@ -157,6 +157,7 @@ impl TestHarness {
                 storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                     file_path: rv_path,
                 }),
+                read_only: false,
             }),
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
@@ -165,6 +166,7 @@ impl TestHarness {
                     storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
                         file_path: rv_path,
                     }),
+                    read_only: false,
                 })?;
                 let inner = Arc::new(RwLock::new(service));
                 let rvps_server = RvpsServer::new(inner.clone());
@@ -206,6 +208,7 @@ impl TestHarness {
             admin: AdminConfig {
                 auth_public_key: None,
                 insecure_api: true,
+                admin_api_read_only: false,
             },
             policy_engine: PolicyEngineConfig {
                 policy_path: kbs_policy_path,

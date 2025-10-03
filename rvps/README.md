@@ -98,11 +98,13 @@ RVPS can be launched with a specified configuration file by `-c` flag. A configu
     "storage": {
         "type": "LocalFs",
         "file_path": "/opt/confidential-containers/attestation-service/reference_values"
-    }
+    },
+    "read_only": false
 }
 ```
 - `storage.type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
 - `storage.*`: Each different type of storage has its own associated configuration parameters. This is also a JSON map object.
+- `read_only`: Whether RVPS should run in read-only mode (disable reference value registration). Defaults to `false`.
 
 ## Integrate RVPS into the Attestation Service
 
