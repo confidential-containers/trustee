@@ -581,6 +581,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "base64 0.22.1",
+ "cache",
  "canon-json",
  "cfg-if",
  "clap",
@@ -1004,6 +1005,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "113b4343b5f6617e7ad401ced8de3cc8b012e73a594347c307b90db3e9271289"
 dependencies = [
  "bytes",
+]
+
+[[package]]
+name = "cache"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2913,6 +2927,7 @@ dependencies = [
  "anyhow",
  "attestation-service",
  "base64 0.22.1",
+ "cache",
  "env_logger 0.10.2",
  "kbs",
  "kbs-client",
@@ -3173,6 +3188,7 @@ dependencies = [
  "attestation-service",
  "az-cvm-vtpm",
  "base64 0.22.1",
+ "cache",
  "cfg-if",
  "chrono",
  "clap",
@@ -6502,6 +6518,7 @@ dependencies = [
  "bincode 1.3.3",
  "bitflags 2.9.4",
  "byteorder",
+ "cache",
  "ccatoken",
  "cfg-if",
  "codicon",

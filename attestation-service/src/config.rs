@@ -1,6 +1,7 @@
 use crate::rvps::RvpsConfig;
 use crate::token::AttestationTokenConfig;
 
+use cache::CacheConfig;
 use serde::Deserialize;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -23,6 +24,10 @@ pub struct Config {
     /// The Attestation Result Token Broker Config
     #[serde(default)]
     pub attestation_token_broker: AttestationTokenConfig,
+
+    /// Configuration for Attestation Service caching
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
 fn default_work_dir() -> PathBuf {
@@ -48,6 +53,7 @@ impl Default for Config {
             work_dir: default_work_dir(),
             rvps_config: RvpsConfig::default(),
             attestation_token_broker: AttestationTokenConfig::default(),
+            cache: CacheConfig::default(),
         }
     }
 }
@@ -86,6 +92,8 @@ mod tests {
         rvps::RvpsConfig,
         token::{ear_broker, simple, AttestationTokenConfig},
     };
+
+    use cache::{CacheConfig, CacheType};
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     #[rstest]
@@ -100,7 +108,11 @@ mod tests {
             issuer_name: "test".into(),
             signer: None,
             policy_dir: "/var/lib/attestation-service/policies".into(),
-        })
+        }),
+        cache: CacheConfig {
+            r#type: CacheType::Simple,
+            initial_values: None,
+        }
     })]
     #[case("./tests/configs/example2.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
@@ -117,7 +129,11 @@ mod tests {
                 cert_url: Some("https://example.io".into()),
                 cert_path: Some("/etc/cert.pem".into())
             })
-        })
+        }),
+        cache: CacheConfig {
+            r#type: CacheType::Simple,
+            initial_values: None,
+        }
     })]
     #[case("./tests/configs/example3.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
@@ -133,7 +149,11 @@ mod tests {
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
-        })
+        }),
+        cache: CacheConfig {
+            r#type: CacheType::Simple,
+            initial_values: None,
+        }
     })]
     #[case("./tests/configs/example4.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
@@ -153,7 +173,11 @@ mod tests {
                 cert_url: Some("https://example.io".into()),
                 cert_path: Some("/etc/cert.pem".into())
             })
-        })
+        }),
+        cache: CacheConfig {
+            r#type: CacheType::Simple,
+            initial_values: None,
+        }
     })]
     fn read_config(#[case] config: &str, #[case] expected: Config) {
         let config = std::fs::read_to_string(config).unwrap();

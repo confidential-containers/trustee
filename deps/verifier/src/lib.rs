@@ -4,6 +4,9 @@ use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use log::debug;
+use std::sync::Arc;
+
+use cache::Cache;
 
 pub mod sample;
 pub mod sample_device;
@@ -45,7 +48,7 @@ pub mod nvidia;
 ))]
 pub mod intel_dcap;
 
-pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+pub fn to_verifier(tee: &Tee, _cache: Arc<dyn Cache + Send + Sync>) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use cache::{CacheConfig, CacheType};
 use kbs::admin::config::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
@@ -193,6 +194,10 @@ impl TestHarness {
                     work_dir: work_dir.path().to_path_buf(),
                     rvps_config,
                     attestation_token_broker: attestation_token_config,
+                    cache: CacheConfig {
+                        r#type: CacheType::Simple,
+                        initial_values: None,
+                    },
                 }),
                 timeout: 5,
             },

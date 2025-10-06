@@ -29,6 +29,7 @@ fn default_timeout() -> i64 {
     DEFAULT_TIMEOUT
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum AttestationServiceConfig {

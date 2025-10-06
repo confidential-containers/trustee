@@ -38,6 +38,7 @@ actix-web = { workspace = true, optional = true }
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
+cache = { path = "../deps/cache" }
 canon-json = "0.2.1"
 cfg-if.workspace = true
 clap = { workspace = true, optional = true }

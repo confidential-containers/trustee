@@ -16,7 +16,7 @@ as = []
 coco-as = ["as"]
 
 # Use built-in CoCo-AS as backend attestation service
-coco-as-builtin = ["coco-as", "attestation-service/default"]
+coco-as-builtin = ["coco-as", "attestation-service/default", "cache"]
 
 # Use built-in CoCo-AS as backend attestation service without verifier
 coco-as-builtin-no-verifier = ["coco-as"]
@@ -49,6 +49,7 @@ aes-kw = "0.2.1"
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
+cache = { path = "../deps/cache", optional = true }
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
