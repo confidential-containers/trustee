@@ -88,6 +88,7 @@ openssl.workspace = true
 az-cvm-vtpm = { version = "0.7.0", default-features = false, optional = true }
 derivative = "2.2.0"
 vaultrs = { version = "0.7.4", optional = true }
+trustee-config = { version = "0.1.0", path = "../deps/trustee-config" }
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [

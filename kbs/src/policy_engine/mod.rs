@@ -9,13 +9,14 @@ use tokio::sync::Mutex;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use trustee_config::default_base_path;
 
 mod opa;
 
 mod error;
 pub use error::*;
 
-pub const DEFAULT_POLICY_PATH: &str = "/opt/confidential-containers/kbs/policy.rego";
+pub const DEFAULT_POLICY_PATH: &str = "kbs/policy.rego";
 
 /// Resource policy engine interface
 ///
@@ -50,7 +51,7 @@ pub struct PolicyEngineConfig {
 impl Default for PolicyEngineConfig {
     fn default() -> Self {
         Self {
-            policy_path: PathBuf::from(DEFAULT_POLICY_PATH),
+            policy_path: default_base_path().join(DEFAULT_POLICY_PATH),
         }
     }
 }

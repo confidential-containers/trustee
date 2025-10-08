@@ -8,6 +8,7 @@
 use anyhow::*;
 use async_trait::async_trait;
 use serde::Deserialize;
+use trustee_config::default_base_path;
 
 use crate::ReferenceValue;
 
@@ -15,7 +16,7 @@ use super::ReferenceValueStorage;
 
 /// Local directory path to store the reference values,
 /// which is created by sled engine.
-const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values";
+const FILE_PATH: &str = "attestation-service/reference_values";
 
 /// `LocalFs` implements [`ReferenceValueStorage`] trait. And
 /// it uses rocksdb inside.
@@ -24,7 +25,10 @@ pub struct LocalFs {
 }
 
 fn default_file_path() -> String {
-    FILE_PATH.to_string()
+    default_base_path()
+        .join(FILE_PATH)
+        .to_string_lossy()
+        .to_string()
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]

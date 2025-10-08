@@ -13,8 +13,8 @@ use core::result::Result::Ok;
 use ear::{Ear, RawValue};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::{collections::BTreeMap, str};
+use std::{collections::BTreeMap, path::PathBuf, str};
+use trustee_config::default_base_path;
 use veraison_apiclient::*;
 
 mod config;
@@ -76,11 +76,14 @@ impl Verifier for CCA {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let config_file =
-            std::env::var(CCA_CONFIG_FILE).unwrap_or_else(|_| DEFAULT_CCA_CONFIG.to_string());
+        let config_file = if let Ok(value) = std::env::var(CCA_CONFIG_FILE) {
+            PathBuf::from(value)
+        } else {
+            default_base_path().join(DEFAULT_CCA_CONFIG)
+        };
 
-        let config = Config::try_from(Path::new(&config_file))
-            .map_err(|e| anyhow!("parsing {config_file}: {e}"))?;
+        let config = Config::try_from(config_file.as_path())
+            .map_err(|e| anyhow!("parsing {config_file:?}: {e}"))?;
 
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("CCA verifier must provide report data field!");

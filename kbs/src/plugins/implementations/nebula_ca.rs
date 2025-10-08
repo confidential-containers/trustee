@@ -27,7 +27,7 @@ const DEFAULT_NEBULA_CA_NAME: &str = "Trustee Nebula CA plugin";
 const DEFAULT_NEBULA_CERT_PATH: &str = "nebula-cert";
 /// Default Nebula CA working directory.
 /// It must have read-write permission.
-const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/kbs/nebula-ca";
+const DEFAULT_WORK_DIR: &str = "kbs/nebula-ca";
 /// Minimum nebula-cert version required.
 const NEBULA_CERT_VERSION_REQUIREMENT: &str = ">=1.9.5";
 
@@ -105,7 +105,11 @@ impl TryFrom<NebulaCaPluginConfig> for NebulaCaPlugin {
     type Error = Error;
 
     fn try_from(config: NebulaCaPluginConfig) -> Result<Self> {
-        let work_dir = PathBuf::from(config.work_dir.unwrap_or(DEFAULT_WORK_DIR.into()));
+        let work_dir = if let Some(config_work_dir) = config.work_dir {
+            PathBuf::from(config_work_dir)
+        } else {
+            default_base_path.join(DEFAULT_WORK_DIR)
+        };
         let path = PathBuf::from(
             config
                 .nebula_cert_bin_path

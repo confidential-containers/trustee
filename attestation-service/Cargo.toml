@@ -70,6 +70,7 @@ tonic = { workspace = true, optional = true }
 uuid = { version = "1.18.0", features = ["v4"] }
 verifier = { path = "../deps/verifier", default-features = false }
 actix-cors = { version = "0.7", optional = true}
+trustee-config = { version = "0.1.0", path = "../deps/trustee-config" }
 
 [build-dependencies]
 shadow-rs.workspace = true

@@ -8,8 +8,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-pub const DEFAULT_CCA_CONFIG: &str =
-    "/opt/confidential-containers/attestation-service/cca/config.json";
+pub const DEFAULT_CCA_CONFIG: &str = "attestation-service/cca/config.json";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "kebab-case")]

@@ -7,8 +7,9 @@ use async_trait::async_trait;
 use log::debug;
 use serde::Deserialize;
 use tokio::sync::RwLock;
+use trustee_config::default_base_path;
 
-const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values.json";
+const FILE_PATH: &str = "attestation-service/reference_values.json";
 
 pub struct LocalJson {
     file_path: String,
@@ -16,7 +17,10 @@ pub struct LocalJson {
 }
 
 fn default_file_path() -> String {
-    FILE_PATH.to_string()
+    default_base_path()
+        .join(FILE_PATH)
+        .to_string_lossy()
+        .to_string()
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
