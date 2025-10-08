@@ -1,0 +1,41 @@
+{
+    "name": "trustee image",
+    "image": "quay.io/podman/stable:v5@sha256:3c7cf6c0f3ce17ab326cb8ae1f86b16da1bb6989d9767e0e2f701b86e950138a",
+    "capAdd": [
+        "CAP_AUDIT_WRITE",
+        "CAP_NET_ADMIN",
+        "CAP_SYS_ADMIN"
+    ],
+    "runArgs": [
+        "--device=/dev/fuse",
+        "--device=/dev/net/tun",
+        "--security-opt=label=disable",
+        "--tmpfs",
+        "/run",
+        "--security-opt=unmask=/proc/*",
+        "--security-opt",
+        "apparmor=unconfined",
+        "--security-opt",
+        "seccomp=unconfined"
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {},
+        "ghcr.io/devcontainers/features/node:1": {},
+        "ghcr.io/devcontainers-extra/features/devcontainers-cli:1": {
+            "version": "latest"
+        }
+    },
+    "containerEnv": {
+        "CONTAINER_WORKSPACE_FOLDER": "${containerWorkspaceFolder}"
+    },
+    "postCreateCommand": "bash .devcontainer/image-builder/postCreateCommand.sh",
+    "updateRemoteUserUID": false,
+    "remoteUser": "podman",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "exiasr.hadolint"
+            ]
+        }
+    }
+}
