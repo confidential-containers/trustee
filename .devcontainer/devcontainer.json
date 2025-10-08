@@ -1,0 +1,4 @@
+{
+	"name": "trustee simple",
+	"image": "mcr.microsoft.com/devcontainers/base@sha256:a8e7e6a467529260b88708e2f0de2233fb2f8d09d6cde6f345b902ecb9d63426"
+}

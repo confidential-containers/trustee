@@ -1,0 +1,28 @@
+{
+	"name": "trustee code",
+	"image": "mcr.microsoft.com/devcontainers/rust:1-1-bookworm@sha256:fc57fb865035c5395e85246c8842b071ced6e7cde727b3c98abbcc794eaf4759",
+	"capAdd": [
+		"AUDIT_WRITE"
+	],
+	"postCreateCommand": "bash .devcontainer/rust-development/postCreateCommand.sh",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"files.watcherExclude": {
+					"**/target/**": true
+				},
+				"rust-analyzer.cargo.features": "all",
+				"rust-analyzer.runnables.extraEnv": {
+					"SOFTHSM2_CONF": "/home/vscode/softhsm/softhsm2.conf"
+				},
+				"rust-analyzer.cargo.extraEnv": {
+					"SOFTHSM2_CONF": "/home/vscode/softhsm/softhsm2.conf"
+				}
+			},
+			"extensions": [
+				"mutantdino.resourcemonitor",
+				"fill-labs.dependi"
+			]
+		}
+	}
+}

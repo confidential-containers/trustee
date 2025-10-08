@@ -50,6 +50,11 @@ flowchart LR
     end
     client-tool -- configures --> KBS
 ```
+
+## Development
+
+Please go [here](DEVELOPMENT.md).
+
 ## Deployment
 
 There are two main ways to deploy Trustee.
