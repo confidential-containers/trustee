@@ -5,10 +5,11 @@ use serde::Deserialize;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+use trustee_config::default_base_path;
 
 /// Environment macro for Attestation Service work dir.
 const AS_WORK_DIR: &str = "AS_WORK_DIR";
-pub const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/attestation-service";
+pub(crate) const DEFAULT_WORK_DIR: &str = "attestation-service";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Config {
@@ -26,7 +27,11 @@ pub struct Config {
 }
 
 fn default_work_dir() -> PathBuf {
-    PathBuf::from(std::env::var(AS_WORK_DIR).unwrap_or_else(|_| DEFAULT_WORK_DIR.to_string()))
+    if let Ok(value) = std::env::var(AS_WORK_DIR) {
+        PathBuf::from(value)
+    } else {
+        default_base_path().join(DEFAULT_WORK_DIR)
+    }
 }
 
 #[derive(Error, Debug)]

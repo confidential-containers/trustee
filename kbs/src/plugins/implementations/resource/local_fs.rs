@@ -9,8 +9,9 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use trustee_config::default_base_path;
 
-pub const DEFAULT_REPO_DIR_PATH: &str = "/opt/confidential-containers/kbs/repository";
+pub const DEFAULT_REPO_DIR_PATH: &str = "kbs/repository";
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct LocalFsRepoDesc {
@@ -21,7 +22,10 @@ pub struct LocalFsRepoDesc {
 impl Default for LocalFsRepoDesc {
     fn default() -> Self {
         Self {
-            dir_path: DEFAULT_REPO_DIR_PATH.into(),
+            dir_path: default_base_path()
+                .join(DEFAULT_REPO_DIR_PATH)
+                .to_string_lossy()
+                .to_string(),
         }
     }
 }

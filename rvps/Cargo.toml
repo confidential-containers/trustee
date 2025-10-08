@@ -43,6 +43,7 @@ strum.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
+trustee-config = { version = "0.1.0", path = "../deps/trustee-config" }
 
 [build-dependencies]
 shadow-rs.workspace = true
