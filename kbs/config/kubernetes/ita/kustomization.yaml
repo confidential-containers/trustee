@@ -4,7 +4,7 @@ namespace: coco-tenant
 
 images:
 - name: ghcr.io/confidential-containers/key-broker-service
-  newTag: ita-as-v0.14.0
+  newTag: ita-as-v0.15.0
 
 resources:
 - ../nodeport/
