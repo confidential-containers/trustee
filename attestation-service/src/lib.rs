@@ -15,11 +15,13 @@ pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
+use cache::Cache;
 use config::Config;
 use log::{debug, info};
 use rvps::{RvpsApi, RvpsError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
@@ -124,6 +126,7 @@ pub struct AttestationService {
     _config: Config,
     rvps: Box<dyn RvpsApi + Send + Sync>,
     token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
+    cache: Arc<dyn Cache + Send + Sync>,
 }
 
 impl AttestationService {
@@ -141,10 +144,13 @@ impl AttestationService {
 
         let token_broker = config.attestation_token_broker.to_token_broker().await?;
 
+        let cache = config.cache.to_cache().await?;
+
         Ok(Self {
             _config: config,
             rvps,
             token_broker,
+            cache,
         })
     }
 
@@ -188,7 +194,7 @@ impl AttestationService {
         }
 
         for verification_request in verification_requests {
-            let verifier = verifier::to_verifier(&verification_request.tee)?;
+            let verifier = verifier::to_verifier(&verification_request.tee, self.cache.clone())?;
 
             let (report_data, runtime_data_claims) = parse_runtime_data(
                 verification_request.runtime_data,
@@ -265,7 +271,7 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee)?;
+        let verifier = verifier::to_verifier(&tee, self.cache.clone())?;
         verifier
             .generate_supplemental_challenge(tee_parameters)
             .await

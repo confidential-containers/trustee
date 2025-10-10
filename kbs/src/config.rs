@@ -128,6 +128,9 @@ mod tests {
         token::{simple, AttestationTokenConfig, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
     };
 
+    #[cfg(feature = "coco-as-builtin")]
+    use cache::{CacheConfig, CacheType};
+
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     use rstest::rstest;
@@ -196,6 +199,10 @@ mod tests {
                             signer: None,
                             ..Default::default()
                         }),
+                        cache: CacheConfig {
+                            r#type: CacheType::Simple,
+                            initial_values: None,
+                        },
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -312,6 +319,10 @@ mod tests {
                             duration_min: 5,
                             ..Default::default()
                         }),
+                        cache: CacheConfig {
+                            r#type: CacheType::Simple,
+                            initial_values: None,
+                        },
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -442,6 +453,10 @@ mod tests {
                             policy_dir: "/opt/confidential-containers/attestation-service/simple-policies".into(),
                             ..Default::default()
                         }),
+                        cache: CacheConfig {
+                            r#type: CacheType::Simple,
+                            initial_values: None,
+                        },
                     }
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,

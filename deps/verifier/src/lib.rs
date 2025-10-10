@@ -4,6 +4,9 @@ use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use log::debug;
+use std::sync::Arc;
+
+use cache::Cache;
 
 pub mod sample;
 pub mod sample_device;
@@ -45,7 +48,7 @@ pub mod nvidia;
 ))]
 pub mod intel_dcap;
 
-pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
+pub fn to_verifier(tee: &Tee, _cache: Arc<dyn Cache + Send + Sync>) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {
@@ -79,7 +82,7 @@ pub fn to_verifier(tee: &Tee) -> Result<Box<dyn Verifier + Send + Sync>> {
         Tee::Snp => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "snp-verifier")] {
-                    let verifier = snp::Snp::default();
+                    let verifier = snp::Snp::new(_cache);
                     Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `snp-verifier` is not enabled for `verifier` crate.")
