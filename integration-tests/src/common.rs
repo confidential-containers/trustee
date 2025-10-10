@@ -99,7 +99,7 @@ pub struct TestParameters {
 /// Internal state of tests
 pub struct TestHarness {
     pub kbs_config: KbsConfig,
-    auth_privkey: String,
+    pub auth_privkey: String,
     kbs_server_handle: actix_web::dev::ServerHandle,
     _work_dir: TempDir,
 
@@ -135,7 +135,7 @@ impl TestHarness {
             .map_err(|e| anyhow!("Failed to join reference values path: {:?}", e))?;
         let auth_pubkey_path = work_dir.path().join("auth_pubkey");
 
-        tokio::fs::write(auth_pubkey_path, auth_pubkey.as_bytes()).await?;
+        tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
         let attestation_token_config = match &test_parameters.attestation_token_type[..] {
             "Ear" => AttestationTokenConfig::Ear(ear_broker::Configuration {
@@ -204,8 +204,8 @@ impl TestHarness {
                 payload_request_size: 2,
             },
             admin: AdminConfig {
-                auth_public_key: None,
-                insecure_api: true,
+                auth_public_key: Some(auth_pubkey_path.as_path().to_path_buf()),
+                insecure_api: false,
             },
             policy_engine: PolicyEngineConfig {
                 policy_path: kbs_policy_path,
