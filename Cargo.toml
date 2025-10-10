@@ -7,7 +7,7 @@ members = [
     "deps/verifier",
     "deps/eventlog",
     "integration-tests",
-    "tools/trustee",
+    "tools/trustee-cli",
 ]
 resolver = "2"
 

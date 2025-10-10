@@ -52,7 +52,7 @@ jobs:
         commit_sha=${{ github.sha }}
         docker buildx build --provenance false \
           ${INPUTS_BUILD_OPTION:+"$INPUTS_BUILD_OPTION"} \
-          -f tools/trustee/Dockerfile \
+          -f tools/trustee-cli/Dockerfile \
           -t "ghcr.io/confidential-containers/staged-images/trustee-cli:${commit_sha}-${{ matrix.arch }}" \
           -t "ghcr.io/confidential-containers/staged-images/trustee-cli:latest-${{ matrix.arch }}" .
       env:
