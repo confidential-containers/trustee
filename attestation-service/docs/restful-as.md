@@ -3,7 +3,7 @@
 `restful-as` is an Attestation Service application based on RESTful.
 
 Now the following types of evidence are supported:
-- `azsnpvtpm`: Azure SNP vTPM
+- `az-snp-vtpm`: Azure SNP vTPM
 - `sev`: AMD SEV (Not implemented)
 - `sgx`: Intel SGX
 - `snp`: AMD SNP
@@ -11,7 +11,7 @@ Now the following types of evidence are supported:
 - `cca`: Arm CCA
 - `sample`: A fake platform. Only for test and sample
 - `csv`: Hygon CSV
-- `aztdxvtpm`: Azure TDX vTPM
+- `az-tdx-vtpm`: Azure TDX vTPM
 - `se`: IBM Secure Execution
 
 ## Quick Start

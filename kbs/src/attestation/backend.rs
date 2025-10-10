@@ -8,12 +8,12 @@ use actix_web::{HttpRequest, HttpResponse};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use kbs_types::{Attestation, Challenge, Request, Tee, TeePubKey};
+use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use lazy_static::lazy_static;
 use log::{debug, info};
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -48,33 +48,6 @@ lazy_static! {
 }
 
 pub type TeeEvidence = serde_json::Value;
-
-/// CompositeEvidence is the combined evidence from all the TEEs
-/// that represent the guest.
-#[derive(Serialize, Deserialize)]
-pub struct CompositeEvidence {
-    primary_evidence: TeeEvidence,
-    // The additional evidence is a map of Tee -> (TeeClass, TeeEvidence),
-    // but we convert it to a string to avoid any inconsistencies
-    // with serialization. The string in this struct is exactly
-    // what is used to calculate the runtime data.
-    additional_evidence: String,
-}
-
-#[derive(Deserialize)]
-pub struct RuntimeData {
-    pub nonce: String,
-
-    #[serde(rename = "tee-pubkey")]
-    pub tee_pubkey: TeePubKey,
-}
-
-#[derive(Deserialize)]
-pub struct InitData {
-    pub format: String,
-
-    pub body: String,
-}
 
 /// IndependentEvidence is one set of evidence from one attester.
 pub struct IndependentEvidence {
@@ -334,51 +307,41 @@ impl AttestationService {
             (session.request().tee, session.challenge().nonce.to_string())
         };
 
-        // deserialize evidence
-        let composite_evidence: CompositeEvidence =
-            serde_json::from_value(attestation.tee_evidence)
-                .inspect_err(|_| ATTESTATION_ERRORS.inc())
-                .context("failed to parse composite evidence")?;
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
-        let runtime_data: RuntimeData = serde_json::from_value(attestation.runtime_data)
-            .context("parse kbs protocol runtime data")?;
-
-        if nonce != runtime_data.nonce {
+        if nonce != attestation.runtime_data.nonce {
             bail!("the nonce in the handshake session is different from the client side in KBS protocol's Attestation message");
         }
 
         let kbs_evidence_runtime_data = json!({
-            "tee-pubkey": runtime_data.tee_pubkey,
+            "tee-pubkey": attestation.runtime_data.tee_pubkey,
             "nonce": nonce,
         });
 
         let primary_runtime_data = json!({
-            "tee-pubkey": runtime_data.tee_pubkey,
+            "tee-pubkey": attestation.runtime_data.tee_pubkey,
             "nonce": nonce,
-            "additional-evidence": composite_evidence.additional_evidence,
+            "additional-evidence": attestation.tee_evidence.additional_evidence,
         });
 
         let mut primary_evidence = IndependentEvidence {
             tee,
-            tee_evidence: composite_evidence.primary_evidence,
+            tee_evidence: attestation.tee_evidence.primary_evidence,
             runtime_data: primary_runtime_data,
             init_data: None,
         };
 
         if let Some(init_data) = attestation.init_data {
-            let initdata: InitData =
-                serde_json::from_value(init_data).context("parse initdata failed")?;
-            primary_evidence.init_data = Some(initdata);
+            primary_evidence.init_data = Some(init_data);
         }
 
         // primary evidence
         evidence_to_verify.push(primary_evidence);
 
         // additional evidence
-        if !composite_evidence.additional_evidence.is_empty() {
+        if !attestation.tee_evidence.additional_evidence.is_empty() {
             let additional_evidence: HashMap<Tee, TeeEvidence> =
-                serde_json::from_str(&composite_evidence.additional_evidence)
+                serde_json::from_str(&attestation.tee_evidence.additional_evidence)
                     .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
             for (tee, tee_evidence) in additional_evidence {
                 evidence_to_verify.push(IndependentEvidence {

@@ -76,7 +76,7 @@ enum InitDataInput {
 
 fn to_tee(tee: &str) -> anyhow::Result<Tee> {
     let res = match tee {
-        "azsnpvtpm" => Tee::AzSnpVtpm,
+        "az-snp-vtpm" => Tee::AzSnpVtpm,
         "sev" => Tee::Sev,
         "sgx" => Tee::Sgx,
         "snp" => Tee::Snp,
@@ -85,7 +85,7 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
         "csv" => Tee::Csv,
         "sample" => Tee::Sample,
         "sampledevice" => Tee::SampleDevice,
-        "aztdxvtpm" => Tee::AzTdxVtpm,
+        "az-tdx-vtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
         "hygondcu" => Tee::HygonDcu,
         other => bail!("tee `{other} not supported`"),

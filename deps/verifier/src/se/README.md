@@ -24,16 +24,16 @@ openssl rsa -in encrypt_key-psw.pem -out encrypt_key.pem
 
 
 ## Download Certs, CRLs
-Donwload these materials from: https://www.ibm.com/support/resourcelink/api/content/public/secure-execution-gen2.html
+Download these materials from: https://www.ibm.com/support/resourcelink/api/content/public/secure-execution-gen2.html
 Which includes:
 
 ### Certs
 ibm-z-host-key-signing-gen2.crt
-DigiCertCA.crt 
+DigiCertCA.crt
 
 ### CRL
-ibm-z-host-key-gen2.crl  
-DigiCertTrustedRootG4.crl  
+ibm-z-host-key-gen2.crl
+DigiCertTrustedRootG4.crl
 DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl
 
 Note: `DigiCertTrustedRootG4.crl` and `DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl` come from commands as below:
@@ -46,15 +46,15 @@ Note: `DigiCertTrustedRootG4.crl` and `DigiCertTrustedG4CodeSigningRSA4096SHA384
 ```
 
 ## Download HKD
-Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-z?topic=execution-verify-host-key-document
+Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonibm/com.ibm.linux.z.lxse/lxse_t_hkd_tools.htm
 
 ## Get SE Header
-Build `se.img` following [Generate an IBM Secure Execution image](https://www.ibm.com/docs/en/linux-on-systems?topic=commands-genprotimg) and retrieve the hdr.bin via command like below.
+Build `se.img` following [Generate an IBM Secure Execution image](https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonibm/com.ibm.linux.z.lxse/lxse_t_guestsecure.htm) and retrieve the hdr.bin via command like below.
 ```bash
 ./pvextract-hdr -o hdr.bin se.img
 ```
 
-Refer [ibm-s390-linux](https://github.com/ibm-s390-linux/s390-tools/blob/v2.33.1/rust/pvattest/tools/pvextract-hdr) to get `pvextract-hdr`.
+Refer to [ibm-s390-linux](https://github.com/ibm-s390-linux/s390-tools/blob/v2.33.1/rust/pvattest/tools/pvextract-hdr) to get `pvextract-hdr`.
 
 ## Generate KBS key
 Generate keys used by KBS service.
@@ -67,7 +67,7 @@ openssl pkey -in kbs.key -pubout -out kbs.pem
 
 - Build KBS
 ```bash
-cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa 
+cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa
 ```
 
 - Prepare the material retrieved above, similar as:
@@ -211,21 +211,21 @@ This section is about setting attestation policy.
 Using [se_parse_hdr.py](se_parse_hdr.py) on a s390x instance to retrieve the IBM SE fields for attestation policy.
 
 ```bash
-python3 se_parse_hdr.py hdr.bin HKD-3931.crt 
+python3 se_parse_hdr.py hdr.bin HKD-3931.crt
 
 ...
-  ================================================ 
+  ================================================
   se.image_phkh: xxx
   se.version: 256
   se.tag: xxx
   se.attestation_phkh: xxx
 ```
 
-We get following fields and will set these fields in rvps for attestation policy. 
-`se.version: 256`  
-`se.tag: xxx`  
-`se.attestation_phkh: xxx`  
-`se.image_phkh: xxx`  
+We get following fields and will set these fields in rvps for attestation policy.
+`se.version: 256`
+`se.tag: xxx`
+`se.attestation_phkh: xxx`
+`se.image_phkh: xxx`
 
 
 ### Set attestation policy

@@ -12,8 +12,8 @@ mod error;
 pub(crate) mod jwk;
 pub use error::*;
 
-pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/attester_runtime_data/tee-pubkey";
-pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/attester_user_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/tdx/attester_runtime_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/tdx/attester_user_data/tee-pubkey";
 pub const TOKEN_TEE_PUBKEY_PATH_COCO: &str = "/customized_claims/runtime_data/tee-pubkey";
 pub const TOKEN_TEE_PUBKEY_PATH_EAR: &str =
     "/submods/cpu0/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";

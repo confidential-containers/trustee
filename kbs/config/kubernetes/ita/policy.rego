@@ -38,5 +38,5 @@ package policy
 default allow = false
 
 allow {
-	input["attester_type"] != "sample"
+	input["tdx"]["attester_type"] != "sample"
 }
