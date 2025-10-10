@@ -30,7 +30,6 @@ use crate::rvps_api::{
 
 fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
     let tee = match tee {
-        "sev" => Tee::Sev,
         "sgx" => Tee::Sgx,
         "snp" => Tee::Snp,
         "tdx" => Tee::Tdx,
