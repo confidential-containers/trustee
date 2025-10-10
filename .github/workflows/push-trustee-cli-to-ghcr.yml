@@ -47,7 +47,7 @@ jobs:
 
     - name: Build a statically linked trustee for ${{ matrix.arch }} linux
       run: |
-        docker buildx build -f tools/trustee/Dockerfile \
+        docker buildx build -f tools/trustee-cli/Dockerfile \
           --build-arg ARCH="${{ matrix.arch }}" --output ./ .
 
     - name: Push to ghcr.io
