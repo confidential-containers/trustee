@@ -6,8 +6,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use ibmse::SeVerifierImpl;
-use log::warn;
 use tokio::sync::OnceCell;
+use tracing::{instrument, warn};
 
 use crate::{InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
@@ -20,6 +20,7 @@ pub struct SeVerifier;
 
 #[async_trait]
 impl Verifier for SeVerifier {
+    #[instrument(skip_all, name = "IBM SE")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

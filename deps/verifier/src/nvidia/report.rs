@@ -4,12 +4,12 @@
 //
 
 use anyhow::{anyhow, bail, Result};
-use log::{info, warn};
 use openssl::x509::X509;
 use p384::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use p384::pkcs8::DecodePublicKey;
 use serde_json::Value;
 use std::fmt;
+use tracing::{info, warn};
 
 use super::spdm_request::{SpdmGetMeasurementRequest, SPDM_GET_MEASUREMENT_REQUEST_SIZE};
 use super::spdm_response::SpdmGetMeasurementsResponse;

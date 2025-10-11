@@ -10,8 +10,8 @@ use base64::Engine;
 use config::Config;
 use core::result::Result::Ok;
 use ear::Ear;
-use log::{debug, error};
 use std::str;
+use tracing::{debug, error};
 
 const MEDIA_TYPE: &str = r#"application/eat-collection; profile="http://arm.com/CCA-SSD/1.0.0""#;
 

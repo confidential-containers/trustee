@@ -11,10 +11,10 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use core::result::Result::Ok;
 use ear::{Ear, RawValue};
-use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::{collections::BTreeMap, str};
+use tracing::{debug, instrument};
 use veraison_apiclient::*;
 
 mod config;
@@ -70,6 +70,7 @@ struct CcaEvidence {
 
 #[async_trait]
 impl Verifier for CCA {
+    #[instrument(skip_all, name = "Arm CCA")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
@@ -229,9 +230,6 @@ fn b642hex(b64: &String) -> Result<String> {
 
 fn cca_generate_parsed_claim(tcb: EvidenceClaimsSet) -> Result<TeeEvidenceParsedClaim> {
     let v = serde_json::to_value(tcb).context("serializing CCA evidence claims into JSON")?;
-
-    debug!("CCA claims-set: {v}");
-
     Ok(v as TeeEvidenceParsedClaim)
 }
 

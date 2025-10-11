@@ -13,10 +13,10 @@ use config::Config;
 use core::result::Result::Ok;
 use ear::{Appraisal, Ear, RawValue, VerifierID};
 use ear::{Extensions, TrustTier};
-use log::debug;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::{fs, io::Cursor};
+use tracing::debug;
 
 pub fn verify(config: Config, token: &Vec<u8>, expected_report_data: &Vec<u8>) -> Result<Ear> {
     debug!("using config: {:?}", config);

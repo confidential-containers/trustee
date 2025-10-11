@@ -13,12 +13,12 @@ pub mod spdm_response;
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::trace;
 use nvml_wrapper::enums::device::DeviceArchitecture;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::str::FromStr;
+use tracing::{instrument, trace};
 
 use super::*;
 use crate::nvidia::nras_jwks::NrasJwks;
@@ -222,6 +222,7 @@ impl Nvidia {
 
 #[async_trait]
 impl Verifier for Nvidia {
+    #[instrument(skip_all, name = "Nvidia")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

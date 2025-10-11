@@ -17,12 +17,12 @@ use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
 use az_snp_vtpm::vtpm::QuoteError;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use log::debug;
 use openssl::pkey::PKey;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
+use tracing::{debug, instrument};
 use x509_parser::prelude::*;
 
 const HCL_VMPL_VALUE: u32 = 0;
@@ -111,6 +111,7 @@ impl Verifier for AzSnpVtpm {
     /// 5. SNP Report is genuine
     /// 6. SNP Report has been issued in VMPL 0
     /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
+    #[instrument(skip_all, name = "Azure vTPM SEV-SNP")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

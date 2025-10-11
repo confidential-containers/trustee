@@ -3,8 +3,8 @@ use std::cmp::Ordering;
 use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
-use log::debug;
 use serde::Deserialize;
+use tracing::debug;
 
 pub mod sample;
 pub mod sample_device;

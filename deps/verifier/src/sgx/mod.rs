@@ -6,9 +6,9 @@
 use anyhow::*;
 use async_trait::async_trait;
 use base64::Engine;
-use log::debug;
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, instrument};
 
 use self::types::sgx_quote3_t;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
@@ -32,6 +32,7 @@ pub struct SgxVerifier {}
 
 #[async_trait]
 impl Verifier for SgxVerifier {
+    #[instrument(skip_all, name = "Intel SGX")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
@@ -41,7 +42,7 @@ impl Verifier for SgxVerifier {
         let tee_evidence =
             serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
 
-        debug!("TEE-Evidence<Sgx>: {:?}", &tee_evidence);
+        debug!("evidence: {}", serde_json::to_string(&tee_evidence)?);
 
         let claims = verify_evidence(expected_report_data, expected_init_data_hash, tee_evidence)
             .await
