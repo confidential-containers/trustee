@@ -6,7 +6,6 @@
 use crate::{TeeEvidence, TeeEvidenceParsedClaim};
 use anyhow::{anyhow, bail, Context, Result};
 use core::result::Result::Ok;
-use log::{debug, info, warn};
 use openssl::encrypt::{Decrypter, Encrypter};
 use openssl::pkey::{PKey, Private, Public};
 use openssl::rsa::Padding;
@@ -20,6 +19,7 @@ use pv::uv::ConfigUid;
 use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, hex::Hex, serde_as};
 use std::{env, fs};
+use tracing::{debug, info, warn};
 
 const DEFAULT_CERTS_OFFLINE_VERIFICATION: &str = "false";
 

@@ -106,8 +106,6 @@ pub fn generate_parsed_claims(quote: sgx_quote3_t) -> Result<TeeEvidenceParsedCl
     parse_claim!(claims, "report_data", quote.report_body.report_data);
     parse_claim!(claims, "init_data", quote.report_body.config_id);
 
-    log::info!("\nParsed Evidence claims map: \n{:?}\n", &claims);
-
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
 }
 

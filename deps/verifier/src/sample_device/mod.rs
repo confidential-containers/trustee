@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use log::debug;
+use tracing::{debug, instrument};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -24,6 +24,7 @@ pub struct SampleDeviceVerifier {}
 
 #[async_trait]
 impl Verifier for SampleDeviceVerifier {
+    #[instrument(skip_all, name = "Sample Device")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
@@ -36,8 +37,6 @@ impl Verifier for SampleDeviceVerifier {
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
-
-        debug!("TEE-Evidence<sample_device>: {:?}", tee_evidence);
 
         let claims = parse_tee_evidence(&tee_evidence)?;
         Ok(vec![(claims, "gpu".to_string())])

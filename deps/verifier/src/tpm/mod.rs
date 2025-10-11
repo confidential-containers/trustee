@@ -8,7 +8,6 @@ use async_trait::async_trait;
 use az_cvm_vtpm::vtpm::Quote as VtpmQuote;
 use base64::{engine::general_purpose, Engine};
 use hex;
-use log::{debug, info};
 use openssl::pkey::PKey;
 use serde::Deserialize;
 use serde_json::{self, json};
@@ -16,6 +15,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
 use std::result::Result::Ok;
+use tracing::{debug, info, instrument, warn};
 use tss_esapi::structures::Signature;
 use tss_esapi::traits::UnMarshall;
 
@@ -166,7 +166,7 @@ impl TpmVerifier {
                     trusted_ak_hashes.insert(hash);
                 }
                 Err(e) => {
-                    log::warn!("Failed to load trusted AK key from {:?}: {}", path, e);
+                    warn!("Failed to load trusted AK key from {:?}: {}", path, e);
                     continue;
                 }
             }
@@ -273,6 +273,7 @@ fn extend_claim(claim: &mut TeeEvidenceParsedClaim, quote: &VtpmQuote) -> Result
 
 #[async_trait]
 impl Verifier for TpmVerifier {
+    #[instrument(skip_all, name = "TPM")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

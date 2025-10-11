@@ -7,10 +7,10 @@ use intel_tee_quote_verification_rs::{
     sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
 };
-use log::{debug, warn};
 use serde_json::{Map, Value};
 use std::mem;
 use std::time::{Duration, SystemTime};
+use tracing::{debug, warn};
 
 mod claims;
 mod error;

@@ -13,9 +13,9 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_tdx_vtpm::hcl::HclReport;
 use az_tdx_vtpm::vtpm::Quote as TpmQuote;
-use log::debug;
 use openssl::pkey::PKey;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, instrument};
 
 #[derive(Serialize, Deserialize)]
 struct Evidence {
@@ -36,6 +36,7 @@ impl Verifier for AzTdxVtpm {
     /// 4. TD Quote is genuine
     /// 5. TD Report's report_data field matches hashed HCL variable data
     /// 6. Init data hash matches TPM PCR[INITDATA_PCR]
+    #[instrument(skip_all, name = "Azure vTPM TDX")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

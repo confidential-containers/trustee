@@ -5,7 +5,6 @@ use anyhow::anyhow;
 use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use log::{debug, warn};
 use openssl::{
     nid::Nid,
     x509::{self, X509},
@@ -22,6 +21,7 @@ use sev::{
 };
 use std::{collections::HashMap, hash::Hash, result::Result::Ok, sync::LazyLock};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use tracing::{debug, instrument, warn};
 use x509_parser::prelude::*;
 
 #[derive(Serialize, Deserialize)]
@@ -122,6 +122,7 @@ impl Verifier for Snp {
     /// Evaluates the provided evidence against the expected report data and initialize data hash.
     /// Validates the report signature, version, VMPL, and other fields.
     /// Returns parsed claims if the verification is successful.
+    #[instrument(skip_all, name = "AMD SNP")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

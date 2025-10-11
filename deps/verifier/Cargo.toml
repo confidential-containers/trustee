@@ -57,7 +57,6 @@ hex.workspace = true
 jsonwebkey = "0.3.5"
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
-log.workspace = true
 openssl = { version = "0.10.73", optional = true }
 pv = { version = "0.10.0", package = "s390_pv", optional = true }
 scroll = { version = "0.13.0", default-features = false, features = [
@@ -72,6 +71,7 @@ sev = { version = "6.3.1", default-features = false, features = [
 ], optional = true }
 sha2.workspace = true
 tokio = { workspace = true, optional = true }
+tracing.workspace = true
 intel-tee-quote-verification-rs = { git = "https://github.com/intel/SGXDataCenterAttestationPrimitives", tag = "DCAP_1.23", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/veraison/rust-apiclient", rev = "fe149cd", optional = true }

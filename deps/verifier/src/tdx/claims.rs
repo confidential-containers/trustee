@@ -10,7 +10,6 @@
 use anyhow::Result;
 use bitflags::{bitflags, Flags};
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::debug;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
@@ -142,9 +141,6 @@ pub fn generate_parsed_claim(
 
     parse_claim!(claims, "report_data", quote.report_data());
     parse_claim!(claims, "init_data", quote.mr_config_id());
-
-    let claims_str = serde_json::to_string_pretty(&claims)?;
-    debug!("Parsed Evidence claims map: \n{claims_str}\n");
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
 }

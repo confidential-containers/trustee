@@ -9,8 +9,8 @@ use reqwest::{get, Response as ReqwestResponse, StatusCode};
 use std::{io::Cursor, path::Path};
 use tokio::fs;
 
-use log::{debug, info, warn};
 use thiserror::Error;
+use tracing::{debug, info, instrument, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -87,6 +87,7 @@ pub struct CsvVerifier {}
 
 #[async_trait]
 impl Verifier for CsvVerifier {
+    #[instrument(skip_all, name = "Hygon CSV")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
@@ -105,7 +106,7 @@ impl Verifier for CsvVerifier {
 
         let (hsk, cek, pek) = match cert_chain.hsk_cek {
             Some(hsk_cek) => {
-                debug!("Hygon CSV: hsk cek included in evidence");
+                debug!("HSK and CEK are both included in the evidence");
                 (hsk_cek.hsk, hsk_cek.cek, cert_chain.pek)
             }
             None => {
@@ -115,12 +116,12 @@ impl Verifier for CsvVerifier {
                 };
 
                 debug!(
-                    "HSK_CEK: {}",
-                    cert_data
+                    hsk_cek = cert_data
                         .iter()
                         .map(|b| format!("{:02x}", b))
                         .collect::<Vec<String>>()
-                        .join("")
+                        .join(""),
+                    "Load HSK and CEK",
                 );
 
                 let mut reader = Cursor::new(cert_data);
@@ -267,7 +268,7 @@ async fn try_load_hskcek_offline(chip_id: &str) -> Option<Vec<u8>> {
 async fn download_hskcek_from_kds(chip_id: &str) -> Result<Vec<u8>> {
     let kds_url: String = format!("https://cert.hygon.cn/hsk_cek?snumber={}", chip_id);
 
-    debug!("KDS URL: {kds_url}");
+    debug!(url = kds_url, "Get HSK CEK from KDS");
     let hsk_cek_rsp: ReqwestResponse = get(kds_url)
         .await
         .context("Unable to send request for HSK_CEK")?;

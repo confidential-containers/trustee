@@ -6,9 +6,9 @@
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use csv_rs::api::dcu::{verify_reports, AttestationReport};
-use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map};
+use tracing::{instrument, warn};
 
 use crate::{
     regularize_data, InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim,
@@ -27,6 +27,7 @@ pub struct HygonDcuVerifier {}
 
 #[async_trait]
 impl Verifier for HygonDcuVerifier {
+    #[instrument(skip_all, name = "Hygon DCU")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,

@@ -1,4 +1,4 @@
-use log::{debug, warn};
+use tracing::{debug, instrument, warn};
 extern crate serde;
 use self::serde::{Deserialize, Serialize};
 use super::*;
@@ -19,6 +19,7 @@ pub struct Sample {}
 
 #[async_trait]
 impl Verifier for Sample {
+    #[instrument(skip_all, name = "Sample")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
@@ -31,8 +32,6 @@ impl Verifier for Sample {
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)
             .await
             .context("Evidence's identity verification error.")?;
-
-        debug!("TEE-Evidence<sample>: {:?}", tee_evidence);
 
         let claims = parse_tee_evidence(&tee_evidence)?;
         Ok(vec![(claims, "cpu".to_string())])

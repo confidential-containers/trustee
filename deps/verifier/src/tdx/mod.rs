@@ -1,7 +1,7 @@
 use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
 
 use anyhow::anyhow;
-use log::{debug, error, info, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::tdx::claims::generate_parsed_claim;
 
@@ -29,6 +29,7 @@ pub struct Tdx {}
 
 #[async_trait]
 impl Verifier for Tdx {
+    #[instrument(skip_all, name = "Intel TDX")]
     async fn evaluate(
         &self,
         evidence: TeeEvidence,
