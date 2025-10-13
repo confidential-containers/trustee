@@ -10,11 +10,6 @@ edition.workspace = true
 name = "trustee"
 path = "src/main.rs"
 
-[features]
-default = ["aliases", "plugins"]
-aliases = []
-plugins = []
-
 [dependencies]
 anyhow.workspace = true
 attestation-service = { path = "../../attestation-service" }
