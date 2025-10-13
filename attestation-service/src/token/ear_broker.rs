@@ -7,7 +7,7 @@ use anyhow::*;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, TrustVector, VerifierID};
+use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, VerifierID};
 use jsonwebtoken::jwk;
 use kbs_types::Tee;
 use log::{debug, warn};
@@ -247,34 +247,28 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
 
             let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
 
-            let rules = TrustVector::new()
-                .into_iter()
-                .map(|c| c.tag().to_string())
-                .collect();
-
             // There is a policy for each tee class.
             // The cpu tee class is loaded as the default.
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims_json, &policy_id, rules)
+                .evaluate(&reference_data, &tcb_claims_json, &policy_id)
                 .await?;
 
-            for (k, v) in &policy_results.rules_result {
-                let claim_value = v.as_i8().context("Policy claim value not i8")?;
-                debug!("Policy claim: {}: {}", k, claim_value);
+            let result = policy_results
+                .rules_result
+                .as_object()
+                .context("Policy result is not an object")?;
 
-                // The definition of Trustworthiness Claims in AR4SI
-                // (https://www.ietf.org/archive/id/draft-ietf-rats-ar4si-09.html#name-supportable-trustworthiness-cl)
-                // uses hyphens while the policy engine uses underscores.
-                // so we need to convert underscores to hyphens here.
-                let k = k.replace('_', "-");
+            for (k, v) in result {
+                let claim_value = v.as_i64().context("Policy claim value not number")?;
+                debug!("Policy claim: {}: {}", k, claim_value);
 
                 appraisal
                     .trust_vector
-                    .mut_by_name(&k)
+                    .mut_by_name(k)
                     .unwrap()
-                    .set(claim_value);
+                    .set(claim_value as i8);
             }
 
             if !appraisal.trust_vector.any_set() {

@@ -26,6 +26,37 @@ default hardware := 97
 #  unavailable to the Verifier."
 default configuration := 36
 
+# For the `filesystem` trust claim, the value 0 stands for
+# "No assertion."
+default file_system := 0
+
+# For the `instance_identity` trust claim, the value 0 stands for
+# "No assertion."
+default instance_identity := 0
+
+# For the `runtime_opaque` trust claim, the value 0 stands for
+# "No assertion."
+default runtime_opaque := 0
+
+# For the `storage_opaque` trust claim, the value 0 stands for
+# "No assertion."
+default storage_opaque := 0
+
+# For the `sourced_data` trust claim, the value 0 stands for
+# "No assertion."
+default sourced_data := 0
+
+result := {
+	"executables": executables,
+	"hardware": hardware,
+	"configuration": configuration,
+	"file-system": file_system,
+	"instance-identity": instance_identity,
+	"runtime-opaque": runtime_opaque,
+	"storage-opaque": storage_opaque,
+	"sourced-data": sourced_data,
+}
+
 ##### Sample
 
 # For the `executables` trust claim, the value 3 stands for
