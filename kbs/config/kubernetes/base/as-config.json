@@ -1,7 +1,6 @@
 {
     "work_dir": "/opt/confidential-containers/attestation-service",
     "attestation_token_broker": {
-	"type": "Ear",
         "duration_min": 5
     }
 }

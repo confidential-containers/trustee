@@ -4,7 +4,6 @@ work_dir = "/opt/coco/attestation-service"
 timeout = 5
 
 [attestation_service.attestation_token_broker]
-type = "Simple"
 issuer_name = "CoCo-Attestation-Service"
 
 [attestation_service.rvps_config]

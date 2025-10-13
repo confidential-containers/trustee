@@ -6,11 +6,10 @@
         "address": "http://rvps:50003"
     },
     "attestation_token_broker": {
-	"type": "Ear",
         "duration_min": 5,
-	"signer": {
-	    "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
-	    "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
-	}
+        "signer": {
+            "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
+            "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
+        }
     }
 }
