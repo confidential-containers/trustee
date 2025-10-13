@@ -1,29 +1,70 @@
-FROM docker.io/library/rust:1.85.1 AS builder
+# rust:1.89.0-slim
+FROM --platform=${BUILDPLATFORM:-linux/amd64} \
+    docker.io/library/rust@sha256:6c828d9865870a3bc8c02919d73803df22cac59b583d8f2cb30a296abe64748f \
+    AS builder
 ARG ARCH=x86_64
+ARG ALIYUN=false
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    gpg \
+    gnupg-agent \
+    git \
+    sudo
+
+RUN if [ "${ARCH}" = "aarch64" ]; then apt-get install -y libc-bin; fi
+
+RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+    gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | \
+    tee /etc/apt/sources.list.d/intel-sgx.list; fi && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libclang-dev \
+    libprotobuf-dev \
+    libssl-dev \
+    make \
+    perl \
+    pkg-config \
+    protobuf-compiler \
+    wget \
+    clang \
+    cmake \
+    libtss2-dev && \
+    if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
+    libsgx-dcap-quote-verify-dev; fi
+
+# Build and Install trustee-cli
 WORKDIR /usr/src/trustee
 COPY . .
 
-RUN apt-get update && apt install -y pkg-config libssl-dev git sudo
+RUN cd tools/trustee-cli && make ARCH=${ARCH} && make ARCH=${ARCH} install
 
-ENV OS_ARCH=${ARCH}
-RUN if [ $(uname -m) != ${ARCH} ]; then \
-    OS_ARCH=$(echo $OS_ARCH | sed s/x86_64/amd64/); \
-    OS_ARCH=$(echo $OS_ARCH | sed s/aarch64/arm64/); \
-    dpkg --add-architecture ${OS_ARCH}; \
-    apt-get update; \
-    apt-get install -y libssl-dev:${OS_ARCH}; fi
+# ubuntu:24.04
+FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+ARG ARCH=x86_64
 
-# Build Trustee CLI
-RUN cargo build \
-    -p trustee-cli \
-    --target=${ARCH}-unknown-linux-gnu \
-    --config "target.${ARCH}-unknown-linux-gnu.rustflags = '-C target-feature=+crt-static'" \
-    --locked \
-    --release && \
-    cp target/${ARCH}-unknown-linux-gnu/release/trustee /
+WORKDIR /tmp
 
-# Export view.txt
-FROM scratch AS export
-COPY --from=builder /trustee .
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    gnupg \
+    gnupg-agent && \
+    if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+    gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libsgx-dcap-default-qpl \
+    libsgx-dcap-quote-verify \
+    libtss2-tctildr0 \
+    libtss2-esys-3.0.2-0 ; \
+    fi && \
+    apt clean all && \
+    rm -rf /tmp/*
 
+COPY --from=builder /usr/local/bin/trustee /usr/local/bin/trustee
