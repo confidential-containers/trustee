@@ -31,6 +31,8 @@ fn default_timeout() -> i64 {
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
+/// FIXME: add a proper fix to Box the AttestationServiceConfig enum
+#[allow(clippy::large_enum_variant)]
 pub enum AttestationServiceConfig {
     #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
     #[serde(alias = "coco_as_builtin")]
