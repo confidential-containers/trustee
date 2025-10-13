@@ -1,0 +1,84 @@
+name: Trustee CLI Rust Suites
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "tools/trustee-cli/**"
+      - "attestation-service/**"
+      - "kbs/**"
+      - "rvps/**"
+      - ".github/workflows/trustee-cli-rust.yml"
+      - "Cargo.toml"
+  pull_request:
+    paths:
+      - "tools/trustee-cli/**"
+      - "attestation-service/**"
+      - "kbs/**"
+      - "rvps/**"
+      - ".github/workflows/trustee-cli-rust.yml"
+      - "Cargo.toml"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: Check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - instance: ubuntu-24.04
+          test_features: ""
+        - instance: ubuntu-24.04-arm
+          test_features: ""
+    runs-on: ${{ matrix.instance }}
+
+    steps:
+    - name: Code checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+
+    - name: Install Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
+      with:
+        components: rustfmt, clippy
+
+    - name: Building dependencies installation
+      run: |
+        sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+
+    - name: Install TPM dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtss2-dev
+
+    - name: Install TDX dependencies
+      if: ${{ matrix.instance == 'ubuntu-24.04' }}
+      run: |
+        curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+        sudo apt-get update
+        sudo apt-get install -y libsgx-dcap-quote-verify-dev
+
+    - name: Build trustee CLI
+      working-directory: tools/trustee-cli
+      run: cargo build --release --bin trustee
+
+    - name: Lint
+      working-directory: tools/trustee-cli
+      run: cargo clippy --all-targets -- -D warnings
+
+    - name: Format
+      working-directory: tools/trustee-cli
+      run: cargo fmt --check
+
+    - name: Test
+      working-directory: tools/trustee-cli
+      run: cargo test
