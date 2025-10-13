@@ -53,30 +53,33 @@ fn get_config(
     });
 
     // Set home dir for CoCoASBuiltIn attestation service
-    match &mut config.attestation_service.attestation_service {
-        CoCoASBuiltIn(as_config) => {
-            as_config.work_dir = replace_base_dir(as_config.work_dir.as_path(), trustee_home_dir);
+    if let CoCoASBuiltIn(as_config) = &mut config.attestation_service.attestation_service {
+        as_config.work_dir = replace_base_dir(as_config.work_dir.as_path(), trustee_home_dir);
 
-            // Handle RVPS config paths
-            if let attestation_service::rvps::RvpsConfig::BuiltIn(rvps_config) =
-                &mut as_config.rvps_config
+        // Handle RVPS config paths
+        if let attestation_service::rvps::RvpsConfig::BuiltIn(rvps_config) =
+            &mut as_config.rvps_config
+        {
+            if let reference_value_provider_service::storage::ReferenceValueStorageConfig::LocalFs(
+                local_fs_config,
+            ) = &mut rvps_config.storage
             {
-                if let reference_value_provider_service::storage::ReferenceValueStorageConfig::LocalFs(local_fs_config) = &mut rvps_config.storage {
-                    local_fs_config.file_path = replace_base_dir(Path::new(&local_fs_config.file_path), trustee_home_dir).to_string_lossy().into_owned();
-                }
-            }
-
-            // Handle attestation token broker paths
-            if let attestation_service::token::AttestationTokenConfig::Ear(ear_config) =
-                &mut as_config.attestation_token_broker
-            {
-                ear_config.policy_dir =
-                    replace_base_dir(Path::new(&ear_config.policy_dir), trustee_home_dir)
+                local_fs_config.file_path =
+                    replace_base_dir(Path::new(&local_fs_config.file_path), trustee_home_dir)
                         .to_string_lossy()
                         .into_owned();
             }
         }
-        _ => {}
+
+        // Handle attestation token broker paths
+        if let attestation_service::token::AttestationTokenConfig::Ear(ear_config) =
+            &mut as_config.attestation_token_broker
+        {
+            ear_config.policy_dir =
+                replace_base_dir(Path::new(&ear_config.policy_dir), trustee_home_dir)
+                    .to_string_lossy()
+                    .into_owned();
+        }
     }
 
     // Automatically create a key pair and use it for admin authentication if it doesn't exist in the configuration.
@@ -227,7 +230,7 @@ fn write_new_https_cert(certificate_path: &Path, private_path: &Path) -> Result<
     };
 
     // Write certificate to file
-    File::create_new(&certificate_path)?.write_all(&certificate.to_pem()?)?;
+    File::create_new(certificate_path)?.write_all(&certificate.to_pem()?)?;
 
     Ok(())
 }
