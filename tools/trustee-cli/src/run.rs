@@ -72,14 +72,13 @@ fn get_config(
         }
 
         // Handle attestation token broker paths
-        if let attestation_service::token::AttestationTokenConfig::Ear(ear_config) =
-            &mut as_config.attestation_token_broker
-        {
-            ear_config.policy_dir =
-                replace_base_dir(Path::new(&ear_config.policy_dir), trustee_home_dir)
-                    .to_string_lossy()
-                    .into_owned();
-        }
+
+        as_config.attestation_token_broker.policy_dir = replace_base_dir(
+            Path::new(&as_config.attestation_token_broker.policy_dir),
+            trustee_home_dir,
+        )
+        .to_string_lossy()
+        .into_owned();
     }
 
     // Automatically create a key pair and use it for admin authentication if it doesn't exist in the configuration.
