@@ -4,11 +4,9 @@
 //! - `rvps-grpc`: The AS will connect a remote RVPS.
 
 pub mod config;
+pub mod ear_token;
 pub mod policy_engine;
 pub mod rvps;
-pub mod token;
-
-use crate::token::AttestationTokenBroker;
 
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
@@ -23,6 +21,8 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tokio::fs;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
+
+use crate::ear_token::EarAttestationTokenBroker;
 
 fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
@@ -123,7 +123,7 @@ pub struct VerificationRequest {
 pub struct AttestationService {
     config: Config,
     rvps: Box<dyn RvpsApi + Send + Sync>,
-    token_broker: Box<dyn AttestationTokenBroker + Send + Sync>,
+    token_broker: EarAttestationTokenBroker,
 }
 
 impl AttestationService {
@@ -139,7 +139,8 @@ impl AttestationService {
             .await
             .map_err(ServiceError::Rvps)?;
 
-        let token_broker = config.attestation_token_broker.to_token_broker().await?;
+        let token_broker =
+            EarAttestationTokenBroker::new(config.attestation_token_broker.clone()).await?;
 
         Ok(Self {
             config,

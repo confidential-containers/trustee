@@ -239,7 +239,7 @@ mod tests {
         #[case] hw_exp: i64,
     ) {
         let opa = OPA {
-            policy_dir_path: PathBuf::from("./src/token/"),
+            policy_dir_path: PathBuf::from("./src/ear_token/"),
         };
         let default_policy_id = "ear_default_policy_cpu".to_string();
 

@@ -16,124 +16,19 @@ use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
-use shadow_rs::concatcp;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 
+use crate::ear_token::EarTokenConfiguration;
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
-use crate::token::DEFAULT_TOKEN_WORK_DIR;
-use crate::{AttestationTokenBroker, TeeClaims};
-
-use super::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION};
-
-pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/Trustee";
-pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
-
-const DEFAULT_POLICY_DIR: &str = concatcp!(DEFAULT_TOKEN_WORK_DIR, "/ear/policies");
-
-#[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct TokenSignerConfig {
-    pub key_path: String,
-    #[serde(default = "Option::default")]
-    pub cert_url: Option<String>,
-
-    // PEM format certificate chain.
-    #[serde(default = "Option::default")]
-    pub cert_path: Option<String>,
-}
-
-#[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct Configuration {
-    /// The Attestation Results Token duration time (in minutes)
-    /// Default: 5 minutes
-    #[serde(default = "default_duration")]
-    pub duration_min: i64,
-
-    /// For tokens, the issuer of the token
-    #[serde(default = "default_issuer_name")]
-    pub issuer_name: String,
-
-    /// The developer name to be used as part of the Verifier ID
-    /// in the EAR.
-    /// Default: `https://confidentialcontainers.org`
-    #[serde(default = "default_developer")]
-    pub developer_name: String,
-
-    /// The build name to be used as part of the Verifier ID
-    /// in the EAR.
-    /// The default value will be generated from the Cargo package
-    /// name and version of the AS.
-    #[serde(default = "default_build")]
-    pub build_name: String,
-
-    /// The Profile that describes the EAR token
-    /// Default: `tag:github.com,2024:confidential-containers/Trustee`
-    #[serde(default = "default_profile")]
-    pub profile_name: String,
-
-    /// Configuration for signing the EAR
-    /// If this is not specified, the EAR
-    /// will be signed with an ephemeral private key.
-    #[serde(default = "Option::default")]
-    pub signer: Option<TokenSignerConfig>,
-
-    /// The path to the work directory that contains policies
-    /// to provision the tokens.
-    #[serde(default = "default_policy_dir")]
-    pub policy_dir: String,
-}
-
-#[inline]
-fn default_duration() -> i64 {
-    DEFAULT_TOKEN_DURATION
-}
-
-#[inline]
-fn default_issuer_name() -> String {
-    COCO_AS_ISSUER_NAME.to_string()
-}
-
-#[inline]
-fn default_developer() -> String {
-    DEFAULT_DEVELOPER_NAME.to_string()
-}
-
-#[inline]
-fn default_profile() -> String {
-    DEFAULT_PROFILE.to_string()
-}
-
-#[inline]
-fn default_build() -> String {
-    format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-}
-
-#[inline]
-fn default_policy_dir() -> String {
-    DEFAULT_POLICY_DIR.to_string()
-}
-
-impl Default for Configuration {
-    fn default() -> Self {
-        Self {
-            duration_min: default_duration(),
-            issuer_name: default_issuer_name(),
-            developer_name: default_developer(),
-            build_name: default_build(),
-            profile_name: default_profile(),
-            signer: None,
-            policy_dir: default_policy_dir(),
-        }
-    }
-}
+use crate::TeeClaims;
 
 pub struct EarAttestationTokenBroker {
-    config: Configuration,
+    config: EarTokenConfiguration,
     private_key: EcKey<Private>,
     cert_url: Option<String>,
     cert_chain: Option<Vec<X509>>,
@@ -141,7 +36,11 @@ pub struct EarAttestationTokenBroker {
 }
 
 impl EarAttestationTokenBroker {
-    pub async fn new(config: Configuration) -> Result<Self> {
+    pub async fn new(config: EarTokenConfiguration) -> Result<Self> {
+        // TODO: delete this warning
+
+        warn!("Simple Token has been deprecated in v0.16.0. Note that the `attestation_token_broker` config field `type` is now ignored and the token will always be an EAR token.");
+
         let policy_engine =
             PolicyEngineType::OPA.to_policy_engine(Path::new(&config.policy_dir))?;
 
@@ -208,9 +107,8 @@ impl EarAttestationTokenBroker {
     }
 }
 
-#[async_trait::async_trait]
-impl AttestationTokenBroker for EarAttestationTokenBroker {
-    async fn issue(
+impl EarAttestationTokenBroker {
+    pub async fn issue(
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
@@ -326,21 +224,21 @@ impl AttestationTokenBroker for EarAttestationTokenBroker {
         Ok(signed_ear)
     }
 
-    async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
+    pub async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
         self.policy_engine
             .set_policy(policy_id, policy, true)
             .await
             .map_err(Error::from)
     }
 
-    async fn list_policies(&self) -> Result<HashMap<String, String>> {
+    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
         self.policy_engine
             .list_policies()
             .await
             .map_err(Error::from)
     }
 
-    async fn get_policy(&self, policy_id: String) -> Result<String> {
+    pub async fn get_policy(&self, policy_id: String) -> Result<String> {
         self.policy_engine
             .get_policy(policy_id)
             .await
@@ -472,7 +370,7 @@ mod tests {
     use std::io::Write;
     use tempfile::NamedTempFile;
 
-    use crate::TeeClaims;
+    use crate::{ear_token::TokenSignerConfig, TeeClaims};
 
     use super::*;
 
@@ -480,7 +378,7 @@ mod tests {
     async fn test_issue_ear_ephemeral_key() {
         // use default config with no signer.
         // this will sign the token with an ephemeral key.
-        let config = Configuration::default();
+        let config = EarTokenConfiguration::default();
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
 
         let _token = broker
@@ -511,7 +409,7 @@ mod tests {
             cert_path: None,
         };
 
-        let mut config = Configuration::default();
+        let mut config = EarTokenConfiguration::default();
         config.signer = Some(signer);
 
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
