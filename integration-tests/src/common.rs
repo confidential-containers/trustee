@@ -17,8 +17,8 @@ use kbs::plugins::{
 
 use attestation_service::{
     config::Config,
+    ear_token::EarTokenConfiguration,
     rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
-    token::{ear_broker, simple, AttestationTokenConfig},
 };
 
 use reference_value_provider_service::client as rvps_client;
@@ -27,7 +27,7 @@ use reference_value_provider_service::rvps_api::reference::reference_value_provi
 use reference_value_provider_service::storage::{local_json, ReferenceValueStorageConfig};
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use log::info;
 use openssl::pkey::PKey;
@@ -37,8 +37,8 @@ use tempfile::TempDir;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 
-const KBS_URL: &str = "http://127.0.0.1:8080";
-const RVPS_URL: &str = "http://127.0.0.1:50003";
+const KBS_URL: &str = "http://127.0.0.1:8081";
+const RVPS_URL: &str = "http://127.0.0.1:51003";
 const WAIT_TIME: u64 = 3000;
 
 const ALLOW_ALL_POLICY: &str = "
@@ -66,7 +66,6 @@ pub enum RvpsType {
 /// so that TestParameters can be reused between tests.
 pub enum KbsConfigType {
     EarTokenBuiltInRvps,
-    SimpleTokenBuiltInRvps,
     EarTokenRemoteRvps,
 }
 
@@ -75,15 +74,9 @@ impl Into<TestParameters> for KbsConfigType {
     fn into(self) -> TestParameters {
         match self {
             KbsConfigType::EarTokenBuiltInRvps => TestParameters {
-                attestation_token_type: "Ear".to_string(),
-                rvps_type: RvpsType::Builtin,
-            },
-            KbsConfigType::SimpleTokenBuiltInRvps => TestParameters {
-                attestation_token_type: "Simple".to_string(),
                 rvps_type: RvpsType::Builtin,
             },
             KbsConfigType::EarTokenRemoteRvps => TestParameters {
-                attestation_token_type: "Ear".to_string(),
                 rvps_type: RvpsType::Remote,
             },
         }
@@ -92,7 +85,6 @@ impl Into<TestParameters> for KbsConfigType {
 
 /// Parameters that define test behavior
 pub struct TestParameters {
-    pub attestation_token_type: String,
     pub rvps_type: RvpsType,
 }
 
@@ -137,17 +129,9 @@ impl TestHarness {
 
         tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
-        let attestation_token_config = match &test_parameters.attestation_token_type[..] {
-            "Ear" => AttestationTokenConfig::Ear(ear_broker::Configuration {
-                duration_min: 5,
-                policy_dir: as_policy_dir,
-                ..Default::default()
-            }),
-            "Simple" => AttestationTokenConfig::Simple(simple::Configuration {
-                policy_dir: as_policy_dir,
-                ..Default::default()
-            }),
-            _ => bail!("Unknown attestation token type. Must be Simple or Ear"),
+        let attestation_token_config = EarTokenConfiguration {
+            policy_dir: as_policy_dir,
+            ..Default::default()
         };
 
         // Setup RVPS either remotely or builtin
@@ -171,7 +155,7 @@ impl TestHarness {
 
                 let rvps_future = Server::builder()
                     .add_service(ReferenceValueProviderServiceServer::new(rvps_server))
-                    .serve("127.0.0.1:50003".parse()?);
+                    .serve("127.0.0.1:51003".parse()?);
 
                 tokio::spawn(rvps_future);
 
@@ -198,7 +182,7 @@ impl TestHarness {
                 timeout: 5,
             },
             http_server: HttpServerConfig {
-                sockets: vec!["127.0.0.1:8080".parse()?],
+                sockets: vec!["127.0.0.1:8081".parse()?],
                 private_key: None,
                 certificate: None,
                 insecure_http: true,

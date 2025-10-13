@@ -19,9 +19,7 @@ const SECRET_PATH: &str = "default/test/secret";
 // Simple Tests with AllowAll or DenyAll policies
 //
 #[case::basic_ear_allow_all(KbsConfigType::EarTokenBuiltInRvps, PolicyType::AllowAll, vec![], false, Result::Ok(SECRET_BYTES))]
-#[case::basic_simple_allow_all(KbsConfigType::SimpleTokenBuiltInRvps, PolicyType::AllowAll, vec![], false, Result::Ok(SECRET_BYTES))]
 #[case::basic_ear_deny_all(KbsConfigType::EarTokenBuiltInRvps, PolicyType::DenyAll, vec![], false, Result::Err(anyhow!("request unauthorized")))]
-#[case::basic_simple_deny_all(KbsConfigType::SimpleTokenBuiltInRvps, PolicyType::DenyAll, vec![], false, Result::Err(anyhow!("request unauthorized")))]
 //
 // Tests that use a KBS Policy that checks the EAR status
 //
