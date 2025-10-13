@@ -106,5 +106,5 @@ fn write_private(path: &Path, key: &PKey<Private>) -> Result<()> {
 /// Generate a new key for authentication and write to the given file paths.
 pub(crate) fn write_new_auth_key_pair(private_path: &Path, public_path: &Path) -> Result<()> {
     let private_key = PKey::generate_ed25519()?;
-    write_pem(&private_path, &public_path, &private_key)
+    write_pem(private_path, public_path, &private_key)
 }
