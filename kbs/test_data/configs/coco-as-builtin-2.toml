@@ -12,7 +12,6 @@ work_dir = "/opt/confidential-containers/attestation-service"
 timeout = 5
 
 [attestation_service.attestation_token_broker]
-type = "Simple"
 duration_min = 5
 
 [attestation_service.rvps_config]

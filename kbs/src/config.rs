@@ -124,8 +124,8 @@ mod tests {
 
     #[cfg(feature = "coco-as-builtin")]
     use attestation_service::{
+        ear_token::{EarTokenConfiguration, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
         rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
-        token::{simple, AttestationTokenConfig, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
     };
 
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
@@ -190,12 +190,12 @@ mod tests {
                         rvps_config: RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                             address: "http://127.0.0.1:50003".into(),
                         }),
-                        attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
+                        attestation_token_broker: EarTokenConfiguration {
                             duration_min: DEFAULT_TOKEN_DURATION,
                             issuer_name: COCO_AS_ISSUER_NAME.into(),
                             signer: None,
                             ..Default::default()
-                        }),
+                        },
                         verifier_config: None,
                     }
                 ),
@@ -309,10 +309,10 @@ mod tests {
                             }),
                             extractors: None,
                         }),
-                        attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration{
+                        attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()
-                        }),
+                        },
                         verifier_config: None,
                     }
                 ),
@@ -439,11 +439,11 @@ mod tests {
                     attestation_service::config::Config {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
                         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
-                        attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
+                        attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
-                            policy_dir: "/opt/confidential-containers/attestation-service/simple-policies".into(),
+                            policy_dir: "/opt/confidential-containers/attestation-service/ear-policies".into(),
                             ..Default::default()
-                        }),
+                        },
                         verifier_config: None,
                     }
                 ),
