@@ -38,7 +38,7 @@ install:
 	done
 
 opa-check:
-	for rego_file in src/token/*.rego ; do \
+	for rego_file in src/ear_token/*.rego ; do \
 		opa fmt -d $${rego_file} && \
 		opa check $${rego_file} ; \
 	done

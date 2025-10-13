@@ -1,5 +1,5 @@
+use crate::ear_token::EarTokenConfiguration;
 use crate::rvps::RvpsConfig;
-use crate::token::AttestationTokenConfig;
 
 use verifier::VerifierConfig;
 
@@ -24,7 +24,7 @@ pub struct Config {
 
     /// The Attestation Result Token Broker Config
     #[serde(default)]
-    pub attestation_token_broker: AttestationTokenConfig,
+    pub attestation_token_broker: EarTokenConfiguration,
 
     /// Optional configuration for verifier modules
     #[serde(default)]
@@ -53,7 +53,7 @@ impl Default for Config {
         Config {
             work_dir: default_work_dir(),
             rvps_config: RvpsConfig::default(),
-            attestation_token_broker: AttestationTokenConfig::default(),
+            attestation_token_broker: EarTokenConfiguration::default(),
             verifier_config: None,
         }
     }
@@ -71,7 +71,6 @@ impl TryFrom<&Path> for Config {
     ///            "store_config": {},
     ///        },
     ///        "attestation_token_broker": {
-    ///            "type": "Ear",
     ///            "duration_min": 5
     ///        },
     ///        "verifier_config": {
@@ -94,11 +93,9 @@ mod tests {
     use std::path::PathBuf;
 
     use super::Config;
+    use crate::ear_token::TokenSignerConfig;
     use crate::rvps::RvpsCrateConfig;
-    use crate::{
-        rvps::RvpsConfig,
-        token::{ear_broker, simple, AttestationTokenConfig},
-    };
+    use crate::{ear_token::EarTokenConfiguration, rvps::RvpsConfig};
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     #[rstest]
@@ -108,12 +105,15 @@ mod tests {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
         }),
-        attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
+        attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
             signer: None,
             policy_dir: "/var/lib/attestation-service/policies".into(),
-        }),
+            developer_name: "someone".into(),
+            build_name: "0.1.0".into(),
+            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
+        },
         verifier_config: None,
     })]
     #[case("./tests/configs/example2.json", Config {
@@ -122,54 +122,19 @@ mod tests {
             storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
         }),
-        attestation_token_broker: AttestationTokenConfig::Simple(simple::Configuration {
-            duration_min: 5,
-            issuer_name: "test".into(),
-            policy_dir: "/var/lib/attestation-service/policies".into(),
-            signer: Some(simple::TokenSignerConfig {
-                key_path: "/etc/key".into(),
-                cert_url: Some("https://example.io".into()),
-                cert_path: Some("/etc/cert.pem".into())
-            })
-        }),
-        verifier_config: None,
-    })]
-    #[case("./tests/configs/example3.json", Config {
-        work_dir: PathBuf::from("/var/lib/attestation-service/"),
-        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
-            extractors: None,
-        }),
-        attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
-            duration_min: 5,
-            issuer_name: "test".into(),
-            signer: None,
-            policy_dir: "/var/lib/attestation-service/policies".into(),
-            developer_name: "someone".into(),
-            build_name: "0.1.0".into(),
-            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
-        }),
-        verifier_config: None,
-    })]
-    #[case("./tests/configs/example4.json", Config {
-        work_dir: PathBuf::from("/var/lib/attestation-service/"),
-        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
-            extractors: None,
-        }),
-        attestation_token_broker: AttestationTokenConfig::Ear(ear_broker::Configuration {
+        attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
             policy_dir: "/var/lib/attestation-service/policies".into(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
-            signer: Some(ear_broker::TokenSignerConfig {
+            signer: Some(TokenSignerConfig {
                 key_path: "/etc/key".into(),
                 cert_url: Some("https://example.io".into()),
                 cert_path: Some("/etc/cert.pem".into())
             })
-        }),
+        },
         verifier_config: None,
     })]
     fn read_config(#[case] config: &str, #[case] expected: Config) {
