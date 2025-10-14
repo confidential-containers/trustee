@@ -30,9 +30,9 @@ package policy
 import future.keywords.every
 import future.keywords.if
 
-default allow := false
+default result := false
 
-allow if {
+result if {
 	every k, v in input {
 		# `judge_field`: Traverse each key value pair in the input and make policy judgments on it.
 		#

@@ -224,23 +224,17 @@ impl AttestationTokenBroker for SimpleAttestationTokenBroker {
         let reference_data = serde_json::to_string(&reference_data)?;
         let tcb_claims = serde_json::to_string(&flattened_claims)?;
 
-        let rules = vec!["allow".to_string()];
-
         let mut policies = HashMap::new();
         for policy_id in policy_ids {
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims, &policy_id, rules.clone())
+                .evaluate(&reference_data, &tcb_claims, &policy_id)
                 .await?;
 
-            // TODO add policy allowlist
-            let Some(result) = policy_results.rules_result.get("allow") else {
-                bail!("Policy results must contain `allow` claim");
-            };
-
-            let result = result
+            let result = policy_results
+                .rules_result
                 .as_bool()
-                .context("value `allow` must be a bool in policy")?;
+                .context("value `result` must be a bool in policy")?;
             if !result {
                 bail!("Reject by policy {policy_id}");
             }
