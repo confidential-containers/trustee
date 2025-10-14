@@ -441,7 +441,6 @@ mod tests {
                         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
-                            policy_dir: "/opt/confidential-containers/attestation-service/ear-policies".into(),
                             ..Default::default()
                         },
                         verifier_config: None,

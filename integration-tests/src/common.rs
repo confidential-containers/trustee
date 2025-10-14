@@ -112,12 +112,7 @@ impl TestHarness {
             .into_os_string()
             .into_string()
             .map_err(|e| anyhow!("Failed to join resource path: {:?}", e))?;
-        let as_policy_dir = work_dir
-            .path()
-            .join("as_policy")
-            .into_os_string()
-            .into_string()
-            .map_err(|e| anyhow!("Failed to join as_policy path: {:?}", e))?;
+
         let kbs_policy_path = work_dir.path().join("kbs_policy");
         let rv_path = work_dir
             .path()
@@ -129,10 +124,7 @@ impl TestHarness {
 
         tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
-        let attestation_token_config = EarTokenConfiguration {
-            policy_dir: as_policy_dir,
-            ..Default::default()
-        };
+        let attestation_token_config = EarTokenConfiguration::default();
 
         // Setup RVPS either remotely or builtin
         let rvps_config = match &test_parameters.rvps_type {
