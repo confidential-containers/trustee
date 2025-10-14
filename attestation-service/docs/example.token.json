@@ -1,52 +1,88 @@
 {
-    "customized_claims": {
-        "init_data": null,
-        "runtime_data": null
+    "eat_profile": "tag:github.com,2024:confidential-containers/Trustee",
+    "iat": 1760426134,
+    "ear.verifier-id": {
+        "developer": "https://confidentialcontainers.org",
+        "build": "attestation-service 0.1.0"
     },
-    "evaluation-reports": [
-        {
-            "evaluation-result": {
-                "allow": true
+    "submods": {
+        "cpu0": {
+            "ear.status": "contraindicated",
+            "ear.trustworthiness-vector": {
+                "instance-identity": 0,
+                "configuration": 36,
+                "executables": 33,
+                "file-system": 0,
+                "hardware": 97,
+                "runtime-opaque": 0,
+                "storage-opaque": 0,
+                "sourced-data": 0
             },
-            "policy-hash": "c0e7929671fb6780387f54760d84d65d2ce96093dfb33efda21f5eb05afcda77bba444c02cd177b23a5d350716726157",
-            "policy-id": "default"
+            "ear.appraisal-policy-id": "default",
+            "ear.veraison.annotated-evidence": {
+                "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                "init_data_claims": null,
+                "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                "runtime_data_claims": null,
+                "sgx": {
+                    "advisory_ids": [
+                        "INTEL-SA-00586",
+                        "INTEL-SA-00614",
+                        "INTEL-SA-00615",
+                        "INTEL-SA-00657",
+                        "INTEL-SA-00730",
+                        "INTEL-SA-00738",
+                        "INTEL-SA-00767",
+                        "INTEL-SA-00828",
+                        "INTEL-SA-00837",
+                        "INTEL-SA-00960"
+                    ],
+                    "body": {
+                        "attributes.flags": "0700000000000000",
+                        "attributes.xfrm": "e700000000000000",
+                        "config_id": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                        "config_svn": "0000",
+                        "cpu_svn": "06060c0cffff00000000000000000000",
+                        "isv_ext_prod_id": "00000000000000000000000000000000",
+                        "isv_family_id": "00000000000000000000000000000000",
+                        "isv_prod_id": "0000",
+                        "isv_svn": "0000",
+                        "misc_select": "01000000",
+                        "mr_enclave": "8f173e4613ff05c52aaf04162d234edae8c9977eae47eb2299ae16a553011c68",
+                        "mr_signer": "83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e",
+                        "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                        "reserved1": "000000000000000000000000",
+                        "reserved2": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "reserved3": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "reserved4": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    "collateral_expiration_status": "0",
+                    "earliest_expiration_date": "2025-11-12T15:18:05Z",
+                    "earliest_issue_date": "2018-05-21T10:45:10Z",
+                    "header": {
+                        "att_key_data_0": "00000000",
+                        "att_key_type": "0200",
+                        "pce_svn": "0d00",
+                        "qe_svn": "0800",
+                        "user_data": "dccde9b31ce8860548173bb4a2a57a1600000000",
+                        "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
+                        "version": "0300"
+                    },
+                    "is_cached_keys": true,
+                    "is_dynamic_platform": true,
+                    "is_smt_enabled": true,
+                    "latest_issue_date": "2025-10-13T15:32:28Z",
+                    "pck_crl_num": 1,
+                    "platform_provider_id": "b9c92eb5053cb158956f4e68b6d82f52",
+                    "root_ca_crl_num": 1,
+                    "root_key_id": "46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993",
+                    "sgx_type": "Scalable",
+                    "tcb_date": "2021-11-10T00:00:00Z",
+                    "tcb_eval_num": 1,
+                    "tcb_status": "OutOfDate"
+                }
+            }
         }
-    ],
-    "exp": 1702275876,
-    "iss": "CoCo-Attestation-Service",
-    "jwk": {
-        "alg": "RS384",
-        "e": "AQAB",
-        "kty": "RSA",
-        "n": "qYyIAqlh5a1aapfgir2P5gqWQFCFPtDqy-r3nCtLWdXM-07hHOYFPktLwxAnUpu2UWcV40wFDdSnws-t9_2TAnXSYklC7lVh-S5zwJmbICeafKvXsaOc8YQXeXO7AcaLYYqsPVqQ7FRS92a5Dsn-f3uaCAEjaoXLDr1RCaIJon383OaI-zgRInocNHp8591E0y_jZBXUwmTiZiB8Bq395tNpscmDQVP97HSY-YzGNpbrunH4r0WG2CewH7we-he85AAsiT9BiVW_nVw-pL_IgjQUqIwh1RCv3REAecW0XZXM2YunCysUsDP3eGU-LK0jGtykJwaDTgvZ5N9M3TCwXw"
     },
-    "nbf": 1702275576,
-    "reference-data": {},
-    "tcb-status": {
-        "sgx.body.attributes.flags": "0700000000000000",
-        "sgx.body.attributes.xfrm": "e700000000000000",
-        "sgx.body.config_id": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "sgx.body.config_svn": "0000",
-        "sgx.body.cpu_svn": "06060c0cffff00000000000000000000",
-        "sgx.body.isv_ext_prod_id": "00000000000000000000000000000000",
-        "sgx.body.isv_family_id": "00000000000000000000000000000000",
-        "sgx.body.isv_prod_id": "0000",
-        "sgx.body.isv_svn": "0000",
-        "sgx.body.misc_select": "01000000",
-        "sgx.body.mr_enclave": "8f173e4613ff05c52aaf04162d234edae8c9977eae47eb2299ae16a553011c68",
-        "sgx.body.mr_signer": "83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e",
-        "sgx.body.report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "sgx.body.reserved1": "000000000000000000000000",
-        "sgx.body.reserved2": "0000000000000000000000000000000000000000000000000000000000000000",
-        "sgx.body.reserved3": "0000000000000000000000000000000000000000000000000000000000000000",
-        "sgx.body.reserved4": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "sgx.header.att_key_data_0": "00000000",
-        "sgx.header.att_key_type": "0200",
-        "sgx.header.pce_svn": "0d00",
-        "sgx.header.qe_svn": "0800",
-        "sgx.header.user_data": "dccde9b31ce8860548173bb4a2a57a1600000000",
-        "sgx.header.vendor_id": "939a7233f79c4ca9940a0db3957f0607",
-        "sgx.header.version": "0300"
-    },
-    "tee": "sgx"
+    "exp": 1760426434
 }
