@@ -3,7 +3,7 @@ FROM quay.io/centos/centos:stream9 AS builder
 
 # Install build dependencies from CentOS repos.
 RUN dnf -y --setopt=install_weak_deps=0 --enablerepo=crb install \
-cargo pkg-config perl-FindBin openssl-devel perl-lib perl-IPC-Cmd perl-File-Compare perl-File-Copy tpm2-tss-devel clang-devel protobuf-compiler \
+perl-core cargo pkg-config perl-FindBin openssl-devel perl-lib perl-IPC-Cmd perl-File-Compare perl-File-Copy tpm2-tss-devel clang-devel protobuf-compiler \
 tar gzip
 
 # Install build dependencies from Intel repo.
