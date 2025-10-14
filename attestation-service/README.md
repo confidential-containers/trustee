@@ -89,33 +89,9 @@ Please refer to the individual verifiers for the specific format of the evidence
 
 If the verification of TEE evidence does not fail, the AS will return an Attestation Results Token.
 
-Attestation results token is a [JSON Web Token](https://datatracker.ietf.org/doc/html/rfc7519) which contains the parsed evidence claims such as TCB status.
+Attestation Results token is an [EAT Attestation Results (EAR)](https://www.ietf.org/archive/id/draft-fv-rats-ear-05.html) in [JSON Web Token](https://datatracker.ietf.org/doc/html/rfc7519) format which contains the parsed evidence claims such as TCB status.
 
-The format of the attestation results token is:
-
-```json
-{
-    "iss": $issuer_name,
-    "jwk": $public_key_used_to_sign_the_token,
-    "exp": $expire_timestamp,
-    "nbf": $notbefore_timestamp,
-    "policy-ids": $policy_ids_used_to_verify_the_evidence,
-    "tcb-status": $parsed_evidence,
-    "evaluation-reports": $reports_of_every_policy_specified,
-    "reference-data": $reference_data_used_to_check,
-    "customized_claims": $customized_claims,
-}
-```
-
-* `iss`: Token issuer name, default is `CoCo-Attestation-Service`.
-* `jwk`: Public key to verify token signature. Must be in format of [JSON Web Key](https://datatracker.ietf.org/doc/html/rfc7517).
-* `exp`: Token expire time in Unix timestamp format.
-* `nbf`: Token effective time in Unix timestamp format.
-* `tcb_status`: Contains HW-TEE informations and software measurements of AA's execution environment. The format is in the [doc](./docs/parsed_claims.md).
-* `policy-ids`: The OPA policy ids used to verify the evidence.
-* `evaluation-reports` : The outputs of the policy engine, they are AS policies' evaluation opinion on TEE evidence.
-* `reference-data`: Reference values in a map used to enforce the OPA policy.
-* `customized_claims`: Customized claims whose integrity is protected by binding its digest into the evidence. It will be a JSON map.
+The claims part of the typical EAR token JWT is [here](./docs/example.token.json).
 
 ## Architecture
 
@@ -136,6 +112,7 @@ Supported Verifier Drivers:
 - `az-snp-vtpm`: Verifier Driver for Azure vTPM based on SNP (Azure SNP vTPM)
 - `cca`: Verifier Driver for Confidential Compute Architecture (Arm CCA).
 - `csv`: Verifier Driver for China Security Virtualization (Hygon CSV).
+- `hygon-dcu`: Verifier Driver for Hygon Deep Computing Unit (DCU).
 - `se`: Verifier Driver for IBM Secure Execution (SE).
 - `nvidia`: Verifier Driver for NVIDIA Devices.
 
@@ -144,11 +121,18 @@ Supported Verifier Drivers:
 [OPA](https://www.openpolicyagent.org/docs/latest/) is a flexible policy engine.
 The AS allows users to define and upload their own OPA policy when performing evidence verification.
 The `policy_ids` field of the attestation request determines which policies are evaluated.
-The results of every policy that is evaluated are included in the attestation token.
+The results of the policy evaluation will be reflected in the token.
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about Rego.
 
-If the policy is not updated, the AS will use the [default policy](src/token/ear_default_policy_cpu.rego).
+If the policy is not updated, the AS will use the [default policy](src/ear_token/ear_default_policy_cpu.rego).
+
+> [!NOTE]
+> Only EAR token is supported, and Simple token is removed.
+> If you were using Simple token earlier, you will need to change the `attestation_token_broker`
+> part in the [configuration file](./docs/config.md#attestationtokenbroker). Besides,
+> original policies for Simple tokens might not work, you can refer to new `.rego` policies
+> under the [directory](./src/ear_token/).
 
 Concrete policy usages please refer to [this guide](docs/policy.md).
 

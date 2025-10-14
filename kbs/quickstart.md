@@ -227,7 +227,6 @@ Adding the following content to JSON config file of gRPC AS:
     ...
 
     "attestation_token_broker": {
-	"type": "Ear",
         "duration_min": 5,
 		"signer": {
 			"key_path": "/path/to/token-key.pem",
