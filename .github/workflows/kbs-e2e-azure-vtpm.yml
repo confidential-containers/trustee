@@ -27,18 +27,17 @@ jobs:
       with:
         path: ./kbs.tar.gz
 
-  # https://github.com/confidential-containers/trustee/issues/951
-  # tdx-e2e-test:
-  #   needs:
-  #   - checkout
-  #   uses: ./.github/workflows/kbs-e2e.yml
-  #   permissions:
-  #     packages: write
-  #     contents: read
-  #   with:
-  #     runs-on-test: '["self-hosted","azure-cvm-tdx"]'
-  #     tee: az-tdx-vtpm
-  #     tarball: kbs.tar.gz
+  tdx-e2e-test:
+    needs:
+    - checkout
+    uses: ./.github/workflows/kbs-e2e.yml
+    permissions:
+      packages: write
+      contents: read
+    with:
+      runs-on-test: '["self-hosted","azure-cvm-tdx"]'
+      tee: az-tdx-vtpm
+      tarball: kbs.tar.gz
 
   snp-e2e-test:
     needs:
