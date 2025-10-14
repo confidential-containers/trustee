@@ -89,6 +89,7 @@ impl TryFrom<&Path> for Config {
 
 #[cfg(test)]
 mod tests {
+    use policy_engine::PolicyEngineConfig;
     use rstest::rstest;
     use std::path::PathBuf;
 
@@ -109,10 +110,8 @@ mod tests {
             duration_min: 5,
             issuer_name: "test".into(),
             signer: None,
-            policy_dir: "/var/lib/attestation-service/policies".into(),
-            developer_name: "someone".into(),
-            build_name: "0.1.0".into(),
-            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
+            policy_engine_config: PolicyEngineConfig::default(),
+            ..Default::default()
         },
         verifier_config: None,
     })]
@@ -125,7 +124,44 @@ mod tests {
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
-            policy_dir: "/var/lib/attestation-service/policies".into(),
+            policy_engine_config: PolicyEngineConfig::default(),
+            signer: Some(TokenSignerConfig {
+                key_path: "/etc/key".into(),
+                cert_url: Some("https://example.io".into()),
+                cert_path: Some("/etc/cert.pem".into())
+            }),
+            ..Default::default()
+        },
+        verifier_config: None,
+    })]
+    #[case("./tests/configs/example3.json", Config {
+        work_dir: PathBuf::from("/var/lib/attestation-service/"),
+        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
+        }),
+        attestation_token_broker: EarTokenConfiguration {
+            duration_min: 5,
+            issuer_name: "test".into(),
+            signer: None,
+            policy_engine_config: PolicyEngineConfig::default(),
+            developer_name: "someone".into(),
+            build_name: "0.1.0".into(),
+            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
+            ..Default::default()
+        },
+        verifier_config: None,
+    })]
+    #[case("./tests/configs/example2.json", Config {
+        work_dir: PathBuf::from("/var/lib/attestation-service/"),
+        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
+            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            extractors: None,
+        }),
+        attestation_token_broker: EarTokenConfiguration {
+            duration_min: 5,
+            issuer_name: "test".into(),
+            policy_engine_config: PolicyEngineConfig::default(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),

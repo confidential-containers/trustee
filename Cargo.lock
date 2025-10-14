@@ -600,6 +600,7 @@ dependencies = [
  "kbs-types",
  "lazy_static",
  "openssl",
+ "policy-engine",
  "prost",
  "rand 0.8.5",
  "reference-value-provider-service",
