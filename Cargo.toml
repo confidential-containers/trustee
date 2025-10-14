@@ -8,7 +8,8 @@ members = [
     "deps/eventlog",
     "integration-tests",
     "tools/trustee-cli",
-    "deps/key-value-storage"
+    "deps/key-value-storage",
+    "deps/policy-engine"
 ]
 resolver = "2"
 
