@@ -5,13 +5,18 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use log::{debug, warn};
+use log::warn;
+use serde_json::Value;
 use sha2::{Digest, Sha384};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
 use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
+
+/// The rule to evaluate the policy.
+/// Note that only the result of this rule will be returned.
+pub const EVAL_RULE: &str = "data.policy.result";
 
 #[derive(Debug, Clone)]
 pub struct OPA {
@@ -44,7 +49,6 @@ impl PolicyEngine for OPA {
         data: &str,
         input: &str,
         policy_id: &str,
-        evaluation_rules: Vec<String>,
     ) -> Result<EvaluationResult, PolicyError> {
         let policy_dir_path = self
             .policy_dir_path
@@ -85,16 +89,14 @@ impl PolicyEngine for OPA {
             .context("set input")
             .map_err(PolicyError::SetInputDataFailed)?;
 
-        let mut rules_result = HashMap::new();
-        for rule in evaluation_rules {
-            let whole_rule = format!("data.policy.{rule}");
-            let Ok(claim_value) = engine.eval_rule(whole_rule) else {
-                debug!("Policy `{policy_id}` does not check {rule}");
-                continue;
-            };
+        let claim_value = engine
+            .eval_rule(EVAL_RULE.to_string())
+            .map_err(PolicyError::EvalPolicyFailed)?;
 
-            rules_result.insert(rule.to_string(), claim_value);
-        }
+        let claim_value = claim_value
+            .to_json_str()
+            .map_err(PolicyError::JsonSerializationFailed)?;
+        let rules_result = serde_json::from_str::<Value>(&claim_value)?;
 
         let res = EvaluationResult {
             rules_result,
@@ -191,7 +193,6 @@ impl PolicyEngine for OPA {
 
 #[cfg(test)]
 mod tests {
-    use ear::TrustVector;
     use rstest::rstest;
     use serde_json::json;
 
@@ -234,45 +235,44 @@ mod tests {
         #[case] svn_b: u64,
         #[case] digest_a: String,
         #[case] digest_b: String,
-        #[case] ex_exp: i8,
-        #[case] hw_exp: i8,
+        #[case] ex_exp: i64,
+        #[case] hw_exp: i64,
     ) {
         let opa = OPA {
             policy_dir_path: PathBuf::from("./src/token/"),
         };
         let default_policy_id = "ear_default_policy_cpu".to_string();
 
-        let ear_rules = TrustVector::new()
-            .into_iter()
-            .map(|c| c.tag().to_string().replace("-", "_"))
-            .collect();
-
         let output = opa
             .evaluate(
                 &dummy_reference(svn_a, digest_a),
                 &dummy_input(svn_b, digest_b),
                 &default_policy_id,
-                ear_rules,
             )
             .await
             .unwrap();
 
+        println!("{:?}", output.rules_result);
         assert_eq!(
             hw_exp,
             output
                 .rules_result
+                .as_object()
+                .unwrap()
                 .get("hardware")
                 .unwrap()
-                .as_i8()
+                .as_i64()
                 .unwrap()
         );
         assert_eq!(
             ex_exp,
             output
                 .rules_result
+                .as_object()
+                .unwrap()
                 .get("executables")
                 .unwrap()
-                .as_i8()
+                .as_i64()
                 .unwrap()
         );
     }

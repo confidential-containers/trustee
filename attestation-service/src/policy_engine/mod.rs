@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use regorus::Value;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
 use std::path::Path;
@@ -69,7 +69,7 @@ type PolicyDigest = String;
 
 #[derive(Debug)]
 pub struct EvaluationResult {
-    pub rules_result: HashMap<String, Value>,
+    pub rules_result: Value,
     pub policy_hash: String,
 }
 
@@ -93,7 +93,6 @@ pub trait PolicyEngine: Send + Sync {
         data: &str,
         input: &str,
         policy_id: &str,
-        evaluation_rules: Vec<String>,
     ) -> Result<EvaluationResult, PolicyError>;
 
     /// Add an additional policy to the AS that can be referenced by given policy id.
