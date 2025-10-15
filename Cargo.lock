@@ -3245,6 +3245,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "key-value-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "derivative",
+ "rstest",
+ "serde",
+ "sqlx",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "kms"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
