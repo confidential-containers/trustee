@@ -366,10 +366,11 @@ mod tests {
     };
     use kbs_types::TeePubKey;
     use openssl::rsa::Rsa;
-    use p256::{pkcs8::EncodePrivateKey, EncodedPoint, SecretKey};
+    use p256::pkcs8::EncodePrivateKey;
 
     use crate::jwe::{
-        AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, RSA1_5_ALGORITHM, RSA_OAEP256_ALGORITHM,
+        AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA1_5_ALGORITHM,
+        RSA_OAEP256_ALGORITHM,
     };
 
     use super::jwe;
@@ -458,13 +459,13 @@ mod tests {
     }
 
     #[test]
-    fn jwe_ec_compatibility() {
+    fn jwe_ecp256_compatibility() {
         let test_data = b"this is a test data";
 
         // Generate a EC key pair
         let mut rng = rand::thread_rng();
-        let private_key = SecretKey::random(&mut rng);
-        let point = EncodedPoint::from(private_key.public_key());
+        let private_key = p256::SecretKey::random(&mut rng);
+        let point = p256::EncodedPoint::from(private_key.public_key());
         let x = point.x().unwrap();
         let y = point.y().unwrap();
         let x = URL_SAFE_NO_PAD.encode(x);
@@ -472,6 +473,47 @@ mod tests {
 
         let tee_key = TeePubKey::EC {
             crv: P256_CURVE.into(),
+            alg: ECDH_ES_A256KW.into(),
+            x,
+            y,
+        };
+
+        // Generate a JWE response
+        let response = jwe(tee_key, test_data.to_vec()).unwrap();
+        let response_string = serde_json::to_string(&response).unwrap();
+
+        let mut header = JweHeaderSet::new();
+        header.set_algorithm("ECDH-ES+A256KW", true);
+        header.set_content_encryption("A256GCM", true);
+
+        // Decrypt JWE with JOSEkit crate
+        let private_key = private_key
+            .to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)
+            .unwrap();
+        let decrypter = EcdhEsA256kw.decrypter_from_pem(&private_key).unwrap();
+
+        let context = JweContext::new();
+        let (decrypted_data, _) = context
+            .deserialize_json(&response_string, &decrypter)
+            .unwrap();
+        assert_eq!(decrypted_data, test_data);
+    }
+
+    #[test]
+    fn jwe_ecp521_compatibility() {
+        let test_data = b"this is a test data";
+
+        // Generate a EC key pair
+        let mut rng = rand::thread_rng();
+        let private_key = p521::SecretKey::random(&mut rng);
+        let point = p521::EncodedPoint::from(private_key.public_key());
+        let x = point.x().unwrap();
+        let y = point.y().unwrap();
+        let x = URL_SAFE_NO_PAD.encode(x);
+        let y = URL_SAFE_NO_PAD.encode(y);
+
+        let tee_key = TeePubKey::EC {
+            crv: P521_CURVE.into(),
             alg: ECDH_ES_A256KW.into(),
             x,
             y,
