@@ -55,8 +55,8 @@ jobs:
         commit_sha=${{ github.sha }}
         oras push \
           ghcr.io/confidential-containers/staged-images/trustee-cli:${commit_sha}-${{ matrix.arch }},latest-${{ matrix.arch }} \
-          trustee
+          ./usr/local/bin/trustee
         if [ "${{ matrix.arch }}" = "x86_64" ]; then
-          oras push ghcr.io/confidential-containers/staged-images/trustee-cli:latest trustee
+          oras push ghcr.io/confidential-containers/staged-images/trustee-cli:latest ./usr/local/bin/trustee
         fi
 
