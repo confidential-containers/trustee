@@ -13,7 +13,6 @@ work_dir = "./work/attestation-service"
 policy_engine = "opa"
 
 [attestation_service.attestation_token_broker]
-type = "Ear"
 duration_min = 5
 policy_dir = "./work/attestation-service/token/ear/policies"
 
