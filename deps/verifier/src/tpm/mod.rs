@@ -14,8 +14,8 @@ use serde::Deserialize;
 use serde_json::{self, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
-use std::result::Result::Ok;
 use std::fs;
+use std::result::Result::Ok;
 use tss_esapi::structures::Signature;
 use tss_esapi::traits::UnMarshall;
 
@@ -41,7 +41,6 @@ pub struct Quote {
     pub message: String,   // base64 encoded
     pub pcrs: Vec<String>, // hex-encoded strings
 }
-
 
 impl Quote {
     fn to_quote(&self) -> Result<VtpmQuote> {
@@ -96,7 +95,8 @@ impl Quote {
             if pcr_bytes.len() != 32 {
                 bail!("PCR should be exactly 32 bytes, got {}", pcr_bytes.len());
             }
-            let pcr_array: [u8; 32] = pcr_bytes.try_into()
+            let pcr_array: [u8; 32] = pcr_bytes
+                .try_into()
                 .map_err(|_| anyhow!("PCR must be exactly 32 bytes"))?;
             pcrs.push(pcr_array);
         }
@@ -125,7 +125,8 @@ impl TpmVerifier {
             .with_context(|| format!("Failed to read key file: {:?}", path))?;
         let pkey = PKey::public_key_from_pem(key_content.as_bytes())
             .with_context(|| format!("Failed to parse PEM public key from: {:?}", path))?;
-        let key_bytes = pkey.public_key_to_der()
+        let key_bytes = pkey
+            .public_key_to_der()
             .with_context(|| format!("Failed to convert PEM to DER for: {:?}", path))?;
         let hash = Sha256::digest(&key_bytes).to_vec();
         Ok(hash)
@@ -149,9 +150,8 @@ impl TpmVerifier {
             .filter_map(|entry_result| entry_result.ok())
             .filter(|entry| {
                 let path = entry.path();
-                path.is_file()
-                    && path.extension() == Some("pub".as_ref())
-                    // This implicitly filters out '.' and '..'
+                path.is_file() && path.extension() == Some("pub".as_ref())
+                // This implicitly filters out '.' and '..'
             })
             // The directory will not be read beyond this number of valid files
             .take(config.max_trusted_ak_keys);
@@ -172,7 +172,10 @@ impl TpmVerifier {
             }
         }
 
-        info!("TPM verifier loaded {} trusted AK key(s)", trusted_ak_hashes.len());
+        info!(
+            "TPM verifier loaded {} trusted AK key(s)",
+            trusted_ak_hashes.len()
+        );
         Ok(Self { trusted_ak_hashes })
     }
 }
@@ -203,8 +206,16 @@ fn verify_pcrs(quote: &VtpmQuote) -> Result<()> {
 fn verify_nonce(quote: &VtpmQuote, expected_report_data: &[u8]) -> Result<()> {
     let nonce = quote.nonce()?;
 
-    debug!("Expected report_data ({} bytes): {}", expected_report_data.len(), hex::encode(expected_report_data));
-    debug!("Quote nonce ({} bytes): {}", nonce.len(), hex::encode(&nonce));
+    debug!(
+        "Expected report_data ({} bytes): {}",
+        expected_report_data.len(),
+        hex::encode(expected_report_data)
+    );
+    debug!(
+        "Quote nonce ({} bytes): {}",
+        nonce.len(),
+        hex::encode(&nonce)
+    );
 
     // TPM attester pads report_data to 64 bytes, so we need to pad expected_report_data the same way
     let mut padded_expected = expected_report_data.to_vec();
@@ -234,7 +245,9 @@ fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
             if &digest == init_data_pcr {
                 Ok(())
             } else {
-                bail!(format!("TPM PCR[{INITDATA_PCR}] doesn't match expected initdata hash"))
+                bail!(format!(
+                    "TPM PCR[{INITDATA_PCR}] doesn't match expected initdata hash"
+                ))
             }
         }
         InitDataHash::NotProvided => {
@@ -371,13 +384,24 @@ mod tests {
             .expect("Failed to deserialize TPM Evidence");
 
         // Verify the evidence has the expected structure
-        assert!(!tpm_evidence.ak_public.is_empty(), "AK public key should not be empty");
+        assert!(
+            !tpm_evidence.ak_public.is_empty(),
+            "AK public key should not be empty"
+        );
         assert_eq!(tpm_evidence.tpm_quote.pcrs.len(), 24, "Should have 24 PCRs");
-        assert!(!tpm_evidence.tpm_quote.signature.is_empty(), "Signature should not be empty");
-        assert!(!tpm_evidence.tpm_quote.message.is_empty(), "Message should not be empty");
+        assert!(
+            !tpm_evidence.tpm_quote.signature.is_empty(),
+            "Signature should not be empty"
+        );
+        assert!(
+            !tpm_evidence.tpm_quote.message.is_empty(),
+            "Message should not be empty"
+        );
 
         // Verify we can convert to Quote format
-        let quote = tpm_evidence.tpm_quote.to_quote()
+        let quote = tpm_evidence
+            .tpm_quote
+            .to_quote()
             .expect("Should be able to convert quote to internal format");
 
         // Verify PCRs can be accessed
@@ -391,20 +415,35 @@ mod tests {
         let tpm_evidence = serde_json::from_slice::<Evidence>(TPM_EVIDENCE)
             .expect("Failed to deserialize TPM Evidence");
 
-        let quote = tpm_evidence.tpm_quote.to_quote()
+        let quote = tpm_evidence
+            .tpm_quote
+            .to_quote()
             .expect("Should be able to convert quote to internal format");
 
         let claims = parse_tee_evidence(&quote);
 
         // Verify claims contain expected fields
-        assert!(claims.get("init_data").is_some(), "Claims should contain init_data");
-        assert!(claims.get("report_data").is_some(), "Claims should contain report_data");
+        assert!(
+            claims.get("init_data").is_some(),
+            "Claims should contain init_data"
+        );
+        assert!(
+            claims.get("report_data").is_some(),
+            "Claims should contain report_data"
+        );
 
         // Verify the values are hex-encoded strings
         let init_data = claims.get("init_data").unwrap().as_str().unwrap();
         let report_data = claims.get("report_data").unwrap().as_str().unwrap();
-        assert_eq!(init_data.len(), 64, "init_data should be 64 hex chars (32 bytes)");
-        assert_eq!(report_data.len(), 128, "report_data should be 128 hex chars (64 bytes)");
+        assert_eq!(
+            init_data.len(),
+            64,
+            "init_data should be 64 hex chars (32 bytes)"
+        );
+        assert_eq!(
+            report_data.len(),
+            128,
+            "report_data should be 128 hex chars (64 bytes)"
+        );
     }
-
 }
