@@ -8,8 +8,29 @@ default executables := 33
 
 default configuration := 36
 
+default file_system := 0
+
+default instance_identity := 0
+
+default runtime_opaque := 0
+
+default storage_opaque := 0
+
+default sourced_data := 0
+
 hardware := 2 if {
 	input.sampledevice.svn in data.reference.device_svn
+}
+
+result := {
+	"executables": executables,
+	"hardware": hardware,
+	"configuration": configuration,
+	"file-system": file_system,
+	"instance-identity": instance_identity,
+	"runtime-opaque": runtime_opaque,
+	"storage-opaque": storage_opaque,
+	"sourced-data": sourced_data,
 }
 
 # GPUs verified by NRAS
