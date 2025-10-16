@@ -1,0 +1,34 @@
+{
+    "name": "Image builder",
+    "image": "quay.io/podman/stable:v5",
+    "capAdd": [
+        "CAP_AUDIT_WRITE",
+        "CAP_NET_ADMIN",
+        "CAP_SYS_ADMIN"
+    ],
+    "runArgs": [
+        "--device=/dev/fuse",
+        "--device=/dev/net/tun",
+        "--security-opt=label=disable",
+        "--tmpfs",
+        "/run",
+        "--security-opt=unmask=/proc/*",
+        "--security-opt",
+        "apparmor=unconfined",
+        "--security-opt",
+        "seccomp=unconfined"
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {}
+    },
+    "postCreateCommand": "bash .devcontainer/image-builder/postCreateCommand.sh",
+    "updateRemoteUserUID": false,
+    "remoteUser": "podman",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "exiasr.hadolint"
+            ]
+        }
+    }
+}
