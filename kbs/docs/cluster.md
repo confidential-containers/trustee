@@ -19,7 +19,7 @@ Users can use very simple command to:
 Generate a user auth key pair
 ```
 git clone https://github.com/confidential-containers/trustee.git
-cd kbs
+cd trustee
 openssl genpkey -algorithm ed25519 > kbs/config/private.key
 openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
 ```
