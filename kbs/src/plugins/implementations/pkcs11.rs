@@ -2,12 +2,19 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+
+//! This module provides plugin support for the cryptographic backend.
+//!
+//! For more information about PKCS#11 and the methodologies used, see the following
+//! [PKCS#11 Usage Guide] (https://docs.oasis-open.org/pkcs11/pkcs11-ug/v3.2/pkcs11-ug-v3.2.html)
+//! [PKCS#11 Specification v3.0](https://docs.oasis-open.org/pkcs11/pkcs11-spec/v3.2/pkcs11-spec-v3.2.html)
+//! [PKCS#11 Base Specification v3.0](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/os/pkcs11-base-v3.0-os.html).
 use crate::plugins::resource::{ResourceDesc, StorageBackend};
 use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
     context::{CInitializeArgs, Pkcs11},
-    mechanism::Mechanism,
+    mechanism::{Mechanism,MechanismType,rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource}},
     object::{Attribute, AttributeInfo, AttributeType, KeyType, ObjectClass},
     session::{Session, UserType},
     types::AuthPin,
@@ -15,6 +22,8 @@ use cryptoki::{
 use derivative::Derivative;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::Arc};
+use cryptoki::mechanism::MechanismType;
+use cryptoki::mechanism::rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -195,19 +204,22 @@ impl Pkcs11Backend {
     fn wrap_key_new(session: &mut Session, label: &Uuid) -> Result<()> {
         let public_template = vec![
             Attribute::Token(true),
-            Attribute::Private(false),
+            Attribute::Private(true),
             Attribute::KeyType(KeyType::RSA),
             Attribute::Class(ObjectClass::PUBLIC_KEY),
             Attribute::ModulusBits(4096.into()),
-            Attribute::Label(format!("{}-public", label).into()),
+            Attribute::PublicExponent(vec![0x01, 0x00, 0x01]), // 65537
+            Attribute::Encrypt(true),
+            Attribute::Label(format!("trustee-{}-public", label).into()),
         ];
 
         let private_template = vec![
             Attribute::Token(true),
             Attribute::Private(true),
             Attribute::KeyType(KeyType::RSA),
+            Attribute::Decrypt(true),
             Attribute::Class(ObjectClass::PRIVATE_KEY),
-            Attribute::Label(format!("{}-private", label).into()),
+            Attribute::Label(format!("trustee-{}-private", label).into()),
         ];
 
         let (_, _) = session
@@ -222,8 +234,9 @@ impl Pkcs11Backend {
     }
 
     async fn wrapkey_wrap(&self, body: &[u8]) -> Result<Vec<u8>> {
+
         let pubkey_template = vec![Attribute::Label(
-            format!("{}-public", self.wrapkey_id).into(),
+            format!("trustee-{}-public", self.wrapkey_id).into(),
         )];
 
         let mut pubkey = self
@@ -233,19 +246,26 @@ impl Pkcs11Backend {
             .find_objects(&pubkey_template)
             .context("unable to find public wrap key in PKCS11 module")?;
 
+
+
         let encrypted = self
             .session
             .lock()
             .await
-            .encrypt(&Mechanism::RsaPkcs, pubkey.remove(0), body)
+// NOTICE deprecated by NIST
+            .encrypt(&Mechanism::RsaPkcsOaep(PkcsOaepParams::new(MechanismType::SHA1,PkcsMgfType::MGF1_SHA1,PkcsOaepSource::empty())), pubkey.remove(0), body)
             .context("unable to encrypt HTTP body with public wrap key")?;
+//        .encrypt(&Mechanism::RsaPkcsOaep(PkcsOaepParams::new(MechanismType::SHA256,PkcsMgfType::MGF1_SHA256,PkcsOaepSource::empty())), pubkey.remove(0), body)
 
         Ok(encrypted)
+
+
+
     }
 
     async fn wrapkey_unwrap(&self, body: &[u8]) -> Result<Vec<u8>> {
         let privkey_template = vec![Attribute::Label(
-            format!("{}-private", self.wrapkey_id).into(),
+            format!("trustee-{}-private", self.wrapkey_id).into(),
         )];
 
         let mut privkey = self
@@ -259,7 +279,9 @@ impl Pkcs11Backend {
             .session
             .lock()
             .await
-            .decrypt(&Mechanism::RsaPkcs, privkey.remove(0), body)
+// NOTICE deprecated by NIST            
+            .decrypt(&Mechanism::RsaPkcsOaep(PkcsOaepParams::new(MechanismType::SHA1,PkcsMgfType::MGF1_SHA1,PkcsOaepSource::empty())), privkey.remove(0), body)
+//            .decrypt(&Mechanism::RsaPkcsOaep(PkcsOaepParams::new(MechanismType::SHA256,PkcsMgfType::MGF1_SHA256,PkcsOaepSource::empty())), privkey.remove(0), body)
             .context("unable to decrypt HTTP body with private wrap key")?;
 
         Ok(decrypted)
@@ -282,10 +304,10 @@ mod tests {
     #[serial]
     async fn write_and_read_resource() {
         let config = Pkcs11Config {
-            module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
-            slot_index: 1,
+            module: "/usr/lib/softhsm/libsofthsm2.so".into(),
+            slot_index: 0,
             // This pin must be set for SoftHSM
-            pin: "test".to_string(),
+            pin: "12345678".to_string(),
         };
 
         let backend = Pkcs11Backend::try_from(config).unwrap();
@@ -314,10 +336,10 @@ mod tests {
     #[serial]
     async fn wrap_and_unwrap_data() {
         let config = Pkcs11Config {
-            module: "/usr/lib64/pkcs11/libsofthsm2.so".into(),
-            slot_index: 1,
+            module: "/usr/lib/softhsm/libsofthsm2.so".into(),
+            slot_index: 0,
             // This pin must be set for SoftHSM
-            pin: "test".to_string(),
+            pin: "12345678".to_string(),
         };
 
         let backend = Pkcs11Backend::try_from(config).unwrap();
