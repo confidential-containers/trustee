@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_verify_hcl_var_data_failure() {
-        let mut wrong_report = REPORT.clone();
+        let mut wrong_report = *REPORT;
         wrong_report[0x0880] += 1;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
         let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_verify_tpm_signature_failure() {
-        let mut quote = QUOTE.clone();
+        let mut quote = *QUOTE;
         quote[0x020] = 0;
         let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
 
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_verify_pcrs_failure() {
-        let mut quote = QUOTE.clone();
+        let mut quote = *QUOTE;
         quote[0x0169] = 0;
         let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
 

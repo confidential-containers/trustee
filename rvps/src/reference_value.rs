@@ -180,7 +180,7 @@ mod test {
             "version": "1.0.0",
             "value": "abcd"
         }"#;
-        let deserialized_rf: ReferenceValue = serde_json::from_str(&rv_json).unwrap();
+        let deserialized_rf: ReferenceValue = serde_json::from_str(rv_json).unwrap();
         assert_eq!(deserialized_rf, rv);
     }
 }

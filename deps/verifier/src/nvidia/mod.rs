@@ -298,18 +298,17 @@ mod tests {
             report_vec.as_slice(),
             HOPPER_SIGNATURE_LENGTH,
             cert_chain_bytes,
-            &expected_nonce_vec.as_slice(),
+            expected_nonce_vec.as_slice(),
         )
         .unwrap();
 
-        let device_claims =
-            NvDeviceReportAndCertClaim::new(&device_arch, &device_uuid.to_string(), &report);
+        let device_claims = NvDeviceReportAndCertClaim::new(&device_arch, device_uuid, &report);
 
         let value = serde_json::to_value(device_claims).unwrap();
         debug!("Nvidia device claims:\n{:#?}", &value);
         let json = serde_json::to_string(&value).unwrap();
 
-        let _ = fs::write("hopperAttestationReport-claims.txt", &json).unwrap();
+        fs::write("hopperAttestationReport-claims.txt", &json).unwrap();
 
         let expected_claim =
             include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt");
