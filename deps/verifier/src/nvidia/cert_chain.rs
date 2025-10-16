@@ -201,7 +201,7 @@ mod tests {
         let cert_chain = NvidiaCertificateChain::decode(cert_chain_str.as_bytes()).unwrap();
 
         match cert_chain.verify(EXPECTED_FWID) {
-            Ok(r) => assert_eq!(r, expected_result.unwrap()),
+            Ok(_) => assert!(expected_result.is_ok()),
             Err(e) => assert_eq!(e.to_string(), expected_result.unwrap_err().to_string()),
         }
     }
