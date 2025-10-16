@@ -24,15 +24,20 @@ pub enum Error {
 
 impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
-        let body = format!("{self:#?}");
-
-        error!("{self:#?}");
-        let mut res = match self {
-            Error::InternalError(_) => HttpResponse::InternalServerError(),
-            // _ => HttpResponse::NotImplemented(),
-        };
-
-        res.body(BoxBody::new(body))
+        match self {
+            Error::InternalError(e) => {
+                let mut res = HttpResponse::InternalServerError();
+                let error_stack = e
+                    .chain()
+                    .enumerate()
+                    .map(|(i, cause)| format!("{i}: {cause}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let body = format!("An internal error occured: \n{error_stack}");
+                error!("{body}");
+                res.body(BoxBody::new(body))
+            }
+        }
     }
 }
 

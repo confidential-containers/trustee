@@ -33,8 +33,8 @@ pub enum RvpsError {
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
 
-    #[error("Reference value not found")]
-    ReferenceValueNotFound,
+    #[error("Reference value with key `{0}` not found")]
+    ReferenceValueNotFound(String),
 }
 
 type Result<T> = std::result::Result<T, RvpsError>;
