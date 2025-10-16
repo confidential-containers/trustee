@@ -156,9 +156,13 @@ impl PolicyEngine for OPA {
                 .expect("Only duplicated extension insertion can cause panic");
         }
 
-        let claim_value = engine
-            .eval_rule(EVAL_RULE.to_string())
-            .map_err(PolicyError::EvalPolicyFailed)?;
+        let claim_value =
+            engine
+                .eval_rule(EVAL_RULE.to_string())
+                .map_err(|e| PolicyError::EvalPolicyFailed {
+                    policy_id: policy_id.to_string(),
+                    source: e,
+                })?;
 
         let claim_value = claim_value
             .to_json_str()

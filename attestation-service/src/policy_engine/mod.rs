@@ -43,8 +43,12 @@ pub enum PolicyError {
     LoadReferenceDataFailed(#[source] anyhow::Error),
     #[error("Failed to set input data: {0}")]
     SetInputDataFailed(#[source] anyhow::Error),
-    #[error("Failed to evaluate policy: {0}")]
-    EvalPolicyFailed(#[source] anyhow::Error),
+    #[error("Failed to evaluate policy `{policy_id}`")]
+    EvalPolicyFailed {
+        policy_id: String,
+        #[source]
+        source: anyhow::Error,
+    },
     #[error("json serialization failed: {0}")]
     JsonSerializationFailed(#[source] anyhow::Error),
     #[error("Policy claim value not valid (must be between -127 and 127)")]
