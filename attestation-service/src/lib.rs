@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 use tokio::fs;
-use tracing::info;
+use tracing::{debug, info};
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
@@ -224,7 +224,11 @@ impl AttestationService {
                 info!(
                     tee =? verification_request.tee,
                     tee_class = tee_class,
-                    "Verifier/endorsement check passed. claims = {}, initdata claims = {}, runtime claims = {}",
+                    "Verifier/endorsement check passed.",
+                );
+
+                debug!(
+                    "claims = {}, initdata claims = {}, runtime claims = {}",
                     serde_json::to_string(&claims_from_tee_evidence)?,
                     serde_json::to_string(&init_data_claims)?,
                     serde_json::to_string(&runtime_data_claims)?,
