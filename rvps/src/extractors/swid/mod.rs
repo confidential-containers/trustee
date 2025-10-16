@@ -129,18 +129,16 @@ mod tests {
 
     #[test]
     fn extract_test_rim() {
-        let extractor = SwidExtractor::default();
+        let extractor = SwidExtractor;
         let rvs = extractor
             .verify_and_extract(include_str!("test-rim.b64"))
             .unwrap();
 
         let mut found = false;
         for rv in rvs {
-            if rv.name == "NVIDIA_Corporation.GPU.measurement_12" {
-                if rv.value()[0].as_str().unwrap() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
+            if rv.name == "NVIDIA_Corporation.GPU.measurement_12" &&rv.value()[0].as_str().unwrap() == "758af96044c700f98a85347be27124d51c05b8784ba216b629b9aaab6d538c759aed9922a133e4ac473564d359b271d5" {
                     found = true;
                     break
-                }
             }
         }
 
