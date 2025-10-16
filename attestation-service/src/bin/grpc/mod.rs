@@ -199,7 +199,15 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .attestation_service
             .evaluate(verification_requests, policy_ids)
             .await
-            .map_err(|e| Status::aborted(format!("Attestation evaluation failed: {e:?}")))?;
+            .map_err(|e| {
+                let error_stack = e
+                    .chain()
+                    .enumerate()
+                    .map(|(i, cause)| format!("{i}: {cause}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                Status::aborted(format!("Attestation evaluation failed: \n{error_stack}"))
+            })?;
 
         debug!(token = attestation_token, "Attestation Token");
         info!("AttestationEvaluate succeeded.");
