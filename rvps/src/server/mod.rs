@@ -38,7 +38,8 @@ impl ReferenceValueProviderService for RvpsServer {
             .await
             .query_reference_value(&request.into_inner().reference_value_id)
             .await
-            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Query reference value: {e}")))?
+            .ok_or(Status::not_found("Reference value not found"))?;
 
         let reference_value_results = serde_json::to_string(&rvs)
             .map_err(|e| Status::aborted(format!("Serde reference value: {e}")))?;
