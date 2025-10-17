@@ -199,7 +199,15 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .attestation_service
             .evaluate(verification_requests, policy_ids)
             .await
-            .map_err(|e| Status::aborted(format!("Attestation evaluation failed: {e:?}")))?;
+            .map_err(|e| {
+                let error_stack = e
+                    .chain()
+                    .enumerate()
+                    .map(|(i, cause)| format!("{i}: {cause}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                Status::aborted(format!("Attestation evaluation failed: \n{error_stack}"))
+            })?;
 
         debug!(token = attestation_token, "Attestation Token");
         info!("AttestationEvaluate succeeded.");
@@ -250,7 +258,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
     async fn query_reference_value(
         &self,
-        _request: Request<ReferenceValueQueryRequest>,
+        request: Request<ReferenceValueQueryRequest>,
     ) -> Result<Response<ReferenceValueQueryResponse>, Status> {
         let request_id = Uuid::new_v4().to_string();
         Span::current().record("request_id", tracing::field::display(&request_id));
@@ -260,14 +268,18 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .read()
             .await
             .attestation_service
-            .query_reference_values()
+            .query_reference_value(&request.into_inner().reference_value_id)
             .await
             .map_err(|e| Status::aborted(format!("Failed to query reference values: {e}")))?;
 
-        let res = ReferenceValueQueryResponse {
-            reference_value_results: serde_json::to_string(&values).map_err(|e| {
+        let reference_value_results = match values {
+            Some(values) => Some(serde_json::to_string(&values).map_err(|e| {
                 Status::aborted(format!("Failed to serialize reference values: {e}"))
-            })?,
+            })?),
+            None => None,
+        };
+        let res = ReferenceValueQueryResponse {
+            reference_value_results,
         };
 
         info!("GetReferenceValue succeeded.");

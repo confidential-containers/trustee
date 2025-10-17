@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use std::sync::Arc;
+
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use serde::Deserialize;
-use std::collections::HashMap;
+use serde_json::Value;
 use thiserror::Error;
+use tokio::sync::Mutex;
 use tracing::{info, instrument};
 
 #[cfg(feature = "rvps-grpc")]
@@ -42,8 +45,8 @@ pub trait RvpsApi {
     /// Verify the given message and register the reference value included.
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
-    /// Get the reference values / golden values / expected digests in hex.
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>>;
+    /// Get the reference value by the given id.
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -60,19 +63,19 @@ impl Default for RvpsConfig {
     }
 }
 
+pub type RvpsClient = Arc<Mutex<dyn RvpsApi + Send + Sync>>;
+
 #[instrument(skip_all, name = "Initialize RVPS")]
-pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<Box<dyn RvpsApi + Send + Sync>> {
+pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<RvpsClient> {
     match config {
         RvpsConfig::BuiltIn(config) => {
             info!("launch a built-in RVPS.");
-            Ok(Box::new(builtin::BuiltinRvps::new(config.clone())?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone())?)) as RvpsClient)
         }
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
             info!("connect to remote RVPS: {}", config.address);
-            Ok(Box::new(grpc::Agent::new(&config.address).await?)
-                as Box<dyn RvpsApi + Send + Sync>)
+            Ok(Arc::new(Mutex::new(grpc::Agent::new(&config.address).await?)) as RvpsClient)
         }
     }
 }

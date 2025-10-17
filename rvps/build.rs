@@ -32,6 +32,7 @@ fn real_main() -> Result<(), String> {
 
     #[cfg(feature = "rebuild-grpc-protos")]
     tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
         .out_dir("src/rvps_api")
         .compile_protos(&["../protos/reference.proto"], &["../protos"])
         .map_err(|e| format!("Failed to build gRPC protos: {e}"))?;

@@ -7,6 +7,7 @@ pub mod config;
 pub mod ear_token;
 pub mod policy_engine;
 pub mod rvps;
+use crate::rvps::RvpsClient;
 
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
@@ -14,7 +15,7 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
-use rvps::{RvpsApi, RvpsError};
+use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -121,8 +122,8 @@ pub struct VerificationRequest {
 }
 
 pub struct AttestationService {
-    config: Config,
-    rvps: Box<dyn RvpsApi + Send + Sync>,
+    _config: Config,
+    rvps_client: RvpsClient,
     token_broker: EarAttestationTokenBroker,
 }
 
@@ -135,7 +136,7 @@ impl AttestationService {
                 .map_err(ServiceError::CreateDir)?;
         }
 
-        let rvps = rvps::initialize_rvps_client(&config.rvps_config)
+        let rvps_client = rvps::initialize_rvps_client(&config.rvps_config)
             .await
             .map_err(ServiceError::Rvps)?;
 
@@ -143,8 +144,8 @@ impl AttestationService {
             EarAttestationTokenBroker::new(config.attestation_token_broker.clone()).await?;
 
         Ok(Self {
-            config,
-            rvps,
+            _config: config,
+            rvps_client,
             token_broker,
         })
     }
@@ -191,7 +192,7 @@ impl AttestationService {
         for verification_request in verification_requests {
             let verifier = verifier::to_verifier(
                 &verification_request.tee,
-                self.config.clone().verifier_config,
+                self._config.clone().verifier_config,
             )?;
 
             let (report_data, runtime_data_claims) = parse_runtime_data(
@@ -222,7 +223,11 @@ impl AttestationService {
                 info!(
                     tee =? verification_request.tee,
                     tee_class = tee_class,
-                    "Verifier/endorsement check passed. claims = {}, initdata claims = {}, runtime claims = {}",
+                    "Verifier/endorsement check passed.",
+                );
+
+                debug!(
+                    "claims = {}, initdata claims = {}, runtime claims = {}",
                     serde_json::to_string(&claims_from_tee_evidence)?,
                     serde_json::to_string(&init_data_claims)?,
                     serde_json::to_string(&runtime_data_claims)?,
@@ -237,35 +242,29 @@ impl AttestationService {
             }
         }
 
-        let reference_data_map = self
-            .rvps
-            .get_digests()
-            .await
-            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
-        debug!(
-            "Reference data map get from RVPS: {}",
-            serde_json::to_string(&reference_data_map)?,
-        );
-
         let attestation_results_token = self
             .token_broker
-            .issue(tee_claims, policy_ids, reference_data_map)
+            .issue(tee_claims, policy_ids, Some(self.rvps_client.clone()))
             .await?;
         Ok(attestation_results_token)
     }
 
     /// Register a new reference value
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
-        self.rvps
+        self.rvps_client
+            .lock()
+            .await
             .verify_and_extract(message)
             .await
             .context("register reference value")
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
-        self.rvps
-            .get_digests()
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
+        self.rvps_client
+            .lock()
+            .await
+            .query_reference_value(reference_value_id)
             .await
             .context("query reference values")
     }
@@ -275,7 +274,7 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee, self.config.clone().verifier_config)?;
+        let verifier = verifier::to_verifier(&tee, self._config.clone().verifier_config)?;
         verifier
             .generate_supplemental_challenge(tee_parameters)
             .await
