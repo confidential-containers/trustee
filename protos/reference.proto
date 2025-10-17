@@ -7,7 +7,7 @@ message ReferenceValueQueryRequest {
 }
 
 message ReferenceValueQueryResponse {
-    string reference_value_results = 1;
+    optional string reference_value_results = 1;
 }
 
 message ReferenceValueRegisterRequest {

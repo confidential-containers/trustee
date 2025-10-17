@@ -32,9 +32,6 @@ pub enum RvpsError {
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
-
-    #[error("Reference value with key `{0}` not found")]
-    ReferenceValueNotFound(String),
 }
 
 type Result<T> = std::result::Result<T, RvpsError>;
@@ -48,8 +45,8 @@ pub trait RvpsApi {
     /// Verify the given message and register the reference value included.
     async fn verify_and_extract(&mut self, message: &str) -> Result<()>;
 
-    /// Get the reference values / golden values / expected digests in hex.
-    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value>;
+    /// Get the reference value by the given id.
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]

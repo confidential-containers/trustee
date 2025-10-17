@@ -1,5 +1,3 @@
-use crate::rvps::RvpsError;
-
 use super::{Result, RvpsApi};
 use async_trait::async_trait;
 use core::result::Result::Ok;
@@ -24,12 +22,8 @@ impl RvpsApi for BuiltinRvps {
         Ok(())
     }
 
-    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value> {
-        let reference_value = self
-            .rvps
-            .query_reference_value(reference_value_id)
-            .await?
-            .ok_or(RvpsError::ReferenceValueNotFound)?;
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
+        let reference_value = self.rvps.query_reference_value(reference_value_id).await?;
 
         Ok(reference_value)
     }

@@ -91,12 +91,14 @@ impl Attest for BuiltInCoCoAs {
     async fn query_reference_value(
         &self,
         reference_value_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
-        self.inner
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        let rvs = self
+            .inner
             .read()
             .await
             .query_reference_value(reference_value_id)
-            .await
+            .await?;
+        Ok(rvs)
     }
 }
 

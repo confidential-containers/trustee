@@ -63,7 +63,7 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value> {
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
         let req = tonic::Request::new(ReferenceValueQueryRequest {
             reference_value_id: reference_value_id.to_string(),
         });
@@ -73,8 +73,15 @@ impl RvpsApi for Agent {
             .await
             .query_reference_value(req)
             .await?
-            .into_inner();
-        let reference_value = serde_json::from_str(&res.reference_value_results)?;
-        Ok(reference_value)
+            .into_inner()
+            .reference_value_results;
+
+        match res {
+            Some(reference_value) => {
+                let reference_value = serde_json::from_str(&reference_value)?;
+                Ok(Some(reference_value))
+            }
+            None => Ok(None),
+        }
     }
 }
