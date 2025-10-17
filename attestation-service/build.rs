@@ -7,7 +7,10 @@ fn real_main() -> Result<(), String> {
     tonic_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
 
     #[cfg(feature = "grpc-bin")]
-    tonic_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile_protos(&["../protos/reference.proto"], &["../protos"])
+        .map_err(|e| format!("{e}"))?;
     Ok(())
 }
 

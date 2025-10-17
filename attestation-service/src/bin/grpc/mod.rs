@@ -272,10 +272,14 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .await
             .map_err(|e| Status::aborted(format!("Failed to query reference values: {e}")))?;
 
-        let res = ReferenceValueQueryResponse {
-            reference_value_results: serde_json::to_string(&values).map_err(|e| {
+        let reference_value_results = match values {
+            Some(values) => Some(serde_json::to_string(&values).map_err(|e| {
                 Status::aborted(format!("Failed to serialize reference values: {e}"))
-            })?,
+            })?),
+            None => None,
+        };
+        let res = ReferenceValueQueryResponse {
+            reference_value_results,
         };
 
         info!("GetReferenceValue succeeded.");

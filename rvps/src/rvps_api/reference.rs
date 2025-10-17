@@ -6,8 +6,8 @@ pub struct ReferenceValueQueryRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReferenceValueQueryResponse {
-    #[prost(string, tag = "1")]
-    pub reference_value_results: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "1")]
+    pub reference_value_results: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReferenceValueRegisterRequest {

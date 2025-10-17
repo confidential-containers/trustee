@@ -261,7 +261,7 @@ impl AttestationService {
     }
 
     /// Query Reference Values
-    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value> {
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
         self.rvps
             .lock()
             .await
