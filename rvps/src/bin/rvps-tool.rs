@@ -23,7 +23,10 @@ async fn register(addr: &str, provenance_path: &str) -> Result<()> {
 
 async fn query(addr: String, reference_value_id: String) -> Result<()> {
     let rvs = client::query(addr, reference_value_id).await?;
-    info!("Get reference values succeeded:\n {rvs}");
+    match rvs {
+        Some(rvs) => info!("Get reference values succeeded:\n {rvs}"),
+        None => info!("No reference values found for the given id"),
+    }
     Ok(())
 }
 

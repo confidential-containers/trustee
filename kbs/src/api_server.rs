@@ -205,15 +205,13 @@ pub(crate) async fn api(
         "reference-value" if request.method() == Method::GET => {
             core.admin_auth.validate_auth(&request)?;
             let reference_value_id = additional_path.trim_start_matches('/');
-            let reference_values = serde_json::to_string(
-                &core
-                    .attestation_service
-                    .query_reference_value(reference_value_id)
-                    .await
-                    .map_err(|e| Error::RvpsError {
-                        message: format!("Failed to get reference_values: {e}").to_string(),
-                    })?,
-            )?;
+            let reference_values = core
+                .attestation_service
+                .query_reference_value(reference_value_id)
+                .await
+                .map_err(|e| Error::RvpsError {
+                    message: format!("Failed to get reference_values: {e}").to_string(),
+                })?;
 
             Ok(HttpResponse::Ok()
                 .content_type("application/json")
