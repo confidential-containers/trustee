@@ -117,7 +117,7 @@ pub trait Attest: Send + Sync {
     async fn query_reference_value(
         &self,
         _reference_value_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    ) -> anyhow::Result<Option<serde_json::Value>> {
         Err(anyhow!(
             "Attestation Service does not support reference value configuration."
         ))
@@ -437,13 +437,16 @@ impl AttestationService {
         Ok(())
     }
 
-    pub async fn query_reference_value(
-        &self,
-        reference_value_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> anyhow::Result<String> {
         let reference_value = self.inner.query_reference_value(reference_value_id).await?;
 
-        Ok(reference_value)
+        match reference_value {
+            Some(reference_value) => {
+                let reference_value = serde_json::to_string(&reference_value)?;
+                Ok(reference_value)
+            }
+            None => bail!("No reference value found for the given id: {reference_value_id}"),
+        }
     }
 }
 
