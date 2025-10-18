@@ -99,9 +99,7 @@ cli-static-linux:
       --target=$(ARCH)-unknown-linux-gnu \
       --config "target.$(ARCH)-unknown-linux-gnu.rustflags = '-C target-feature=+crt-static'" \
       --locked \
-      --release \
-      --no-default-features \
-      --features sample_only
+      --release
 
 install-kbs:
 	install -D -m0755 $(RELEASE_DIR)/kbs $(INSTALL_DESTDIR)
