@@ -64,8 +64,23 @@ pub enum Error {
     #[error("Access denied by policy")]
     PolicyDeny,
 
-    #[error("Policy engine error")]
-    PolicyEngine(#[from] crate::policy_engine::KbsPolicyEngineError),
+    #[error("Set policy error: {source}")]
+    SetPolicyError {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    #[error("Get policy error: {source}")]
+    GetPolicyError {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    #[error("Policy engine enforcement error: {source}")]
+    PolicyEngineError {
+        #[source]
+        source: anyhow::Error,
+    },
 
     #[error("RVPS configuration failed: {message}")]
     RvpsError { message: String },

@@ -15,24 +15,118 @@ use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
+use policy_engine::{PolicyEngine, PolicyEngineConfig};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
-use std::path::Path;
-use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use tracing::{debug, info, warn};
 
 use crate::ear_token::EarTokenConfiguration;
-use crate::policy_engine::{PolicyEngine, PolicyEngineType};
 use crate::TeeClaims;
+
+use super::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION};
+
+pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/Trustee";
+pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct TokenSignerConfig {
+    pub key_path: String,
+    #[serde(default = "Option::default")]
+    pub cert_url: Option<String>,
+
+    // PEM format certificate chain.
+    #[serde(default = "Option::default")]
+    pub cert_path: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct Configuration {
+    /// The Attestation Results Token duration time (in minutes)
+    /// Default: 5 minutes
+    #[serde(default = "default_duration")]
+    pub duration_min: i64,
+
+    /// For tokens, the issuer of the token
+    #[serde(default = "default_issuer_name")]
+    pub issuer_name: String,
+
+    /// The developer name to be used as part of the Verifier ID
+    /// in the EAR.
+    /// Default: `https://confidentialcontainers.org`
+    #[serde(default = "default_developer")]
+    pub developer_name: String,
+
+    /// The build name to be used as part of the Verifier ID
+    /// in the EAR.
+    /// The default value will be generated from the Cargo package
+    /// name and version of the AS.
+    #[serde(default = "default_build")]
+    pub build_name: String,
+
+    /// The Profile that describes the EAR token
+    /// Default: `tag:github.com,2024:confidential-containers/Trustee`
+    #[serde(default = "default_profile")]
+    pub profile_name: String,
+
+    /// Configuration for signing the EAR
+    /// If this is not specified, the EAR
+    /// will be signed with an ephemeral private key.
+    #[serde(default = "Option::default")]
+    pub signer: Option<TokenSignerConfig>,
+
+    /// Configuration for the policy engine
+    #[serde(default)]
+    pub policy_engine_config: PolicyEngineConfig,
+}
+
+#[inline]
+fn default_duration() -> i64 {
+    DEFAULT_TOKEN_DURATION
+}
+
+#[inline]
+fn default_issuer_name() -> String {
+    COCO_AS_ISSUER_NAME.to_string()
+}
+
+#[inline]
+fn default_developer() -> String {
+    DEFAULT_DEVELOPER_NAME.to_string()
+}
+
+#[inline]
+fn default_profile() -> String {
+    DEFAULT_PROFILE.to_string()
+}
+
+#[inline]
+fn default_build() -> String {
+    format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            duration_min: default_duration(),
+            issuer_name: default_issuer_name(),
+            developer_name: default_developer(),
+            build_name: default_build(),
+            profile_name: default_profile(),
+            signer: None,
+            policy_engine_config: PolicyEngineConfig::default(),
+        }
+    }
+}
 
 pub struct EarAttestationTokenBroker {
     config: EarTokenConfiguration,
     private_key: EcKey<Private>,
     cert_url: Option<String>,
     cert_chain: Option<Vec<X509>>,
-    policy_engine: Arc<dyn PolicyEngine>,
+    policy_engine: PolicyEngine,
 }
 
 impl EarAttestationTokenBroker {
@@ -41,23 +135,24 @@ impl EarAttestationTokenBroker {
 
         warn!("Simple Token has been deprecated in v0.16.0. Note that the `attestation_token_broker` config field `type` is now ignored and the token will always be an EAR token.");
 
-        let policy_engine =
-            PolicyEngineType::OPA.to_policy_engine(Path::new(&config.policy_dir))?;
+        let policy_engine = PolicyEngine::new(config.policy_engine_config.clone()).await?;
 
-        let default_cpu_policy = include_str!("ear_default_policy_cpu.rego").to_string();
+        let default_cpu_policy =
+            include_str!("../../policy/ear_default_policy_cpu.rego").to_string();
         let default_cpu_policy =
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_cpu_policy);
 
         policy_engine
-            .set_policy("default_cpu".to_string(), default_cpu_policy, false)
+            .set_policy("default_cpu", &default_cpu_policy, false)
             .await?;
 
-        let default_gpu_policy = include_str!("ear_default_policy_gpu.rego").to_string();
+        let default_gpu_policy =
+            include_str!("../../policy/ear_default_policy_gpu.rego").to_string();
         let default_gpu_policy =
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_gpu_policy);
 
         policy_engine
-            .set_policy("default_gpu".to_string(), default_gpu_policy, false)
+            .set_policy("default_gpu", &default_gpu_policy, false)
             .await?;
 
         if config.signer.is_none() {
@@ -224,21 +319,18 @@ impl EarAttestationTokenBroker {
 
     pub async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
         self.policy_engine
-            .set_policy(policy_id, policy, true)
+            .set_policy(&policy_id, &policy, true)
             .await
             .map_err(Error::from)
     }
 
-    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
-        self.policy_engine
-            .list_policies()
-            .await
-            .map_err(Error::from)
+    pub async fn list_policies(&self) -> Result<Vec<String>> {
+        self.policy_engine.list_policies().await.map_err(From::from)
     }
 
     pub async fn get_policy(&self, policy_id: String) -> Result<String> {
         self.policy_engine
-            .get_policy(policy_id)
+            .get_policy(&policy_id)
             .await
             .map_err(Error::from)
     }

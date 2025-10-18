@@ -7,15 +7,16 @@ use actix_web::{
     middleware, web, App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use log::info;
+use policy_engine::PolicyEngine;
+use serde_json::Value;
 
 use crate::{
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
     plugins::PluginManager,
-    policy_engine::PolicyEngine,
     prometheus::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
@@ -70,7 +71,22 @@ impl ApiServer {
         let plugin_manager = PluginManager::try_from(config.plugins.clone())
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
-        let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
+        let policy_engine = PolicyEngine::new(config.policy_engine.clone())
+            .await
+            .map_err(|e| Error::PolicyEngineError {
+                source: anyhow!("Failed to initialize policy engine: {e}"),
+            })?;
+        policy_engine
+            .set_policy(
+                "resource-policy",
+                include_str!("../policy/default_policy.rego"),
+                false,
+            )
+            .await
+            .map_err(|e| Error::PolicyEngineError {
+                source: anyhow!("Failed to set default policy: {e}"),
+            })?;
+
         let admin_auth = Admin::try_from(config.admin.clone())?;
 
         #[cfg(feature = "as")]
@@ -239,15 +255,35 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
             core.admin_auth.validate_auth(&request)?;
-            core.policy_engine.set_policy(&body).await?;
+            let request: Value =
+                serde_json::from_slice(&body).map_err(|_| Error::SetPolicyError {
+                    source: anyhow!("Illegal SetPolicy Request Json"),
+                })?;
 
+            let policy = request
+                .pointer("/policy")
+                .ok_or(Error::SetPolicyError {
+                    source: anyhow!("No `policy` field inside SetPolicy Request Json"),
+                })?
+                .as_str()
+                .ok_or(Error::SetPolicyError {
+                    source: anyhow!("`policy` field is not a string in SetPolicy Request Json"),
+                })?;
+            core.policy_engine
+                .set_policy("resource-policy", policy, true)
+                .await
+                .map_err(|e| Error::SetPolicyError { source: e.into() })?;
             Ok(HttpResponse::Ok().finish())
         }
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
             core.admin_auth.validate_auth(&request)?;
-            let policy = core.policy_engine.get_policy().await?;
+            let policy = core
+                .policy_engine
+                .get_policy("resource-policy")
+                .await
+                .map_err(|e| Error::GetPolicyError { source: e.into() })?;
 
             Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
         }
@@ -290,9 +326,15 @@ pub(crate) async fn api(
                 // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
-                    .evaluate(&endpoint, &claim_str)
+                    .evaluate(&endpoint, &claim_str, "resource-policy")
                     .await
-                    .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
+                    .inspect_err(|_| KBS_POLICY_ERRORS.inc())
+                    .map_err(|e| Error::PolicyEngineError { source: e.into() })?
+                    .rules_result
+                    .as_bool()
+                    .ok_or_else(|| Error::PolicyEngineError {
+                        source: anyhow!("The result of policy engine is not a boolean"),
+                    })?
                 {
                     KBS_POLICY_VIOLATIONS.inc();
                     return Err(Error::PolicyDeny);

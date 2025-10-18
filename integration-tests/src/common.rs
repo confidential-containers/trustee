@@ -4,9 +4,8 @@
 
 use kbs::admin::config::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
-use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
-use kbs::policy_engine::PolicyEngineConfig;
+use kbs::config::{HttpServerConfig, PolicyEngineConfig};
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
 
@@ -112,13 +111,7 @@ impl TestHarness {
             .into_os_string()
             .into_string()
             .map_err(|e| anyhow!("Failed to join resource path: {:?}", e))?;
-        let as_policy_dir = work_dir
-            .path()
-            .join("as_policy")
-            .into_os_string()
-            .into_string()
-            .map_err(|e| anyhow!("Failed to join as_policy path: {:?}", e))?;
-        let kbs_policy_path = work_dir.path().join("kbs_policy");
+
         let rv_path = work_dir
             .path()
             .join("reference_values")
@@ -129,10 +122,7 @@ impl TestHarness {
 
         tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
-        let attestation_token_config = EarTokenConfiguration {
-            policy_dir: as_policy_dir,
-            ..Default::default()
-        };
+        let attestation_token_config = EarTokenConfiguration::default();
 
         // Setup RVPS either remotely or builtin
         let rvps_config = match &test_parameters.rvps_type {
@@ -192,9 +182,7 @@ impl TestHarness {
                 auth_public_key: Some(auth_pubkey_path.as_path().to_path_buf()),
                 insecure_api: false,
             },
-            policy_engine: PolicyEngineConfig {
-                policy_path: kbs_policy_path,
-            },
+            policy_engine: PolicyEngineConfig::default(),
             plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
                 LocalFsRepoDesc {
                     dir_path: resource_dir,

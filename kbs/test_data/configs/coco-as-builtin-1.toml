@@ -16,6 +16,3 @@ insecure_http = false
 
 [admin]
 insecure_api = false
-
-[policy_engine]
-policy_path = "/opt/confidential-containers/kbs/policy.rego"

@@ -7,12 +7,12 @@
 
 package policy
 
-default allow = false
+default result = false
 
 path := split(data["resource-path"], "/")
 input_tcb := input["tcb-status"]
 
-allow {
+result {
     count(path) == 3
 
 

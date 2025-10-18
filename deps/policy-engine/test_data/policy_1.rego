@@ -1,10 +1,10 @@
 package policy
 
-default allow = false
+default result = false
 
 path := split(data["resource-path"], "/")
 
-allow {
+result {
     count(path) == 3
     input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == path[1]
 }

@@ -270,14 +270,13 @@ async fn main() -> Result<()> {
                     let policy_bytes: Vec<u8> = if let Some(file) = policy_file {
                         std::fs::read(file)?
                     } else if allow_all {
-                        include_bytes!("../../../kbs/sample_policies/allow_all.rego").into()
+                        include_bytes!("../../../kbs/policy/allow_all.rego").into()
                     } else if deny_all {
-                        include_bytes!("../../../kbs/sample_policies/deny_all.rego").into()
+                        include_bytes!("../../../kbs/policy/deny_all.rego").into()
                     } else if affirming {
-                        include_bytes!("../../../kbs/sample_policies/affirming.rego").into()
+                        include_bytes!("../../../kbs/policy/affirming.rego").into()
                     } else if default {
-                        include_bytes!("../../../kbs/src/policy_engine/opa/default_policy.rego")
-                            .into()
+                        include_bytes!("../../../kbs/policy/default_policy.rego").into()
                     } else {
                         bail!("No policy specified")
                     };

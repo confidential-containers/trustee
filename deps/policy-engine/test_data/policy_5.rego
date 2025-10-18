@@ -3,7 +3,7 @@ package policy
 # Opt-in to the breaking changes coming in rego v1
 import rego.v1
 
-default allow := false
+default result := false
 
 # path should be of form `repository_name/resource_type/resource_name`
 path := split(data["resource-path"], "/")
@@ -11,7 +11,7 @@ path := split(data["resource-path"], "/")
 # mapping of resource ids to minimum SVNs
 resources := {"secret1": 2, "secret2": 3}
 
-allow if {
+result if {
     # check that evidence comes from expected platform
     input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]
 
