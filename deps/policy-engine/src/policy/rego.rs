@@ -70,3 +70,63 @@ impl Engine for Regorus {
         Ok(res)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use std::fs;
+
+    #[tokio::test]
+    #[rstest]
+    #[case("my_repo/Alice/key", 1, "./test_data/policy_1.rego", false)]
+    #[case("my_repo/Alice/key", 1, "./test_data/policy_4.rego", false)]
+    #[case("my_repo/Alice/key", 1, "./test_data/policy_3.rego", false)]
+    #[case("myrepo/secret/secret1", 2, "./test_data/policy_5.rego", true)]
+    #[case("myrepo/secret/secret1", 1, "./test_data/policy_5.rego", false)]
+    #[case("myrepo/secret/secret2", 3, "./test_data/policy_5.rego", true)]
+    #[case("myrepo/secret/secret2", 2, "./test_data/policy_5.rego", false)]
+    #[case("myrepo/secret/secret3", 3, "./test_data/policy_5.rego", false)]
+    #[case("a/b/secret2", 3, "./test_data/policy_5.rego", false)]
+    #[case("abc", 3, "./test_data/policy_5.rego", false)]
+    async fn test_kbs_policy_evaluate(
+        #[case] resource_path: &str,
+        #[case] input_svn: u64,
+        #[case] policy_path: &str,
+        #[case] expected: bool,
+    ) {
+        use crate::{rego::Regorus, Engine};
+
+        let input = format!(
+            r#"
+{{
+    "submods": {{
+        "cpu0": {{
+            "ear.trustworthiness-vector": {{
+                "executables": 2,
+                "hardware": 3
+            }},
+            "ear.veraison.annotated-evidence": {{
+                "sample" : {{   
+                    "productId": "n",
+                    "svn": {input_svn}
+                }}
+            }}
+        }}
+    }}
+}}
+        "#
+        );
+
+        let data = format!(
+            r#"
+        {{
+            "resource-path": "{resource_path}"
+        }}
+        "#
+        );
+        let policy = fs::read_to_string(policy_path).unwrap();
+        let engine = Regorus::default();
+        let result = engine.evaluate(&data, &input, &policy).await.unwrap();
+        assert_eq!(result.rules_result.as_bool().unwrap(), expected);
+    }
+}
