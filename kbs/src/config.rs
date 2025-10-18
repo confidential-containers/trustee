@@ -4,11 +4,11 @@
 
 use crate::admin::config::AdminConfig;
 use crate::plugins::PluginsConfig;
-use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 use clap::Parser;
 use config::{Config, File};
+pub use policy_engine::PolicyEngineConfig;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -116,7 +116,6 @@ mod tests {
             },
             PluginsConfig,
         },
-        policy_engine::{PolicyEngineConfig, DEFAULT_POLICY_PATH},
         token::AttestationTokenVerifierConfig,
     };
 
@@ -128,6 +127,7 @@ mod tests {
         rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
     };
 
+    use policy_engine::{KeyValueStorageConfig, PolicyEngineConfig, PolicyEngineType};
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     use rstest::rstest;
@@ -163,7 +163,8 @@ mod tests {
             insecure_api: false,
         },
         policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+            backend: KeyValueStorageConfig::Simple,
+            engine: PolicyEngineType::Opa,
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
@@ -212,9 +213,7 @@ mod tests {
             auth_public_key: None,
             insecure_api: DEFAULT_INSECURE_API,
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: DEFAULT_POLICY_PATH.into(),
-        },
+        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
@@ -249,9 +248,7 @@ mod tests {
             auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
             insecure_api: false,
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
-        },
+        policy_engine: PolicyEngineConfig::default(),
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
@@ -456,9 +453,7 @@ mod tests {
             insecure_api: true,
             ..Default::default()
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
-        },
+        policy_engine: PolicyEngineConfig::default(),
         plugins: vec![
         PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
             LocalFsRepoDesc {

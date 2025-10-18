@@ -18,7 +18,10 @@ auth_public_key = "/etc/kbs-admin.pub"
 insecure_api = false
 
 [policy_engine]
-policy_path = "/etc/kbs-policy.rego"
+engine = "Opa"
+
+[policy_engine.backend]
+type = "simple"
 
 [[plugins]]
 name = "sample"

@@ -4,9 +4,8 @@
 
 use kbs::admin::config::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
-use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
-use kbs::policy_engine::PolicyEngineConfig;
+use kbs::config::{HttpServerConfig, PolicyEngineConfig};
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
 
@@ -113,7 +112,6 @@ impl TestHarness {
             .into_string()
             .map_err(|e| anyhow!("Failed to join resource path: {:?}", e))?;
 
-        let kbs_policy_path = work_dir.path().join("kbs_policy");
         let rv_path = work_dir
             .path()
             .join("reference_values")
@@ -184,9 +182,7 @@ impl TestHarness {
                 auth_public_key: Some(auth_pubkey_path.as_path().to_path_buf()),
                 insecure_api: false,
             },
-            policy_engine: PolicyEngineConfig {
-                policy_path: kbs_policy_path,
-            },
+            policy_engine: PolicyEngineConfig::default(),
             plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
                 LocalFsRepoDesc {
                     dir_path: resource_dir,
