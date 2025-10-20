@@ -122,7 +122,6 @@ pub fn validate_jwt(jwt: String, jwks: &NrasJwks) -> Result<()> {
         .get(kid)
         .ok_or_else(|| anyhow!("Could not find KID in JWKs"))?;
 
-    let jwk: jsonwebtoken::jwk::Jwk = serde_json::from_str(&jwk)?;
     let decoding_key = DecodingKey::from_jwk(&jwk)?;
 
     decode::<Claims>(&jwt, &decoding_key, &Validation::new(Algorithm::ES384))?;
