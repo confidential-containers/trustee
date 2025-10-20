@@ -41,6 +41,7 @@ pub const NRAS_URL: &str = "https://nras.attestation.nvidia.com/v4/attest";
 #[derive(Default, Debug)]
 pub struct Nvidia {
     verifier_type: NvidiaVerifierType,
+    nras_jwks: Option<NrasJwks>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -103,16 +104,20 @@ impl NvDeviceReportAndCertClaim {
 }
 
 impl Nvidia {
-    pub fn new(config: Option<NvidiaVerifierConfig>) -> Self {
-        if let Some(cfg) = config {
-            Nvidia {
-                verifier_type: cfg.verifier,
-            }
-        } else {
-            Nvidia {
-                verifier_type: NvidiaVerifierType::Local,
-            }
-        }
+    pub async fn new(config: Option<NvidiaVerifierConfig>) -> Result<Self> {
+        let verifier_type = config
+            .map(|c| c.verifier)
+            .unwrap_or(NvidiaVerifierType::Local);
+
+        let nras_jwks = match verifier_type {
+            NvidiaVerifierType::Remote(_) => Some(NrasJwks::new().await?),
+            NvidiaVerifierType::Local => None,
+        };
+
+        Ok(Nvidia {
+            verifier_type,
+            nras_jwks,
+        })
     }
 
     async fn evaluate_device_remotely(
@@ -162,13 +167,12 @@ impl Nvidia {
             )
         };
 
-        // We could store this in the struct to avoid multiple calls
-        // to the JWKs endpoint, but for now do it here for simplicity.
-        // The struct doesn't live very long anyway.
-        let jwks = NrasJwks::new().await?;
-
         let response = NrasResponse::from_str(&res.text().await?)?;
-        response.validate(&jwks)?;
+        if let Some(jwks) = &self.nras_jwks {
+            response.validate(jwks)?;
+        } else {
+            bail!("JWKs not available.");
+        }
 
         let claims = response.claims()?;
 
@@ -359,7 +363,7 @@ mod tests {
         let verifier_config = Some(NvidiaVerifierConfig {
             verifier: verifier_type,
         });
-        let verifier = Nvidia::new(verifier_config);
+        let verifier = Nvidia::new(verifier_config).await.unwrap();
         let claims = verifier
             .evaluate(evidence, &report_data, &init_data)
             .await
