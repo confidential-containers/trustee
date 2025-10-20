@@ -58,7 +58,7 @@ pub struct VerifierConfig {
     tpm_verifier: Option<tpm::config::TpmVerifierConfig>,
 }
 
-pub fn to_verifier(
+pub async fn to_verifier(
     tee: &Tee,
     _config: Option<VerifierConfig>,
 ) -> Result<Box<dyn Verifier + Send + Sync>> {
@@ -159,7 +159,7 @@ pub fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "nvidia-verifier")] {
                     let nvidia_config = _config.map(|c| c.nvidia_verifier).unwrap_or(None);
-                    Ok(Box::<nvidia::Nvidia>::new(nvidia::Nvidia::new(nvidia_config)) as Box<dyn Verifier + Send + Sync>)
+                    Ok(Box::<nvidia::Nvidia>::new(nvidia::Nvidia::new(nvidia_config).await?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `nvidia-verifier` is not enabled for `verifier` crate.")
                 }

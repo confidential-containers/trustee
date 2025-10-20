@@ -192,7 +192,8 @@ impl AttestationService {
             let verifier = verifier::to_verifier(
                 &verification_request.tee,
                 self.config.clone().verifier_config,
-            )?;
+            )
+            .await?;
 
             let (report_data, runtime_data_claims) = parse_runtime_data(
                 verification_request.runtime_data,
@@ -275,7 +276,7 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee, self.config.clone().verifier_config)?;
+        let verifier = verifier::to_verifier(&tee, self.config.clone().verifier_config).await?;
         verifier
             .generate_supplemental_challenge(tee_parameters)
             .await
