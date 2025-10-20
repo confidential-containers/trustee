@@ -1,4 +1,5 @@
 use anyhow::Result;
+use core::net::SocketAddr;
 use kbs::attestation::config::AttestationServiceConfig::CoCoASBuiltIn;
 use kbs::plugins::PluginsConfig::ResourceStorage;
 use kbs::plugins::RepositoryConfig::LocalFs;
@@ -6,11 +7,11 @@ use kbs::{ApiServer, KbsConfig};
 use log::{debug, info, warn};
 use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
-use openssl::pkey::PKey;
+use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
+use openssl::x509::extension::SubjectAlternativeName;
 use openssl::x509::{X509NameBuilder, X509};
-use std::fs::File;
-use std::io::Write;
+use std::fs::write;
 use std::path::{Path, PathBuf};
 
 use crate::{write_new_auth_key_pair, write_pem};
@@ -98,9 +99,22 @@ fn get_config(
         }
 
         if config.http_server.certificate.is_none() {
-            let private_key = config.http_server.private_key.as_ref().unwrap();
-            config.http_server.certificate =
-                Some(ensure_https_cert(trustee_home_dir, private_key)?);
+            let private_key = {
+                let private_key_data = std::fs::read(
+                    config
+                        .http_server
+                        .private_key
+                        .as_ref()
+                        .expect("private_key should be already set in config"),
+                )?;
+                PKey::private_key_from_pem(&private_key_data)?
+            };
+
+            let cert = build_x509(&config.http_server.sockets, private_key)?;
+            let cert_path = trustee_home_dir.join("https_cert_cache.pem");
+            write(&cert_path, &cert.to_pem()?)?;
+
+            config.http_server.certificate = Some(cert_path);
         }
     }
 
@@ -180,56 +194,31 @@ fn get_key_paths(base_dir: &Path, key_name: &str) -> (PathBuf, PathBuf) {
     (private_path, public_path)
 }
 
-/// Ensure a HTTPS certificate exists in the given home directory.
-///
-/// Create a self-signed certificate if it doesn't exist.
-///
-/// Returns the path to the certificate.
-fn ensure_https_cert(home_dir: &Path, private_path: &Path) -> Result<PathBuf> {
-    let certificate_path = home_dir.join("https_cert.pem");
-
-    if !certificate_path.try_exists()? {
-        write_new_https_cert(&certificate_path, private_path)?;
-    }
-
-    Ok(certificate_path)
-}
-
-/// Generate a new certificate for HTTPS and write it to the given path.
-///
-/// Use the given private key to sign the certificate.
-fn write_new_https_cert(certificate_path: &Path, private_path: &Path) -> Result<()> {
-    // Load the private key from the provided path
-    let private_key = {
-        let private_key_data = std::fs::read(private_path)?;
-        PKey::private_key_from_pem(&private_key_data)?
-    };
-
+fn build_x509(sockets: &[SocketAddr], private_key: PKey<Private>) -> Result<X509> {
     let name = {
         let mut name_builder = X509NameBuilder::new()?;
         name_builder.append_entry_by_text("CN", "localhost")?;
         name_builder.build()
     };
 
-    // Create a self-signed certificate
-    let certificate = {
-        let mut builder = X509::builder()?;
-        builder.set_version(2)?;
-        builder.set_subject_name(name.as_ref())?;
-        builder.set_issuer_name(name.as_ref())?;
-        builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
-        builder.set_not_after(Asn1Time::days_from_now(365)?.as_ref())?;
-        builder.set_pubkey(private_key.as_ref())?;
-        builder.set_serial_number(
-            openssl::asn1::Asn1Integer::from_bn(openssl::bn::BigNum::from_u32(1)?.as_ref())?
-                .as_ref(),
-        )?;
-        builder.sign(private_key.as_ref(), MessageDigest::sha256())?;
-        builder.build()
-    };
+    let mut san_builder = SubjectAlternativeName::new();
+    san_builder.dns("localhost");
+    san_builder.dns("localhost.localdomain");
+    for socket in sockets {
+        san_builder.ip(socket.ip().to_string().as_str());
+    }
 
-    // Write certificate to file
-    File::create_new(certificate_path)?.write_all(&certificate.to_pem()?)?;
-
-    Ok(())
+    let mut builder = X509::builder()?;
+    builder.set_version(2)?;
+    builder.set_subject_name(name.as_ref())?;
+    builder.set_issuer_name(name.as_ref())?;
+    builder.append_extension(san_builder.build(&builder.x509v3_context(None, None))?)?;
+    builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
+    builder.set_not_after(Asn1Time::days_from_now(365)?.as_ref())?;
+    builder.set_pubkey(private_key.as_ref())?;
+    builder.set_serial_number(
+        openssl::asn1::Asn1Integer::from_bn(openssl::bn::BigNum::from_u32(1)?.as_ref())?.as_ref(),
+    )?;
+    builder.sign(private_key.as_ref(), MessageDigest::sha256())?;
+    Ok(builder.build())
 }
