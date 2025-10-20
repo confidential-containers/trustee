@@ -185,7 +185,7 @@ components:
           type: string
         tee:
           type: string
-          enum: [amd-sev, intel-sgx, intel-tdx]
+          enum: [amd-sev-snp, intel-sgx, intel-tdx]
         extra-params:
           description: >-
             Freely formatted JSON object used for HW-TEE specific attestation
