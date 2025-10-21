@@ -7,6 +7,7 @@ on:
       - 'attestation-service/**'
       - 'rvps'
       - 'deps/verifier'
+      - 'deps/key-value-storage'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   pull_request:
@@ -14,6 +15,7 @@ on:
       - 'attestation-service/**'
       - 'rvps'
       - 'deps/verifier'
+      - 'deps/key-value-storage'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   create:
@@ -71,12 +73,12 @@ jobs:
 
       - name: Run cargo test
         run: |
-          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog
+          sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog -p key-value-storage
 
       - name: Run cargo fmt check
         run: |
-          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog -p verifier --check
+          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage --check
 
       - name: Run rust lint check
         run: |
-          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -- -D warnings -A clippy::derive_partial_eq_without_eq
+          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -- -D warnings -A clippy::derive_partial_eq_without_eq
