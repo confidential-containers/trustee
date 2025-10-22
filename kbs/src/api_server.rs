@@ -194,7 +194,7 @@ pub(crate) async fn api(
             .map_err(From::from),
         #[cfg(feature = "as")]
         "attestation-policy" if request.method() == Method::POST => {
-            core.admin.validate_admin_authorization(&request).await?;
+            core.admin.validate_admin_token(&request)?;
             core.attestation_service.set_policy(&body).await?;
 
             Ok(HttpResponse::Ok().finish())
@@ -203,7 +203,7 @@ pub(crate) async fn api(
         // Reference value querying API is exposed as
         // GET /reference-value/<reference_value_id>
         "reference-value" if request.method() == Method::GET => {
-            core.admin.validate_admin_authorization(&request).await?;
+            core.admin.validate_admin_token(&request)?;
             let reference_value_id = additional_path.trim_start_matches('/');
             let reference_values = core
                 .attestation_service
@@ -219,7 +219,7 @@ pub(crate) async fn api(
         }
         #[cfg(feature = "as")]
         "reference-value" if request.method() == Method::POST => {
-            core.admin.validate_admin_authorization(&request).await?;
+            core.admin.validate_admin_token(&request)?;
             let message = std::str::from_utf8(&body).map_err(|_| Error::RvpsError {
                 message: "Failed to parse reference value message".to_string(),
             })?;
@@ -239,7 +239,7 @@ pub(crate) async fn api(
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
-            core.admin.validate_admin_authorization(&request).await?;
+            core.admin.validate_admin_token(&request)?;
             core.policy_engine.set_policy(&body).await?;
 
             Ok(HttpResponse::Ok().finish())
@@ -247,7 +247,7 @@ pub(crate) async fn api(
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
-            core.admin.validate_admin_authorization(&request).await?;
+            core.admin.validate_admin_token(&request)?;
             let policy = core.policy_engine.get_policy().await?;
 
             Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
@@ -269,7 +269,7 @@ pub(crate) async fn api(
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
                 // Plugin calls need to be authorized by the admin auth
-                core.admin.validate_admin_authorization(&request).await?;
+                core.admin.validate_admin_token(&request)?;
                 let response = plugin
                     .handle(&body, query, additional_path, request.method())
                     .await

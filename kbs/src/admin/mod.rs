@@ -3,16 +3,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use actix_web::HttpRequest;
-use async_trait::async_trait;
 use log::{info, warn};
 use serde::Deserialize;
 use std::sync::Arc;
 
 pub mod allow_all;
 pub mod error;
+pub mod simple;
 pub use error::*;
 
-use allow_all::InsecureAllowAll;
+use allow_all::InsecureAllowAllBackend;
+use simple::{SimpleAdminBackend, SimpleAdminConfig};
 
 #[derive(Clone)]
 pub(crate) struct Admin {
@@ -23,8 +24,8 @@ pub(crate) struct Admin {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum AdminBackendType {
+    Simple(SimpleAdminConfig),
     #[default]
-    Simple,
     InsecureAllowAll,
 }
 
@@ -38,7 +39,9 @@ pub struct AdminConfig {
 impl Default for AdminConfig {
     fn default() -> Self {
         Self {
-            admin_backend: AdminBackendType::Simple,
+            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
+                personas: Vec::new(),
+            }),
         }
     }
 }
@@ -49,9 +52,9 @@ impl TryFrom<AdminConfig> for Admin {
         let backend = match value.admin_backend {
             AdminBackendType::InsecureAllowAll => {
                 warn!("The Allow All admin backend is being used. Admin endpoints will be accessible to anyone.");
-                Arc::new(InsecureAllowAll::default()) as _
+                Arc::new(InsecureAllowAllBackend::default()) as _
             }
-            _ => todo!(),
+            AdminBackendType::Simple(config) => Arc::new(SimpleAdminBackend::new(config)?) as _,
         };
 
         Ok(Admin { backend })
@@ -59,8 +62,8 @@ impl TryFrom<AdminConfig> for Admin {
 }
 
 impl Admin {
-    pub async fn validate_admin_authorization(&self, request: &HttpRequest) -> Result<()> {
-        let res = self.backend.validate_admin_authorization(request).await;
+    pub fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
+        let res = self.backend.validate_admin_token(request);
         match res {
             Ok(()) => info!("Allowing Admin access for {}", request.full_url().as_str()),
             Err(ref e) => info!(
@@ -76,10 +79,9 @@ impl Admin {
 
 /// Admin backends determine whether a user should be granted access
 /// to admin endpoints.
-#[async_trait]
 pub(crate) trait AdminBackend: Send + Sync {
     /// When a request is made to an admin endpoint, this method should be called
     /// to validate that the user making the request is authorized
     /// to access admin functionality.
-    async fn validate_admin_authorization(&self, request: &HttpRequest) -> Result<()>;
+    fn validate_admin_token(&self, request: &HttpRequest) -> Result<()>;
 }
