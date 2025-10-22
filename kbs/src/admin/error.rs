@@ -11,10 +11,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
     #[error("Admin Token verification failed")]
-    JwtVerificationFailed {
-        #[source]
-        source: jwt_simple::Error,
-    },
+    JwtVerificationFailed,
 
     #[error("`auth_public_key` is not set in the config file")]
     NoPublicKeyGiven,
