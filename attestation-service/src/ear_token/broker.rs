@@ -373,7 +373,8 @@ mod tests {
     async fn test_issue_ear_ephemeral_key() {
         // use default config with no signer.
         // this will sign the token with an ephemeral key.
-        let config = EarTokenConfiguration::default();
+        let mut config = EarTokenConfiguration::default();
+        config.policy_dir = "./tests/coco-as/policy".to_string();
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
 
         let _token = broker
@@ -385,7 +386,7 @@ mod tests {
                     runtime_data_claims: json!({"runtime_data": "111"}),
                     init_data_claims: json!({"initdata": "111"}),
                 }],
-                vec!["default".into()],
+                vec!["ear_no_rv_policy".into()],
                 None,
             )
             .await
@@ -406,6 +407,7 @@ mod tests {
 
         let mut config = EarTokenConfiguration::default();
         config.signer = Some(signer);
+        config.policy_dir = "./tests/coco-as/policy".to_string();
 
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
         let token = broker
@@ -417,7 +419,7 @@ mod tests {
                     runtime_data_claims: json!({"runtime_data": "111"}),
                     init_data_claims: json!({"initdata": "111"}),
                 }],
-                vec!["default".into()],
+                vec!["ear_no_rv_policy".into()],
                 None,
             )
             .await
