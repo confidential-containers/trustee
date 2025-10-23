@@ -6,6 +6,7 @@ use kbs::plugins::RepositoryConfig::LocalFs;
 use kbs::{ApiServer, KbsConfig};
 use log::{debug, info, warn};
 use openssl::asn1::Asn1Time;
+use openssl::bn::MsbOption;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
@@ -208,6 +209,12 @@ fn build_x509(sockets: &[SocketAddr], private_key: PKey<Private>) -> Result<X509
         san_builder.ip(socket.ip().to_string().as_str());
     }
 
+    let serial = {
+        let mut bn = openssl::bn::BigNum::new()?;
+        bn.rand(128, MsbOption::ONE, false)?;
+        openssl::asn1::Asn1Integer::from_bn(bn.as_ref())?
+    };
+
     let mut builder = X509::builder()?;
     builder.set_version(2)?;
     builder.set_subject_name(name.as_ref())?;
@@ -216,9 +223,7 @@ fn build_x509(sockets: &[SocketAddr], private_key: PKey<Private>) -> Result<X509
     builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
     builder.set_not_after(Asn1Time::days_from_now(365)?.as_ref())?;
     builder.set_pubkey(private_key.as_ref())?;
-    builder.set_serial_number(
-        openssl::asn1::Asn1Integer::from_bn(openssl::bn::BigNum::from_u32(1)?.as_ref())?.as_ref(),
-    )?;
+    builder.set_serial_number(serial.as_ref())?;
     builder.sign(private_key.as_ref(), MessageDigest::sha256())?;
     Ok(builder.build())
 }
