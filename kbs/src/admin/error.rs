@@ -10,6 +10,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
+    #[error("Admin endpoints disabled.")]
+    AdminEndpointsDisabled,
+
     #[error("Admin Token verification failed")]
     JwtVerificationFailed,
 
