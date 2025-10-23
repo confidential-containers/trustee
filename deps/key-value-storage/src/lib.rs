@@ -26,17 +26,17 @@ pub struct SetParameters {
 #[async_trait]
 pub trait KeyValueStorage: Send + Sync {
     /// Set a value for a key.
-    async fn set(&self, key: String, value: Vec<u8>, parameters: SetParameters) -> Result<()>;
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()>;
 
     /// List all keys.
     async fn list(&self) -> Result<Vec<String>>;
 
     /// Get a value for a key.
-    async fn get(&self, key: String) -> Result<Option<Vec<u8>>>;
+    async fn get(&self, key: &str) -> Result<Option<Vec<u8>>>;
 
     /// Delete a value for a key.
     /// Return the deleted value if it exists.
-    async fn delete(&self, key: String) -> Result<Option<Vec<u8>>>;
+    async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>>;
 }
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
