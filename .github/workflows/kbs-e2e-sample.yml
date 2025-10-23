@@ -39,6 +39,7 @@ jobs:
     uses: ./.github/workflows/kbs-e2e.yml
     with:
       tee: sample
+      arch: aarch64
       runs-on-build: '["ubuntu-22.04-arm"]'
       runs-on-test: '["ubuntu-22.04-arm"]'
       tarball: kbs.tar.gz
