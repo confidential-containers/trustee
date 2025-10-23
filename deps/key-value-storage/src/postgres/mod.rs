@@ -117,11 +117,11 @@ pub struct PolicyItem {
 #[async_trait]
 impl KeyValueStorage for PostgresClient {
     #[instrument(skip_all, name = "PostgresClient::set")]
-    async fn set(&self, key: String, value: Vec<u8>, parameters: SetParameters) -> Result<()> {
-        if !is_valid_key(&key) {
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
+        if !is_valid_key(key) {
             return Err(KeyValueStorageError::SetKeyFailed {
                 source: anyhow::anyhow!("key contains invalid characters"),
-                key,
+                key: key.to_string(),
             });
         }
 
@@ -135,13 +135,13 @@ impl KeyValueStorage for PostgresClient {
         }
 
         let _ = query(&sql)
-            .bind(&key)
-            .bind(&value)
+            .bind(key)
+            .bind(value)
             .execute(&*self.pool)
             .await
             .map_err(|e| KeyValueStorageError::SetKeyFailed {
                 source: e.into(),
-                key,
+                key: key.to_string(),
             })?;
 
         Ok(())
@@ -158,18 +158,18 @@ impl KeyValueStorage for PostgresClient {
     }
 
     #[instrument(skip_all, name = "PostgresClient::set")]
-    async fn get(&self, key: String) -> Result<Option<Vec<u8>>> {
+    async fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let sql = format!(
             "SELECT ({VALUE_COLUMN}) FROM {} WHERE {KEY_COLUMN} = $1",
             self.table
         );
         let value = query(&sql)
-            .bind(&key)
+            .bind(key)
             .fetch_one(&*self.pool)
             .await
             .map_err(|e| KeyValueStorageError::GetKeyFailed {
                 source: e.into(),
-                key: key.clone(),
+                key: key.to_string(),
             })?;
 
         if value.is_empty() {
@@ -183,18 +183,18 @@ impl KeyValueStorage for PostgresClient {
     }
 
     #[instrument(skip_all, name = "PostgresClient::delete")]
-    async fn delete(&self, key: String) -> Result<Option<Vec<u8>>> {
+    async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let sql = format!(
             "DELETE FROM {} WHERE {KEY_COLUMN} = $1 RETURNING {VALUE_COLUMN}",
             self.table
         );
         let row = query(&sql)
-            .bind(&key)
+            .bind(key)
             .fetch_optional(&*self.pool)
             .await
             .map_err(|e| KeyValueStorageError::DeleteKeyFailed {
                 source: e.into(),
-                key,
+                key: key.to_string(),
             })?;
 
         if let Some(row) = row {
@@ -225,18 +225,14 @@ mod tests {
         };
         let client = PostgresClient::new(config).await.unwrap();
         client
-            .set(
-                "test".to_string(),
-                b"test".to_vec(),
-                SetParameters { overwrite: true },
-            )
+            .set("test", b"test", SetParameters { overwrite: true })
             .await
             .unwrap();
         let keys = client.list().await.unwrap();
         assert_eq!(keys, vec!["test"]);
-        let value = client.get("test".to_string()).await.unwrap();
+        let value = client.get("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
-        let value = client.delete("test".to_string()).await.unwrap();
+        let value = client.delete("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
         let keys = client.list().await.unwrap();
         assert!(keys.is_empty());
