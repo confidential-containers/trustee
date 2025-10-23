@@ -8,11 +8,14 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 pub mod allow_all;
-pub mod error;
+pub mod deny_all;
 pub mod simple;
+
+pub mod error;
 pub use error::*;
 
 use allow_all::InsecureAllowAllBackend;
+use deny_all::DenyAllBackend;
 use simple::{SimpleAdminBackend, SimpleAdminConfig};
 
 #[derive(Clone)]
@@ -21,29 +24,27 @@ pub(crate) struct Admin {
 }
 
 // create a simple backend
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum AdminBackendType {
     Simple(SimpleAdminConfig),
-    #[default]
     InsecureAllowAll,
+    DenyAll,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+impl Default for AdminBackendType {
+    fn default() -> Self {
+        AdminBackendType::Simple(SimpleAdminConfig {
+            personas: Vec::new(),
+        })
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct AdminConfig {
     #[serde(flatten)]
     pub admin_backend: AdminBackendType,
-}
-
-impl Default for AdminConfig {
-    fn default() -> Self {
-        Self {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: Vec::new(),
-            }),
-        }
-    }
 }
 
 impl TryFrom<AdminConfig> for Admin {
@@ -55,6 +56,7 @@ impl TryFrom<AdminConfig> for Admin {
                 Arc::new(InsecureAllowAllBackend::default()) as _
             }
             AdminBackendType::Simple(config) => Arc::new(SimpleAdminBackend::new(config)?) as _,
+            AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
         };
 
         Ok(Admin { backend })
