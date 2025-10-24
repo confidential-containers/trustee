@@ -2,7 +2,10 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use kbs::admin::config::AdminConfig;
+use kbs::admin::{
+    simple::{SimpleAdminConfig, SimplePersonaConfig},
+    AdminBackendType, AdminConfig,
+};
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
@@ -62,10 +65,17 @@ pub enum RvpsType {
     Remote,
 }
 
+pub enum AdminType {
+    DenyAll,
+    Simple,
+}
+
 /// An enum that selects between TestParameter configurations
 /// so that TestParameters can be reused between tests.
+#[derive(PartialEq, Clone)]
 pub enum KbsConfigType {
     EarTokenBuiltInRvps,
+    EarTokenBuiltInRvpsDenyAllAdmin,
     EarTokenRemoteRvps,
 }
 
@@ -75,9 +85,15 @@ impl From<KbsConfigType> for TestParameters {
         match val {
             KbsConfigType::EarTokenBuiltInRvps => TestParameters {
                 rvps_type: RvpsType::Builtin,
+                admin_type: AdminType::Simple,
             },
             KbsConfigType::EarTokenRemoteRvps => TestParameters {
                 rvps_type: RvpsType::Remote,
+                admin_type: AdminType::Simple,
+            },
+            KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin => TestParameters {
+                rvps_type: RvpsType::Builtin,
+                admin_type: AdminType::DenyAll,
             },
         }
     }
@@ -86,6 +102,7 @@ impl From<KbsConfigType> for TestParameters {
 /// Parameters that define test behavior
 pub struct TestParameters {
     pub rvps_type: RvpsType,
+    pub admin_type: AdminType,
 }
 
 /// Internal state of tests
@@ -165,6 +182,20 @@ impl TestHarness {
             }
         };
 
+        let admin_config = match &test_parameters.admin_type {
+            AdminType::Simple => AdminConfig {
+                admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
+                    personas: vec![SimplePersonaConfig {
+                        id: "tester".to_string(),
+                        public_key_path: auth_pubkey_path.as_path().to_path_buf(),
+                    }],
+                }),
+            },
+            AdminType::DenyAll => AdminConfig {
+                admin_backend: AdminBackendType::DenyAll,
+            },
+        };
+
         let kbs_config = KbsConfig {
             attestation_token: AttestationTokenVerifierConfig {
                 trusted_certs_paths: vec![],
@@ -188,10 +219,7 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
             },
-            admin: AdminConfig {
-                auth_public_key: Some(auth_pubkey_path.as_path().to_path_buf()),
-                insecure_api: false,
-            },
+            admin: admin_config,
             policy_engine: PolicyEngineConfig {
                 policy_path: kbs_policy_path,
             },
