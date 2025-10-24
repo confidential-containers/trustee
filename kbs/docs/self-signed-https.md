@@ -68,8 +68,9 @@ private_key = "/etc/key.pem"
 certificate = "/etc/cert.pem"
 insecure_http = false
 
-[admin]
-auth_public_key = "/etc/public.pub"
+[[admin.admin_backend.Simple.personas]]
+id = "admin"
+public_key_path = "/etc/public.pub"
 
 [attestation_token]
 insecure_key = true
