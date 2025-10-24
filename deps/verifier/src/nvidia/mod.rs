@@ -126,14 +126,10 @@ impl Nvidia {
         expected_nonce_vec: Vec<u8>,
         config: &NvidiaRemoteVerifierConfig,
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
-        let b64_engine = base64::engine::general_purpose::STANDARD;
-
         let (tee_class, endpoint) = match device.arch {
             DeviceArchitecture::Hopper => ("gpu", "gpu"),
             _ => todo!(),
         };
-
-        let evidence_b64 = b64_engine.encode(hex::decode(device.evidence)?);
 
         // We could batch devices with the same architecture together into one request,
         // but for now, check one device at a time.
@@ -148,7 +144,7 @@ impl Nvidia {
             "arch": device.arch.to_string().to_uppercase(),
             "evidence_list": [
                 {
-                    "evidence": evidence_b64,
+                    "evidence": device.evidence,
                     "certificate": device.certificate,
                 }
             ],
@@ -204,7 +200,7 @@ impl Nvidia {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let cert_chain_vec: Vec<u8> = b64_engine.decode(device.certificate)?;
-        let report_vec: Vec<u8> = hex::decode(device.evidence)?;
+        let report_vec: Vec<u8> = b64_engine.decode(device.evidence)?;
 
         let report = NvidiaAttestationReport::try_new(
             report_vec.as_slice(),
