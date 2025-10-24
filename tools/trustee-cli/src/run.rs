@@ -1,5 +1,6 @@
 use anyhow::Result;
 use core::net::SocketAddr;
+use kbs::admin::{simple::SimplePersonaConfig, AdminBackendType};
 use kbs::attestation::config::AttestationServiceConfig::CoCoASBuiltIn;
 use kbs::plugins::PluginsConfig::{self, ResourceStorage};
 use kbs::plugins::RepositoryConfig::{self, LocalFs};
@@ -90,10 +91,14 @@ fn get_config(
     }
 
     // Automatically create a key pair and use it for admin authentication if it doesn't exist in the configuration.
-    if config.admin.auth_public_key.is_none() {
-        let (_, public_path) = ensure_auth_key_pair(trustee_home_dir)?;
-
-        config.admin.auth_public_key = Some(public_path);
+    if let AdminBackendType::Simple(ref mut config) = config.admin.admin_backend {
+        if config.personas.is_empty() {
+            let (_, public_path) = ensure_auth_key_pair(trustee_home_dir)?;
+            config.personas.push(SimplePersonaConfig {
+                id: "admin".to_string(),
+                public_key_path: public_path,
+            });
+        }
     }
 
     // Generate and use a self-signed certificate if there is none configured.
