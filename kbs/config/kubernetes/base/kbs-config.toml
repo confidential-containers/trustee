@@ -19,7 +19,11 @@ duration_min = 5
 type = "BuiltIn"
 
 [admin]
-auth_public_key = "/kbs/kbs.pem"
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "/kbs/kbs.pem"
 
 [[plugins]]
 name = "resource"
