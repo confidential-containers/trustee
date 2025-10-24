@@ -185,12 +185,16 @@ Detailed [documentation](https://docs.trustauthority.intel.com).
 
 ### Admin API Configuration
 
-The following properties can be set under the `[admin]` section.
+Multiple Admin backends are available. These control access to admin endpoints such as `set_policy`.
+Today, the available backends are `DenyAll` (disables admin endpoints), `InsecureAllowAll` (for debugging)
+and `Simple`.
+With the `Simple` backend, several admin personas can be specified, each with their own ID and
+public key path.
+By default, the simple backend will be used, but no personas will be enabled.
 
 | Property          | Type    | Description                                                       | Required | Default |
 |-------------------|---------|-------------------------------------------------------------------|----------|---------|
-| `auth_public_key` | String  | Path to the public key used to authenticate the admin APIs        | No       | None    |
-| `insecure_api`    | Boolean | Whether KBS will not verify the public key when called admin APIs | No       | `false` |
+| `admin_backend`   | String  | The backend used to validate admiin requests.                     | No       | Simple  |
 
 ### Policy Engine Configuration
 
@@ -358,9 +362,9 @@ api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
 allow_unmatched_policy = true
 
-[admin]
-auth_public_key = "/etc/kbs-admin.pub"
-insecure_api = false
+[[admin.admin_backend.Simple.personas]]
+id = "admin"
+public_key_path = "/etc/kbs-admin.pub"
 
 [policy_engine]
 policy_path = "/etc/kbs-policy.rego"
@@ -418,8 +422,9 @@ Distributing resources in Passport mode:
 sockets = ["127.0.0.1:50002"]
 insecure_http = true
 
-[admin]
-auth_public_key = "./work/kbs.pem"
+[[admin.admin_backend.Simple.personas]]
+id = "admin"
+public_key_path = "./work/kbs.pem"
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]

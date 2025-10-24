@@ -9,8 +9,9 @@ trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/ca-cert.pem"]
 type = "coco_as_grpc"
 as_addr = "http://as:50004"
 
-[admin]
-auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
+[[admin.admin_backend.Simple.personas]]
+id = "admin"
+public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
 
 [[plugins]]
 name = "resource"
