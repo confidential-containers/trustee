@@ -15,5 +15,4 @@ certs_file = "https://portal.trustauthority.intel.com"
 timeout = 5
 
 [admin]
-auth_public_key = "/kbs/kbs.pem"
-insecure_api = false
+type = "DenyAll"

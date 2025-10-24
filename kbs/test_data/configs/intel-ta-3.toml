@@ -2,7 +2,7 @@
 insecure_http = true
 
 [admin]
-insecure_api = true
+type = "DenyAll"
 
 [attestation_token]
 trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]

@@ -10,4 +10,4 @@ pool_size = 100
 timeout = 5
 
 [admin]
-insecure_api = true
+type = "DenyAll"
