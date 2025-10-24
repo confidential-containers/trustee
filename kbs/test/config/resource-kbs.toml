@@ -3,7 +3,11 @@ sockets = ["127.0.0.1:50002"]
 insecure_http = true
 
 [admin]
-auth_public_key = "./work/kbs.pem"
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "./work/kbs.pem"
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]

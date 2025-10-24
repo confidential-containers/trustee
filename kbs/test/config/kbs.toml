@@ -35,7 +35,11 @@ max_trusted_ak_keys = 100
 policy_path = "./work/kbs-policy.rego"
 
 [admin]
-auth_public_key = "./work/kbs.pem"
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "./work/kbs.pem"
 
 [[plugins]]
 name = "resource"
