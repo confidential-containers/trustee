@@ -42,7 +42,7 @@ use tonic::transport::Server;
 
 const KBS_URL: &str = "http://127.0.0.1:8081";
 const RVPS_URL: &str = "http://127.0.0.1:51003";
-const WAIT_TIME: u64 = 3000;
+const WAIT_TIME: u64 = 10000;
 
 const ALLOW_ALL_POLICY: &str = "
     package policy
