@@ -21,5 +21,5 @@ type = "BuiltIn"
 type = "LocalFs"
 
 [admin]
-auth_public_key = "/kbs/kbs.pem"
-insecure_api = false
+# Do not use in production
+type = "InsecureAllowAll"

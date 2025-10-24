@@ -23,7 +23,7 @@ type = "LocalFs"
 policy_path = "/opa/confidential-containers/kbs/policy.rego"
 
 [admin]
-insecure_api = true
+type = "Simple"
 
 [[plugins]]
 name = "resource"

@@ -24,8 +24,8 @@ pub struct SimpleAdminConfig {
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct SimplePersonaConfig {
-    id: String,
-    public_key_path: PathBuf,
+    pub id: String,
+    pub public_key_path: PathBuf,
 }
 
 pub struct SimpleAdminBackend {

@@ -106,7 +106,10 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::{
-        admin::config::{AdminConfig, DEFAULT_INSECURE_API},
+        admin::{
+            simple::{SimpleAdminConfig, SimplePersonaConfig},
+            AdminBackendType, AdminConfig,
+        },
         config::{
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
@@ -159,8 +162,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
-            insecure_api: false,
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
@@ -209,8 +211,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: None,
-            insecure_api: DEFAULT_INSECURE_API,
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
             policy_path: DEFAULT_POLICY_PATH.into(),
@@ -246,8 +247,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: Some(PathBuf::from("/etc/kbs-admin.pub")),
-            insecure_api: false,
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
@@ -284,8 +284,12 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: Some(PathBuf::from("/opt/confidential-containers/kbs/user-keys/public.pub")),
-            insecure_api: DEFAULT_INSECURE_API,
+            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
+                personas: vec![SimplePersonaConfig {
+                    id: "admin1".to_string(),
+                    public_key_path: "/opt/confidential-containers/trustee/admin1-pubkey.pem".into()
+                }],
+            }),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -326,8 +330,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: Some("/kbs/kbs.pem".into()),
-            insecure_api: DEFAULT_INSECURE_API,
+            admin_backend: AdminBackendType::InsecureAllowAll,
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -361,8 +364,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
         },
         admin: AdminConfig {
-            auth_public_key: Some("/kbs/kbs.pem".into()),
-            insecure_api: DEFAULT_INSECURE_API,
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -387,8 +389,7 @@ mod tests {
             ..Default::default()
         },
         admin: AdminConfig {
-            insecure_api: true,
-            ..Default::default()
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -419,8 +420,7 @@ mod tests {
             ..Default::default()
         },
         admin: AdminConfig {
-            insecure_api: true,
-            ..Default::default()
+            admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -454,8 +454,9 @@ mod tests {
             ..Default::default()
         },
         admin: AdminConfig {
-            insecure_api: true,
-            ..Default::default()
+            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
+                personas: Vec::new(),
+            }),
         },
         policy_engine: PolicyEngineConfig {
             policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
