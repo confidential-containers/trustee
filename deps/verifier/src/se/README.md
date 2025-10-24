@@ -95,10 +95,16 @@ cargo install --locked --debug --path kbs/src/kbs --no-default-features --featur
 - Prepare the `kbs-config.toml`, similar as:
 ```
 sockets = ["0.0.0.0:8080"]
-auth_public_key = "/kbs/kbs.pem"
 # Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
 # https://cert-manager.io/docs/configuration/acme/
 insecure_http = true
+
+[admin]
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "/kbs/kbs.pem"
 
 [attestation_token]
 insecure_key = true
