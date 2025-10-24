@@ -2,7 +2,8 @@
 insecure_http = true
 
 [attestation_token]
-insecure_key = true
+# Do not use this in production.
+type = "InsecureAllowAll"
 
 [attestation_service]
 type = "coco_as_builtin"

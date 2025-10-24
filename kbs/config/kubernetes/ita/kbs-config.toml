@@ -14,7 +14,11 @@ api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
 
 [admin]
-auth_public_key = "/kbs/kbs.pem"
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "/kbs/kbs.pem"
 
 [[plugins]]
 name = "resource"
