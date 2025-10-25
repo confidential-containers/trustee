@@ -114,7 +114,10 @@ pub trait Attest: Send + Sync {
     }
 
     /// Get reference values from the RVPS, if the AS supports it
-    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
+    async fn query_reference_value(
+        &self,
+        _reference_value_id: &str,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
         Err(anyhow!(
             "Attestation Service does not support reference value configuration."
         ))
@@ -434,12 +437,16 @@ impl AttestationService {
         Ok(())
     }
 
-    pub async fn query_reference_values(
-        &self,
-    ) -> anyhow::Result<HashMap<String, serde_json::Value>> {
-        let values = self.inner.query_reference_values().await?;
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> anyhow::Result<String> {
+        let reference_value = self.inner.query_reference_value(reference_value_id).await?;
 
-        Ok(values)
+        match reference_value {
+            Some(reference_value) => {
+                let reference_value = serde_json::to_string(&reference_value)?;
+                Ok(reference_value)
+            }
+            None => bail!("No reference value found for the given id: {reference_value_id}"),
+        }
     }
 }
 
