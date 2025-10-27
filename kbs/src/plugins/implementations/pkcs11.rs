@@ -86,6 +86,7 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &str,
         path: &str,
         method: &Method,
+        _init_data: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let desc = path
             .strip_prefix('/')
