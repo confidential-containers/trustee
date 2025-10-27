@@ -557,7 +557,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -630,7 +630,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -653,7 +653,7 @@ dependencies = [
  "occlum_dcap",
  "picky-asn1 0.10.1",
  "picky-asn1-der 0.5.3",
- "picky-asn1-x509 0.14.6",
+ "picky-asn1-x509 0.15.2",
  "s390_pv",
  "scroll",
  "serde",
@@ -1072,7 +1072,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "jsonwebtoken",
- "multimap 0.9.1",
+ "multimap",
  "openssl",
  "serde",
  "serde_json",
@@ -1476,7 +1476,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "aes-gcm",
  "aes-kw",
@@ -2509,12 +2509,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hashbrown"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
-
-[[package]]
 name = "hashlink"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2971,7 +2965,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.0",
+ "hashbrown 0.15.5",
  "serde",
  "serde_core",
 ]
@@ -3337,7 +3331,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3380,7 +3374,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3681,12 +3675,6 @@ checksum = "e1a5d38b9b352dbd913288736af36af41c48d61b1a8cd34bcecd727561b7d511"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "multimap"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 
 [[package]]
 name = "native-tls"
@@ -4334,9 +4322,9 @@ dependencies = [
 
 [[package]]
 name = "picky-asn1-x509"
-version = "0.14.6"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d493f73cf052073ca1fe38666f74c2396987aa6ea660e77dd624cc6c8f60389e"
+checksum = "c97cd14d567a17755910fa8718277baf39d08682a980b1b1a4b4da7d0bc61a04"
 dependencies = [
  "base64 0.22.1",
  "oid",
@@ -4537,7 +4525,7 @@ dependencies = [
  "heck",
  "itertools",
  "log",
- "multimap 0.10.1",
+ "multimap",
  "once_cell",
  "petgraph",
  "prettyplease",
@@ -4593,7 +4581,7 @@ dependencies = [
 [[package]]
 name = "protos"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "prost",
  "tonic",
@@ -5004,7 +4992,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=841b77f#841b77fc36fac40054a81f261eb15ae95595c23d"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=5185b46#5185b46518397a6aa8add92ded73549baf5f629c"
 dependencies = [
  "anyhow",
  "serde",
