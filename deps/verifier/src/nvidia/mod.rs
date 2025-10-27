@@ -17,6 +17,7 @@ use nvml_wrapper::enums::device::DeviceArchitecture;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::result::Result::Ok;
 use std::str::FromStr;
 use tracing::{instrument, trace};
 
@@ -133,7 +134,15 @@ impl Nvidia {
             _ => todo!(),
         };
 
-        let evidence_b64 = b64_engine.encode(hex::decode(device.evidence)?);
+        // Try hex::decode() to see if someone uses the original encoding still.
+        // An Err Result suggests the evidence is already base64 encoded and can be used as is.
+        let evidence_b64 = match hex::decode(&device.evidence) {
+            Ok(evidence) => b64_engine.encode(evidence),
+            Err(e) => {
+                debug!("Device evidence is not hex encoded (decoding failed with: {e}). Using it as is.");
+                device.evidence
+            }
+        };
 
         // We could batch devices with the same architecture together into one request,
         // but for now, check one device at a time.
@@ -204,7 +213,15 @@ impl Nvidia {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let cert_chain_vec: Vec<u8> = b64_engine.decode(device.certificate)?;
-        let report_vec: Vec<u8> = hex::decode(device.evidence)?;
+        // Try hex::decode() to see if someone uses the original encoding still.
+        // An Err Result suggests the evidence is base64 encoded so re-try with that.
+        let report_vec: Vec<u8> = match hex::decode(&device.evidence) {
+            Ok(evidence) => evidence,
+            Err(e) => {
+                debug!("Device evidence is not hex encoded (decoding failed with: {e}). Trying base64 decode.");
+                b64_engine.decode(device.evidence)?
+            }
+        };
 
         let report = NvidiaAttestationReport::try_new(
             report_vec.as_slice(),
