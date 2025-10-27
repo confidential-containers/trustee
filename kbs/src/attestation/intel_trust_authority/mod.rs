@@ -191,7 +191,6 @@ impl Attest for IntelTrustAuthority {
                     let runtime_data_hash =
                         Sha512::digest(independent_evidence.runtime_data.to_string()).to_vec();
                     nvgpu.gpu_nonce = hex::encode(&runtime_data_hash[0..32]);
-                    nvgpu.evidence = STANDARD.encode(nvgpu.evidence);
 
                     req_data.nvgpu = Some(nvgpu);
                 }
