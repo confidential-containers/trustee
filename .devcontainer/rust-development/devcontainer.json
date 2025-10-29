@@ -24,5 +24,10 @@
 				"fill-labs.dependi"
 			]
 		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "latest"
+		}
 	}
 }
