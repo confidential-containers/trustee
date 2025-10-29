@@ -28,11 +28,11 @@ jobs:
       matrix:
         include:
         - instance: ubuntu-24.04
-          test_features: ""
+          test_features: "pkcs11"
         - instance: ubuntu-24.04-arm
-          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester"
+          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester,pkcs11"
         - instance: s390x-large
-          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as"
+          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,pkcs11"
     runs-on: ${{ matrix.instance }}
 
     steps:
@@ -78,6 +78,18 @@ jobs:
       working-directory: kbs
       run: make format
 
+    - name: setup softhsm for pkcs11 tests
+      if: contains(matrix.test_features, 'pkcs11')
+      working-directory: kbs
+      run: |
+        echo "SETUP tools for pkcs11 ${{ matrix.instance }}"
+        sudo apt-get install -y --no-install-recommends softhsm2 opensc
+        mkdir -p "$RUNNER_TEMP/softhsm/tokens"
+        echo "directories.tokendir = $RUNNER_TEMP/softhsm/tokens" > "$RUNNER_TEMP/softhsm/softhsm2.conf"
+        export SOFTHSM2_CONF="$RUNNER_TEMP/softhsm/softhsm2.conf"
+        softhsm2-util --init-token --free --label "Trustee pkcs11 test" --so-pin 12345678 --pin 12345678
     - name: Test
       working-directory: kbs
+      env:
+        SOFTHSM2_CONF: '${{ runner.temp }}/softhsm/softhsm2.conf'
       run: make check TEST_FEATURES=${{ matrix.test_features }}

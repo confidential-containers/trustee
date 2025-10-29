@@ -37,3 +37,6 @@ softhsm2-util --init-token --free --label "Trustee pkcs11 test" --so-pin 1234567
 
 echo 'default slot has been setup with so pin 12345678 and user pin 12345678'
 
+echo "ADD Rust toolchain"
+rustup toolchain install
+rustup component add clippy rustfmt
