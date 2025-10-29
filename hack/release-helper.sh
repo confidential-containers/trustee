@@ -18,11 +18,7 @@ declare -A staged_to_release=(
 )
 declare -A staged_to_release_tag_prefix=(
     ["staged-images/kbs"]="built-in-as-"
-    ["staged-images/kbs-client"]="sample_only-"
     ["staged-images/coco-as-restful"]="rest-"
-)
-declare -A staged_to_staged_tag_prefix=(
-    ["staged-images/kbs-client"]="sample_only-"
 )
 
 function usage_and_exit() {
@@ -87,12 +83,7 @@ function tag_and_push_packages() {
     for staged_pkg_name in ${!staged_to_release[@]}; do
         release_pkg_name=${staged_to_release[${staged_pkg_name}]}
 
-        # set staged tag prefix (if needed)
-        staged_tag_prefix=
-        if [[ -v staged_to_staged_tag_prefix[${staged_pkg_name}] ]]; then
-            staged_tag_prefix=${staged_to_staged_tag_prefix[${staged_pkg_name}]}
-        fi
-        staged_tag_full=${staged_tag_prefix}${release_candidate_sha}
+        staged_tag_full=${release_candidate_sha}
 
         # set release tag prefix (if needed)
         release_tag_prefix=
