@@ -2,57 +2,88 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use actix_web::{http::header::Header, HttpRequest};
-use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use config::AdminConfig;
-use jwt_simple::{
-    claims::NoCustomClaims,
-    common::VerificationOptions,
-    prelude::{Ed25519PublicKey, EdDSAPublicKeyLike},
-};
+use actix_web::HttpRequest;
+use log::{info, warn};
+use serde::Deserialize;
+use std::sync::Arc;
 
-pub mod config;
+pub mod allow_all;
+pub mod deny_all;
+pub mod simple;
+
 pub mod error;
 pub use error::*;
-use log::warn;
 
-#[derive(Default, Clone)]
-pub struct Admin {
-    public_key: Option<Ed25519PublicKey>,
+use allow_all::InsecureAllowAllBackend;
+use deny_all::DenyAllBackend;
+use simple::{SimpleAdminBackend, SimpleAdminConfig};
+
+#[derive(Clone)]
+pub(crate) struct Admin {
+    backend: Arc<dyn AdminBackend>,
 }
 
-impl TryFrom<AdminConfig> for Admin {
-    type Error = Error;
+// create a simple backend
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum AdminBackendType {
+    Simple(SimpleAdminConfig),
+    InsecureAllowAll,
+    DenyAll,
+}
 
-    fn try_from(value: AdminConfig) -> Result<Self> {
-        if value.insecure_api {
-            warn!("insecure admin APIs are enabled");
-            return Ok(Admin::default());
-        }
-
-        let key_path = value.auth_public_key.ok_or(Error::NoPublicKeyGiven)?;
-        let user_public_key_pem = std::fs::read_to_string(key_path)?;
-        let key = Ed25519PublicKey::from_pem(&user_public_key_pem)?;
-        Ok(Self {
-            public_key: Some(key),
+impl Default for AdminBackendType {
+    fn default() -> Self {
+        AdminBackendType::Simple(SimpleAdminConfig {
+            personas: Vec::new(),
         })
     }
 }
 
-impl Admin {
-    pub(crate) fn validate_auth(&self, request: &HttpRequest) -> Result<()> {
-        let Some(public_key) = &self.public_key else {
-            return Ok(());
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct AdminConfig {
+    #[serde(flatten)]
+    pub admin_backend: AdminBackendType,
+}
+
+impl TryFrom<AdminConfig> for Admin {
+    type Error = Error;
+    fn try_from(value: AdminConfig) -> Result<Self> {
+        let backend = match value.admin_backend {
+            AdminBackendType::InsecureAllowAll => {
+                warn!("The Allow All admin backend is being used. Admin endpoints will be accessible to anyone.");
+                Arc::new(InsecureAllowAllBackend::default()) as _
+            }
+            AdminBackendType::Simple(config) => Arc::new(SimpleAdminBackend::new(config)?) as _,
+            AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
         };
 
-        let bearer = Authorization::<Bearer>::parse(request)?.into_scheme();
-
-        let token = bearer.token();
-
-        let _claims = public_key
-            .verify_token::<NoCustomClaims>(token, Some(VerificationOptions::default()))
-            .map_err(|e| Error::JwtVerificationFailed { source: e })?;
-
-        Ok(())
+        Ok(Admin { backend })
     }
+}
+
+impl Admin {
+    pub fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
+        let res = self.backend.validate_admin_token(request);
+        match res {
+            Ok(()) => info!("Allowing Admin access for {}", request.full_url().as_str()),
+            Err(ref e) => info!(
+                "Not allowing Admin access for {} due to: \n{}",
+                request.full_url().as_str(),
+                e
+            ),
+        }
+
+        res
+    }
+}
+
+/// Admin backends determine whether a user should be granted access
+/// to admin endpoints.
+pub(crate) trait AdminBackend: Send + Sync {
+    /// When a request is made to an admin endpoint, this method should be called
+    /// to validate that the user making the request is authorized
+    /// to access admin functionality.
+    fn validate_admin_token(&self, request: &HttpRequest) -> Result<()>;
 }

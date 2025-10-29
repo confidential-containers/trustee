@@ -10,4 +10,8 @@ as_addr = "http://as:50004"
 timeout = 5
 
 [admin]
-auth_public_key = "/opt/confidential-containers/kbs/user-keys/public.pub"
+type = "Simple"
+
+[[admin.personas]]
+id = "admin1"
+public_key_path = "/opt/confidential-containers/trustee/admin1-pubkey.pem"

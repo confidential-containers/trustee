@@ -16,14 +16,15 @@ use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness};
 // and with the wrong admin private key.
 //
 #[rstest]
-#[case::set_policy_with_valid_key(true)]
-#[case::set_policy_with_invalid_key(false)]
+#[case::set_policy_with_valid_key(KbsConfigType::EarTokenBuiltInRvps, true)]
+#[case::set_policy_with_invalid_key(KbsConfigType::EarTokenBuiltInRvps, false)]
+#[case::set_policy_with_deny_admin_backend(KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin, false)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
-async fn set_policy(#[case] valid_key: bool) -> Result<()> {
+async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
-    let mut harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;
 
     if !valid_key {
@@ -44,10 +45,26 @@ async fn set_policy(#[case] valid_key: bool) -> Result<()> {
             std::result::Result::Ok(_) => {
                 bail!("Admin key is invalid, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin Token verification failed") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
+
+    if test_config == KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin {
+        match res {
+            std::result::Result::Ok(_) => {
+                bail!("Admin endpoints disabled, but admin operation was successful")
+            }
+            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            _ => (),
+        }
+    }
+
     res
 }
 
@@ -56,14 +73,21 @@ async fn set_policy(#[case] valid_key: bool) -> Result<()> {
 // and with the wrong admin private key.
 //
 #[rstest]
-#[case::set_attestation_policy_with_valid_key(true)]
-#[case::set_attestation_policy_with_invalid_key(false)]
+#[case::set_attestation_policy_with_valid_key(KbsConfigType::EarTokenBuiltInRvps, true)]
+#[case::set_attestation_policy_with_invalid_key(KbsConfigType::EarTokenBuiltInRvps, false)]
+#[case::set_attestation_policy_with_deny_admin_backend(
+    KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin,
+    false
+)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
-async fn set_attestation_policy(#[case] valid_key: bool) -> Result<()> {
+async fn set_attestation_policy(
+    #[case] test_config: KbsConfigType,
+    #[case] valid_key: bool,
+) -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
-    let mut harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;
 
     if !valid_key {
@@ -86,10 +110,26 @@ async fn set_attestation_policy(#[case] valid_key: bool) -> Result<()> {
             std::result::Result::Ok(_) => {
                 bail!("Admin key is invalid, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin Token verification failed") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
+
+    if test_config == KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin {
+        match res {
+            std::result::Result::Ok(_) => {
+                bail!("Admin endpoints disabled, but admin operation was successful")
+            }
+            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            _ => (),
+        }
+    }
+
     res
 }
 
@@ -105,14 +145,15 @@ default executables = 97
 // and with the wrong admin private key.
 //
 #[rstest]
-#[case::set_secret_with_valid_key(true)]
-#[case::set_secret_with_invalid_key(false)]
+#[case::set_secret_with_valid_key(KbsConfigType::EarTokenBuiltInRvps, true)]
+#[case::set_secret_with_invalid_key(KbsConfigType::EarTokenBuiltInRvps, false)]
+#[case::set_secret_with_deny_admin_backend(KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin, false)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
-async fn set_secret(#[case] valid_key: bool) -> Result<()> {
+async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
-    let mut harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;
 
     if !valid_key {
@@ -133,9 +174,25 @@ async fn set_secret(#[case] valid_key: bool) -> Result<()> {
             std::result::Result::Ok(_) => {
                 bail!("Admin key is invalid, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin Token verification failed") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
+
+    if test_config == KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin {
+        match res {
+            std::result::Result::Ok(_) => {
+                bail!("Admin endpoints disabled, but admin operation was successful")
+            }
+            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            _ => (),
+        }
+    }
+
     res
 }
