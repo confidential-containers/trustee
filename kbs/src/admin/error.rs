@@ -16,6 +16,9 @@ pub enum Error {
     #[error("Admin endpoints disabled.")]
     AdminEndpointsDisabled,
 
+    #[error("Backend does not support admin login interface.")]
+    NoAdminLogin,
+
     #[error("`auth_public_key` is not set in the config file")]
     NoPublicKeyGiven,
 
