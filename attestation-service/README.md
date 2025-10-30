@@ -115,7 +115,11 @@ Supported Verifier Drivers:
 - `hygon-dcu`: Verifier Driver for Hygon Deep Computing Unit (DCU).
 - `se`: Verifier Driver for IBM Secure Execution (SE).
 - `nvidia`: Verifier Driver for NVIDIA Devices.
-
+- `TPM`: Verifier Driver for Trusted Platform Module (TPM)
+> **TPM Device Note**: TPM devices (except Azure vTPM series) are not bound to TEE endorsement.
+> When using TPM as a standalone attestation device (not integrated with Azure vTPM), you must ensure that you
+> trust the TPM itself, as there is no cryptographic binding between the TPM and the underlying TEE hardware.
+> This feature is mostly for development purposes.
 ### Policy Engine
 
 [OPA](https://www.openpolicyagent.org/docs/latest/) is a flexible policy engine.

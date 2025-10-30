@@ -25,7 +25,7 @@ pub mod config;
 const MAX_TRUSTED_AK_KEYS: usize = 100;
 const DEFAULT_TRUSTED_AK_KEYS_DIR: &str = "/etc/tpm/trusted_ak_keys";
 const INITDATA_PCR: usize = 8;
-const TPM_REPORT_DATA_SIZE: usize = 64;
+const TPM_REPORT_DATA_SIZE: usize = 32;
 
 // TPM evidence format as sent by the TPM attester
 #[derive(Deserialize, Debug)]
@@ -217,7 +217,7 @@ fn verify_nonce(quote: &VtpmQuote, expected_report_data: &[u8]) -> Result<()> {
         hex::encode(&nonce)
     );
 
-    // TPM attester pads report_data to 64 bytes, so we need to pad expected_report_data the same way
+    // TPM attester pads report_data to 32 bytes, so we need to pad expected_report_data the same way
     let mut padded_expected = expected_report_data.to_vec();
     padded_expected.resize(TPM_REPORT_DATA_SIZE, 0);
 
