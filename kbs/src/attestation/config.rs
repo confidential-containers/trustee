@@ -45,6 +45,10 @@ pub enum AttestationServiceConfig {
     #[cfg(feature = "intel-trust-authority-as")]
     #[serde(alias = "intel_ta")]
     IntelTA(super::intel_trust_authority::IntelTrustAuthorityConfig),
+
+    #[cfg(feature = "keylime-as")]
+    #[serde(alias = "keylime-tee")]
+    Keylime(super::keylime::KeylimeVerifierConfig),
 }
 
 impl Default for AttestationServiceConfig {
@@ -54,6 +58,8 @@ impl Default for AttestationServiceConfig {
                 AttestationServiceConfig::CoCoASBuiltIn(attestation_service::config::Config::default())
             } else if #[cfg(feature = "coco-as-grpc")] {
                 AttestationServiceConfig::CoCoASGrpc(super::coco::grpc::GrpcConfig::default())
+            } else if #[cfg(feature = "keylime-as")] {
+                AttestationServiceConfig::Keylime(super::keylime::KeylimeVerifierConfig::default())
             } else {
                 AttestationServiceConfig::IntelTA(super::intel_trust_authority::IntelTrustAuthorityConfig::default())
             }
