@@ -15,7 +15,7 @@ use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
-use serde_json::{json, Value};
+use serde_json::Value;
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
@@ -25,6 +25,7 @@ use tracing::{debug, info, warn};
 
 use crate::ear_token::EarTokenConfiguration;
 use crate::policy_engine::{PolicyEngine, PolicyEngineType};
+use crate::rvps::RvpsClient;
 use crate::TeeClaims;
 
 pub struct EarAttestationTokenBroker {
@@ -112,13 +113,8 @@ impl EarAttestationTokenBroker {
         &self,
         all_tee_claims: Vec<TeeClaims>,
         policy_ids: Vec<String>,
-        reference_data_map: HashMap<String, serde_json::Value>,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<String> {
-        let reference_data = json!({
-            "reference": reference_data_map,
-        });
-        let reference_data = serde_json::to_string(&reference_data)?;
-
         if policy_ids.len() > 1 {
             warn!("EAR token only accepts the first policy. The rest will be ignored.");
         }
@@ -148,7 +144,7 @@ impl EarAttestationTokenBroker {
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
             let policy_results = self
                 .policy_engine
-                .evaluate(&reference_data, &tcb_claims_json, &policy_id)
+                .evaluate(None, &tcb_claims_json, &policy_id, rvps_client.clone())
                 .await?;
 
             let result = policy_results
@@ -365,6 +361,7 @@ pub fn transform_claims(
 mod tests {
     use assert_json_diff::assert_json_eq;
     use jsonwebtoken::DecodingKey;
+    use serde_json::json;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -389,7 +386,7 @@ mod tests {
                     init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                HashMap::new(),
+                None,
             )
             .await
             .unwrap();
@@ -421,7 +418,7 @@ mod tests {
                     init_data_claims: json!({"initdata": "111"}),
                 }],
                 vec!["default".into()],
-                HashMap::new(),
+                None,
             )
             .await
             .unwrap();
