@@ -3020,6 +3020,7 @@ dependencies = [
  "attestation-service",
  "base64 0.22.1",
  "env_logger",
+ "jwt-simple",
  "kbs",
  "kbs-client",
  "log",
@@ -3216,9 +3217,9 @@ dependencies = [
 
 [[package]]
 name = "jwt-simple"
-version = "0.12.12"
+version = "0.12.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "731011e9647a71ff4f8474176ff6ce6e0d2de87a0173f15613af3a84c3e3401a"
+checksum = "6ad8761f175784dfbb83709f322fc4daf6b27afd5bf375492f2876f9e925ef5a"
 dependencies = [
  "anyhow",
  "binstring",

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use kbs::admin::{
+    password::{PasswordAdminConfig, PasswordPersona},
     simple::{SimpleAdminConfig, SimplePersonaConfig},
     AdminBackendType, AdminConfig,
 };
@@ -32,8 +33,9 @@ use reference_value_provider_service::{server::RvpsServer, Rvps};
 
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
+use jwt_simple::algorithms::EdDSAKeyPairLike;
+use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair};
 use log::info;
-use openssl::pkey::PKey;
 use serde_json::json;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -68,6 +70,7 @@ pub enum RvpsType {
 pub enum AdminType {
     DenyAll,
     Simple,
+    Password,
 }
 
 /// An enum that selects between TestParameter configurations
@@ -76,6 +79,7 @@ pub enum AdminType {
 pub enum KbsConfigType {
     EarTokenBuiltInRvps,
     EarTokenBuiltInRvpsDenyAllAdmin,
+    EarTokenBuiltInRvpsPasswordAdmin,
     EarTokenRemoteRvps,
 }
 
@@ -95,6 +99,10 @@ impl From<KbsConfigType> for TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::DenyAll,
             },
+            KbsConfigType::EarTokenBuiltInRvpsPasswordAdmin => TestParameters {
+                rvps_type: RvpsType::Builtin,
+                admin_type: AdminType::Password,
+            },
         }
     }
 }
@@ -108,7 +116,7 @@ pub struct TestParameters {
 /// Internal state of tests
 pub struct TestHarness {
     pub kbs_config: KbsConfig,
-    pub auth_privkey: String,
+    pub admin_token: Option<String>,
     kbs_server_handle: actix_web::dev::ServerHandle,
     _work_dir: TempDir,
 
@@ -118,10 +126,6 @@ pub struct TestHarness {
 
 impl TestHarness {
     pub async fn new(test_parameters: TestParameters) -> Result<TestHarness> {
-        let auth_keypair = PKey::generate_ed25519()?;
-        let auth_pubkey = String::from_utf8(auth_keypair.public_key_to_pem()?)?;
-        let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
-
         let work_dir = TempDir::new()?;
         let resource_dir = work_dir
             .path()
@@ -143,8 +147,6 @@ impl TestHarness {
             .into_string()
             .map_err(|e| anyhow!("Failed to join reference values path: {:?}", e))?;
         let auth_pubkey_path = work_dir.path().join("auth_pubkey");
-
-        tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
         let attestation_token_config = EarTokenConfiguration {
             policy_dir: as_policy_dir,
@@ -182,6 +184,19 @@ impl TestHarness {
             }
         };
 
+        let admin_token = match &test_parameters.admin_type {
+            AdminType::Simple => {
+                let admin_key_pair = Ed25519KeyPair::generate();
+                let auth_pubkey = admin_key_pair.public_key().to_pem();
+
+                tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
+
+                let claims = Claims::create(Duration::from_hours(2));
+                Some(admin_key_pair.sign(claims)?)
+            }
+            _ => None,
+        };
+
         let admin_config = match &test_parameters.admin_type {
             AdminType::Simple => AdminConfig {
                 admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
@@ -194,6 +209,22 @@ impl TestHarness {
             AdminType::DenyAll => AdminConfig {
                 admin_backend: AdminBackendType::DenyAll,
             },
+            AdminType::Password => AdminConfig {
+                admin_backend: AdminBackendType::Password(PasswordAdminConfig {
+                    personas: vec![PasswordPersona {
+                        username: "test1".to_string(),
+                        // "password1" 
+                        password_hash: "$argon2id$v=19$m=16,t=2,p=1$YWJjZGVmZ2g$1QKfKpovkKZdJMxz+ZBVfw".to_string()
+                    },
+                    PasswordPersona {
+                        username: "test2".to_string(),
+                        // "password2"
+                        password_hash: "$argon2id$v=19$m=16,t=2,p=1$YWJjZGVhbGtqYXNsZGtmamFsa2o$HO5wN6BOZ9l3o3tzO8ks2w".to_string(),
+                    }],
+                    admin_token_life_hours: 2,
+                    key_pair_path: None,
+                }),
+            }
         };
 
         let kbs_config = KbsConfig {
@@ -239,7 +270,7 @@ impl TestHarness {
 
         Ok(TestHarness {
             kbs_config,
-            auth_privkey,
+            admin_token,
             kbs_server_handle: kbs_handle,
             _work_dir: work_dir,
             _test_parameters: test_parameters,
@@ -248,6 +279,24 @@ impl TestHarness {
 
     pub async fn cleanup(&self) -> Result<()> {
         self.kbs_server_handle.stop(true).await;
+
+        Ok(())
+    }
+
+    pub async fn login(&mut self, username: String, password: String) -> Result<()> {
+        let token =
+            kbs_client::admin_login(KBS_URL.to_string(), username, password, vec![]).await?;
+
+        self.admin_token = Some(token);
+
+        Ok(())
+    }
+
+    pub fn replace_admin_token(&mut self) -> Result<()> {
+        let admin_key_pair = Ed25519KeyPair::generate();
+
+        let claims = Claims::create(Duration::from_hours(2));
+        self.admin_token = Some(admin_key_pair.sign(claims)?);
 
         Ok(())
     }
@@ -263,7 +312,9 @@ impl TestHarness {
 
         kbs_client::set_resource_policy(
             KBS_URL,
-            self.auth_privkey.clone(),
+            self.admin_token
+                .clone()
+                .ok_or(anyhow!("Auth Token not found."))?,
             policy_bytes,
             // Optional HTTPS certs for KBS
             vec![],
@@ -276,7 +327,9 @@ impl TestHarness {
     pub async fn set_attestation_policy(&self, policy: String, policy_id: String) -> Result<()> {
         kbs_client::set_attestation_policy(
             KBS_URL,
-            self.auth_privkey.clone(),
+            self.admin_token
+                .clone()
+                .ok_or(anyhow!("Auth token not found."))?,
             policy.as_bytes().to_vec(),
             None, // Policy type (default is rego)
             Some(policy_id),
@@ -291,7 +344,9 @@ impl TestHarness {
         info!("TEST: Setting Secret");
         kbs_client::set_resource(
             KBS_URL,
-            self.auth_privkey.clone(),
+            self.admin_token
+                .clone()
+                .ok_or(anyhow!("Auth token not found."))?,
             secret_bytes,
             &secret_path,
             // Optional HTTPS certs for KBS
