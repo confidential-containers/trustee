@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 use tokio::fs;
-use tracing::{debug, info};
+use tracing::info;
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
@@ -239,19 +239,9 @@ impl AttestationService {
             }
         }
 
-        let reference_data_map = self
-            .rvps
-            .get_digests()
-            .await
-            .map_err(|e| anyhow!("Generate reference data failed: {:?}", e))?;
-        debug!(
-            "Reference data map get from RVPS: {}",
-            serde_json::to_string(&reference_data_map)?,
-        );
-
         let attestation_results_token = self
             .token_broker
-            .issue(tee_claims, policy_ids, reference_data_map)
+            .issue(tee_claims, policy_ids, Some(self.rvps.clone()))
             .await?;
         Ok(attestation_results_token)
     }
@@ -259,15 +249,19 @@ impl AttestationService {
     /// Register a new reference value
     pub async fn register_reference_value(&mut self, message: &str) -> Result<()> {
         self.rvps
+            .lock()
+            .await
             .verify_and_extract(message)
             .await
             .context("register reference value")
     }
 
     /// Query Reference Values
-    pub async fn query_reference_values(&self) -> Result<HashMap<String, Value>> {
+    pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Value> {
         self.rvps
-            .get_digests()
+            .lock()
+            .await
+            .query_reference_value(reference_value_id)
             .await
             .context("query reference values")
     }
