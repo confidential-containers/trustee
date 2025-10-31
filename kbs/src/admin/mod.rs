@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 pub mod allow_all;
 pub mod deny_all;
+pub mod password;
 pub mod simple;
 
 pub mod error;
@@ -17,6 +18,7 @@ pub use error::*;
 
 use allow_all::InsecureAllowAllBackend;
 use deny_all::DenyAllBackend;
+use password::{PasswordAdminBackend, PasswordAdminConfig};
 use simple::{SimpleAdminBackend, SimpleAdminConfig};
 
 #[derive(Clone)]
@@ -31,6 +33,7 @@ pub enum AdminBackendType {
     Simple(SimpleAdminConfig),
     InsecureAllowAll,
     DenyAll,
+    Password(PasswordAdminConfig),
 }
 
 impl Default for AdminBackendType {
@@ -58,6 +61,7 @@ impl TryFrom<AdminConfig> for Admin {
             }
             AdminBackendType::Simple(config) => Arc::new(SimpleAdminBackend::new(config)?) as _,
             AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
+            AdminBackendType::Password(config) => Arc::new(PasswordAdminBackend::new(config)?) as _,
         };
 
         Ok(Admin { backend })
