@@ -1,8 +1,8 @@
 use anyhow::Result;
 use core::net::SocketAddr;
 use kbs::attestation::config::AttestationServiceConfig::CoCoASBuiltIn;
-use kbs::plugins::PluginsConfig::ResourceStorage;
-use kbs::plugins::RepositoryConfig::LocalFs;
+use kbs::plugins::PluginsConfig::{self, ResourceStorage};
+use kbs::plugins::RepositoryConfig::{self, LocalFs};
 use kbs::{ApiServer, KbsConfig};
 use log::{debug, info, warn};
 use openssl::asn1::Asn1Time;
@@ -44,6 +44,12 @@ fn get_config(
     // Set home dir for policy engine
     config.policy_engine.policy_path =
         replace_base_dir(config.policy_engine.policy_path.as_path(), trustee_home_dir);
+
+    if config.plugins.is_empty() {
+        config
+            .plugins
+            .push(PluginsConfig::ResourceStorage(RepositoryConfig::default()));
+    }
 
     // Set home dir for plugins
     config.plugins.iter_mut().for_each(|plugins_config| {
