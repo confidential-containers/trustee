@@ -4,6 +4,7 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
+use base64::prelude::*;
 use derivative::Derivative;
 use log::info;
 use serde::Deserialize;
@@ -84,7 +85,7 @@ impl StorageBackend for VaultKvBackend {
 
         secret_data
             .get("data")
-            .map(|v| v.as_bytes().to_vec())
+            .map(|v| BASE64_STANDARD.decode(v).expect("failed to decode data"))
             .ok_or_else(|| {
                 let available_keys = secret_data.keys().cloned().collect();
                 VaultError::DataKeyMissing {
@@ -95,6 +96,9 @@ impl StorageBackend for VaultKvBackend {
             })
     }
 
+    /// Firstly, due to the some secret are bytes(not valid UTF-8 str)
+    /// so when write secret resoure, encode the target data to base64 str
+    /// when get the resource, decode it, then convert it to bytes
     async fn write_secret_resource(&self, resource_desc: ResourceDesc, data: &[u8]) -> Result<()> {
         let vault_path = format!(
             "{}/{}/{}",
@@ -103,13 +107,11 @@ impl StorageBackend for VaultKvBackend {
 
         info!("Writing secret to Vault path: {}", vault_path);
 
-        // Convert data to string for Vault storage
-        let data_str =
-            String::from_utf8(data.to_vec()).context("Failed to convert data to UTF-8 string")?;
+        let data = BASE64_STANDARD.encode(data.to_vec());
 
         // Create a HashMap with the data - using &str keys as expected by vaultrs
         let mut secret_data = std::collections::HashMap::new();
-        secret_data.insert("data", data_str.as_str());
+        secret_data.insert("data", data);
 
         kv1::set(&self.client, &self.mount_path, &vault_path, &secret_data)
             .await
