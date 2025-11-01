@@ -189,8 +189,13 @@ impl Attest for GrpcClientPool {
         Ok(())
     }
 
-    async fn query_reference_values(&self) -> anyhow::Result<HashMap<String, serde_json::Value>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {});
+    async fn query_reference_value(
+        &self,
+        reference_value_id: &str,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        let req = tonic::Request::new(ReferenceValueQueryRequest {
+            reference_value_id: reference_value_id.to_string(),
+        });
 
         let mut client = self.pool.get().await?;
 
@@ -203,7 +208,13 @@ impl Attest for GrpcClientPool {
             .map_err(|e| anyhow!("Failed to get reference values: {:?}", e))?
             .into_inner();
 
-        Ok(serde_json::from_str(&reference_value_results)?)
+        match reference_value_results {
+            Some(reference_value) => {
+                let reference_value = serde_json::from_str(&reference_value)?;
+                Ok(Some(reference_value))
+            }
+            None => Ok(None),
+        }
     }
 }
 

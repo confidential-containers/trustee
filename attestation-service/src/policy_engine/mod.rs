@@ -9,6 +9,8 @@ use std::sync::Arc;
 use strum::EnumString;
 use thiserror::Error;
 
+use crate::rvps::RvpsClient;
+
 pub mod opa;
 
 #[derive(Error, Debug)]
@@ -41,8 +43,12 @@ pub enum PolicyError {
     LoadReferenceDataFailed(#[source] anyhow::Error),
     #[error("Failed to set input data: {0}")]
     SetInputDataFailed(#[source] anyhow::Error),
-    #[error("Failed to evaluate policy: {0}")]
-    EvalPolicyFailed(#[source] anyhow::Error),
+    #[error("Failed to evaluate policy `{policy_id}`")]
+    EvalPolicyFailed {
+        policy_id: String,
+        #[source]
+        source: anyhow::Error,
+    },
     #[error("json serialization failed: {0}")]
     JsonSerializationFailed(#[source] anyhow::Error),
     #[error("Policy claim value not valid (must be between -127 and 127)")]
@@ -83,6 +89,7 @@ pub trait PolicyEngine: Send + Sync {
     /// - `input`: dynamic data that will help to enforce the policy.
     /// - `rules`: the decision statement to be executed by the policy engine
     /// to determine the final output.
+    /// - `rvps_client`: a client that can be used to query reference values.
     ///
     /// In CoCoAS scenarios, `data` is recommended to carry reference values as
     /// it is relatively static. `input` is recommended to carry `tcb_claims`
@@ -90,9 +97,10 @@ pub trait PolicyEngine: Send + Sync {
     /// due to different needs.
     async fn evaluate(
         &self,
-        data: &str,
+        data: Option<&str>,
         input: &str,
         policy_id: &str,
+        rvps_client: Option<RvpsClient>,
     ) -> Result<EvaluationResult, PolicyError>;
 
     /// Add an additional policy to the AS that can be referenced by given policy id.

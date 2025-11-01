@@ -54,7 +54,4 @@ pub trait ReferenceValueStorage {
 
     // Retrieve reference value by name
     async fn get(&self, name: &str) -> Result<Option<ReferenceValue>>;
-
-    // Retrieve reference values
-    async fn get_values(&self) -> Result<Vec<ReferenceValue>>;
 }

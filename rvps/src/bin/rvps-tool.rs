@@ -21,9 +21,12 @@ async fn register(addr: &str, provenance_path: &str) -> Result<()> {
     Ok(())
 }
 
-async fn query(addr: &str) -> Result<()> {
-    let rvs = client::query(addr.to_string()).await?;
-    info!("Get reference values succeeded:\n {rvs}");
+async fn query(addr: String, reference_value_id: String) -> Result<()> {
+    let rvs = client::query(addr, reference_value_id).await?;
+    match rvs {
+        Some(rvs) => info!("Get reference values succeeded:\n {rvs}"),
+        None => info!("No reference values found for the given id"),
+    }
     Ok(())
 }
 
@@ -58,6 +61,10 @@ struct QueryArgs {
     /// The address of target RVPS
     #[arg(short, long, default_value = DEFAULT_ADDR)]
     addr: String,
+
+    /// The id of the reference value
+    #[arg(short, long)]
+    reference_value_id: String,
 }
 
 #[tokio::main]
@@ -77,6 +84,6 @@ async fn main() -> Result<()> {
 
     match cli {
         Cli::Register(para) => register(&para.addr, &para.path).await,
-        Cli::Query(para) => query(&para.addr).await,
+        Cli::Query(para) => query(para.addr, para.reference_value_id).await,
     }
 }

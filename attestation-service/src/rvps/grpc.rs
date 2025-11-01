@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::collections::HashMap;
+use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -63,16 +63,25 @@ impl RvpsApi for Agent {
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let req = tonic::Request::new(ReferenceValueQueryRequest {});
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
+        let req = tonic::Request::new(ReferenceValueQueryRequest {
+            reference_value_id: reference_value_id.to_string(),
+        });
         let res = self
             .client
             .lock()
             .await
             .query_reference_value(req)
             .await?
-            .into_inner();
-        let trust_digest = serde_json::from_str(&res.reference_value_results)?;
-        Ok(trust_digest)
+            .into_inner()
+            .reference_value_results;
+
+        match res {
+            Some(reference_value) => {
+                let reference_value = serde_json::from_str(&reference_value)?;
+                Ok(Some(reference_value))
+            }
+            None => Ok(None),
+        }
     }
 }

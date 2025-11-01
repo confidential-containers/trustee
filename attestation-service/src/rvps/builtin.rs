@@ -2,7 +2,7 @@ use super::{Result, RvpsApi};
 use async_trait::async_trait;
 use core::result::Result::Ok;
 use reference_value_provider_service::{Config, Rvps};
-use std::collections::HashMap;
+use serde_json::Value;
 
 pub struct BuiltinRvps {
     rvps: Rvps,
@@ -22,9 +22,9 @@ impl RvpsApi for BuiltinRvps {
         Ok(())
     }
 
-    async fn get_digests(&self) -> Result<HashMap<String, serde_json::Value>> {
-        let hashes = self.rvps.get_digests().await?;
+    async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
+        let reference_value = self.rvps.query_reference_value(reference_value_id).await?;
 
-        Ok(hashes)
+        Ok(reference_value)
     }
 }
