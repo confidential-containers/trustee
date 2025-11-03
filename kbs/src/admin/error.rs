@@ -46,6 +46,9 @@ pub enum Error {
     #[error("Failed to generate admin token.")]
     TokenCreationFailed,
 
+    #[error("Admin token has expired. You may need to login again.")]
+    TokenExpired,
+
     #[error("Username or password incorrect.")]
     WrongUsernameOrPassword,
 }

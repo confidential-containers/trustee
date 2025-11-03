@@ -12,6 +12,7 @@ use jwt_simple::{
     claims::NoCustomClaims,
     common::VerificationOptions,
     prelude::{Claims, Ed25519KeyPair, EdDSAKeyPairLike, EdDSAPublicKeyLike},
+    JWTError,
 };
 use log::info;
 use rand::distributions::Alphanumeric;
@@ -134,12 +135,15 @@ impl AdminBackend for PasswordAdminBackend {
                 let username = claims.subject.ok_or(Error::AdminTokenInvalid)?;
                 info!("Admin access granted for {}", username);
 
-                return Ok(());
+                Ok(())
             }
             Err(e) => {
                 info!("Access not granted due to: \n{}", e);
 
-                return Err(Error::AdminAccessDenied);
+                if let Some(JWTError::TokenHasExpired) = e.downcast_ref::<JWTError>() {
+                    return Err(Error::TokenExpired);
+                }
+                Err(Error::AdminAccessDenied)
             }
         }
     }
