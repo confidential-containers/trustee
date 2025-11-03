@@ -96,8 +96,13 @@ impl PasswordAdminBackend {
             );
         }
 
-        // TODO read key pair from file
-        let key_pair = Ed25519KeyPair::generate();
+        let key_pair = match config.key_pair_path {
+            Some(path) => {
+                let key_string = std::fs::read_to_string(path)?;
+                Ed25519KeyPair::from_pem(&key_string)?
+            }
+            None => Ed25519KeyPair::generate(),
+        };
 
         Ok(PasswordAdminBackend {
             personas,
