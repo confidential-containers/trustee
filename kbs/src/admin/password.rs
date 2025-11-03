@@ -32,6 +32,7 @@ pub struct PasswordAdminConfig {
     /// The number of hours that an admin token will be valid for.
     /// After the token expires, an admin must login again and receive
     /// a new token.
+    #[serde(default = "default_token_hours")]
     pub admin_token_life_hours: u64,
     /// The key pair used for signing and validating the admin tokens.
     /// If a path is provided, the key pair will be loaded from a file.
@@ -40,6 +41,10 @@ pub struct PasswordAdminConfig {
     /// The key pair should be in PEM format.
     /// If no path is provided, a random key pair will be generated.
     pub key_pair_path: Option<PathBuf>,
+}
+
+fn default_token_hours() -> u64 {
+    24
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
