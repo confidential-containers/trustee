@@ -32,6 +32,7 @@ pub struct PasswordAdminConfig {
     /// The number of hours that an admin token will be valid for.
     /// After the token expires, an admin must login again and receive
     /// a new token.
+    /// The token timing checks are accurate to within 15 minutes.
     #[serde(default = "default_token_hours")]
     pub admin_token_life_hours: u64,
     /// The key pair used for signing and validating the admin tokens.
@@ -111,10 +112,17 @@ impl AdminBackend for PasswordAdminBackend {
         let bearer = Authorization::<Bearer>::parse(request)?.into_scheme();
         let token = bearer.token();
 
+        // The default time tolerance is 15 minutes.
+        // Reduce this to 3 minutes.
+        let options = VerificationOptions {
+            time_tolerance: Some(std::time::Duration::from_secs(180).into()),
+            ..Default::default()
+        };
+
         let res = self
             .key_pair
             .public_key()
-            .verify_token::<NoCustomClaims>(token, Some(VerificationOptions::default()));
+            .verify_token::<NoCustomClaims>(token, Some(options));
 
         match res {
             Ok(claims) => {
