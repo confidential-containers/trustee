@@ -4,13 +4,18 @@
 
 use actix_web::{http::header::Header, HttpRequest};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+};
 use jwt_simple::{
     claims::NoCustomClaims,
     common::VerificationOptions,
     prelude::{Claims, Ed25519KeyPair, EdDSAKeyPairLike, EdDSAPublicKeyLike},
 };
 use log::info;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -57,6 +62,34 @@ impl PasswordAdminBackend {
             personas.insert(p.username.clone(), p.clone());
         }
 
+        // If no personas are specified, create one admin persona
+        // with a random password.
+        // Print the password to the log.
+        if personas.is_empty() {
+            let password: String = thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(14)
+                .map(char::from)
+                .collect();
+
+            info!("No admin personas provided for the password admin backend. Creating `default_admin` persona with password: {}", &password);
+
+            let salt = SaltString::generate(&mut OsRng);
+            let argon2 = Argon2::default();
+            let password_hash = argon2
+                .hash_password(password.as_bytes(), &salt)
+                .map_err(|_| Error::InvalidHash)?
+                .to_string();
+
+            personas.insert(
+                "default_admin".to_string(),
+                PasswordPersona {
+                    username: "default_admin".to_string(),
+                    password_hash,
+                },
+            );
+        }
+
         // TODO read key pair from file
         let key_pair = Ed25519KeyPair::generate();
 
@@ -83,12 +116,12 @@ impl AdminBackend for PasswordAdminBackend {
                 let username = claims.subject.ok_or(Error::AdminTokenInvalid)?;
                 info!("Admin access granted for {}", username);
 
-                return Ok(())
+                return Ok(());
             }
             Err(e) => {
                 info!("Access not granted due to: \n{}", e);
 
-                return Err(Error::AdminAccessDenied)
+                return Err(Error::AdminAccessDenied);
             }
         }
     }
