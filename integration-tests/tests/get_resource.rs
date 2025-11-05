@@ -179,7 +179,7 @@ async fn get_secret(
 
     // Get Secret
     info!("TEST: getting secret");
-    let secret = harness.get_secret(SECRET_PATH.to_string()).await;
+    let secret = harness.get_secret(SECRET_PATH.to_string(), None).await;
 
     // Test Result
     info!("TEST: checking result");
