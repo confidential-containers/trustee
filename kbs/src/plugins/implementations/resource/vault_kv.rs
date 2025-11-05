@@ -93,9 +93,6 @@ impl StorageBackend for VaultKvBackend {
         Ok(bytes)
     }
 
-    /// Firstly, due to the some secret are bytes(not valid UTF-8 str)
-    /// so when write secret resoure, encode the target data to base64 str
-    /// when get the resource, decode it, then convert it to bytes
     async fn write_secret_resource(&self, resource_desc: ResourceDesc, data: &[u8]) -> Result<()> {
         let vault_path = format!(
             "{}/{}/{}",
