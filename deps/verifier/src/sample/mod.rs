@@ -33,7 +33,17 @@ impl Verifier for Sample {
             .await
             .context("Evidence's identity verification error.")?;
 
-        let claims = parse_tee_evidence(&tee_evidence)?;
+        let mut claims = parse_tee_evidence(&tee_evidence)?;
+
+        // To test features based on init-data, add the init-data hash
+        // to the claims even though we have no way of verifying it.
+        if let InitDataHash::Value(hash) = expected_init_data_hash {
+            let hash = base64::engine::general_purpose::STANDARD.encode(hash);
+            if let Some(obj) = claims.as_object_mut() {
+                obj.insert("init_data".to_string(), json!(hash));
+            }
+        }
+
         Ok(vec![(claims, "cpu".to_string())])
     }
 }
@@ -57,7 +67,7 @@ async fn verify_tee_evidence(
     }
 
     if let InitDataHash::Value(_) = expected_init_data_hash {
-        warn!("Sample does not support init data hash mechanism. skip.");
+        warn!("Sample verifier does not check init-data.");
     }
 
     Ok(())
