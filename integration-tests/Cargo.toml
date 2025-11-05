@@ -20,6 +20,7 @@ openssl.workspace = true
 rstest.workspace = true
 serde_json.workspace = true
 serial_test.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true

@@ -302,10 +302,20 @@ impl TestHarness {
         Ok(())
     }
 
-    pub async fn get_secret(&self, secret_path: String) -> Result<Vec<u8>> {
+    pub async fn get_secret(
+        &self,
+        secret_path: String,
+        init_data: Option<String>,
+    ) -> Result<Vec<u8>> {
         info!("TEST: Getting Secret");
-        let resource_bytes =
-            kbs_client::get_resource_with_attestation(KBS_URL, &secret_path, None, vec![]).await?;
+        let resource_bytes = kbs_client::get_resource_with_attestation(
+            KBS_URL,
+            &secret_path,
+            None,
+            vec![],
+            init_data,
+        )
+        .await?;
 
         Ok(resource_bytes)
     }
