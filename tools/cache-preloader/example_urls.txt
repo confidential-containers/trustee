@@ -1,0 +1,14 @@
+# Example VCEK URLs for preloading
+# Lines starting with # are comments and will be ignored
+
+# Milan processor VCEKs (example hardware IDs and TCB versions)
+# https://kdsintf.amd.com/vcek/v1/Milan/<hwid>?blSPL=02&teeSPL=00&snpSPL=03&ucodeSPL=209
+
+# Genoa processor VCEKs (example hardware IDs and TCB versions)
+# https://kdsintf.amd.com/vcek/v1/Genoa/<hwid>?blSPL=02&teeSPL=00&snpSPL=03&ucodeSPL=209
+
+# Turin processor VCEKs (example hardware IDs and TCB versions)
+# https://kdsintf.amd.com/vcek/v1/Turin/<hwid>?fmcSPL=01&blSPL=04&teeSPL=00&snpSPL=15&ucodeSPL=180
+
+# Add your actual VCEK URLs below
+# You can get these by running `snphost show vcek-url` on each target host.

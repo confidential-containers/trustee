@@ -219,7 +219,6 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
-            
             },
             admin: admin_config,
             policy_engine: PolicyEngineConfig {
