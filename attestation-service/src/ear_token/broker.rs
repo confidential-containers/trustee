@@ -207,6 +207,9 @@ impl EarAttestationTokenBroker {
             submods,
             extensions,
         };
+
+        debug!(ear =? ear, "Unsigned EAR Token");
+
         let mut jwt_header = ear::new_jwt_header(&Algorithm::ES256)?;
         jwt_header.jwk = Some(self.pubkey_jwk()?);
 
@@ -343,7 +346,6 @@ pub fn transform_claims(
                 "report_data".to_string(),
                 RawValue::String(report_data.as_str().unwrap().to_string()),
             );
-
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&runtime_data_claims)?)?;
             output_claims.insert("runtime_data_claims".to_string(), transformed_claims);

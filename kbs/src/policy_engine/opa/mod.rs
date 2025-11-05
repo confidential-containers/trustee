@@ -5,6 +5,7 @@
 use crate::policy_engine::{KbsPolicyEngineError, PolicyEngineInterface};
 use async_trait::async_trait;
 use base64::Engine;
+use log::debug;
 use std::fs;
 use std::path::PathBuf;
 
@@ -50,6 +51,7 @@ impl PolicyEngineInterface for Opa {
             .map_err(|_| KbsPolicyEngineError::DataLoadError)?;
 
         // Add TCB claims as input
+        debug!("KBS Policy Input Claims: {input_claims}");
         engine
             .set_input_json(input_claims)
             .map_err(|_| KbsPolicyEngineError::InputError)?;
