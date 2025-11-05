@@ -80,11 +80,13 @@ pub async fn get_resource_with_token(
 /// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
 /// - [tee_pubkey_pem]: Public key (PEM format) of the RSA key pair generated in TEE.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
+/// - init_data: Plaintext init-data; should correspond to init-data measured at boot time.
 pub async fn get_resource_with_attestation(
     url: &str,
     path: &str,
     tee_key_pem: Option<String>,
     kbs_root_certs_pem: Vec<String>,
+    init_data: Option<String>,
 ) -> Result<Vec<u8>> {
     let evidence_provider = Box::new(NativeEvidenceProvider::new()?);
     let mut client_builder = KbsClientBuilder::with_evidence_provider(evidence_provider, url);
@@ -95,6 +97,11 @@ pub async fn get_resource_with_attestation(
     for cert in kbs_root_certs_pem {
         client_builder = client_builder.add_kbs_cert(&cert)
     }
+
+    if let Some(init_data) = init_data {
+        client_builder = client_builder.add_initdata(init_data);
+    }
+
     let mut client = client_builder.build()?;
 
     let resource_kbs_uri = format!("kbs:///{path}");

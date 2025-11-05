@@ -55,6 +55,17 @@ enum Commands {
         /// and the public part of TEE Key should be consistent with tee-pubkey in the token.
         #[clap(long, value_parser)]
         attestation_token: Option<PathBuf>,
+
+        /// InitData plaintext
+        ///
+        /// If the guest measures the init-data at boot-time, the corresponding
+        /// init-data plaintext can be provided when making an attestation request.
+        /// The plaintext will be compared to the init-data in the hw evidence.
+        /// If it matches, the plaintext init-data will be added to the attestation
+        /// token, allowing KBS policies to access raw init-data claims.
+        /// The per the InitData specification, the plaintext should be toml or json
+        /// depending on what the runtime expects.
+        init_data: Option<String>,
     },
 
     /// Attestation and get attestation results token
@@ -192,6 +203,7 @@ async fn main() -> Result<()> {
             path,
             tee_key_file,
             attestation_token,
+            init_data,
         } => {
             let tee_key = match tee_key_file {
                 Some(ref f) => Some(
@@ -229,6 +241,7 @@ async fn main() -> Result<()> {
                     &path,
                     tee_key,
                     kbs_cert.clone(),
+                    init_data,
                 )
                 .await?;
                 println!("{}", STANDARD.encode(resource_bytes));
