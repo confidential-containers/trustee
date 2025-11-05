@@ -5,11 +5,13 @@ use anyhow::anyhow;
 use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
+use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use openssl::{
     nid::Nid,
     x509::{self, X509},
 };
-use reqwest::{get, Response as ReqwestResponse, StatusCode};
+use reqwest::{Response as ReqwestResponse, StatusCode};
+use reqwest_middleware::ClientBuilder;
 use serde;
 use serde_json::json;
 use sev::{
@@ -23,6 +25,9 @@ use std::{collections::HashMap, hash::Hash, result::Result::Ok, sync::LazyLock};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 use tracing::{debug, instrument, warn};
 use x509_parser::prelude::*;
+
+use std::path::PathBuf;
+use std::time::Instant;
 
 #[derive(Serialize, Deserialize)]
 pub struct SnpEvidence {
@@ -52,6 +57,9 @@ pub(crate) const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9)
 // KDS URL parameters
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
 const KDS_VCEK: &str = "/vcek/v1";
+
+/// Directory for VCEK configured with DiskCache
+const VCEK_CACHE_DIR: &str = "/opt/confidential-containers/vcek-cache";
 
 /// Attestation report versions supported
 const REPORT_VERSION_MIN: u32 = 3;
@@ -89,7 +97,154 @@ pub(crate) static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCerti
     });
 
 #[derive(Default, Debug)]
-pub struct Snp {}
+pub struct Snp {
+    verifier_config: SnpVerifierConfig,
+}
+
+impl Snp {
+    pub async fn new(config: Option<SnpVerifierConfig>) -> Result<Self> {
+        Ok(Snp {
+            verifier_config: config.unwrap_or_default(),
+        })
+    }
+
+    /// Asynchronously fetches the VCEK from the Key Distribution Service (KDS) using the provided attestation report.
+    /// Returns the VCEK in DER format.
+    async fn fetch_vcek_from_kds(
+        &self,
+        att_report: AttestationReport,
+        proc_gen: ProcessorGeneration,
+    ) -> Result<Vec<u8>> {
+        // Use attestation report to get data for URL
+        let hw_id: String = if att_report.chip_id.as_slice() != [0; 64] {
+            match proc_gen {
+                ProcessorGeneration::Turin => {
+                    let shorter_bytes: &[u8] = &att_report.chip_id[0..8];
+                    hex::encode(shorter_bytes)
+                }
+                _ => hex::encode(att_report.chip_id),
+            }
+        } else {
+            bail!("Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request VCEK from KDS.");
+        };
+
+        // Request VCEK from KDS
+        let vcek_url: String = match proc_gen {
+            ProcessorGeneration::Turin => {
+                let fmc = if let Some(fmc) = att_report.reported_tcb.fmc {
+                    fmc
+                } else {
+                    bail!("A Turin processor must have a fmc value");
+                };
+                format!(
+                    "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
+                    {hw_id}?fmcSPL={:02}&blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
+                    proc_gen,
+                    fmc,
+                    att_report.reported_tcb.bootloader,
+                    att_report.reported_tcb.tee,
+                    att_report.reported_tcb.snp,
+                    att_report.reported_tcb.microcode
+                )
+            }
+            _ => {
+                format!(
+                    "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
+                    {hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
+                    proc_gen,
+                    att_report.reported_tcb.bootloader,
+                    att_report.reported_tcb.tee,
+                    att_report.reported_tcb.snp,
+                    att_report.reported_tcb.microcode
+                )
+            }
+        };
+
+        // Build client with or without caching based on configuration
+        let client = self.verifier_config.vcek_cache.build_client();
+        let start = Instant::now();
+
+        let vcek_rsp: ReqwestResponse = client
+            .get(vcek_url.clone())
+            .send()
+            .await
+            .context("Unable to send request for VCEK")?;
+
+        let duration = start.elapsed();
+
+        // Log cache status if available, otherwise log direct fetch
+        if let Some(cache_status) = vcek_rsp.headers().get("x-cache") {
+            debug!(
+                "VCEK fetch: {:?} from {:?} ({:?})",
+                cache_status, vcek_url, duration
+            );
+        } else {
+            debug!(
+                "VCEK fetch: direct from KDS {:?} ({:?})",
+                vcek_url, duration
+            );
+        }
+
+        match vcek_rsp.status() {
+            StatusCode::OK => {
+                let vcek_rsp_bytes: Vec<u8> = vcek_rsp
+                    .bytes()
+                    .await
+                    .context("Unable to parse VCEK")?
+                    .to_vec();
+                Ok(vcek_rsp_bytes)
+            }
+
+            status => bail!("Unable to fetch VCEK from URL: {status:?}, {vcek_url:?}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct SnpVerifierConfig {
+    #[serde(default)]
+    vcek_cache: VCEKCacheConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+#[derive(Default)]
+pub enum VCEKCacheConfig {
+    #[default]
+    None,
+
+    /// Disk-based cache using reqwest with cacache backend
+    /// WARNING: cacache has NO automatic eviction
+    DiskCache,
+}
+
+impl VCEKCacheConfig {
+    pub fn build_client(&self) -> reqwest_middleware::ClientWithMiddleware {
+        let client = reqwest::Client::new();
+
+        match self {
+            VCEKCacheConfig::None => ClientBuilder::new(client).build(),
+            VCEKCacheConfig::DiskCache => {
+                let client_options = HttpCacheOptions {
+                    cache_status_headers: true,
+                    ..Default::default()
+                };
+
+                ClientBuilder::new(client)
+                    .with(Cache(HttpCache {
+                        mode: CacheMode::ForceCache,
+                        manager: CACacheManager::new(PathBuf::from(VCEK_CACHE_DIR), true),
+                        options: client_options,
+                    }))
+                    .build()
+            }
+        }
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        !matches!(self, VCEKCacheConfig::None)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum VendorEndorsementKey {
@@ -221,7 +376,8 @@ impl Verifier for Snp {
             // No certificate chain provided, so we need to request the VCEK from KDS
             _ => {
                 // Get VCEK from KDS
-                let vcek_buf = fetch_vcek_from_kds(report, proc_gen.clone())
+                let vcek_buf = self
+                    .fetch_vcek_from_kds(report, proc_gen.clone())
                     .await
                     .context("Failed to fetch VCEK from KDS")?;
                 let vcek = Certificate::from_bytes(&vcek_buf)
@@ -420,75 +576,6 @@ pub(crate) fn get_common_name(cert: &x509::X509) -> Result<String> {
     }
 
     Ok(e.data().as_utf8()?.to_string())
-}
-
-/// Asynchronously fetches the VCEK from the Key Distribution Service (KDS) using the provided attestation report.
-/// Returns the VCEK in DER format as part of a certificate table entry.
-async fn fetch_vcek_from_kds(
-    att_report: AttestationReport,
-    proc_gen: ProcessorGeneration,
-) -> Result<Vec<u8>> {
-    // Use attestation report to get data for URL
-    let hw_id: String = if att_report.chip_id.as_slice() != [0; 64] {
-        match proc_gen {
-            ProcessorGeneration::Turin => {
-                let shorter_bytes: &[u8] = &att_report.chip_id[0..8];
-                hex::encode(shorter_bytes)
-            }
-            _ => hex::encode(att_report.chip_id),
-        }
-    } else {
-        bail!("Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request from VCEK from KDS.");
-    };
-
-    // Request VCEK from KDS
-    let vcek_url: String = match proc_gen {
-        ProcessorGeneration::Turin => {
-            let fmc = if let Some(fmc) = att_report.reported_tcb.fmc {
-                fmc
-            } else {
-                bail!("A Turin processor must have a fmc value");
-            };
-            format!(
-                "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
-                {hw_id}?fmcSPL={:02}&blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
-                proc_gen,
-                fmc,
-                att_report.reported_tcb.bootloader,
-                att_report.reported_tcb.tee,
-                att_report.reported_tcb.snp,
-                att_report.reported_tcb.microcode
-            )
-        }
-        _ => {
-            format!(
-                "{KDS_CERT_SITE}{KDS_VCEK}/{}/\
-                {hw_id}?blSPL={:02}&teeSPL={:02}&snpSPL={:02}&ucodeSPL={:02}",
-                proc_gen,
-                att_report.reported_tcb.bootloader,
-                att_report.reported_tcb.tee,
-                att_report.reported_tcb.snp,
-                att_report.reported_tcb.microcode
-            )
-        }
-    };
-    // VCEK in DER format
-    let vcek_rsp: ReqwestResponse = get(vcek_url.clone())
-        .await
-        .context("Unable to send request for VCEK")?;
-
-    match vcek_rsp.status() {
-        StatusCode::OK => {
-            let vcek_rsp_bytes: Vec<u8> = vcek_rsp
-                .bytes()
-                .await
-                .context("Unable to parse VCEK")?
-                .to_vec();
-            Ok(vcek_rsp_bytes)
-        }
-
-        status => bail!("Unable to fetch VCEK from URL: {status:?}, {vcek_url:?}"),
-    }
 }
 
 /// Determines the processor model based on the family and model IDs from the attestation report.

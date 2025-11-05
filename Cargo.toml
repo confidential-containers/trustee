@@ -4,6 +4,7 @@ members = [
     "attestation-service",
     "rvps",
     "tools/kbs-client",
+    "tools/cache-preloader",
     "deps/verifier",
     "deps/eventlog",
     "integration-tests",
