@@ -60,12 +60,12 @@ ifeq ($(VAULT), true)
   FEATURES += vault
 endif
 
-ifndef CLI_FEATURES
-  ifdef ATTESTER
-    CLI_FEATURES = "sample_only,$(ATTESTER)"
-  else
-    CLI_FEATURES += "sample_only,all-attesters"
-  endif
+ifeq ($(CLI_FEATURES),sample_only)
+  CLI_FEATURES = "," # this is a dummy feature to satisfy the cargo build command
+else ifdef ATTESTER
+  CLI_FEATURES = "$(ATTESTER)"
+else
+  CLI_FEATURES += "all-attesters"
 endif
 
 ifneq ($(TEST_FEATURES),)
@@ -100,8 +100,7 @@ cli-static-linux:
       --config "target.$(ARCH)-unknown-linux-gnu.rustflags = '-C target-feature=+crt-static'" \
       --locked \
       --release \
-      --no-default-features \
-      --features sample_only
+      --no-default-features
 
 install-kbs:
 	install -D -m0755 $(RELEASE_DIR)/kbs $(INSTALL_DESTDIR)

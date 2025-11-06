@@ -30,7 +30,7 @@ jobs:
         - instance: ubuntu-24.04
           test_features: ""
         - instance: ubuntu-24.04-arm
-          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,sample_only,cca-attester"
+          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester"
     runs-on: ${{ matrix.instance }}
 
     steps:
