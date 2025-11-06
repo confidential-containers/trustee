@@ -69,7 +69,7 @@ p521 = { workspace = true, features = ["ecdh"] }
 prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
-regex = "1.11.1"
+regex = "1.12.2"
 regorus.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 rsa = { version = "0.9.2", features = ["sha2"] }
