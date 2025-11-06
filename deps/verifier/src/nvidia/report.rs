@@ -4,9 +4,11 @@
 //
 
 use anyhow::{anyhow, bail, Result};
+use openssl::bn::BigNum;
+use openssl::ec::EcKey;
+use openssl::ecdsa::EcdsaSig;
+use openssl::sha::sha384;
 use openssl::x509::X509;
-use p384::ecdsa::{signature::Verifier, Signature, VerifyingKey};
-use p384::pkcs8::DecodePublicKey;
 use serde_json::Value;
 use std::fmt;
 use tracing::{info, warn};
@@ -105,16 +107,27 @@ impl NvidiaAttestationReport {
         signature_bytes: &[u8],
         signing_cert: &X509,
     ) -> Result<()> {
-        let signature = Signature::from_slice(signature_bytes)?;
+        if signature_bytes.len() != 96 {
+            bail!("Invalid raw ECDSA P-384 signature");
+        }
+
+        let r = BigNum::from_slice(&signature_bytes[..48])?;
+        let s = BigNum::from_slice(&signature_bytes[48..])?;
+        let ecdsa_sig = EcdsaSig::from_private_components(r, s)?;
 
         // Extract EC public key from certificate
-        let public_key = signing_cert.public_key()?.public_key_to_der()?;
+        let ec_key = EcKey::try_from(signing_cert.public_key()?)?;
 
-        let verifying_key = VerifyingKey::from_public_key_der(public_key.as_slice())?;
-
-        verifying_key
-            .verify(signed_bytes, &signature)
-            .map_err(|e| anyhow!("NVIDIA report signature failed: {}", e))
+        ecdsa_sig
+            .verify(&sha384(signed_bytes), &ec_key)
+            .map_err(|e| anyhow!("NVIDIA report signature verification error: {}.", e))
+            .and_then(|result| {
+                if !result {
+                    Err(anyhow!("NVIDIA report signature verification failed."))
+                } else {
+                    Ok(())
+                }
+            })
     }
 
     pub fn validate_nonce(&self, expected_nonce: &[u8]) -> Result<()> {
