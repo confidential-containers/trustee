@@ -47,10 +47,12 @@ pub struct Nvidia {
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NvidiaVerifierConfig {
+    #[serde(flatten)]
     verifier: NvidiaVerifierType,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(tag = "type")]
 pub enum NvidiaVerifierType {
     #[default]
     Local,
