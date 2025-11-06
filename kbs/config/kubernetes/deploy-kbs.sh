@@ -6,6 +6,8 @@ set -euo pipefail
 DEPLOYMENT_DIR="${DEPLOYMENT_DIR:-overlays}"
 OVERLAYS_DIR="overlays"
 
+NVIDIA_VERIFIER_MODE="${NVIDIA_VERIFIER_MODE:-local}"
+
 k8s_cnf_dir="$(dirname ${BASH_SOURCE[0]})"
 
 if [ "$(uname -m)" == "s390x" ] && [ -n "${IBM_SE_CREDS_DIR:-}" ]; then
@@ -31,6 +33,15 @@ kbs_cert="${k8s_cnf_dir}/base/kbs.pem"
     openssl pkey -in "${k8s_cnf_dir}/base/kbs.key" -pubout -out "${kbs_cert}"
 }
 
+# Enable the nvidia remote verifier if requested.
+if [[ "${NVIDIA_VERIFIER_MODE}" == "remote" ]]; then
+    cat >> ${k8s_cnf_dir}/base/kbs-config.toml << 'EOF'
+
+[attestation_service.verifier_config.nvidia_verifier]
+type = "Remote"
+
+EOF
+fi
 
 if [[ "${DEPLOYMENT_DIR}" == "nodeport" || "${DEPLOYMENT_DIR}" == "overlays" ]]; then
     kubectl apply -k "${k8s_cnf_dir}/${DEPLOYMENT_DIR}"
