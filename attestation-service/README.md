@@ -84,7 +84,7 @@ Please refer to the individual verifiers for the specific format of the evidence
 - Hygon CSV: [CsvEvidence](../deps/verifier/src/csv/mod.rs)
 - IBM Secure Execution (SE): [SeEvidence](../deps/verifier/src/se/mod.rs)
 - NVIDIA: [NvDeviceEvidence](../deps/verifier/src/nvidia/mod.rs)
-- TPM: [TpmEvidence](../deps/verifier/src/tpm/mod.rs)
+- (v)TPM: [TpmEvidence](../deps/verifier/src/tpm/mod.rs)
 
 ## Output
 
@@ -116,7 +116,8 @@ Supported Verifier Drivers:
 - `hygon-dcu`: Verifier Driver for Hygon Deep Computing Unit (DCU).
 - `se`: Verifier Driver for IBM Secure Execution (SE).
 - `nvidia`: Verifier Driver for NVIDIA Devices.
-- `TPM`: Verifier Driver for Trusted Platform Module (TPM)
+- `tpm`: Verifier Driver for Trusted Platform Module (TPM)
+> [!WARNING]  
 > **TPM Device Note**: TPM devices (except Azure vTPM series) are not bound to TEE endorsement.
 > When using TPM as a standalone attestation device (not integrated with Azure vTPM), you must ensure that you
 > trust the TPM itself, as there is no cryptographic binding between the TPM and the underlying TEE hardware.
