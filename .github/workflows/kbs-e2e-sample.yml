@@ -43,7 +43,7 @@ jobs:
       runs-on-build: '["ubuntu-22.04-arm"]'
       runs-on-test: '["ubuntu-22.04-arm"]'
       tarball: kbs.tar.gz
-      kbs-client-features: "sample_only,cca-attester"
+      kbs-client-features: "cca-attester"
     permissions:
       contents: read
       packages: write

@@ -26,8 +26,7 @@ Build the client binary with support to the default features as:
 make -C ../../kbs cli
 ```
 
-By default the client is built with support to the sample attester, apart from the
-TEE specific ones. If you want to build it with that sample attester only (this will
+By default the client is built with support to the all attesters. If you want to build it with that sample attester only (this will
 require fewer dependencies and so usually handy for CI) then you can pass the
 `sample_only` feature as:
 

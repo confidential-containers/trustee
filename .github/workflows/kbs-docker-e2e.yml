@@ -42,7 +42,7 @@ jobs:
 
     - name: Build client
       run: |
-        cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --features sample_only --release
+        cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --release
 
     - name: Setup Keys
       run: | 
