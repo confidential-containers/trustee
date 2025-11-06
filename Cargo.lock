@@ -7007,7 +7007,6 @@ dependencies = [
  "kbs-types",
  "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl",
- "p384",
  "reqwest 0.12.23",
  "rstest",
  "s390_pv",
