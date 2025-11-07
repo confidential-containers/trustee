@@ -35,6 +35,10 @@ pub struct HttpServerConfig {
 
     /// Request payload size in MB
     pub payload_request_size: u32,
+
+    /// Number of worker threads for the actix-web server.
+    /// If not specified, defaults to the number of logical CPU cores.
+    pub worker_count: Option<usize>,
 }
 
 impl Default for HttpServerConfig {
@@ -45,6 +49,7 @@ impl Default for HttpServerConfig {
             certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         }
     }
 }
@@ -160,6 +165,7 @@ mod tests {
             certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
@@ -209,6 +215,7 @@ mod tests {
             certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
@@ -245,6 +252,7 @@ mod tests {
             certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
@@ -282,6 +290,7 @@ mod tests {
             certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
@@ -328,6 +337,7 @@ mod tests {
             certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::InsecureAllowAll,
@@ -362,6 +372,7 @@ mod tests {
             certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
+            worker_count: None,
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
