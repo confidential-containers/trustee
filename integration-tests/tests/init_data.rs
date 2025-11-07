@@ -76,6 +76,47 @@ allow if {
 }
 ";
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial]
+// Use a policy that checks a particular field of the CDH/AA config.
+async fn get_resource_with_init_data_config() -> Result<()> {
+    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+
+    // Set Secret
+    info!("TEST: setting secret");
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.to_vec())
+        .await?;
+
+    // Set Policy
+    info!("TEST: setting policy");
+    harness
+        .set_policy(PolicyType::Custom(INIT_DATA_CONFIG_FIELD_POLICY))
+        .await?;
+
+    // Get Secret
+    info!("TEST: getting secret");
+    harness
+        .get_secret(SECRET_PATH.to_string(), Some(SIMPLE_INIT_DATA.to_string()))
+        .await?;
+
+    harness.cleanup().await?;
+    Ok(())
+}
+
+const INIT_DATA_CONFIG_FIELD_POLICY: &str = "
+package policy
+import rego.v1
+
+default allow = false
+
+allow if {
+    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0] == \"-----BEGIN CERTIFICATE-----\\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\\n-----END CERTIFICATE-----\\n\"
+}
+";
+
 const SIMPLE_INIT_DATA: &str = "
 version = \"0.1.0\"
 algorithm = \"sha256\"
@@ -130,5 +171,15 @@ url = \"http://1.2.3.4:8080\"
 [kbc]
 name = \"cc_kbc\"
 url = \"http://1.2.3.4:8080\"
+
+[image]
+extra_root_certificates = [\"\"\"
+-----BEGIN CERTIFICATE-----
+MIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA
+oRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD
+VQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs
+YXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl
+-----END CERTIFICATE-----
+\"\"\"]
 '''
 ";
