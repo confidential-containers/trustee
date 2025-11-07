@@ -114,7 +114,7 @@ impl ApiServer {
         let http_config = self.config.http_server.clone();
 
         #[allow(clippy::redundant_closure)]
-        let http_server = HttpServer::new({
+        let mut http_server = HttpServer::new({
             move || {
                 let api_server = self.clone();
                 App::new()
@@ -136,6 +136,10 @@ impl ApiServer {
                     )
             }
         });
+
+        if let Some(worker_count) = http_config.worker_count {
+            http_server = http_server.workers(worker_count);
+        }
 
         if !http_config.insecure_http {
             let tls_server = http_server

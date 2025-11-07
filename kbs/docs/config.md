@@ -19,13 +19,14 @@ The following sections list the KBS properties which can be set through the conf
 
 The following properties can be set under the `[http_server]` section.
 
-| Property               | Type         | Description                                      | Required | Default              |
-|------------------------|--------------|--------------------------------------------------|----------|----------------------|
-| `sockets`              | String array | One or more sockets to listen on.                | No       | `["127.0.0.1:8080"]` |
-| `insecure_http`        | Boolean      | Don't use TLS for the KBS HTTP endpoint.         | No       | `false`              |
-| `private_key`          | String       | Path to a private key file to be used for HTTPS. | No       | None                 |
-| `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                 |
-| `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                    |
+| Property               | Type         | Description                                      |  Required | Default                  |
+|------------------------|--------------|--------------------------------------------------|----------|--------------------------|
+| `sockets`              | String array | One or more sockets to listen on.                | No       | `["127.0.0.1:8080"]`     |
+| `insecure_http`        | Boolean      | Don't use TLS for the KBS HTTP endpoint.         | No       | `false`                  |
+| `private_key`          | String       | Path to a private key file to be used for HTTPS. | No       | None                     |
+| `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                     |
+| `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                        |
+| `worker_count`         | Integer      | Number of HTTP actix worker threads              | No       | Num of logical CPU cores |
 
 ### Attestation Token Configuration
 
