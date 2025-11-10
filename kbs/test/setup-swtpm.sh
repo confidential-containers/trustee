@@ -31,12 +31,17 @@ setup_swtpm() {
 }
 
 stop_swtpm() {
+    if ! [ -f "$TPM_STATE_DIR"/swtpm.pid ]; then
+        echo "swtpm is not running, skipping cleanup"
+        return
+    fi
     kill -9 $(cat "$TPM_STATE_DIR"/swtpm.pid)
     echo "Deleting TPM state dir: $TPM_STATE_DIR"
     rm -rf "$TPM_STATE_DIR"
-    echo "Deleting TPM keys"
+    echo "Deleting TPM keys..."
     rm -rf "$TRUSTED_TPM_KEYS_DIR"
     rm -rf "$WORK_DIR/ak.ctx"
+    echo "swtpm stopped and cleaned up"
 }
 
 generate_ak() {
