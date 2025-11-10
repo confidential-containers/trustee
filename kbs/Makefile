@@ -61,11 +61,11 @@ ifeq ($(VAULT), true)
 endif
 
 ifeq ($(CLI_FEATURES),sample_only)
-  CLI_FEATURES = "," # this is a dummy feature to satisfy the cargo build command
+  RUST_CLI_FEATURES = "," # this is a dummy feature to satisfy the cargo build command
 else ifdef ATTESTER
-  CLI_FEATURES = "$(ATTESTER)"
+  RUST_CLI_FEATURES = "$(ATTESTER)"
 else
-  CLI_FEATURES += "all-attesters"
+  RUST_CLI_FEATURES = "all-attesters"
 endif
 
 ifneq ($(TEST_FEATURES),)
@@ -90,7 +90,7 @@ passport-resource-kbs:
 
 .PHONY: cli
 cli:
-	$(CARGO_ENV) cargo build -p kbs-client --locked --release --no-default-features --features $(CLI_FEATURES) $(TARGET_FLAG)
+	$(CARGO_ENV) cargo build -p kbs-client --locked --release --no-default-features --features $(RUST_CLI_FEATURES) $(TARGET_FLAG)
 
 .PHONY: cli-static-linux
 cli-static-linux:
