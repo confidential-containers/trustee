@@ -564,7 +564,7 @@ dependencies = [
  "attester",
  "base64 0.22.1",
  "byteorder",
- "config 0.15.18",
+ "config",
  "const_format",
  "crypto",
  "hex",
@@ -1256,25 +1256,6 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68578f196d2a33ff61b27fae256c3164f65e36382648e30666dde05b8cc9dfdf"
-dependencies = [
- "async-trait",
- "convert_case",
- "json5",
- "nom",
- "pathdiff",
- "ron",
- "rust-ini 0.20.0",
- "serde",
- "serde_json",
- "toml 0.8.23",
- "yaml-rust2 0.8.1",
-]
-
-[[package]]
-name = "config"
 version = "0.15.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "180e549344080374f9b32ed41bf3b6b57885ff6a289367b3dbc10eea8acc1918"
@@ -1284,13 +1265,13 @@ dependencies = [
  "json5",
  "pathdiff",
  "ron",
- "rust-ini 0.21.3",
+ "rust-ini",
  "serde-untagged",
  "serde_core",
  "serde_json",
  "toml 0.9.8",
  "winnow",
- "yaml-rust2 0.10.4",
+ "yaml-rust2",
 ]
 
 [[package]]
@@ -2523,10 +2504,6 @@ name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
-dependencies = [
- "ahash",
- "allocator-api2",
-]
 
 [[package]]
 name = "hashbrown"
@@ -2537,15 +2514,6 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
-]
-
-[[package]]
-name = "hashlink"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8094feaf31ff591f651a2664fb9cfd92bba7a60ce3197265e9482ebe753c8f7"
-dependencies = [
- "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -3283,7 +3251,7 @@ dependencies = [
  "chrono",
  "clap",
  "concat-kdf",
- "config 0.14.1",
+ "config",
  "cryptoki",
  "derivative",
  "env_logger",
@@ -4853,7 +4821,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "clap",
- "config 0.14.1",
+ "config",
  "env_logger",
  "log",
  "path-clean",
@@ -5125,16 +5093,6 @@ dependencies = [
  "rustc_version",
  "syn 2.0.106",
  "unicode-ident",
-]
-
-[[package]]
-name = "rust-ini"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0698206bcb8882bf2a9ecb4c1e7785db57ff052297085a6efd4fe42302068a"
-dependencies = [
- "cfg-if",
- "ordered-multimap",
 ]
 
 [[package]]
@@ -5901,7 +5859,7 @@ dependencies = [
  "futures-io",
  "futures-util",
  "hashbrown 0.15.5",
- "hashlink 0.10.0",
+ "hashlink",
  "indexmap 2.11.4",
  "log",
  "memchr",
@@ -7650,24 +7608,13 @@ dependencies = [
 
 [[package]]
 name = "yaml-rust2"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8902160c4e6f2fb145dbe9d6760a75e3c9522d8bf796ed7047c85919ac7115f8"
-dependencies = [
- "arraydeque",
- "encoding_rs",
- "hashlink 0.8.4",
-]
-
-[[package]]
-name = "yaml-rust2"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2462ea039c445496d8793d052e13787f2b90e750b833afee748e601c17621ed9"
 dependencies = [
  "arraydeque",
  "encoding_rs",
- "hashlink 0.10.0",
+ "hashlink",
 ]
 
 [[package]]
