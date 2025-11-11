@@ -4,10 +4,10 @@ use shadow_rs::{BuildPattern, ShadowBuilder};
 
 fn real_main() -> Result<(), String> {
     #[cfg(feature = "grpc-bin")]
-    tonic_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
+    tonic_prost_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
 
     #[cfg(feature = "grpc-bin")]
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&["../protos/reference.proto"], &["../protos"])
         .map_err(|e| format!("{e}"))?;

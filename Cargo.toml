@@ -48,7 +48,7 @@ log = "0.4.28"
 openssl = "0.10.73"
 p256 = "0.13.2"
 p521 = "0.13.2"
-prost = "0.13"
+prost = "0.14"
 regorus = { version = "0.2.6", default-features = false, features = [
     "regex",
     "base64",
@@ -72,7 +72,8 @@ thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "0.9.5"
 tempfile = "3.20.0"
-tonic = "0.12"
-tonic-build = "0.14"
+tonic = "0.14"
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
