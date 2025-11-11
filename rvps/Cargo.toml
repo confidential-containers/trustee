@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = [ "bin" ]
 # Used to build rvps binary
-bin = [ "clap", "config", "env_logger", "prost", "shadow-rs", "tokio", "tonic" ]
+bin = [ "clap", "env_logger", "shadow-rs" ]
 
 # Support in-toto provenance (not ready)
 in-toto =[ "path-clean", "sha2" ]
@@ -28,11 +28,11 @@ base64.workspace = true
 cfg-if.workspace = true
 chrono = { workspace = true, features = [ "serde" ] }
 clap = { workspace = true, optional = true }
-config = { workspace = true, optional = true }
+config.workspace = true
 env_logger = { workspace = true, optional = true }
 log.workspace = true
 path-clean = { version = "1.0.1", optional = true }
-prost = { workspace = true, optional = true }
+prost.workspace = true
 roxmltree = "0.21.1"
 serde.workspace = true
 serde_json.workspace = true
@@ -41,12 +41,13 @@ shadow-rs = { workspace = true, optional = true }
 sled = "0.34.7"
 strum.workspace = true
 tempfile.workspace = true
-tokio = { workspace = true, optional = true }
-tonic = { workspace = true, optional = true }
+tokio.workspace = true
+tonic.workspace = true
+tonic-prost.workspace = true
 
 [build-dependencies]
 shadow-rs.workspace = true
-tonic-build.workspace = true
+tonic-prost-build.workspace = true
 
 [dev-dependencies]
 assert-json-diff.workspace = true
