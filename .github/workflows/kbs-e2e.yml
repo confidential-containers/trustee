@@ -120,5 +120,7 @@ jobs:
 
     - name: Run e2e test (w/ sudo)
       if: inputs.tee == 'az-tdx-vtpm' || inputs.tee == 'az-snp-vtpm'
+      env:
+        RUST_LOG: debug
       working-directory: kbs/test
       run: sudo -E make e2e-test

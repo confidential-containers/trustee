@@ -3,7 +3,8 @@ name: KBS e2e (Azure vTPM TEE)
 on:
   push:
     branches:
-    - main
+    # - main
+    - mkulke/az-tdx-run-with-debug
 
 permissions:
   contents: read
@@ -40,15 +41,15 @@ jobs:
       tarball: kbs.tar.gz
       kbs-client-features: az-tdx-vtpm-attester
 
-  snp-e2e-test:
-    needs:
-    - checkout
-    uses: ./.github/workflows/kbs-e2e.yml
-    permissions:
-      packages: write
-      contents: read
-    with:
-      runs-on-test: '["self-hosted","azure-cvm"]'
-      tee: az-snp-vtpm
-      tarball: kbs.tar.gz
-      kbs-client-features: az-snp-vtpm-attester
+  # snp-e2e-test:
+  #   needs:
+  #   - checkout
+  #   uses: ./.github/workflows/kbs-e2e.yml
+  #   permissions:
+  #     packages: write
+  #     contents: read
+  #   with:
+  #     runs-on-test: '["self-hosted","azure-cvm"]'
+  #     tee: az-snp-vtpm
+  #     tarball: kbs.tar.gz
+  #     kbs-client-features: az-snp-vtpm-attester
