@@ -21,9 +21,9 @@ fn main() -> Result<(), String> {
         chrono::Local::now().to_rfc3339_opts(chrono::format::SecondsFormat::Millis, false);
     println!("cargo:rustc-env=KBS_BUILD_DATE={}", build_date);
 
-    #[cfg(feature = "tonic-build")]
-    tonic_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
-    #[cfg(feature = "tonic-build")]
-    tonic_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
+    #[cfg(feature = "coco-as-grpc")]
+    tonic_prost_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
+    #[cfg(feature = "coco-as-grpc")]
+    tonic_prost_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
     Ok(())
 }

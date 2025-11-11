@@ -22,7 +22,7 @@ coco-as-builtin = ["coco-as", "attestation-service/default"]
 coco-as-builtin-no-verifier = ["coco-as"]
 
 # Use remote gRPC CoCo-AS as backend attestation service
-coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-build", "prost"]
+coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost"]
 
 # Use Intel TA as backend attestation service
 intel-trust-authority-as = ["as", "az-cvm-vtpm"]
@@ -85,6 +85,7 @@ thiserror.workspace = true
 time = { version = "0.3.40", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
+tonic-prost = { workspace = true, optional = true }
 uuid = { version = "1.18.0", features = ["serde", "v4"] }
 openssl.workspace = true
 az-cvm-vtpm = { version = "0.7.4", default-features = false, optional = true }
@@ -115,5 +116,5 @@ serial_test = "3.0"
 toml = "0.9"
 
 [build-dependencies]
-tonic-build = { workspace = true, optional = true }
+tonic-prost-build.workspace = true
 chrono.workspace = true
