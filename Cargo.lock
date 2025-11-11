@@ -2164,10 +2164,8 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2",
- "shadow-rs",
  "sm3",
  "tokio",
- "tonic-prost-build",
 ]
 
 [[package]]
@@ -7121,12 +7119,10 @@ dependencies = [
  "serial_test",
  "sev",
  "sha2",
- "shadow-rs",
  "strum",
  "thiserror 2.0.17",
  "time",
  "tokio",
- "tonic-prost-build",
  "tracing",
  "tss-esapi",
  "veraison-apiclient",
