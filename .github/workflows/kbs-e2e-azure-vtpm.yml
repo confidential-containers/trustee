@@ -38,6 +38,7 @@ jobs:
       runs-on-test: '["self-hosted","azure-cvm-tdx"]'
       tee: az-tdx-vtpm
       tarball: kbs.tar.gz
+      kbs-client-features: az-tdx-vtpm-attester
 
   snp-e2e-test:
     needs:
@@ -50,3 +51,4 @@ jobs:
       runs-on-test: '["self-hosted","azure-cvm"]'
       tee: az-snp-vtpm
       tarball: kbs.tar.gz
+      kbs-client-features: az-snp-vtpm-attester
