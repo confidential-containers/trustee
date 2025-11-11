@@ -611,7 +611,7 @@ dependencies = [
  "tokio",
  "toml 0.9.8",
  "tonic",
- "tonic-build",
+ "tonic-build 0.14.2",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -2123,7 +2123,7 @@ dependencies = [
  "shadow-rs",
  "sm3",
  "tokio",
- "tonic-build",
+ "tonic-build 0.14.2",
 ]
 
 [[package]]
@@ -2765,7 +2765,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.0",
  "system-configuration 0.6.1",
  "tokio",
  "tower-service",
@@ -3249,7 +3249,7 @@ dependencies = [
  "tokio",
  "toml 0.9.8",
  "tonic",
- "tonic-build",
+ "tonic-build 0.14.2",
  "uuid",
  "vaultrs",
 ]
@@ -3358,7 +3358,7 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "tonic",
- "tonic-build",
+ "tonic-build 0.12.3",
  "url",
  "yasna 0.5.2",
 ]
@@ -4566,7 +4566,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.0",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
@@ -4603,7 +4603,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.0",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -4788,7 +4788,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tonic",
- "tonic-build",
+ "tonic-build 0.14.2",
  "walkdir",
 ]
 
@@ -6490,6 +6490,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tonic-build"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c40aaccc9f9eccf2cd82ebc111adc13030d23e887244bc9cfa5d1d636049de3"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "tower"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6922,7 +6934,7 @@ dependencies = [
  "thiserror 2.0.17",
  "time",
  "tokio",
- "tonic-build",
+ "tonic-build 0.14.2",
  "tracing",
  "tss-esapi",
  "veraison-apiclient",
@@ -7153,7 +7165,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
