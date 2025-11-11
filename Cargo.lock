@@ -651,7 +651,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "strum",
  "tempfile",
@@ -769,7 +769,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "thiserror 2.0.17",
  "tss-esapi",
@@ -787,7 +787,7 @@ dependencies = [
  "clap",
  "openssl",
  "serde",
- "sev",
+ "sev 6.3.1",
  "thiserror 2.0.17",
  "ureq",
 ]
@@ -5253,7 +5253,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5706,6 +5706,30 @@ dependencies = [
  "bitflags 2.9.4",
  "byteorder",
  "codicon",
+ "dirs 6.0.0",
+ "hex",
+ "iocuddle",
+ "lazy_static",
+ "libc",
+ "openssl",
+ "rdrand",
+ "serde",
+ "serde-big-array",
+ "serde_bytes",
+ "static_assertions",
+ "uuid",
+]
+
+[[package]]
+name = "sev"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a43847bc6097e54b5d83332d2c6fbd58b4a5de27c042cda12a559b70e5c32b3"
+dependencies = [
+ "base64 0.22.1",
+ "bitfield 0.19.3",
+ "bitflags 2.9.4",
+ "byteorder",
  "dirs 6.0.0",
  "hex",
  "iocuddle",
@@ -7117,7 +7141,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "serial_test",
- "sev",
+ "sev 7.0.0",
  "sha2",
  "strum",
  "thiserror 2.0.17",
