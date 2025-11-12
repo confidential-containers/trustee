@@ -5,7 +5,7 @@
 use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use std::sync::RwLock;
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use openssl::asn1::Asn1Time;
 use openssl::bn::BigNum;
@@ -18,9 +18,6 @@ use openssl::x509::{
 use serde::{Deserialize, Serialize};
 
 use crate::plugins::plugin_manager::ClientPlugin;
-
-const DEFAULT_PLUGIN_DIR: &str = "/opt/confidential-containers/kbs/plugin/pki_vault";
-const DEFAULT_CREDENTIALS_BLOB_FILE: &str = "certificates.json";
 
 /// Default certificate details if not configured
 pub const DEFAULT_COUNTRY: &str = "AA";
@@ -121,49 +118,52 @@ impl Default for PKIVaultCertDetails {
 
 /// Credentials necessary for mutual TLS communication
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Credentials {
-    pub ca_cert: Vec<u8>,
-    pub server_key: Vec<u8>,
-    pub server_cert: Vec<u8>,
-    pub client_key: Vec<u8>,
-    pub client_cert: Vec<u8>,
+pub struct PKIVaultCA {
+    pub key: Vec<u8>,
+    pub cert: Vec<u8>,
 }
 
-impl Credentials {
+impl PKIVaultCA {
     pub fn new(cert_details: &PKIVaultCertDetails) -> Result<Self> {
         // Private keys for CA, Server, and Client
-        let ca_private_key = PKey::generate_ed25519()?;
-        let server_private_key = PKey::generate_ed25519()?;
-        let client_private_key = PKey::generate_ed25519()?;
+        let key = PKey::generate_ed25519()?;
 
         // Generate CA certificate
-        let ca_cert = Self::generate_ca_cert(&ca_private_key, cert_details)?;
-
-        // Generate certificate for Server
-        let server_cert = Self::generate_signed_cert(
-            &server_private_key,
-            &ca_cert,
-            &ca_private_key,
-            cert_details,
-            "server",
-        )?;
-
-        // Generate certificate for Client
-        let client_cert = Self::generate_signed_cert(
-            &client_private_key,
-            &ca_cert,
-            &ca_private_key,
-            cert_details,
-            "client",
-        )?;
+        let cert = Self::generate_ca_cert(&key, cert_details)?;
 
         Ok(Self {
-            ca_cert: ca_cert.to_pem()?,
-            server_key: server_private_key.private_key_to_pem_pkcs8()?,
-            server_cert: server_cert.to_pem()?,
-            client_key: client_private_key.private_key_to_pem_pkcs8()?,
-            client_cert: client_cert.to_pem()?,
+            key: key.private_key_to_pem_pkcs8()?,
+            cert: cert.to_pem()?,
         })
+    }
+
+    /// Initializes a PKIVaultCA from existing key and certificate bytes.
+    pub fn init(key: Vec<u8>, cert: Vec<u8>) -> Result<Self> {
+        // Optional: Validate that the key and cert are valid before returning
+        let _ = PKey::private_key_from_pem(&key)?;
+        let _ = X509::from_pem(&cert)?;
+
+        Ok(Self { key, cert })
+    }
+
+    fn generate_credentials(
+        &self,
+        ca_cert: &X509,
+        ca_private_key: &PKey<Private>,
+        cert_details: &PKIVaultCertDetails,
+        for_podvm_or_owner: &str,
+    ) -> Result<(PKey<Private>, X509)> {
+        // Generate private key and certificate
+        let key = PKey::generate_ed25519()?;
+        let cert = Self::generate_signed_cert(
+            &key,
+            &ca_cert,
+            &ca_private_key,
+            cert_details,
+            for_podvm_or_owner,
+        )?;
+
+        Ok((key, cert))
     }
 
     fn generate_signed_cert(
@@ -280,20 +280,15 @@ impl Credentials {
     }
 }
 
-
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct PKIVaultPluginConfig {
-    pub plugin_dir: String,
-    pub cred_filename: String,
     pub pkivault_cert_details: PKIVaultCertDetails,
 }
 
 impl Default for PKIVaultPluginConfig {
     fn default() -> Self {
         PKIVaultPluginConfig {
-            plugin_dir: DEFAULT_PLUGIN_DIR.into(),
-            cred_filename: DEFAULT_CREDENTIALS_BLOB_FILE.into(),
             pkivault_cert_details: PKIVaultCertDetails::default(),
         }
     }
@@ -303,37 +298,12 @@ impl TryFrom<PKIVaultPluginConfig> for PKIVaultPlugin {
     type Error = Error;
 
     fn try_from(config: PKIVaultPluginConfig) -> Result<Self> {
-        // Create the plugin dir if it does not exist
-        let plugin_dir = PathBuf::from(&config.plugin_dir);
-        if !plugin_dir.exists() {
-            fs::create_dir_all(&plugin_dir)?;
-            log::info!("plugin dir created = {}", plugin_dir.display());
-        }
-
-        // Read the existing credentials from file
-        let path = PathBuf::from(&config.plugin_dir)
-            .as_path()
-            .join(config.cred_filename);
-
-        let credential: HashMap<String, Credentials> = if path.exists() {
-            match fs::read_to_string(&path) {
-                Ok(data) => serde_json::from_str(&data).unwrap_or_else(|_| HashMap::new()),
-                Err(_) => {
-                    log::warn!("Error reading the credentials file.");
-                    HashMap::new()
-                }
-            }
-        } else {
-            log::warn!("Credentails file does not exist.");
-            HashMap::new()
-        };
+        let empty_cas: HashMap<String, PKIVaultCA> = HashMap::new();
 
         // Initializing the PKI Vault plugin with existing credentials data from file
         Ok(PKIVaultPlugin {
-            plugin_dir: PathBuf::from(&config.plugin_dir),
             cert_details: config.pkivault_cert_details,
-            credblob_file: path,
-            cred_store: Arc::new(RwLock::new(credential)),
+            ca_store: Arc::new(RwLock::new(empty_cas)),
         })
     }
 }
@@ -345,14 +315,14 @@ impl TryFrom<PKIVaultPluginConfig> for PKIVaultPlugin {
 /// for a sandbox store and retrieve credentials specific to the sandbox.
 #[derive(Debug, PartialEq, serde::Deserialize)]
 pub struct SandboxParams {
-    /// Required: ID of a sandbox or pod
-    pub id: String,
+    /// Required: Token assigned to the Pod
+    pub token: String,
 
-    /// Required: IP of a sandbox or pod
-    pub ip: String,
-
-    /// Required: Name of a sandbox or pod
+    /// Required: Pod name (unique within a namespace)
     pub name: String,
+
+    /// Required: Pod IP address
+    pub ip: String,
 }
 
 impl TryFrom<&str> for SandboxParams {
@@ -375,92 +345,92 @@ pub struct CredentialsOut {
 /// Manages the credentials generation, handling requests
 /// from backend, and credentials persistence storage
 pub struct PKIVaultPlugin {
-    pub plugin_dir: PathBuf,
     pub cert_details: PKIVaultCertDetails,
-    pub credblob_file: PathBuf,
-    pub cred_store: Arc<RwLock<HashMap<String, Credentials>>>,
+    pub ca_store: Arc<RwLock<HashMap<String, PKIVaultCA>>>,
 }
 
 impl PKIVaultPlugin {
-    fn get_credentials(&self, key: &str) -> Option<Credentials> {
-        let cred_store = self.cred_store.read().unwrap();
-        cred_store.get(key).cloned()
+    fn construct_key(&self, params: &SandboxParams) -> String {
+        format!("{}_{}_{}", params.name, params.ip, params.token)
     }
 
-    fn store_credentials(&self, key: &str, credentials: Credentials) {
-        let mut cred_store = self.cred_store.write().unwrap();
-        cred_store.insert(key.to_string(), credentials);
+    fn get_ca(&self, key: &str) -> Option<PKIVaultCA> {
+        let ca_store = self.ca_store.read().unwrap();
+        ca_store.get(key).cloned()
     }
 
-    // Generate the credentials (keys and certs for ca, server, and client)
-    fn generate_credentials(&self, key: &str) -> Result<Vec<u8>> {
-        let credentials = Credentials::new(&self.cert_details)?;
+    fn store_ca(&self, key: &str, ca: PKIVaultCA) {
+        let mut ca_store = self.ca_store.write().unwrap();
+        ca_store.insert(key.to_string(), ca);
+    }
 
-        // Store the credentials into the hashmap
-        self.store_credentials(key, credentials.clone());
+    async fn generate_pod_credentials(&self, params: &SandboxParams) -> Result<Vec<u8>> {
+        let key = self.construct_key(&params);
 
-        // Write the hashmap to file for a persistence copy
-        if let Err(e) = self.save_hashmap(&self.credblob_file) {
-            log::warn!("Failed to store credentials into file: {}", e);
-        }
+        // Return the stored CA credentials if they are present in the hashmap
+        let ca = if let Some(stored_ca) = self.get_ca(&key) {
+            log::info!("Generating credentials using existing CA!");
+            PKIVaultCA::init(stored_ca.key, stored_ca.cert)?
+        } else {
+            log::info!("Generating credentials using new CA!");
+            let new_ca = PKIVaultCA::new(&self.cert_details)?;
 
-        log::info!("Returning newly generated credentials!");
+            // Store the newly created CA for future use
+            self.store_ca(&key, new_ca.clone());
+
+            new_ca
+        };
+
+        let (pod_key, pod_cert) = ca.generate_credentials(
+            &X509::from_pem(&ca.cert)?,
+            &PKey::private_key_from_pem(&ca.key)?,
+            &self.cert_details,
+            "server",
+        )?;
+
         let resource = CredentialsOut {
-            key: credentials.server_key.clone(),
-            cert: credentials.server_cert.clone(),
-            ca_cert: credentials.ca_cert.clone(),
+            key: pod_key.private_key_to_pem_pkcs8()?,
+            cert: pod_cert.to_pem()?,
+            ca_cert: ca.cert,
         };
 
         Ok(serde_json::to_vec(&resource)?)
     }
 
-    fn save_hashmap(&self, path: &PathBuf) -> Result<()> {
-        let cred_store = self.cred_store.read().unwrap();
-        let serialized = serde_json::to_string(&*cred_store)?;
-        fs::write(path, serialized)?;
-        Ok(())
-    }
-
-    async fn get_server_credentials(&self, params: &SandboxParams) -> Result<Vec<u8>> {
-        // Return the server credentials if the credentials presents in the hashmap
-        let key = format!("{}_{}_{}", &params.name, &params.ip, &params.id);
-        if let Some(credentials) = self.get_credentials(&key) {
-            log::info!("Returning existing credentials!");
-
-            let resource = CredentialsOut {
-                key: credentials.server_key,
-                cert: credentials.server_cert,
-                ca_cert: credentials.ca_cert,
-            };
-
-            return Ok(serde_json::to_vec(&resource)?);
-        };
-
-        // Otherwise return newly generated credentials
-        self.generate_credentials(&key)
-    }
-
     async fn list_pods(&self) -> Result<Vec<u8>> {
-        let cred_store = self.cred_store.read().unwrap();
-        let keys: Vec<String> = cred_store.keys().cloned().collect();
+        let ca_store = self.ca_store.read().unwrap();
+        let keys: Vec<String> = ca_store.keys().cloned().collect();
         Ok(serde_json::to_vec(&keys).expect("Failed to deserialize it!"))
     }
 
-    async fn get_client_credentials(&self, params: &SandboxParams) -> Result<Vec<u8>> {
-        let key = format!("{}_{}_{}", &params.name, &params.ip, &params.id);
-        if let Some(credentials) = self.get_credentials(&key) {
-            log::info!("Found client credentials!");
+    async fn generate_client_credentials(&self, params: &SandboxParams) -> Result<Vec<u8>> {
+        let key_hash = self.construct_key(&params);
+
+        // Return the stored CA credentials if they are present in the hashmap
+        if let Some(stored_ca) = self.get_ca(&key_hash) {
+            log::info!("Returning client credentials!");
+
+            let ca = PKIVaultCA::init(stored_ca.key, stored_ca.cert)?;
+
+            let (pod_key, pod_cert) = ca.generate_credentials(
+                &X509::from_pem(&ca.cert)?,
+                &PKey::private_key_from_pem(&ca.key)?,
+                &self.cert_details,
+                "server",
+            )?;
 
             let resource = CredentialsOut {
-                key: credentials.client_key,
-                cert: credentials.client_cert,
-                ca_cert: credentials.ca_cert,
+                key: pod_key.private_key_to_pem_pkcs8()?,
+                cert: pod_cert.to_pem()?,
+                ca_cert: ca.cert,
             };
 
             return Ok(serde_json::to_vec(&resource)?);
-        };
+        } else {
+            log::info!("Credentails cannot be generated. No CA found!");
 
-        return Ok(serde_json::to_vec("")?);
+            return Ok(serde_json::to_vec("")?);
+        }
     }
 }
 
@@ -478,28 +448,26 @@ impl ClientPlugin for PKIVaultPlugin {
             .context("accessed path is illegal, should start with `/`")?;
 
         match method.as_str() {
-            "GET" => {
-                match sub_path {
-                    "credentials" => {
-                        let params = SandboxParams::try_from(query)?;
-                        let credentials = self.get_server_credentials(&params).await?;
+            "GET" => match sub_path {
+                "credentials" => {
+                    let params = SandboxParams::try_from(query)?;
+                    let credentials = self.generate_pod_credentials(&params).await?;
 
-                        Ok(credentials)
-                    }
-                    "list_pods" => {
-                        let pods = self.list_pods().await?;
-
-                        Ok(pods)
-                    }
-                    "get_client_credentials" => {
-                        let params = SandboxParams::try_from(query)?;
-                        let credentials = self.get_client_credentials(&params).await?;
-
-                        Ok(credentials)
-                    }
-                    _ => Err(anyhow!("{} not supported", sub_path))?,
+                    Ok(credentials)
                 }
-            }
+                "list_pods" => {
+                    let pods = self.list_pods().await?;
+
+                    Ok(pods)
+                }
+                "client_credentials" => {
+                    let params = SandboxParams::try_from(query)?;
+                    let credentials = self.generate_client_credentials(&params).await?;
+
+                    Ok(credentials)
+                }
+                _ => Err(anyhow!("{} not supported", sub_path))?,
+            },
             _ => bail!("Illegal HTTP method. Only supports `GET` and `POST`"),
         }
     }
@@ -547,7 +515,6 @@ impl ClientPlugin for PKIVaultPlugin {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -560,7 +527,7 @@ mod tests {
 
         // Define sample inputs
         let body: &[u8] = b"";
-        let query = "id=3367348&ip=60.11.12.43&name=pod7";
+        let query = "token=podToken12345&name=pod51&ip=60.11.12.89";
         let path = "/credentials";
         let method = &Method::GET;
 
@@ -571,7 +538,7 @@ mod tests {
         match result {
             Ok(response) => {
                 // Expected results
-                let key = String::from("pod7_60.11.12.43_3367348");
+                let key = String::from("podToken12345_pod51_60.11.12.89");
 
                 if let Some(credentials) = plugin.get_credentials(&key) {
                     let resource = CredentialsOut {
