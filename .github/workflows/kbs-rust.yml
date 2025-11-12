@@ -31,6 +31,8 @@ jobs:
           test_features: ""
         - instance: ubuntu-24.04-arm
           test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester"
+        - instance: s390x-large
+          test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as"
     runs-on: ${{ matrix.instance }}
 
     steps:
@@ -47,11 +49,6 @@ jobs:
     - name: Building dependencies installation
       run: |
         sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
-
-    - name: Install TPM dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libtss2-dev
 
     - name: Install TDX dependencies
       if: ${{ matrix.instance == 'ubuntu-24.04' }}
