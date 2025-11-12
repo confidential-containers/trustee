@@ -99,12 +99,11 @@ jobs:
     - name: Extract test folder
       run: tar xzf ./test.tar.gz
 
-    - name: Set up SGX/TDX certificates cache
+    - name: Set Azure Confidential Computing DCAP QCNL cache
       if: inputs.tee == 'az-tdx-vtpm'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-      with:
-        path: .dcap-qcnl
-        key: ${{ runner.os }}-dcap-qcnl
+      env:
+        SGX_PCCS_URL: https://global.acccache.azure.net/sgx/certification/v4
+      run: echo "SGX_PCCS_URL=$SGX_PCCS_URL" >> "$GITHUB_ENV"
 
     - name: Install dependencies
       working-directory: kbs/test

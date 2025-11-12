@@ -4,6 +4,7 @@ RELEASE := $(shell lsb_release -sr)
 CODENAME := $(shell lsb_release -sc)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
 SGX_COLLATERAL_URL := https://api.trustedservices.intel.com/sgx/certification/v4/
+SGX_PCCS_URL ?=
 SGX_QCNL_CONFIG := /etc/sgx_default_qcnl.conf
 KBS_CONFIG_PATH := ./config
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -70,9 +71,21 @@ install-dev-dependencies: install-dependencies
 	sudo apt-get install -y \
 		libsgx-dcap-quote-verify-dev; fi
 
-.PHONY: install-dependencies
-install-dependencies:
-	if [ "${ARCH}" = "x86_64" ]; then \
+ifeq ($(SGX_PCCS_URL),)
+sgx-qcnl-config:
+	echo '{"collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG)
+else
+sgx-qcnl-config:
+	echo '{"pccs_url": "$(SGX_PCCS_URL)","collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG)
+endif
+
+install-tpm-dependencies:
+	sudo apt-get update && \
+	sudo apt-get install -y \
+		libtss2-esys-3.0.2-0 \
+		libtss2-tctildr0
+
+install-sgx-dependencies:
 	curl -L "$(SGX_REPO_URL)/intel-sgx-deb.key" | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg --yes && \
 	echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] $(SGX_REPO_URL) $(CODENAME) main" \
 		| sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
@@ -80,11 +93,15 @@ install-dependencies:
 	sudo apt-get install -y \
 		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify \
-		libsgx-urts \
-		libtss2-esys-3.0.2-0 \
-		libtss2-tctildr0 \
-		openssl && \
-	echo '{"collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG); fi
+		libsgx-urts
+
+.PHONY: install-dependencies
+ifeq ($(ARCH),x86_64)
+install-dependencies: install-tpm-dependencies install-sgx-dependencies sgx-qcnl-config
+else
+install-dependencies:
+	@echo "No additional dependencies required for architecture $(ARCH)"
+endif
 
 kbs:
 	cd $(PROJECT_DIR) && \
