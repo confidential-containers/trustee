@@ -344,7 +344,7 @@ pub(crate) fn verify_report_tcb(
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
     if common_name == "VCEK"
-        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != *report.chip_id
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
     {
         bail!("Chip ID mismatch");
     }
@@ -519,6 +519,7 @@ fn get_processor_generation(att_report: &AttestationReport) -> Result<ProcessorG
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sev::parser::ByteParser;
 
     const VCEK: &[u8; 1360] = include_bytes!("../../test_data/snp/test-vcek.der");
     const VCEK_LEGACY: &[u8; 1361] =

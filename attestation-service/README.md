@@ -122,6 +122,15 @@ Supported Verifier Drivers:
 > When using TPM as a standalone attestation device (not integrated with Azure vTPM), you must ensure that you
 > trust the TPM itself, as there is no cryptographic binding between the TPM and the underlying TEE hardware.
 > This feature is mostly for development purposes.
+
+#### Architecture-Specific Verifier Configurations
+
+The AS supports a different set of verifier drivers based on the target architecture:
+
+- **x86_64**: All verifier drivers are included via `all-verifier`
+- **aarch64**: `cca` is included
+- **s390x**: `snp`, `nvidia` and `se` are included
+
 ### Policy Engine
 
 [OPA](https://www.openpolicyagent.org/docs/latest/) is a flexible policy engine.
