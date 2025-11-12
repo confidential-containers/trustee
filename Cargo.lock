@@ -651,7 +651,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "strum",
  "tempfile",
@@ -769,7 +769,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "sev",
+ "sev 6.3.1",
  "sha2",
  "thiserror 2.0.17",
  "tss-esapi",
@@ -787,7 +787,7 @@ dependencies = [
  "clap",
  "openssl",
  "serde",
- "sev",
+ "sev 6.3.1",
  "thiserror 2.0.17",
  "ureq",
 ]
@@ -5721,6 +5721,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "sev"
+version = "7.1.0"
+source = "git+https://github.com/virtee/sev?rev=d487809188c3c92e397bc92e2cb2a85eb982c980#d487809188c3c92e397bc92e2cb2a85eb982c980"
+dependencies = [
+ "base64 0.22.1",
+ "bitfield 0.19.3",
+ "bitflags 2.9.4",
+ "byteorder",
+ "dirs 6.0.0",
+ "hex",
+ "iocuddle",
+ "lazy_static",
+ "libc",
+ "openssl",
+ "serde",
+ "serde-big-array",
+ "serde_bytes",
+ "static_assertions",
+ "uuid",
+]
+
+[[package]]
 name = "sgx_types"
 version = "1.1.5"
 source = "git+https://github.com/occlum/occlum?tag=v0.29.7#b5a32a8d8a81de2458c2b0d06b07ddce6fd10a44"
@@ -7117,7 +7139,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "serial_test",
- "sev",
+ "sev 7.1.0",
  "sha2",
  "strum",
  "thiserror 2.0.17",

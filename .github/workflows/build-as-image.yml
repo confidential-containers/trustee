@@ -51,7 +51,7 @@ jobs:
           target_platform: linux/s390x
           build_platform: linux/s390x
           instance: s390x
-          verifier: se-verifier
+          verifier: snp-verifier,nvidia-verifier,se-verifier
         - target_arch: aarch64
           target_platform: linux/arm64
           build_platform: linux/arm64

@@ -98,6 +98,8 @@ attestation-service = { path = "../attestation-service", default-features = fals
 
 [target.'cfg(target_arch = "s390x")'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "snp-verifier",
+    "nvidia-verifier",
     "se-verifier",
 ], optional = true }
 
