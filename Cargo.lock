@@ -587,7 +587,7 @@ dependencies = [
  "ear",
  "futures",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 10.2.0",
  "kbs-types",
  "lazy_static",
  "openssl",
@@ -1091,7 +1091,7 @@ dependencies = [
  "ear",
  "hex",
  "hex-literal",
- "jsonwebtoken",
+ "jsonwebtoken 9.3.1",
  "multimap",
  "openssl",
  "serde",
@@ -1984,7 +1984,7 @@ dependencies = [
  "ciborium",
  "cose-rust",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 9.3.1",
  "lazy_static",
  "openssl",
  "phf 0.11.3",
@@ -3195,6 +3195,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "10.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c76e1c7d7df3e34443b3621b459b066a7b79644f059fc8b2db7070c825fd417e"
+dependencies = [
+ "base64 0.22.1",
+ "getrandom 0.2.16",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "signature",
+]
+
+[[package]]
 name = "jwt-simple"
 version = "0.12.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3258,7 +3272,7 @@ dependencies = [
  "env_logger",
  "hex",
  "josekit",
- "jsonwebtoken",
+ "jsonwebtoken 10.2.0",
  "jwt-simple",
  "kbs-types",
  "kms",
@@ -5253,7 +5267,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7105,7 +7119,7 @@ dependencies = [
  "hex",
  "intel-tee-quote-verification-rs",
  "jsonwebkey",
- "jsonwebtoken",
+ "jsonwebtoken 10.2.0",
  "kbs-types",
  "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl",

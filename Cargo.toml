@@ -42,7 +42,7 @@ jwt-simple = { version = "0.12", default-features = false, features = [
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "7be23a1", default-features = false }
 kbs-types = "0.14.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "7be23a1", default-features = false }
-jsonwebtoken = { version = "9", default-features = false }
+jsonwebtoken = { version = "10", default-features = false }
 lazy_static = "1.4.0"
 log = "0.4.28"
 openssl = "0.10.73"
