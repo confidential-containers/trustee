@@ -33,8 +33,6 @@ jobs:
           - rhel-ubi
         exclude:
           - target_arch: s390x
-            tag: kbs-ita-as
-          - target_arch: s390x
             tag: rhel-ubi
           - target_arch: aarch64
             tag: kbs-ita-as
