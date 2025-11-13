@@ -1,4 +1,5 @@
 use super::{Result, RvpsApi};
+use anyhow::Context;
 use async_trait::async_trait;
 use core::result::Result::Ok;
 use reference_value_provider_service::{Config, Rvps};
@@ -9,8 +10,8 @@ pub struct BuiltinRvps {
 }
 
 impl BuiltinRvps {
-    pub fn new(config: Config) -> Result<Self> {
-        let rvps = Rvps::new(config)?;
+    pub async fn new(config: Config) -> Result<Self> {
+        let rvps = Rvps::new(config).await.context("initialize RVPS")?;
         Ok(Self { rvps })
     }
 }
