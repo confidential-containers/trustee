@@ -2,8 +2,7 @@
 insecure_http = true
 
 [attestation_token]
-# Do not use this in production.
-type = "InsecureAllowAll"
+insecure_key = true
 
 [attestation_service]
 type = "coco_as_builtin"
@@ -21,7 +20,8 @@ type = "BuiltIn"
 policy_path = "/opa/confidential-containers/kbs/policy.rego"
 
 [admin]
-insecure_api = true
+# Do not use this in production.
+type = "InsecureAllowAll"
 
 [[plugins]]
 name = "resource"
