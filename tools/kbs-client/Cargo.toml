@@ -15,7 +15,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 base64.workspace = true
-clap = { version = "4.5.48", features = ["derive"] }
+clap = { version = "4.5.51", features = ["derive"] }
 env_logger.workspace = true
 jwt-simple.workspace = true
 kbs_protocol = { workspace = true, default-features = false, features = ["background_check", "passport"] }
