@@ -6,7 +6,7 @@ ARG ALIYUN=false
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt install -y git
+RUN apt-get update && apt install -y git cmake
 
 # Build and Install KBS
 RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} && \
