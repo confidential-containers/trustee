@@ -5,7 +5,7 @@
 
 //! reference value for RVPS
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Months, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::time::SystemTime;
@@ -119,6 +119,11 @@ impl ReferenceValue {
     /// Get artifact name of the ReferenceValue.
     pub fn name(&self) -> &String {
         &self.name
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        let value_bytes = serde_json::to_vec(&self).context("serialize reference value")?;
+        Ok(value_bytes)
     }
 }
 
