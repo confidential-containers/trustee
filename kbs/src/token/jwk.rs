@@ -239,6 +239,7 @@ impl JwkAttestationTokenVerifier {
 #[cfg(test)]
 mod tests {
     use crate::token::jwk::get_jwks_from_file_or_url;
+    use jsonwebtoken::jwk::KeyAlgorithm;
     use rstest::rstest;
 
     #[rstest]
@@ -257,21 +258,22 @@ mod tests {
     #[rstest]
     #[case(
         "{\"keys\":[{\"kty\":\"oct\",\"alg\":\"HS256\",\"kid\":\"coco123\",\"k\":\"foobar\"}]}",
-        false
+        KeyAlgorithm::HS256
     )]
     #[case(
         "{\"keys\":[{\"kty\":\"oct\",\"alg\":\"COCO42\",\"kid\":\"coco123\",\"k\":\"foobar\"}]}",
-        true
+        KeyAlgorithm::UNKNOWN_ALGORITHM
     )]
     #[tokio::test]
-    async fn test_source_reads(#[case] json: &str, #[case] expect_error: bool) {
+    async fn test_source_reads(#[case] json: &str, #[case] alg: KeyAlgorithm) {
         let tmp_dir = tempfile::tempdir().expect("to get tmpdir");
         let jwks_file = tmp_dir.path().join("test.jwks");
 
         let _ = std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
-
-        assert_eq!(expect_error, get_jwks_from_file_or_url(&p).await.is_err())
+        let jwtks = get_jwks_from_file_or_url(&p).await.expect("to get jwks");
+        assert_eq!(jwtks.keys.len(), 1);
+        assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
     }
 }
