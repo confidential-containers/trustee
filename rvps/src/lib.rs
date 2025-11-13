@@ -9,18 +9,18 @@ pub mod extractors;
 pub mod reference_value;
 pub mod rvps_api;
 pub mod server;
-pub mod storage;
+
+use std::sync::Arc;
 
 pub use config::Config;
+use key_value_storage::{KeyValueStorage, SetParameters};
 pub use reference_value::{ReferenceValue, TrustedDigest};
-pub use storage::ReferenceValueStorage;
 
 use extractors::Extractors;
 
 pub use serde_json::Value;
 
 use anyhow::{bail, Context, Result};
-use log::info;
 use serde::{Deserialize, Serialize};
 
 /// Default version of Message
@@ -50,14 +50,14 @@ fn default_version() -> String {
 /// The core of the RVPS, s.t. componants except communication componants.
 pub struct Rvps {
     extractors: Extractors,
-    storage: Box<dyn ReferenceValueStorage + Send + Sync>,
+    storage: Arc<dyn KeyValueStorage>,
 }
 
 impl Rvps {
     /// Instantiate a new RVPS
-    pub fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: Config) -> Result<Self> {
         let extractors = Extractors::new(config.extractors)?;
-        let storage = config.storage.to_storage()?;
+        let storage = config.storage.to_key_value_storage().await?;
 
         Ok(Rvps {
             extractors,
@@ -79,22 +79,23 @@ impl Rvps {
 
         let rv = self.extractors.process(message)?;
         for v in rv.iter() {
-            let old = self.storage.set(v.name().to_string(), v.clone()).await?;
-            if let Some(old) = old {
-                info!("Old Reference value of {} is replaced.", old.name());
-            }
+            let value_bytes = v.to_bytes()?;
+            self.storage
+                .set(v.name(), &value_bytes, SetParameters { overwrite: true })
+                .await?;
         }
 
         Ok(())
     }
 
     pub async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>> {
-        let reference_value = self
-            .storage
-            .get(reference_value_id)
-            .await?
-            .map(|rv| rv.value());
+        let reference_value_vec = self.storage.get(reference_value_id).await?;
+        let Some(reference_value_vec) = reference_value_vec else {
+            return Ok(None);
+        };
+        let reference_value: ReferenceValue =
+            serde_json::from_slice(&reference_value_vec).context("deserialize reference value")?;
 
-        Ok(reference_value)
+        Ok(Some(reference_value.value()))
     }
 }
