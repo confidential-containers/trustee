@@ -27,6 +27,9 @@ coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost"]
 # Use Intel TA as backend attestation service
 intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 
+# Use the keylime /verify/evidence handler as backend attestation service
+keylime-as = ["as"]
+
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
 
