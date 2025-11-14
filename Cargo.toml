@@ -45,7 +45,7 @@ kms = { git = "https://github.com/confidential-containers/guest-components.git",
 jsonwebtoken = { version = "9", default-features = false }
 lazy_static = "1.4.0"
 log = "0.4.28"
-openssl = "0.10.73"
+openssl = "0.10.75"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
