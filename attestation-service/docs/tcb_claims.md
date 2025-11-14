@@ -1,14 +1,10 @@
-# Parsed Claims
+# TCB Claims
 
-After CoCo-AS verifies every evidence, a token with _parsed claims_ will be returned.
-_parsed claims_ is a key-value map inside the token, and it reflects the environment
-information that the evidence contains. Different platforms will have different
-key value members of the parsed claims. This document will show the whole key value
-list of different platforms.
+The following claims will be extracted from the hardware evidence by the
+corresponding verifier.
 
-All platforms will by default have two fixed claims:
-- `report_data`: report data when generating the evidence.
-- `init_data`: Hostdata when creating the TEE instance.
+These claims are exposed to the Attestation Service policy and included
+in the attestation token.
 
 ## Sample
 
