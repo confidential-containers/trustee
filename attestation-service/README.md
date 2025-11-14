@@ -92,6 +92,8 @@ If the verification of TEE evidence does not fail, the AS will return an Attesta
 
 Attestation Results token is an [EAT Attestation Results (EAR)](https://www.ietf.org/archive/id/draft-fv-rats-ear-05.html) in [JSON Web Token](https://datatracker.ietf.org/doc/html/rfc7519) format which contains the parsed evidence claims such as TCB status.
 
+More information about the attestation token is available [here](./docs/attestation_token.md).
+
 The claims part of the typical EAR token JWT is [here](./docs/example.token.json).
 
 ## Architecture
