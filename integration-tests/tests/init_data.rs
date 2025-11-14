@@ -183,3 +183,45 @@ YXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl
 \"\"\"]
 '''
 ";
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial]
+// Check for a particular field in the kata agent policy claims 
+async fn get_resource_with_policy_init_data() -> Result<()> {
+    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+
+    // Set Secret
+    info!("TEST: setting secret");
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.to_vec())
+        .await?;
+
+    // Set Policy
+    info!("TEST: setting policy");
+    harness.set_policy(PolicyType::Custom(INIT_DATA_FOR_OPA_POLICY)).await?;
+
+    // Get Secret
+    info!("TEST: getting secret");
+    harness
+        .get_secret(SECRET_PATH.to_string(), Some(POLICY_INIT_DATA.to_string()))
+        .await?;
+
+    harness.cleanup().await?;
+    Ok(())
+}
+
+
+const POLICY_INIT_DATA: &str = include_str!("init-data-with-policy.toml");
+
+const INIT_DATA_FOR_OPA_POLICY: &str = "
+package policy
+import rego.v1
+
+default allow = false
+
+allow if {
+    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
+}
+";

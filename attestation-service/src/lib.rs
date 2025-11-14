@@ -327,12 +327,39 @@ fn parse_init_data(data: Option<InitDataInput>) -> Result<(Option<Vec<u8>>, Valu
                             }
                         }
                     }
+
+                    // If there is a policy rego file, replace the full policy file
+                    // with some claims extracted from the file.
+                    if let Some(Value::String(rego_str)) = map.get("policy.rego").cloned() {
+                        if let Some(policy_data) = extract_policy_data(&rego_str) {
+                            // Since we found some policy claims, remove the original
+                            // policy rego from the claims.
+                            map.remove("policy.rego");
+                            map.insert("agent_policy_claims".to_string(), policy_data);
+                        }
+                    }
                 }
                 Ok((Some(digest), claims))
             }
         },
         None => Ok((None, Value::Null)),
     }
+}
+
+/// Extract the 'policy_data' JSON from a rego policy file.
+/// Ideally the runtime will separate the policy and the
+/// policy data. Until then, do this workaround.
+///
+/// Assume that the policy_data is the last thing in the rego file.
+fn extract_policy_data(rego_content: &str) -> Option<Value> {
+    // Find where policy_data is declared.
+    let start_pattern = "policy_data := {";
+    let start_idx = rego_content.find(start_pattern)?;
+
+    let json_start = start_idx + start_pattern.len() - 1;
+    let json_str = &rego_content[json_start..];
+
+    serde_json::from_str(json_str).ok()
 }
 
 #[cfg(test)]
