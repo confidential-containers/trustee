@@ -261,7 +261,7 @@ mod tests {
     )]
     #[case(
         "{\"keys\":[{\"kty\":\"oct\",\"alg\":\"COCO42\",\"kid\":\"coco123\",\"k\":\"foobar\"}]}",
-        true
+        false
     )]
     #[tokio::test]
     async fn test_source_reads(#[case] json: &str, #[case] expect_error: bool) {

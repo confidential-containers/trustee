@@ -11,7 +11,7 @@ ARG NEBULA_VERSION=v1.9.5
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt install -y protobuf-compiler git sudo
+RUN apt-get update && apt install -y protobuf-compiler git sudo cmake
 
 ENV OS_ARCH=${ARCH}
 RUN if [ $(uname -m) != ${ARCH} ]; then \

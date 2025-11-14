@@ -13,7 +13,7 @@ WORKDIR /usr/src/attestation-service
 COPY . .
 
 # Install TPM Build Dependencies
-RUN apt-get update && apt-get install -y protobuf-compiler clang libtss2-dev
+RUN apt-get update && apt-get install -y protobuf-compiler clang libtss2-dev cmake
 
 # Install TDX Build Dependencies
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
