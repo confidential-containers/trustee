@@ -7,7 +7,6 @@
 use anyhow::{anyhow, bail, Result};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
-use jwt_simple::prelude::{Claims, Duration, Ed25519KeyPair, EdDSAKeyPairLike};
 use kbs_protocol::evidence_provider::NativeEvidenceProvider;
 use kbs_protocol::token_provider::TestTokenProvider;
 use kbs_protocol::KbsClientBuilder;
@@ -121,23 +120,19 @@ pub struct SetPolicyInput {
 /// Set attestation policy
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: A KBS admin token
 /// - policy_bytes: Policy file content in `Vec<u8>`.
 /// - [policy_type]: Policy type. Default value is "rego".
 /// - [policy_id]: Policy ID. Default value is "default".
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_attestation_policy(
     url: &str,
-    auth_key: String,
+    admin_token: String,
     policy_bytes: Vec<u8>,
     policy_type: Option<String>,
     policy_id: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let auth_private_key = Ed25519KeyPair::from_pem(&auth_key)?;
-    let claims = Claims::create(Duration::from_hours(2));
-    let token = auth_private_key.sign(claims)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let set_policy_url = format!("{}/{KBS_URL_PREFIX}/attestation-policy", url);
@@ -150,7 +145,7 @@ pub async fn set_attestation_policy(
     let res = http_client
         .post(set_policy_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
+        .bearer_auth(admin_token)
         .json::<SetPolicyInput>(&post_input)
         .send()
         .await?;
@@ -171,19 +166,15 @@ struct ResourcePolicyData {
 /// Set resource policy
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: A KBS admin token
 /// - policy_bytes: Policy file content in `Vec<u8>`.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_resource_policy(
     url: &str,
-    auth_key: String,
+    admin_token: String,
     policy_bytes: Vec<u8>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let auth_private_key = Ed25519KeyPair::from_pem(&auth_key)?;
-    let claims = Claims::create(Duration::from_hours(2));
-    let token = auth_private_key.sign(claims)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let set_policy_url = format!("{}/{KBS_URL_PREFIX}/resource-policy", url);
@@ -194,7 +185,7 @@ pub async fn set_resource_policy(
     let res = http_client
         .post(set_policy_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
+        .bearer_auth(admin_token)
         .json::<ResourcePolicyData>(&post_input)
         .send()
         .await?;
@@ -208,28 +199,24 @@ pub async fn set_resource_policy(
 /// Set secret resource to KBS.
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: A KBS admin token
 /// - resource_bytes: Resource data in `Vec<u8>`
 /// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_resource(
     url: &str,
-    auth_key: String,
+    admin_token: String,
     resource_bytes: Vec<u8>,
     path: &str,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let auth_private_key = Ed25519KeyPair::from_pem(&auth_key)?;
-    let claims = Claims::create(Duration::from_hours(2));
-    let token = auth_private_key.sign(claims)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", url, path);
     let res = http_client
         .post(resource_url)
         .header("Content-Type", "application/octet-stream")
-        .bearer_auth(token)
+        .bearer_auth(admin_token)
         .body(resource_bytes.clone())
         .send()
         .await?;
@@ -248,13 +235,9 @@ pub async fn set_sample_rv(
     url: String,
     key: String,
     value: serde_json::Value,
-    auth_key: String,
+    admin_token: String,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let auth_private_key = Ed25519KeyPair::from_pem(&auth_key)?;
-    let claims = Claims::create(Duration::from_hours(2));
-    let token = auth_private_key.sign(claims)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
@@ -271,7 +254,7 @@ pub async fn set_sample_rv(
     let res = http_client
         .post(reference_value_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
+        .bearer_auth(admin_token)
         .body(message.to_string())
         .send()
         .await?;
@@ -286,13 +269,9 @@ pub async fn set_sample_rv(
 
 pub async fn get_rvs(
     url: String,
-    auth_key: String,
+    admin_token: String,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<String> {
-    let auth_private_key = Ed25519KeyPair::from_pem(&auth_key)?;
-    let claims = Claims::create(Duration::from_hours(2));
-    let token = auth_private_key.sign(claims)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
@@ -300,7 +279,7 @@ pub async fn get_rvs(
     let res = http_client
         .get(reference_value_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
+        .bearer_auth(admin_token)
         .send()
         .await?;
 
@@ -310,6 +289,43 @@ pub async fn get_rvs(
             bail!("Request Failed, Response: {:?}", res.text().await?)
         }
     }
+}
+
+pub async fn admin_login(
+    url: String,
+    username: String,
+    password: String,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<String> {
+    let http_client = build_http_client(kbs_root_certs_pem)?;
+
+    let login_url = format!("{}/{KBS_URL_PREFIX}/admin-login", url);
+
+    let login_data = json!({"username": username, "password": password});
+
+    let res = http_client
+        .post(login_url)
+        .header("Content-Type", "application/json")
+        .body(login_data.to_string())
+        .send()
+        .await?;
+
+    let login_response = match res.status() {
+        reqwest::StatusCode::OK => res.text().await?,
+        _ => {
+            bail!("Request Failed, Response: {:?}", res.text().await?)
+        }
+    };
+
+    let login_response: serde_json::Value = serde_json::from_str(&login_response)?;
+    let admin_token = login_response
+        .pointer("/admin_token")
+        .ok_or(anyhow!("Could not get admin token."))?
+        .as_str()
+        .ok_or(anyhow!("Could not get admin token as string."))?
+        .to_string();
+
+    Ok(admin_token)
 }
 
 fn build_http_client(kbs_root_certs_pem: Vec<String>) -> Result<reqwest::Client> {

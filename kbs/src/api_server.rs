@@ -256,6 +256,12 @@ pub(crate) async fn api(
 
             Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
         }
+        "admin-login" if request.method() == Method::POST => {
+            let auth_response = core.admin.generate_admin_token(&body)?;
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(auth_response))
+        }
         // If the base_path cannot be served by any of the above built-in
         // functions, try fulfilling the request via the PluginManager.
         plugin_name => {

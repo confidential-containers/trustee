@@ -187,8 +187,9 @@ Detailed [documentation](https://docs.trustauthority.intel.com).
 ### Admin API Configuration
 
 Multiple Admin backends are available. These control access to admin endpoints such as `set_policy`.
-Today, the available backends are `DenyAll` (disables admin endpoints), `InsecureAllowAll` (for debugging)
-and `Simple`.
+Today, the available backends are `DenyAll` (disables admin endpoints), `InsecureAllowAll` (for debugging),
+`Simple`, and `Password`.
+
 By default, the simple backend will be used, but no personas will be enabled.
 Use the `type` field to set the admin backend.
 
@@ -203,6 +204,15 @@ If the `Simple` backend is used, a list of admin personas can be provided, each 
 | `id`              | String  | A string used to identify the admin.                              | Yes      | Simple  |
 | `public_key_path` | String  | The path to the public key corresponding to the admin token.      | Yes      | Simple  |
 
+If the `Password` backend is used, a list of admin personas can be provided.
+
+| Property          | Type    | Description                                                       | Required | Default |
+|-------------------|---------|-------------------------------------------------------------------|----------|---------|
+| `username`        | String  | A string used to identify the admin.                              | Yes      | Simple  |
+| `password_hash`   | String  | The argon2 PCH for the user's password and some salt.             | Yes      | Simple  |
+
+When the password backend is used, if no personas are configured, one default persona will be created automatically.
+The username will be `default_admin`. The password will be printed to the KBS log on startup.
 
 ### Policy Engine Configuration
 

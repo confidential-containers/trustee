@@ -5,10 +5,12 @@
 use actix_web::HttpRequest;
 use log::{info, warn};
 use serde::Deserialize;
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 pub mod allow_all;
 pub mod deny_all;
+pub mod password;
 pub mod simple;
 
 pub mod error;
@@ -16,6 +18,7 @@ pub use error::*;
 
 use allow_all::InsecureAllowAllBackend;
 use deny_all::DenyAllBackend;
+use password::{PasswordAdminBackend, PasswordAdminConfig};
 use simple::{SimpleAdminBackend, SimpleAdminConfig};
 
 #[derive(Clone)]
@@ -30,6 +33,7 @@ pub enum AdminBackendType {
     Simple(SimpleAdminConfig),
     InsecureAllowAll,
     DenyAll,
+    Password(PasswordAdminConfig),
 }
 
 impl Default for AdminBackendType {
@@ -57,6 +61,7 @@ impl TryFrom<AdminConfig> for Admin {
             }
             AdminBackendType::Simple(config) => Arc::new(SimpleAdminBackend::new(config)?) as _,
             AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
+            AdminBackendType::Password(config) => Arc::new(PasswordAdminBackend::new(config)?) as _,
         };
 
         Ok(Admin { backend })
@@ -77,6 +82,15 @@ impl Admin {
 
         res
     }
+
+    pub fn generate_admin_token(&self, login_data: &[u8]) -> Result<String> {
+        let login_data: Value = serde_json::from_slice(login_data)?;
+
+        let token = self.backend.generate_admin_token(login_data)?;
+        let response = json!({ "admin_token": token });
+
+        Ok(response.to_string())
+    }
 }
 
 /// Admin backends determine whether a user should be granted access
@@ -86,4 +100,11 @@ pub(crate) trait AdminBackend: Send + Sync {
     /// to validate that the user making the request is authorized
     /// to access admin functionality.
     fn validate_admin_token(&self, request: &HttpRequest) -> Result<()>;
+
+    /// This method allows a potential admin to request an admin token
+    /// given some login information (such as a username and password).
+    /// If the login information is valid, an admin token will be returned.
+    fn generate_admin_token(&self, _login_data: serde_json::Value) -> Result<String> {
+        Err(Error::NoAdminLogin)
+    }
 }

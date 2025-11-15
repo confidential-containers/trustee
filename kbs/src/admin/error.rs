@@ -16,6 +16,15 @@ pub enum Error {
     #[error("Admin endpoints disabled.")]
     AdminEndpointsDisabled,
 
+    #[error("The admin token is missing required information.")]
+    AdminTokenInvalid,
+
+    #[error("An invalid hash was used.")]
+    InvalidHash,
+
+    #[error("Backend does not support admin login interface.")]
+    NoAdminLogin,
+
     #[error("`auth_public_key` is not set in the config file")]
     NoPublicKeyGiven,
 
@@ -25,6 +34,21 @@ pub enum Error {
     #[error("Failed to parse HTTP Auth Bearer header")]
     ParseAuthHeaderFailed(#[from] actix_web::error::ParseError),
 
+    #[error("Failed to parse admin login request JSON")]
+    ParseAdminLoginJsonFailed(#[from] serde_json::Error),
+
+    #[error("Failed to parse admin login request")]
+    ParseAdminLoginFailed,
+
     #[error("Read admin public key failed")]
     ReadPublicKey(#[from] std::io::Error),
+
+    #[error("Failed to generate admin token.")]
+    TokenCreationFailed,
+
+    #[error("Admin token has expired. You may need to login again.")]
+    TokenExpired,
+
+    #[error("Username or password incorrect.")]
+    WrongUsernameOrPassword,
 }

@@ -4,12 +4,21 @@
 
 //! A simple KBS client for test.
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use clap::{Args, Parser, Subcommand};
+use jwt_simple::algorithms::EdDSAKeyPairLike;
+use jwt_simple::prelude::Duration;
+use jwt_simple::prelude::{Claims, Ed25519KeyPair};
 use serde_json::json;
 use std::path::PathBuf;
+
+/// A direcotry, relative to the user's home directory,
+/// where the kbs-client can store data.
+const KBS_CLIENT_DIRECTORY: &str = ".kbs-client";
+/// The name of the file storing admin data
+const KBS_CLIENT_ADMIN_DATA_FILE: &str = "admin-data.json";
 
 #[derive(Parser)]
 #[clap(name = "KBS client")]
@@ -32,6 +41,20 @@ enum Commands {
     /// Set and Config KBS
     #[clap(arg_required_else_help = true)]
     Config(Config),
+
+    /// Login to the Trustee admin interface.
+    /// If login is successful, an admin token will be saved locally.
+    /// This token will be used with future admin requests
+    /// until it expires, when the user must login again.
+    ///
+    /// This command is only supported when Trustee is configured
+    /// with certain admin backends.
+    ///
+    /// This command should only be used when Trustee is configured
+    /// with HTTPS, otherwise the credentials will be visible
+    /// on the network.
+    #[clap(arg_required_else_help = true)]
+    AdminLogin { username: String, password: String },
 
     /// Get confidential resource
     #[clap(arg_required_else_help = true)]
@@ -85,11 +108,17 @@ struct Config {
     #[clap(subcommand)]
     command: ConfigCommands,
 
-    /// PEM file path of private key used to authenticate the resource registration endpoint token (JWT)
-    /// to Key Broker Service. This key can sign legal JWTs.
-    /// This client tool only support ED22519 key now.
+    /// The path to an ED22519 private key in PEM format.
+    /// When using the simple admin backend, the KBS
+    /// expects to receive a bearer JWT signed by this key.
+    /// The corresponding public key is specified in the
+    /// KBS admin config.
+    ///
+    /// This should only be specified when using the simple
+    /// admin backend. Otherwise, the admin login API should
+    /// be used first.
     #[clap(long, value_parser)]
-    auth_private_key: PathBuf,
+    auth_private_key: Option<PathBuf>,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -247,11 +276,62 @@ async fn main() -> Result<()> {
                 println!("{}", STANDARD.encode(resource_bytes));
             }
         }
+        Commands::AdminLogin { username, password } => {
+            let admin_token =
+                kbs_client::admin_login(cli.url, username, password, kbs_cert.clone()).await?;
+
+            // Write the admin data to the home directory.
+            // Windows is not supported.
+            let mut path = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .ok_or(anyhow!("Could not find home directory."))?;
+
+            path.push(KBS_CLIENT_DIRECTORY);
+            tokio::fs::create_dir_all(path.clone()).await?;
+
+            path.push(KBS_CLIENT_ADMIN_DATA_FILE);
+
+            // For now, there is only one thing in the data file,
+            // so it is ok to clobber the entire file.
+            let data = json!({"admin_token": admin_token});
+            tokio::fs::write(path, data.to_string()).await?;
+
+            println!("Login Succeeded");
+        }
         Commands::Config(config) => {
-            let auth_private_key_path = &config.auth_private_key;
-            let auth_key = std::fs::read_to_string(auth_private_key_path).inspect_err(|_| {
-                eprintln!("Failed to read: {}", auth_private_key_path.display())
-            })?;
+            let admin_token = match config.auth_private_key {
+                // If the private key path is given, create a token signed by the key.
+                Some(path) => {
+                    let key = std::fs::read_to_string(&path)
+                        .inspect_err(|_| eprintln!("Failed to read: {}", path.display()))?;
+
+                    let key = Ed25519KeyPair::from_pem(&key)?;
+                    let claims = Claims::create(Duration::from_hours(2));
+
+                    key.sign(claims)?
+                }
+                // Otherwise use the token stored in the kbs-client data file.
+                None => {
+                    let mut path = std::env::var_os("HOME")
+                        .map(PathBuf::from)
+                        .ok_or(anyhow!("Could not find home directory."))?;
+
+                    path.push(KBS_CLIENT_DIRECTORY);
+                    path.push(KBS_CLIENT_ADMIN_DATA_FILE);
+
+                    if let Ok(admin_data) = tokio::fs::read_to_string(path).await {
+                        let admin_data: serde_json::Value = serde_json::from_str(&admin_data)?;
+                        admin_data
+                            .pointer("/admin_token")
+                            .ok_or(anyhow!("Could not find admin token."))?
+                            .as_str()
+                            .ok_or(anyhow!("Could not parse admin token as string."))?
+                            .to_string()
+                    } else {
+                        bail!("No admin token found. Please login first.");
+                    }
+                }
+            };
             match config.command {
                 ConfigCommands::SetAttestationPolicy {
                     r#type,
@@ -261,7 +341,7 @@ async fn main() -> Result<()> {
                     let policy_bytes = std::fs::read(policy_file)?;
                     kbs_client::set_attestation_policy(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         policy_bytes.clone(),
                         r#type,
                         id,
@@ -296,7 +376,7 @@ async fn main() -> Result<()> {
                     };
                     kbs_client::set_resource_policy(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         policy_bytes.clone(),
                         kbs_cert.clone(),
                     )
@@ -313,7 +393,7 @@ async fn main() -> Result<()> {
                     let resource_bytes = std::fs::read(resource_file)?;
                     kbs_client::set_resource(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         resource_bytes.clone(),
                         &path,
                         kbs_cert.clone(),
@@ -348,7 +428,7 @@ async fn main() -> Result<()> {
                         cli.url,
                         name,
                         rv,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         kbs_cert.clone(),
                     )
                     .await?;
@@ -356,7 +436,7 @@ async fn main() -> Result<()> {
                 }
                 ConfigCommands::GetReferenceValues => {
                     let values =
-                        kbs_client::get_rvs(cli.url, auth_key.clone(), kbs_cert.clone()).await?;
+                        kbs_client::get_rvs(cli.url, admin_token.clone(), kbs_cert.clone()).await?;
                     println!("{:?}", values);
                 }
             }
