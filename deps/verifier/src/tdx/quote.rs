@@ -264,7 +264,7 @@ pub enum Quote {
     /// First 632 bytes of TD Quote
     /// Excluding the signature data attached at the end of the Quote.
     ///
-    /// Refer to: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_4.h#L141
+    /// Refer to: https://github.com/intel/confidential-computing.tee.dcap/blob/main/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_4.h#L141
     V4 {
         header: QuoteHeader,
         body: ReportBody2,
@@ -274,7 +274,7 @@ pub enum Quote {
     /// First 638 bytes of TD Quote
     /// Excluding the signature data attached at the end of the Quote.
     ///
-    /// Refer to: https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/master/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_5.h#L106
+    /// Refer to: https://github.com/intel/confidential-computing.tee.dcap/blob/main/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_5.h#L106
     V5 {
         header: QuoteHeader,
         r#type: QuoteV5Type,
@@ -424,7 +424,7 @@ mod tests {
     /// ```
     ///
     /// The manual modification upon `sgx_default_qcnl.conf` could be promoted after
-    /// https://github.com/intel/SGXDataCenterAttestationPrimitives/issues/409 is resolved.
+    /// https://github.com/intel/confidential-computing.tee.dcap/issues/409 is resolved.
     ///
     /// Finally, DCAP only provides packages on x86-64 platform, thus we only test this on x86-64
     /// platforms.
