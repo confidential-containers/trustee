@@ -284,7 +284,6 @@ impl Verifier for Nvidia {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
-    use std::fs;
 
     use super::*;
 
@@ -326,8 +325,6 @@ mod tests {
         let value = serde_json::to_value(device_claims).unwrap();
         debug!("Nvidia device claims:\n{:#?}", &value);
         let json = serde_json::to_string(&value).unwrap();
-
-        fs::write("hopperAttestationReport-claims.txt", &json).unwrap();
 
         let expected_claim =
             include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt");
