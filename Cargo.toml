@@ -49,7 +49,7 @@ openssl = "0.10.75"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
-regorus = { version = "0.2.6", default-features = false, features = [
+regorus = { version = "0.5.0", default-features = false, features = [
     "regex",
     "base64",
     "time",
