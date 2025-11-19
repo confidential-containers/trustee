@@ -37,6 +37,6 @@ package policy
 
 default allow = false
 
-allow {
+allow if {
 	input["tdx"]["attester_type"] != "sample"
 }

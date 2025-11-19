@@ -12,7 +12,7 @@ default allow = false
 path := split(data["resource-path"], "/")
 input_tcb := input["tcb-status"]
 
-allow {
+allow if {
     count(path) == 3
 
 

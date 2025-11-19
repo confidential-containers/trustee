@@ -46,7 +46,7 @@ package policy
 
 default allow = false
 
-allow {
+allow if {
 	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef

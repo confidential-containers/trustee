@@ -12,7 +12,7 @@ default result = false
 path := split(data["resource-path"], "/")
 input_tcb := input["tcb-status"]
 
-result {
+result if {
     count(path) == 3
 
 
