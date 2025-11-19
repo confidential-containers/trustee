@@ -72,6 +72,12 @@ pub struct EventDetails {
 
 #[derive(Debug, Clone)]
 pub struct ReferenceMeasurement {
+    /// The index of the CC Event Log Measurement Register.
+    /// Different TEE platform may have platform specific measurement
+    /// registers to map to the CC Event Log Measurement Register.
+    ///
+    /// See <https://uefi.org/specs/UEFI/2.11/38_Confidential_Computing.html#vendor-specific-information>
+    /// for platform specific mapping.
     pub index: u32,
     pub algorithm: TcgAlgorithm,
     pub reference: Vec<u8>,
@@ -117,12 +123,12 @@ impl CcEventLog {
         let digest_map = collect_digests_by_index(&self.log);
 
         for item in data.iter() {
-            let calculated_ccel_rtmr = replay(&digest_map, item.index, item.algorithm)?;
-            if calculated_ccel_rtmr != item.reference {
+            let calculated_ccel_ccmr = replay(&digest_map, item.index, item.algorithm)?;
+            if calculated_ccel_ccmr != item.reference {
                 bail!(
-                    "CCEL eventlog does not pass RTMR [{}] check. CCEL value: {}, Quote value: {}",
+                    "Eventlog does not pass measurement replay CC Event Log Measurement Register [index = {}]. Calculated value: {}, Given value: {}",
                     item.index,
-                    hex::encode(calculated_ccel_rtmr),
+                    hex::encode(calculated_ccel_ccmr),
                     hex::encode(&item.reference)
                 );
             }
@@ -517,7 +523,7 @@ mod tests {
         let wrong_index = if first_wrong { 1 } else { 2 };
         let expected = if first_wrong { rtmr0 } else { rtmr1 };
         let expected_err_msg = format!(
-            "CCEL eventlog does not pass RTMR [{}] check. CCEL value: {}, Quote value: {}",
+            "Eventlog does not pass measurement replay CC Event Log Measurement Register [index = {}]. Calculated value: {}, Given value: {}",
             wrong_index,
             ccel_wrong_rtmr_value,
             from_utf8(expected).expect("utf8 error"),
