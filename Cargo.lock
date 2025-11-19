@@ -3027,7 +3027,7 @@ dependencies = [
 [[package]]
 name = "intel-tee-quote-verification-rs"
 version = "0.3.0"
-source = "git+https://github.com/intel/SGXDataCenterAttestationPrimitives?tag=DCAP_1.23#e880e54c8f35d44a4763e08dff32a046c8ef2230"
+source = "git+https://github.com/intel/confidential-computing.tee.dcap?tag=DCAP_1.23#e880e54c8f35d44a4763e08dff32a046c8ef2230"
 dependencies = [
  "intel-tee-quote-verification-sys",
 ]
