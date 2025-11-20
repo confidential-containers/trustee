@@ -244,7 +244,6 @@ impl EarAttestationTokenBroker {
 }
 
 impl EarAttestationTokenBroker {
-    // TODO: converge this with the jwk function in the simple token broker
     fn pubkey_jwk(&self) -> Result<jwk::Jwk> {
         let chain = self
             .cert_chain
