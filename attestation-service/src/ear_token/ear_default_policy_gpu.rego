@@ -37,22 +37,22 @@ result := {
 hardware := 2 if {
 	input.nvidia
 
-	input.nvidia.x_nvidia_gpu_attestation_report_cert_chain.x_nvidia_cert_ocsp_status == "good"
-	input.nvidia.x_nvidia_gpu_attestation_report_cert_chain.x_nvidia_cert_status == "valid"
+	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
+	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain"]["x-nvidia-cert-status"] == "valid"
 
-	input.nvidia.x_nvidia_gpu_attestation_report_cert_chain_fwid_match
-	input.nvidia.x_nvidia_gpu_attestation_report_parsed
-	input.nvidia.x_nvidia_gpu_attestation_report_signature_verified
+	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain-fwid-match"]
+	input.nvidia["x-nvidia-gpu-attestation-report-parsed"]
+	input.nvidia["x-nvidia-gpu-attestation-report-signature-verified"]
 
-	input.nvidia.x_nvidia_gpu_arch_check
+	input.nvidia["x-nvidia-gpu-arch-check"]
 }
 
 configuration := 2 if {
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
-	input.nvidia.x_nvidia_gpu_vbios_version in query_reference_value("allowed_vbios_versions")
-	input.nvidia.x_nvidia_gpu_driver_version in query_reference_value("allowed_driver_versions")
-}
+	input.nvidia["x-nvidia-gpu-vbios-version"] in query_reference_value("allowed_vbios_versions")
+	input.nvidia["x-nvidia-gpu-driver-version"] in query_reference_value("allowed_driver_versions")
+} 
 
 else := 3 if {
 	input.nvidia.secboot
@@ -60,20 +60,20 @@ else := 3 if {
 }
 
 executables := 3 if {
-	input.nvidia.x_nvidia_gpu_vbios_rim_cert_chain.x_nvidia_cert_ocsp_status == "good"
-	input.nvidia.x_nvidia_gpu_vbios_rim_cert_chain.x_nvidia_cert_status == "valid"
+	input.nvidia["x-nvidia-gpu-vbios-rim-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
+	input.nvidia["x-nvidia-gpu-vbios-rim-cert-chain"]["x-nvidia-cert-status"] == "valid"
 
-	input.nvidia.x_nvidia_gpu_driver_rim_fetched
-	input.nvidia.x_nvidia_gpu_driver_rim_measurements_available
-	input.nvidia.x_nvidia_gpu_driver_rim_schema_validated
-	input.nvidia.x_nvidia_gpu_driver_rim_signature_verified
-	input.nvidia.x_nvidia_gpu_driver_rim_version_match
+	input.nvidia["x-nvidia-gpu-driver-rim-fetched"]
+	input.nvidia["x-nvidia-gpu-driver-rim-measurements-available"]
+	input.nvidia["x-nvidia-gpu-driver-rim-schema-validated"]
+	input.nvidia["x-nvidia-gpu-driver-rim-signature-verified"]
+	input.nvidia["x-nvidia-gpu-driver-rim-version-match"]
 
-	input.nvidia.x_nvidia_gpu_vbios_rim_fetched
-	input.nvidia.x_nvidia_gpu_vbios_rim_measurements_available
-	input.nvidia.x_nvidia_gpu_vbios_rim_schema_validated
-	input.nvidia.x_nvidia_gpu_vbios_rim_signature_verified
-	input.nvidia.x_nvidia_gpu_vbios_rim_version_match
+	input.nvidia["x-nvidia-gpu-vbios-rim-fetched"]
+	input.nvidia["x-nvidia-gpu-vbios-rim-measurements-available"]
+	input.nvidia["x-nvidia-gpu-vbios-rim-schema-validated"]
+	input.nvidia["x-nvidia-gpu-vbios-rim-signature-verified"]
+	input.nvidia["x-nvidia-gpu-vbios-rim-version-match"]
 
-	input.nvidia.measres
+	input.nvidia.measres == "success"
 }
