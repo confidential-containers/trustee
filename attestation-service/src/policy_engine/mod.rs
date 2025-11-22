@@ -75,7 +75,7 @@ type PolicyDigest = String;
 
 #[derive(Debug)]
 pub struct EvaluationResult {
-    pub rules_result: Value,
+    pub trust_claims: Value,
     pub policy_hash: String,
 }
 
