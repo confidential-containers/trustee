@@ -20,7 +20,7 @@ use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
 
 /// The rule to evaluate the policy.
 /// Note that only the result of this rule will be returned.
-pub const EVAL_RULE: &str = "data.policy.result";
+pub const EVAL_RULE: &str = "data.policy.trust_claims";
 
 #[derive(Debug, Clone)]
 pub struct OPA {
@@ -167,10 +167,10 @@ impl PolicyEngine for OPA {
         let claim_value = claim_value
             .to_json_str()
             .map_err(PolicyError::JsonSerializationFailed)?;
-        let rules_result = serde_json::from_str::<Value>(&claim_value)?;
+        let trust_claims = serde_json::from_str::<Value>(&claim_value)?;
 
         let res = EvaluationResult {
-            rules_result,
+            trust_claims,
             policy_hash,
         };
 
@@ -324,11 +324,11 @@ mod tests {
             .await
             .unwrap();
 
-        println!("{:?}", output.rules_result);
+        println!("{:?}", output.trust_claims);
         assert_eq!(
             hw_exp,
             output
-                .rules_result
+                .trust_claims
                 .as_object()
                 .unwrap()
                 .get("hardware")
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(
             ex_exp,
             output
-                .rules_result
+                .trust_claims
                 .as_object()
                 .unwrap()
                 .get("executables")

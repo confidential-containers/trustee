@@ -148,7 +148,7 @@ impl EarAttestationTokenBroker {
                 .await?;
 
             let result = policy_results
-                .rules_result
+                .trust_claims
                 .as_object()
                 .context("Policy result is not an object")?;
 
