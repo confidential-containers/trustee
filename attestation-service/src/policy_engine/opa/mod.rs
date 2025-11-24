@@ -5,22 +5,23 @@
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use serde_json::Value;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha384};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::Duration;
 use std::{collections::HashMap, thread};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 use crate::rvps::RvpsClient;
 
-use super::{EvaluationResult, PolicyDigest, PolicyEngine, PolicyError};
+use super::{EvaluationResult, Extension, PolicyDigest, PolicyEngine, PolicyError};
 
-/// The rule to evaluate the policy.
-/// Note that only the result of this rule will be returned.
-pub const EVAL_RULE: &str = "data.policy.trust_claims";
+/// The policy claim that will hold trust claims.
+pub const TRUST_CLAIMS_RULE: &str = "data.policy.trust_claims";
+/// The policy claim that will hold extensions.
+pub const EXTENSIONS_RULE: &str = "data.policy.extensions";
 
 #[derive(Debug, Clone)]
 pub struct OPA {
@@ -156,21 +157,41 @@ impl PolicyEngine for OPA {
                 .expect("Only duplicated extension insertion can cause panic");
         }
 
-        let claim_value =
-            engine
-                .eval_rule(EVAL_RULE.to_string())
-                .map_err(|e| PolicyError::EvalPolicyFailed {
-                    policy_id: policy_id.to_string(),
-                    source: e,
-                })?;
+        let claim_value = engine
+            .eval_rule(TRUST_CLAIMS_RULE.to_string())
+            .map_err(|e| PolicyError::EvalPolicyFailed {
+                policy_id: policy_id.to_string(),
+                source: e,
+            })?;
 
         let claim_value = claim_value
             .to_json_str()
             .map_err(PolicyError::JsonSerializationFailed)?;
         let trust_claims = serde_json::from_str::<Value>(&claim_value)?;
 
+        let claim_value = match engine.eval_rule(EXTENSIONS_RULE.to_string()) {
+            Ok(r) => r,
+            // Extensions claim is optional.
+            Err(e) if e.to_string().contains("not a valid rule path") => {
+                info!("No extensions claim found in policy.");
+                json!([]).into()
+            }
+            Err(e) => {
+                return Err(PolicyError::EvalPolicyFailed {
+                    policy_id: policy_id.to_string(),
+                    source: e,
+                })
+            }
+        };
+
+        let claim_value = claim_value
+            .to_json_str()
+            .map_err(PolicyError::JsonSerializationFailed)?;
+        let extensions = serde_json::from_str::<Vec<Extension>>(&claim_value)?;
+
         let res = EvaluationResult {
             trust_claims,
+            extensions,
             policy_hash,
         };
 
