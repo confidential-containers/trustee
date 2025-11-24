@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use log::info;
-use openssl::pkey::PKey;
 use rstest::rstest;
 use serial_test::serial;
 
@@ -29,11 +28,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
 
     if !valid_key {
         info!("TEST: replacing admin private key");
-
-        let auth_keypair = PKey::generate_ed25519()?;
-        let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
-
-        harness.auth_privkey = auth_privkey;
+        harness.replace_admin_token()?;
     }
 
     info!("TEST: setting policy");
@@ -92,11 +87,7 @@ async fn set_attestation_policy(
 
     if !valid_key {
         info!("TEST: replacing admin private key");
-
-        let auth_keypair = PKey::generate_ed25519()?;
-        let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
-
-        harness.auth_privkey = auth_privkey;
+        harness.replace_admin_token()?;
     }
 
     info!("TEST: setting attestation policy");
@@ -158,11 +149,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
 
     if !valid_key {
         info!("TEST: replacing admin private key");
-
-        let auth_keypair = PKey::generate_ed25519()?;
-        let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
-
-        harness.auth_privkey = auth_privkey;
+        harness.replace_admin_token()?;
     }
 
     info!("TEST: setting secret");
@@ -195,4 +182,59 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     }
 
     res
+}
+
+// To avoid making the cases matrix for the other tests too complex,
+// make a separate test for the password admin interface.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial]
+async fn password_admin_test() -> Result<()> {
+    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+
+    let mut harness =
+        TestHarness::new(KbsConfigType::EarTokenBuiltInRvpsPasswordAdmin.into()).await?;
+    harness.wait().await;
+
+    info!("TEST: logging in with invalid credentials");
+    harness
+        .login("test1".to_string(), "banana".to_string())
+        .await
+        .context("Able to log in with wrong credentials.")?;
+
+    harness
+        .login("test1".to_string(), "password2".to_string())
+        .await
+        .context("Able to log in with wrong credentials.")?;
+
+    harness
+        .login("test2".to_string(), "password1".to_string())
+        .await
+        .context("Able to log in with wrong credentials.")?;
+
+    info!("TEST: login with valid credentials");
+    harness
+        .login("test2".to_string(), "password2".to_string())
+        .await?;
+
+    info!("TEST: setting secret");
+    harness
+        .set_secret("a/b/c".to_string(), vec![0u8; 10])
+        .await?;
+
+    info!("TEST: tampering with admin token");
+    harness
+        .admin_token
+        .as_mut()
+        .context("Could not get admin token.")?
+        .replace_range(3..5, "x");
+
+    info!("TEST: setting secret");
+    harness
+        .set_secret("a/b/c".to_string(), vec![0u8; 10])
+        .await
+        .context("Able to log in with wrong credentials.")?;
+
+    harness.cleanup().await?;
+
+    Ok(())
 }

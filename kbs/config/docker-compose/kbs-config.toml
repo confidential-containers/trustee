@@ -10,11 +10,7 @@ type = "coco_as_grpc"
 as_addr = "http://as:50004"
 
 [admin]
-type = "Simple"
-
-[[admin.personas]]
-id = "admin"
-public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
+type = "Password"
 
 [[plugins]]
 name = "resource"

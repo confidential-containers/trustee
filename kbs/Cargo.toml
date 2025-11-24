@@ -47,6 +47,7 @@ actix-web-httpauth.workspace = true
 aes-gcm = "0.10.1"
 aes-kw = "0.2.1"
 anyhow.workspace = true
+argon2 = "0.5.3"
 async-trait.workspace = true
 base64.workspace = true
 cfg-if.workspace = true

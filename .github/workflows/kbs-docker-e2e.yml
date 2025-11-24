@@ -44,22 +44,23 @@ jobs:
       run: |
         cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --release
 
-    - name: Setup Keys
-      run: | 
-        openssl genpkey -algorithm ed25519 > kbs/config/private.key
-        openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
-
     - name: Build KBS Cluster
       run: docker compose build --build-arg BUILDPLATFORM=${{ matrix.build_platform }} --build-arg ARCH=${{ matrix.target_arch }} --build-arg VERIFIER=${{ matrix.verifier }}
 
     - name: Start KBS cluster
-      run: docker compose up -d
+      run: docker compose up -d && sleep 5
+
+    - name: Admin Login
+      working-directory: target/release/
+      run: |
+        ADMIN_PASSWORD=$(docker compose logs kbs | grep "with password:" | awk '{print $NF}' | tr -d '\n')
+        ./kbs-client --url http://127.0.0.1:8080 admin-login default_admin "$ADMIN_PASSWORD"
 
     - name: Set Resource
       working-directory: target/release/
       run: |
         echo "$TEST_SECRET_CONTENT" > test-secret
-        ./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-resource --path "$TEST_SECRET_PATH" --resource-file test-secret
+        ./kbs-client --url http://127.0.0.1:8080 config set-resource --path "$TEST_SECRET_PATH" --resource-file test-secret
 
     - name: Get Resource (negative)
       working-directory: target/release/
@@ -68,7 +69,7 @@ jobs:
 
     - name: Update policy
       working-directory: target/release/
-      run: ./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-resource-policy --policy-file "$policy_path"
+      run: ./kbs-client --url http://127.0.0.1:8080 config set-resource-policy --policy-file "$policy_path"
       env:
         policy_path: ../../kbs/test/data/policy_2.rego
 
