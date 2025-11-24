@@ -147,12 +147,12 @@ impl EarAttestationTokenBroker {
                 .evaluate(None, &tcb_claims_json, &policy_id, rvps_client.clone())
                 .await?;
 
-            let result = policy_results
+            let trust_claims = policy_results
                 .trust_claims
                 .as_object()
                 .context("Policy result is not an object")?;
 
-            for (k, v) in result {
+            for (k, v) in trust_claims {
                 let claim_value = v.as_i64().context("Policy claim value not number")?;
                 debug!("Policy claim: {}: {}", k, claim_value);
 
@@ -167,9 +167,23 @@ impl EarAttestationTokenBroker {
                 bail!("At least one policy claim must be set.");
             }
 
-            appraisal.update_status_from_trust_vector();
+            // Set extensions from policy result
+            let mut extensions = Extensions::new();
+            let extension_claims = policy_results.extensions;
+
+            for extension in extension_claims {
+                let extension_value: RawValue =
+                    serde_json::from_str(&serde_json::to_string(&extension.value)?)?;
+
+                extensions.register(&extension.name, extension.key, extension_value.kind())?;
+                extensions.set_by_name(&extension.name, extension_value)?;
+            }
+
+            appraisal.extensions = extensions;
+
             appraisal.annotated_evidence = tcb_claims;
             appraisal.policy_id = Some(policy_ids[0].clone());
+            appraisal.update_status_from_trust_vector();
 
             if let Some(index) = tee_class_indices.get_mut(&tee_claims.tee_class) {
                 *index += 1;
