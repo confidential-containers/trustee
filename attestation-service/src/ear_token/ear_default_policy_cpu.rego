@@ -297,3 +297,56 @@ configuration := 0 if {
 }
 
 ##### SE TODO
+
+
+#################################
+# EXTENSIONS
+#
+# Extensions are added to the EAR Appraisal
+#
+# The identifiers extension contains information that
+# describes the workload.
+#
+# In Confidential Containers many of these identifiers
+# are bootstrapped from the Kata Agent Policy or some
+# other config provided in the InitData.
+#
+# Other runtimes may provide identifiers in other ways,
+# such as via the event log.
+extensions := [
+	{"name": "ear.trustee.identifiers",
+		 "key": -18,
+		 "value": {
+			"validated": validated_identifiers
+		}
+	}
+]
+
+# Validated identifiers are information that describes a workload
+# that are bound to the hardware evidence via attesation
+# and bound to the workload by the guest runtime.
+validated_identifiers := object.union_n([
+    container_images_id,
+    container_uids_id,
+])
+
+# Use list comprehension to parse all of the images specified in the policy.
+container_images := [img |
+    container := input["init_data_claims"]["agent_policy_claims"]["containers"][_]
+    img := container["OCI"]["Annotations"]["io.kubernetes.cri.image-name"]
+]
+
+container_images_id := {"container_images": container_images} if {
+    count(container_images) > 0
+} else := {}
+
+# UIDs
+container_uids := [img |
+    container := input["init_data_claims"]["agent_policy_claims"]["containers"][_]
+    img := container["OCI"]["Process"]["User"]["UID"]
+]
+
+container_uids_id := {"container_uids": container_uids} if {
+    count(container_uids) > 0
+} else := {}
+
