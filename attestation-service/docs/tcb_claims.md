@@ -164,7 +164,7 @@ The local verifier only supports Hopper and returns the following claims.
 - `config.protected_pcie_status`: Protected PCIe status
 - `config.vbios_version`: Device VBIOS version
 
-The remote verifier exports the claims that come from NRAS, which are listed [here](https://github.com/NVIDIA/nvtrust/blob/main/guest_tools/attestation_troubleshooting_guide.md#version-30).
+The remote verifier exports the claims that come from NRAS, which are listed [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
 Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
 along with the full set of detached claims.
 
