@@ -46,7 +46,7 @@ default storage_opaque := 0
 # "No assertion."
 default sourced_data := 0
 
-result := {
+trust_claims := {
 	"executables": executables,
 	"hardware": hardware,
 	"configuration": configuration,

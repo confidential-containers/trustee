@@ -22,7 +22,7 @@ hardware := 2 if {
 	input.sampledevice.svn in data.reference.device_svn
 }
 
-result := {
+trust_claims := {
 	"executables": executables,
 	"hardware": hardware,
 	"configuration": configuration,

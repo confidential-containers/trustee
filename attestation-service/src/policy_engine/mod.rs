@@ -73,9 +73,20 @@ impl PolicyEngineType {
 
 type PolicyDigest = String;
 
+/// Extensions that will be added to the attestation token.
+#[derive(Debug, Deserialize)]
+pub struct Extension {
+    pub name: String,
+    pub index: i32,
+    pub value: Value,
+}
+
 #[derive(Debug)]
 pub struct EvaluationResult {
-    pub rules_result: Value,
+    pub trust_claims: Value,
+    /// Extensions to be added to the attestation token.
+    /// The extension name, extension index, and the Value.
+    pub extensions: Vec<Extension>,
     pub policy_hash: String,
 }
 
