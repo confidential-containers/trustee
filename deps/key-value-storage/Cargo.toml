@@ -12,7 +12,7 @@ anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 pg-connection-string = { version = "0.0.2", optional = true }
-derivative.workspace = true
+educe.workspace = true
 serde.workspace = true
 sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio"], optional = true }
 thiserror.workspace = true

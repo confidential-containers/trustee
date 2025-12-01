@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
-use derivative::Derivative;
+use educe::Educe;
 use serde::Deserialize;
 use sqlx::PgPool;
 use sqlx::{postgres::PgPoolOptions, query, Row};
@@ -30,8 +30,8 @@ pub const VALUE_COLUMN: &str = "value";
 /// The environment variable name for the PostgreSQL URL.
 pub const POSTGRES_URL_ENV_VAR: &str = "POSTGRES_URL";
 
-#[derive(Deserialize, Derivative, Clone, PartialEq)]
-#[derivative(Debug)]
+#[derive(Deserialize, Educe, Clone, PartialEq)]
+#[educe(Debug)]
 #[serde(default)]
 pub struct Config {
     /// The name of the PostgreSQL database.
@@ -41,7 +41,7 @@ pub struct Config {
     pub username: String,
 
     /// The password of the PostgreSQL database.
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub password: Option<String>,
 
     /// The port of the PostgreSQL database.
