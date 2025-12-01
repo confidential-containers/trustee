@@ -4,7 +4,7 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
-use derivative::Derivative;
+use educe::Educe;
 use log::info;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -28,11 +28,11 @@ pub enum VaultError {
     VaultApiError { path: String, source: anyhow::Error },
 }
 
-#[derive(Derivative, Deserialize, Clone, PartialEq)]
-#[derivative(Debug)]
+#[derive(Educe, Deserialize, Clone, PartialEq)]
+#[educe(Debug)]
 pub struct VaultKvBackendConfig {
     pub vault_url: String,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub token: String,
     #[serde(default = "default_mount_path")]
     pub mount_path: String,

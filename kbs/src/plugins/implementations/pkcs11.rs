@@ -21,7 +21,7 @@ use cryptoki::{
     session::{Session, UserType},
     types::AuthPin,
 };
-use derivative::Derivative;
+use educe::Educe;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
@@ -29,8 +29,8 @@ use tokio::sync::Mutex;
 use super::super::plugin_manager::ClientPlugin;
 
 /// Enum representing supported RSA mechanisms.
-#[derive(Derivative, Deserialize, Clone, PartialEq, Default)]
-#[derivative(Debug)]
+#[derive(Educe, Deserialize, Clone, PartialEq, Default)]
+#[educe(Debug)]
 pub enum RsaMechanism {
     /// RSA mechanism using PKCS#1 OAEP MGF1_SHA256 padding. Recommended for secure production use.
     #[default]
@@ -60,8 +60,8 @@ impl RsaMechanism {
     }
 }
 
-#[derive(Derivative, Deserialize, Clone, PartialEq)]
-#[derivative(Debug)]
+#[derive(Educe, Deserialize, Clone, PartialEq)]
+#[educe(Debug)]
 pub struct Pkcs11Config {
     /// Path to the PKCS11 module.
     module: PathBuf,
@@ -71,7 +71,7 @@ pub struct Pkcs11Config {
     slot_index: u8,
 
     /// The user pin for authenticating the session.
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pin: String,
 
     /// RSA mechanism to use.
