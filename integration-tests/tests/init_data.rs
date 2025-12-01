@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use log::info;
 use serial_test::serial;
@@ -45,11 +45,15 @@ async fn get_resource_with_init_data_hash() -> Result<()> {
 
     // Get Secret
     info!("TEST: getting secret");
-    harness
+    let res = harness
         .get_secret(SECRET_PATH.to_string(), Some(SIMPLE_INIT_DATA.to_string()))
-        .await?;
+        .await;
 
     harness.cleanup().await?;
+
+    if res? != SECRET_BYTES {
+        bail!("Secret retrieved, but secret has wrong value");
+    }
     Ok(())
 }
 
@@ -98,11 +102,15 @@ async fn get_resource_with_init_data_config() -> Result<()> {
 
     // Get Secret
     info!("TEST: getting secret");
-    harness
+    let res = harness
         .get_secret(SECRET_PATH.to_string(), Some(SIMPLE_INIT_DATA.to_string()))
-        .await?;
+        .await;
 
     harness.cleanup().await?;
+
+    if res? != SECRET_BYTES {
+        bail!("Secret retrieved, but secret has wrong value");
+    }
     Ok(())
 }
 
@@ -186,7 +194,7 @@ YXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
-// Check for a particular field in the kata agent policy claims 
+// Check for a particular field in the kata agent policy claims
 async fn get_resource_with_policy_init_data() -> Result<()> {
     let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
@@ -200,18 +208,23 @@ async fn get_resource_with_policy_init_data() -> Result<()> {
 
     // Set Policy
     info!("TEST: setting policy");
-    harness.set_policy(PolicyType::Custom(INIT_DATA_FOR_OPA_POLICY)).await?;
+    harness
+        .set_policy(PolicyType::Custom(INIT_DATA_FOR_OPA_POLICY))
+        .await?;
 
     // Get Secret
     info!("TEST: getting secret");
-    harness
+    let res = harness
         .get_secret(SECRET_PATH.to_string(), Some(POLICY_INIT_DATA.to_string()))
-        .await?;
+        .await;
 
     harness.cleanup().await?;
+
+    if res? != SECRET_BYTES {
+        bail!("Secret retrieved, but secret has wrong value");
+    }
     Ok(())
 }
-
 
 const POLICY_INIT_DATA: &str = include_str!("init-data-with-policy.toml");
 
