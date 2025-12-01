@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+//! Memory backend for the key-value storage.
+
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
@@ -10,13 +12,13 @@ use std::collections::HashMap;
 use tracing::instrument;
 
 #[derive(Default)]
-pub struct SimpleKeyValueStorage {
+pub struct MemoryKeyValueStorage {
     items: RwLock<HashMap<String, Vec<u8>>>,
 }
 
 #[async_trait]
-impl KeyValueStorage for SimpleKeyValueStorage {
-    #[instrument(skip_all, name = "SimpleKeyValueStorage::set")]
+impl KeyValueStorage for MemoryKeyValueStorage {
+    #[instrument(skip_all, name = "MemoryKeyValueStorage::set", fields(key = key))]
     async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
         if parameters.overwrite {
             self.items
@@ -35,7 +37,7 @@ impl KeyValueStorage for SimpleKeyValueStorage {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "SimpleKeyValueStorage::list")]
+    #[instrument(skip_all, name = "MemoryKeyValueStorage::list")]
     async fn list(&self) -> Result<Vec<String>> {
         let keys = self
             .items
@@ -47,13 +49,13 @@ impl KeyValueStorage for SimpleKeyValueStorage {
         Ok(keys)
     }
 
-    #[instrument(skip_all, name = "SimpleKeyValueStorage::get")]
+    #[instrument(skip_all, name = "MemoryKeyValueStorage::get", fields(key = key))]
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let res = self.items.read().await.get(key).cloned();
         Ok(res)
     }
 
-    #[instrument(skip_all, name = "SimpleKeyValueStorage::delete")]
+    #[instrument(skip_all, name = "MemoryKeyValueStorage::delete", fields(key = key))]
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let res = self.items.write().await.remove(key);
         Ok(res)
@@ -65,8 +67,8 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_simple_key_value_storage() {
-        let storage = SimpleKeyValueStorage::default();
+    async fn test_memory_key_value_storage() {
+        let storage = MemoryKeyValueStorage::default();
         let parameters = SetParameters::default();
         storage.set("test", b"test", parameters).await.unwrap();
         let keys = storage.list().await.unwrap();

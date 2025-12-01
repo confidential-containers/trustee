@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
 
-pub mod simple;
+pub mod memory;
 
 #[cfg(feature = "postgres")]
 pub mod postgres;
@@ -46,9 +46,9 @@ pub enum KeyValueStorageConfig {
     #[serde(alias = "postgres")]
     Postgres(postgres::Config),
 
-    #[serde(alias = "simple")]
+    #[serde(alias = "Memory")]
     #[default]
-    Simple,
+    Memory,
 }
 
 impl KeyValueStorageConfig {
@@ -62,7 +62,7 @@ impl KeyValueStorageConfig {
                         source: e.into(),
                     })?,
             )),
-            KeyValueStorageConfig::Simple => Ok(Arc::new(simple::SimpleKeyValueStorage::default())),
+            KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
         }
     }
 }
