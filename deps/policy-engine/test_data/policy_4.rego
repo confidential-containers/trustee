@@ -7,20 +7,20 @@
 
 package policy
 
-default result = false
+default allow = false
 
-path := split(data["resource-path"], "/")
 input_tcb := input["tcb-status"]
 
-result if {
-    count(path) == 3
+allow if {
+    count(data["resource-path"]) == 3
+    data.plugin == "resource"
 
 
 
 
 
 
-    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == path[1]
+    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == data["resource-path"][1]
 }
 
 

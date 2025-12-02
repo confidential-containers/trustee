@@ -1,2 +1,2 @@
 package policy
-default result = true
+default allow = true

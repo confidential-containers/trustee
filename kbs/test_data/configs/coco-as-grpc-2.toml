@@ -15,3 +15,7 @@ type = "Simple"
 [[admin.personas]]
 id = "admin1"
 public_key_path = "/opt/confidential-containers/trustee/admin1-pubkey.pem"
+
+[storage_backend]
+storage_type = "local_json"
+backends.local_json.file_dir_path = "/opt/confidential-containers/trustee"

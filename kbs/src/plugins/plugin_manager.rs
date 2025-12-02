@@ -5,7 +5,8 @@
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use actix_web::http::Method;
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
+use key_value_storage::StorageBackendConfig;
 use serde::Deserialize;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
@@ -88,10 +89,13 @@ impl Display for PluginsConfig {
     }
 }
 
-impl TryInto<ClientPluginInstance> for PluginsConfig {
-    type Error = Error;
-
-    fn try_into(self) -> Result<ClientPluginInstance> {
+impl PluginsConfig {
+    /// Turn the PluginsConfig into a concrete plugin instance
+    /// If the plugin instance needs a backend storage, the storage_backend can be used.
+    pub async fn into_client_plugin_instance(
+        self,
+        storage_backend_config: &StorageBackendConfig,
+    ) -> Result<ClientPluginInstance> {
         let plugin = match self {
             PluginsConfig::Sample(cfg) => {
                 let sample_plugin =
@@ -99,8 +103,10 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 Arc::new(sample_plugin) as _
             }
             PluginsConfig::ResourceStorage(repository_config) => {
-                let resource_storage = ResourceStorage::try_from(repository_config)
-                    .context("Initialize 'Resource' plugin failed")?;
+                let resource_storage =
+                    ResourceStorage::new(repository_config, storage_backend_config)
+                        .await
+                        .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
             }
             #[cfg(feature = "nebula-ca-plugin")]
@@ -127,18 +133,21 @@ pub struct PluginManager {
     plugins: HashMap<String, ClientPluginInstance>,
 }
 
-impl TryFrom<Vec<PluginsConfig>> for PluginManager {
-    type Error = Error;
-
-    fn try_from(value: Vec<PluginsConfig>) -> Result<Self> {
-        let plugins = value
-            .into_iter()
-            .map(|cfg| {
-                let name = cfg.to_string();
-                let plugin: ClientPluginInstance = cfg.try_into()?;
-                Ok((name, plugin))
-            })
-            .collect::<Result<HashMap<String, ClientPluginInstance>>>()?;
+impl PluginManager {
+    /// Turn the PluginsConfig into a concrete plugin instance
+    /// If the plugin instance needs a backend storage, the storage_type and storage_config can be used.
+    pub async fn new(
+        value: Vec<PluginsConfig>,
+        storage_backend_config: &StorageBackendConfig,
+    ) -> Result<Self> {
+        let mut plugins = HashMap::new();
+        for cfg in value {
+            let name = cfg.to_string();
+            let plugin: ClientPluginInstance = cfg
+                .into_client_plugin_instance(storage_backend_config)
+                .await?;
+            plugins.insert(name, plugin);
+        }
         Ok(Self { plugins })
     }
 }
