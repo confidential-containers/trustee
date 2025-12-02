@@ -14,7 +14,11 @@ base64.workspace = true
 pg-connection-string = { version = "0.0.2", optional = true }
 educe.workspace = true
 serde.workspace = true
-sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio"], optional = true }
+serde_json.workspace = true
+sqlx = { version = "0.8.6", features = [
+    "postgres",
+    "runtime-tokio",
+], optional = true }
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

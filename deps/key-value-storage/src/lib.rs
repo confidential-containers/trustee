@@ -17,6 +17,8 @@ pub mod memory;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 
+pub mod local_json;
+
 pub mod local_fs;
 
 #[derive(Default)]
@@ -53,6 +55,9 @@ pub enum KeyValueStorageConfig {
     #[default]
     Memory,
 
+    #[serde(alias = "LocalJson")]
+    LocalJson(local_json::Config),
+
     #[serde(alias = "LocalFs")]
     LocalFs(local_fs::Config),
 }
@@ -69,6 +74,9 @@ impl KeyValueStorageConfig {
                     })?,
             )),
             KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
+            KeyValueStorageConfig::LocalJson(config) => {
+                Ok(Arc::new(local_json::LocalJson::new(config.clone())?))
+            }
             KeyValueStorageConfig::LocalFs(config) => {
                 Ok(Arc::new(local_fs::LocalFs::new(config.clone())?))
             }
