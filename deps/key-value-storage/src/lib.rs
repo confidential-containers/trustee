@@ -17,6 +17,8 @@ pub mod memory;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 
+pub mod local_fs;
+
 #[derive(Default)]
 pub struct SetParameters {
     /// Whether to overwrite the existing value.
@@ -41,6 +43,7 @@ pub trait KeyValueStorage: Send + Sync {
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueStorageConfig {
     #[cfg(feature = "postgres")]
     #[serde(alias = "postgres")]
@@ -49,6 +52,9 @@ pub enum KeyValueStorageConfig {
     #[serde(alias = "Memory")]
     #[default]
     Memory,
+
+    #[serde(alias = "LocalFs")]
+    LocalFs(local_fs::Config),
 }
 
 impl KeyValueStorageConfig {
@@ -63,6 +69,9 @@ impl KeyValueStorageConfig {
                     })?,
             )),
             KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
+            KeyValueStorageConfig::LocalFs(config) => {
+                Ok(Arc::new(local_fs::LocalFs::new(config.clone())?))
+            }
         }
     }
 }
