@@ -3,7 +3,7 @@
     "rvps_config": {
         "type": "BuiltIn",
         "storage": {
-            "type": "LocalFs"
+            "type": "Memory"
         }
     },
     "attestation_token_broker": {
