@@ -9,25 +9,20 @@ use kbs::admin::{
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
-use kbs::policy_engine::PolicyEngineConfig;
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
 
-use kbs::plugins::{
-    implementations::{resource::local_fs::LocalFsRepoDesc, RepositoryConfig},
-    PluginsConfig,
-};
+use kbs::plugins::{implementations::RepositoryConfig, PluginsConfig};
 
 use attestation_service::{
-    config::Config,
     ear_token::EarTokenConfiguration,
-    rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
+    rvps::{grpc::RvpsRemoteConfig, RvpsConfig},
 };
 
+use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig, local_fs, local_json};
 use reference_value_provider_service::client as rvps_client;
 use reference_value_provider_service::config::Config as RVPSConfig;
 use reference_value_provider_service::rvps_api::reference::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
-use reference_value_provider_service::storage::{local_json, ReferenceValueStorageConfig};
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
 use anyhow::{anyhow, bail, Result};
@@ -126,19 +121,12 @@ impl TestHarness {
         let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
 
         let work_dir = TempDir::new()?;
-        let resource_dir = work_dir
+        let kbs_storage_path = work_dir
             .path()
-            .join("resources")
+            .join("kbs")
             .into_os_string()
             .into_string()
-            .map_err(|e| anyhow!("Failed to join resource path: {:?}", e))?;
-        let as_policy_dir = work_dir
-            .path()
-            .join("as_policy")
-            .into_os_string()
-            .into_string()
-            .map_err(|e| anyhow!("Failed to join as_policy path: {:?}", e))?;
-        let kbs_policy_path = work_dir.path().join("kbs_policy");
+            .map_err(|e| anyhow!("Failed to join kbs storage path: {:?}", e))?;
         let rv_path = work_dir
             .path()
             .join("reference_values")
@@ -149,27 +137,27 @@ impl TestHarness {
 
         tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
-        let attestation_token_config = EarTokenConfiguration {
-            policy_dir: as_policy_dir,
-            ..Default::default()
-        };
+        let attestation_token_config = EarTokenConfiguration::default();
 
         // Setup RVPS either remotely or builtin
         let rvps_config = match &test_parameters.rvps_type {
-            RvpsType::Builtin => RvpsConfig::BuiltIn(RvpsCrateConfig {
-                extractors: None,
-                storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
-                    file_path: rv_path,
-                }),
-            }),
+            RvpsType::Builtin => RvpsConfig::BuiltIn { extractors: None },
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
                 let service = Rvps::new(RVPSConfig {
                     extractors: None,
-                    storage: ReferenceValueStorageConfig::LocalJson(local_json::Config {
-                        file_path: rv_path,
-                    }),
-                })?;
+                    storage: StorageBackendConfig {
+                        storage_type: KeyValueStorageType::LocalJson,
+                        backends: KeyValueStorageStructConfig {
+                            local_json: Some(local_json::ShimConfig {
+                                file_dir_path: rv_path,
+                            }),
+                            local_fs: None,
+                            postgres: None,
+                        },
+                    },
+                })
+                .await?;
                 let inner = Arc::new(RwLock::new(service));
                 let rvps_server = RvpsServer::new(inner.clone());
 
@@ -211,12 +199,13 @@ impl TestHarness {
                 extra_teekey_paths: vec![],
             },
             attestation_service: AttestationConfig {
-                attestation_service: AttestationServiceConfig::CoCoASBuiltIn(Config {
-                    work_dir: work_dir.path().to_path_buf(),
-                    rvps_config,
-                    attestation_token_broker: attestation_token_config,
-                    verifier_config: None,
-                }),
+                attestation_service: AttestationServiceConfig::CoCoASBuiltIn(
+                    kbs::attestation::coco::builtin::Config {
+                        rvps_config,
+                        attestation_token_broker: attestation_token_config,
+                        verifier_config: None,
+                    },
+                ),
                 timeout: 5,
             },
             http_server: HttpServerConfig {
@@ -228,14 +217,17 @@ impl TestHarness {
                 worker_count: Some(4),
             },
             admin: admin_config,
-            policy_engine: PolicyEngineConfig {
-                policy_path: kbs_policy_path,
-            },
-            plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-                LocalFsRepoDesc {
-                    dir_path: resource_dir,
+            storage_backend: StorageBackendConfig {
+                storage_type: KeyValueStorageType::LocalFs,
+                backends: KeyValueStorageStructConfig {
+                    local_fs: Some(local_fs::ShimConfig {
+                        dir_path: kbs_storage_path,
+                    }),
+                    local_json: None,
+                    postgres: None,
                 },
-            ))],
+            },
+            plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
         };
         // Spawn the KBS Server
         let api_server = ApiServer::new(kbs_config.clone()).await?;
