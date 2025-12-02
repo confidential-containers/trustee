@@ -19,35 +19,15 @@ pub use key_value_storage::{KeyValueStorage, KeyValueStorageConfig};
 pub struct PolicyEngineConfig {
     /// The storage to store the policies.
     pub storage: KeyValueStorageConfig,
-
-    /// The type of policy engine to use.
-    /// Currently, only Rego is supported.
-    pub policy_type: PolicyType,
 }
 
 #[derive(Clone)]
-pub struct PolicyEngine {
+pub struct PolicyEngine<T: Send + Sync> {
     pub storage: Arc<dyn KeyValueStorage>,
-    pub engine: Arc<dyn Engine>,
+    pub engine: T,
 }
 
-impl PolicyEngine {
-    pub async fn new(config: PolicyEngineConfig) -> Result<Self> {
-        let storage = config.storage.to_key_value_storage().await?;
-        let engine = config.policy_type.to_engine();
-        Ok(Self { storage, engine })
-    }
-
-    pub async fn evaluate(
-        &self,
-        data: &str,
-        input: &str,
-        policy_id: &str,
-    ) -> Result<EvaluationResult> {
-        let policy = self.get_policy(policy_id).await?;
-        self.engine.evaluate(data, input, &policy).await
-    }
-
+impl<T: Send + Sync> PolicyEngine<T> {
     /// Set a policy to the backend.
     /// The policy is expected to be provided as string.
     /// Concrete policy engine backend may handle the policy in different ways.
