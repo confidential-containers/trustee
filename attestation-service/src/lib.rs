@@ -5,10 +5,10 @@
 
 pub mod config;
 pub mod ear_token;
-pub mod policy_engine;
 pub mod rvps;
 use crate::rvps::RvpsClient;
 
+use base64::Engine;
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 pub use serde_json::Value;
@@ -152,13 +152,15 @@ impl AttestationService {
 
     /// Set Attestation Verification Policy.
     pub async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()> {
+        let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(policy)?;
+        let policy = String::from_utf8(policy_bytes)?;
         self.token_broker.set_policy(policy_id, policy).await?;
         Ok(())
     }
 
     /// Get Attestation Verification Policy List.
     /// The result is a `policy-id` -> `policy hash` map.
-    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
+    pub async fn list_policies(&self) -> Result<Vec<String>> {
         self.token_broker
             .list_policies()
             .await

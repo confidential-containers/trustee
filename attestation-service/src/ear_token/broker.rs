@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::*;
+use anyhow::{anyhow, bail, Context, Error, Result};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -15,25 +15,33 @@ use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
-use serde_json::Value;
+use policy_engine::rego::ExtensionWrapper;
+use policy_engine::{rego::Regorus, PolicyEngine};
+use serde::Deserialize;
+use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
-use std::path::Path;
-use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+use time::{Duration as TimeDuration, OffsetDateTime};
 use tracing::{debug, info, warn};
 
 use crate::ear_token::EarTokenConfiguration;
-use crate::policy_engine::{PolicyEngine, PolicyEngineType};
 use crate::rvps::RvpsClient;
 use crate::TeeClaims;
+
+/// The policy claim that will hold trust claims.
+pub const TRUST_CLAIMS_RULE: &str = "data.policy.trust_claims";
+/// The policy claim that will hold extensions.
+pub const EXTENSIONS_RULE: &str = "data.policy.extensions";
 
 pub struct EarAttestationTokenBroker {
     config: EarTokenConfiguration,
     private_key: EcKey<Private>,
     cert_url: Option<String>,
     cert_chain: Option<Vec<X509>>,
-    policy_engine: Arc<dyn PolicyEngine>,
+    policy_engine: PolicyEngine<Regorus>,
 }
 
 impl EarAttestationTokenBroker {
@@ -42,23 +50,18 @@ impl EarAttestationTokenBroker {
 
         warn!("Simple Token has been deprecated in v0.16.0. Note that the `attestation_token_broker` config field `type` is now ignored and the token will always be an EAR token.");
 
-        let policy_engine =
-            PolicyEngineType::OPA.to_policy_engine(Path::new(&config.policy_dir))?;
+        let policy_engine = PolicyEngine::<Regorus>::new(config.policy_engine.clone()).await?;
 
         let default_cpu_policy = include_str!("ear_default_policy_cpu.rego").to_string();
-        let default_cpu_policy =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_cpu_policy);
 
         policy_engine
-            .set_policy("default_cpu".to_string(), default_cpu_policy, false)
+            .set_policy("default_cpu", &default_cpu_policy, false)
             .await?;
 
         let default_gpu_policy = include_str!("ear_default_policy_gpu.rego").to_string();
-        let default_gpu_policy =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_gpu_policy);
 
         policy_engine
-            .set_policy("default_gpu".to_string(), default_gpu_policy, false)
+            .set_policy("default_gpu", &default_gpu_policy, false)
             .await?;
 
         if config.signer.is_none() {
@@ -108,6 +111,22 @@ impl EarAttestationTokenBroker {
     }
 }
 
+/// Extensions that will be added to the attestation token.
+#[derive(Debug, Deserialize)]
+pub struct Extension {
+    pub name: String,
+    pub key: i32,
+    pub value: Value,
+}
+
+#[derive(Debug)]
+pub struct EvaluationResult {
+    pub trust_claims: Value,
+    /// Extensions to be added to the attestation token.
+    pub extensions: Vec<Extension>,
+    pub policy_hash: String,
+}
+
 impl EarAttestationTokenBroker {
     pub async fn issue(
         &self,
@@ -142,25 +161,101 @@ impl EarAttestationTokenBroker {
             // There is a policy for each tee class.
             // The cpu tee class is loaded as the default.
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
+            let mut extensions = vec![];
+            if let Some(rvps_client) = &rvps_client {
+                let rvps_client = rvps_client.clone();
+                let extension = ExtensionWrapper {
+                    name: "query_reference_value".to_string(),
+                    id: 1,
+                    extension: Box::new(move |params: Vec<regorus::Value>| {
+                        if params.len() != 1 {
+                            bail!("query_reference_value extension requires exactly one parameter");
+                        }
+                        let id = params[0]
+                            .as_string()
+                            .context("query_reference_value extension parameter must be a string")?
+                            .to_string();
+                        debug!("query reference value from RVPS: {id}");
+                        let (tx, rx) = mpsc::channel::<Result<Option<serde_json::Value>>>();
+
+                        let fut = async |rvps_client: RvpsClient,
+                                         reference_value_id: String|
+                               -> Result<_> {
+                            let rv = rvps_client
+                                .lock()
+                                .await
+                                .query_reference_value(&reference_value_id)
+                                .await?;
+                            Ok(rv)
+                        };
+
+                        let rvps_client = rvps_client.clone();
+                        let reference_value_id = params[0].as_string()?.to_string();
+                        let _ = thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_current_thread()
+                                .enable_all()
+                                .build()
+                                .expect("failed to build runtime");
+
+                            let res = rt.block_on(fut(rvps_client, reference_value_id));
+
+                            tx.send(res)
+                        });
+
+                        // We wait for 10 seconds at most.
+                        match rx.recv_timeout(Duration::from_secs(10)) {
+                            Ok(Ok(Some(v))) => {
+                                let json_value = serde_json::to_value(v)?;
+                                let value: regorus::Value = serde_json::from_value(json_value)?;
+                                Ok(value)
+                            }
+                            Ok(Ok(None)) => {
+                                warn!("No reference value found for the given id: {id}, use NULL as the returned value");
+                                Ok(regorus::Value::Null)
+                            }
+                            Ok(Err(e)) => bail!("Get Reference Value from RVPS failed: {e:?}"),
+                            Err(e) => bail!("Get Reference Value from RVPS timeout: {e:?}"),
+                        }
+                    }),
+                };
+
+                extensions.push(extension);
+            }
+
             let policy_results = self
                 .policy_engine
-                .evaluate(None, &tcb_claims_json, &policy_id, rvps_client.clone())
+                .evaluate_rego(
+                    None,
+                    &tcb_claims_json,
+                    &policy_id,
+                    vec![TRUST_CLAIMS_RULE, EXTENSIONS_RULE],
+                    extensions,
+                )
                 .await?;
 
-            let trust_claims = policy_results
-                .trust_claims
-                .as_object()
-                .context("Policy result is not an object")?;
+            match policy_results
+                .eval_rules_result
+                .get(TRUST_CLAIMS_RULE)
+                .context("Trust claims rule not found")?
+            {
+                Some(value) => {
+                    let trust_claims =
+                        value.as_object().context("Trust claims is not an object")?;
+                    for (k, v) in trust_claims {
+                        let claim_value = v.as_i64().context("Trust claim value not number")?;
+                        debug!("Trust claim: {}: {}", k, claim_value);
 
-            for (k, v) in trust_claims {
-                let claim_value = v.as_i64().context("Policy claim value not number")?;
-                debug!("Policy claim: {}: {}", k, claim_value);
-
-                appraisal
-                    .trust_vector
-                    .mut_by_name(k)
-                    .unwrap()
-                    .set(claim_value as i8);
+                        appraisal
+                            .trust_vector
+                            .mut_by_name(k)
+                            .unwrap()
+                            .set(claim_value as i8);
+                    }
+                }
+                None => {
+                    warn!("No trust claims found by enforcing policy {policy_id}, set all TrustVector claims to 0");
+                    appraisal.trust_vector.set_all(0);
+                }
             }
 
             if !appraisal.trust_vector.any_set() {
@@ -169,8 +264,16 @@ impl EarAttestationTokenBroker {
 
             // Set extensions from policy result
             let mut extensions = Extensions::new();
-            let extension_claims = policy_results.extensions;
+            let extension_claims = policy_results
+                .eval_rules_result
+                .get(EXTENSIONS_RULE)
+                .context("Extensions rule not found")?
+                .as_ref()
+                .cloned()
+                .unwrap_or(json!([]));
 
+            let extension_claims =
+                serde_json::from_value::<Vec<Extension>>(extension_claims.clone())?;
             for extension in extension_claims {
                 let extension_value: RawValue =
                     serde_json::from_str(&serde_json::to_string(&extension.value)?)?;
@@ -202,7 +305,7 @@ impl EarAttestationTokenBroker {
 
         let now = OffsetDateTime::now_utc();
         let exp = now
-            .checked_add(Duration::minutes(self.config.duration_min))
+            .checked_add(TimeDuration::minutes(self.config.duration_min))
             .ok_or(anyhow!("Token expiration overflow."))?;
 
         let mut extensions = Extensions::new();
@@ -237,12 +340,12 @@ impl EarAttestationTokenBroker {
 
     pub async fn set_policy(&self, policy_id: String, policy: String) -> Result<()> {
         self.policy_engine
-            .set_policy(policy_id, policy, true)
+            .set_policy(&policy_id, &policy, true)
             .await
             .map_err(Error::from)
     }
 
-    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
+    pub async fn list_policies(&self) -> Result<Vec<String>> {
         self.policy_engine
             .list_policies()
             .await
@@ -251,7 +354,7 @@ impl EarAttestationTokenBroker {
 
     pub async fn get_policy(&self, policy_id: String) -> Result<String> {
         self.policy_engine
-            .get_policy(policy_id)
+            .get_policy(&policy_id)
             .await
             .map_err(Error::from)
     }
@@ -376,6 +479,8 @@ pub fn transform_claims(
 mod tests {
     use assert_json_diff::assert_json_eq;
     use jsonwebtoken::DecodingKey;
+    use key_value_storage::local_fs;
+    use policy_engine::KeyValueStorageConfig;
     use serde_json::json;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -389,7 +494,10 @@ mod tests {
         // use default config with no signer.
         // this will sign the token with an ephemeral key.
         let mut config = EarTokenConfiguration::default();
-        config.policy_dir = "./tests/coco-as/policy".to_string();
+        config.policy_engine.storage = KeyValueStorageConfig::LocalFs(local_fs::Config {
+            dir_path: "./tests/coco-as/policy/opa".into(),
+        });
+
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
 
         let _token = broker
@@ -422,7 +530,9 @@ mod tests {
 
         let mut config = EarTokenConfiguration::default();
         config.signer = Some(signer);
-        config.policy_dir = "./tests/coco-as/policy".to_string();
+        config.policy_engine.storage = KeyValueStorageConfig::LocalFs(local_fs::Config {
+            dir_path: "./tests/coco-as/policy/opa".into(),
+        });
 
         let broker = EarAttestationTokenBroker::new(config).await.unwrap();
         let token = broker
