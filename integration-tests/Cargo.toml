@@ -6,8 +6,10 @@ description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 
-[dependencies] 
+[dependencies]
 kbs = { path = "../kbs" }
+key-value-storage = { path = "../deps/key-value-storage" }
+policy-engine = { path = "../deps/policy-engine" }
 reference-value-provider-service = { path = "../rvps" }
 
 actix-web.workspace = true
@@ -26,13 +28,23 @@ tokio.workspace = true
 tonic.workspace = true
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
-attestation-service = { path = "../attestation-service"  }
-kbs-client = { path = "../tools/kbs-client"  }
+attestation-service = { path = "../attestation-service" }
+kbs-client = { path = "../tools/kbs-client" }
 
 [target.'cfg(target_arch = "s390x")'.dependencies]
-attestation-service = { path = "../attestation-service", default-features = false, features = [ "snp-verifier", "nvidia-verifier", "se-verifier", ] }
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "se-attester", ] }
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "snp-verifier",
+    "nvidia-verifier",
+    "se-verifier",
+] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "se-attester",
+] }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
-attestation-service = { path = "../attestation-service", default-features = false, features = [ "cca-verifier", ] }
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "cca-attester", ] }
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "cca-verifier",
+] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "cca-attester",
+] }
