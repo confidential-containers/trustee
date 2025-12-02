@@ -8,14 +8,14 @@ use actix_web::{
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
-use log::info;
+use log::{info, warn};
+use policy_engine::{rego::Regorus, PolicyEngine};
 
 use crate::{
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
     plugins::PluginManager,
-    policy_engine::PolicyEngine,
     prometheus::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
@@ -40,7 +40,7 @@ pub struct ApiServer {
     #[cfg(feature = "as")]
     attestation_service: crate::attestation::AttestationService,
 
-    policy_engine: PolicyEngine,
+    policy_engine: PolicyEngine<Regorus>,
     admin: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
@@ -70,7 +70,14 @@ impl ApiServer {
         let plugin_manager = PluginManager::try_from(config.plugins.clone())
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
-        let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
+        let policy_engine = PolicyEngine::new(config.policy_engine.clone()).await?;
+        policy_engine
+            .set_policy(
+                "resource-policy",
+                include_str!("./policy/resource-policy.rego"),
+                false,
+            )
+            .await?;
         let admin = Admin::try_from(config.admin.clone())?;
 
         #[cfg(feature = "as")]
@@ -244,7 +251,11 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
             core.admin.validate_admin_token(&request)?;
-            core.policy_engine.set_policy(&body).await?;
+            let policy = std::str::from_utf8(&body)
+                .map_err(|e| Error::ParsePolicyError { source: e.into() })?;
+            core.policy_engine
+                .set_policy("resource-policy", policy, true)
+                .await?;
 
             Ok(HttpResponse::Ok().finish())
         }
@@ -252,9 +263,11 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
             core.admin.validate_admin_token(&request)?;
-            let policy = core.policy_engine.get_policy().await?;
+            let policy = core.policy_engine.list_policies().await?;
 
-            Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(serde_json::to_string(&policy)?))
         }
         // If the base_path cannot be served by any of the above built-in
         // functions, try fulfilling the request via the PluginManager.
@@ -295,9 +308,16 @@ pub(crate) async fn api(
                 // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
-                    .evaluate(&endpoint, &claim_str)
+                    .evaluate_rego(Some(&endpoint), &claim_str, "resource-policy", vec![])
                     .await
                     .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
+                    .rules_result
+                    .as_bool()
+                    .unwrap_or_else(|| {
+                        warn!("KBS Resource Policy Evaluation Failed, use false as default");
+                        KBS_POLICY_ERRORS.inc();
+                        false
+                    })
                 {
                     KBS_POLICY_VIOLATIONS.inc();
                     return Err(Error::PolicyDeny);
