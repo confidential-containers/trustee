@@ -8,14 +8,16 @@ use actix_web::{
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
-use log::info;
+use base64::Engine;
+use log::{info, warn};
+use policy_engine::{rego::Regorus, PolicyEngine};
+use serde_json::json;
 
 use crate::{
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
     plugins::PluginManager,
-    policy_engine::PolicyEngine,
     prometheus::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
@@ -40,7 +42,7 @@ pub struct ApiServer {
     #[cfg(feature = "as")]
     attestation_service: crate::attestation::AttestationService,
 
-    policy_engine: PolicyEngine,
+    policy_engine: PolicyEngine<Regorus>,
     admin: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
@@ -67,10 +69,18 @@ impl ApiServer {
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::try_from(config.plugins.clone())
+        let plugin_manager = PluginManager::new(config.plugins.clone())
+            .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
-        let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
+        let policy_engine = PolicyEngine::new(config.policy_engine.clone()).await?;
+        policy_engine
+            .set_policy(
+                "resource-policy",
+                include_str!("./policy/resource-policy.rego"),
+                false,
+            )
+            .await?;
         let admin = Admin::try_from(config.admin.clone())?;
 
         #[cfg(feature = "as")]
@@ -244,7 +254,36 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
             core.admin.validate_admin_token(&request)?;
-            core.policy_engine.set_policy(&body).await?;
+            let request: serde_json::Value =
+                serde_json::from_slice(&body).map_err(|_| Error::ParsePolicyError {
+                    source: anyhow::anyhow!("Illegal SetPolicy Request Json"),
+                })?;
+
+            let policy_b64 = request
+                .pointer("/policy")
+                .ok_or(Error::ParsePolicyError {
+                    source: anyhow::anyhow!("No `policy` field inside SetPolicy Request Json"),
+                })?
+                .as_str()
+                .ok_or(Error::ParsePolicyError {
+                    source: anyhow::anyhow!(
+                        "`policy` field is not a string in SetPolicy Request Json"
+                    ),
+                })?;
+
+            let policy_slice = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .decode(policy_b64)
+                .map_err(|e| Error::ParsePolicyError {
+                    source: anyhow::anyhow!("Failed to decode policy: {e}"),
+                })?;
+
+            let policy = String::from_utf8(policy_slice).map_err(|e| Error::ParsePolicyError {
+                source: anyhow::anyhow!("Failed to decode policy: {e}"),
+            })?;
+
+            core.policy_engine
+                .set_policy("resource-policy", &policy, true)
+                .await?;
 
             Ok(HttpResponse::Ok().finish())
         }
@@ -252,9 +291,11 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
             core.admin.validate_admin_token(&request)?;
-            let policy = core.policy_engine.get_policy().await?;
+            let policy = core.policy_engine.list_policies().await?;
 
-            Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(serde_json::to_string(&policy)?))
         }
         // If the base_path cannot be served by any of the above built-in
         // functions, try fulfilling the request via the PluginManager.
@@ -292,12 +333,38 @@ pub(crate) async fn api(
                 let claim_str = serde_json::to_string(&claims)?;
 
                 KBS_POLICY_EVALS.inc();
+
+                let data = json!({
+                    "resource-path": endpoint,
+                });
+                let data_str = serde_json::to_string(&data)?;
                 // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
-                    .evaluate(&endpoint, &claim_str)
+                    .evaluate_rego(
+                        Some(&data_str),
+                        &claim_str,
+                        "resource-policy",
+                        vec!["data.policy.allow"],
+                        vec![],
+                    )
                     .await
                     .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
+                    .eval_rules_result
+                    .get("data.policy.allow")
+                    .expect("`data.policy.allow` rule not put as parameter found")
+                    .as_ref()
+                    .unwrap_or_else(|| {
+                        warn!("The KBS Resource Policy does not define the `data.policy.result` rule, use false as default");
+                        KBS_POLICY_ERRORS.inc();
+                        &serde_json::Value::Bool(false)
+                    })
+                    .as_bool()
+                    .unwrap_or_else(|| {
+                        warn!("`data.policy.result` rule result is not a boolean, use false as default");
+                        KBS_POLICY_ERRORS.inc();
+                        false
+                    })
                 {
                     KBS_POLICY_VIOLATIONS.inc();
                     return Err(Error::PolicyDeny);

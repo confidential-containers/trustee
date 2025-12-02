@@ -11,7 +11,10 @@ timeout = 5
 
 [attestation_service.attestation_token_broker]
 duration_min = 5
-policy_dir = "/opt/confidential-containers/attestation-service/ear-policies"
+
+[attestation_service.attestation_token_broker.policy_engine.storage]
+type = "LocalJson"
+file_path = "/opt/confidential-containers/attestation-service/ear-policies.json"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
@@ -19,13 +22,15 @@ type = "BuiltIn"
 [attestation_service.rvps_config.storage]
 type = "LocalFs"
 
-[policy_engine]
-policy_path = "/opa/confidential-containers/kbs/policy.rego"
+[policy_engine.storage]
+type = "LocalJson"
+file_path = "/opa/confidential-containers/kbs/policy.json"
 
 [admin]
 type = "Simple"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"

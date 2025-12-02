@@ -17,5 +17,6 @@ insecure_http = false
 [admin]
 type = "DenyAll"
 
-[policy_engine]
-policy_path = "/opt/confidential-containers/kbs/policy.rego"
+[policy_engine.storage]
+type = "LocalJson"
+file_path = "/opt/confidential-containers/kbs/policy.rego"

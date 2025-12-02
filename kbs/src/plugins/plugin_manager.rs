@@ -5,7 +5,7 @@
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use actix_web::http::Method;
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use serde::Deserialize;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
@@ -88,10 +88,8 @@ impl Display for PluginsConfig {
     }
 }
 
-impl TryInto<ClientPluginInstance> for PluginsConfig {
-    type Error = Error;
-
-    fn try_into(self) -> Result<ClientPluginInstance> {
+impl PluginsConfig {
+    pub async fn into_client_plugin_instance(self) -> Result<ClientPluginInstance> {
         let plugin = match self {
             PluginsConfig::Sample(cfg) => {
                 let sample_plugin =
@@ -99,7 +97,8 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                 Arc::new(sample_plugin) as _
             }
             PluginsConfig::ResourceStorage(repository_config) => {
-                let resource_storage = ResourceStorage::try_from(repository_config)
+                let resource_storage = ResourceStorage::new(repository_config)
+                    .await
                     .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
             }
@@ -127,18 +126,14 @@ pub struct PluginManager {
     plugins: HashMap<String, ClientPluginInstance>,
 }
 
-impl TryFrom<Vec<PluginsConfig>> for PluginManager {
-    type Error = Error;
-
-    fn try_from(value: Vec<PluginsConfig>) -> Result<Self> {
-        let plugins = value
-            .into_iter()
-            .map(|cfg| {
-                let name = cfg.to_string();
-                let plugin: ClientPluginInstance = cfg.try_into()?;
-                Ok((name, plugin))
-            })
-            .collect::<Result<HashMap<String, ClientPluginInstance>>>()?;
+impl PluginManager {
+    pub async fn new(value: Vec<PluginsConfig>) -> Result<Self> {
+        let mut plugins = HashMap::new();
+        for cfg in value {
+            let name = cfg.to_string();
+            let plugin: ClientPluginInstance = cfg.into_client_plugin_instance().await?;
+            plugins.insert(name, plugin);
+        }
         Ok(Self { plugins })
     }
 }

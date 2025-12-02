@@ -60,12 +60,14 @@ hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
 jwt-simple.workspace = true
 kbs-types.workspace = true
+key-value-storage.path = "../deps/key-value-storage"
 kms = { workspace = true, default-features = false }
 lazy_static.workspace = true
 log.workspace = true
 mobc = { version = "0.9.0", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
 p521 = { workspace = true, features = ["ecdh"] }
+policy-engine.path = "../deps/policy-engine"
 prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
