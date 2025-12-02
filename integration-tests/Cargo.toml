@@ -8,6 +8,8 @@ edition.workspace = true
 
 [dependencies]
 kbs = { path = "../kbs" }
+key-value-storage = { path = "../deps/key-value-storage" }
+policy-engine = { path = "../deps/policy-engine" }
 reference-value-provider-service = { path = "../rvps" }
 
 actix-web.workspace = true
