@@ -16,8 +16,9 @@ insecure_http = false
 [admin]
 type = "DenyAll"
 
-[policy_engine]
-policy_path = "/etc/kbs-policy.rego"
+[storage_backend]
+storage_type = "local_json"
+backends.local_json.file_dir_path = "/opt/confidential-containers/trustee"
 
 [[plugins]]
 name = "sample"
@@ -25,5 +26,4 @@ item = "value1"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "/tmp/kbs-resource"
+backend = "kvstorage"

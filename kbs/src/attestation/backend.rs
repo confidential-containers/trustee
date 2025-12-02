@@ -9,6 +9,7 @@ use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
+use key_value_storage::StorageBackendConfig;
 use lazy_static::lazy_static;
 use log::{debug, info};
 use rand::{thread_rng, Rng};
@@ -144,13 +145,17 @@ pub struct SetPolicyInput {
 }
 
 impl AttestationService {
-    pub async fn new(config: AttestationConfig) -> Result<Self> {
+    pub async fn new(
+        config: AttestationConfig,
+        _storage_backend_config: &StorageBackendConfig,
+    ) -> Result<Self> {
         let inner = match config.attestation_service {
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
             AttestationServiceConfig::CoCoASBuiltIn(cfg) => {
-                let built_in_as = super::coco::builtin::BuiltInCoCoAs::new(cfg)
-                    .await
-                    .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
+                let built_in_as =
+                    super::coco::builtin::BuiltInCoCoAs::new(cfg, _storage_backend_config)
+                        .await
+                        .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
                 Arc::new(built_in_as) as _
             }
             #[cfg(feature = "coco-as-grpc")]
