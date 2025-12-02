@@ -589,8 +589,10 @@ dependencies = [
  "hex",
  "jsonwebtoken 10.2.0",
  "kbs-types",
+ "key-value-storage",
  "lazy_static",
  "openssl",
+ "policy-engine",
  "prost 0.14.1",
  "rand 0.8.5",
  "reference-value-provider-service",
@@ -2071,7 +2073,7 @@ dependencies = [
  "enum-ordinalize",
  "proc-macro2",
  "quote",
- "syn 2.0.110",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -2130,7 +2132,7 @@ checksum = "8ca9601fb2d62598ee17836250842873a413586e5d7ed88b356e38ddbb0ec631"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.110",
+ "syn 2.0.111",
 ]
 
 [[package]]

@@ -5,7 +5,6 @@
 
 pub mod config;
 pub mod ear_token;
-pub mod policy_engine;
 pub mod rvps;
 use crate::rvps::RvpsClient;
 
@@ -158,7 +157,7 @@ impl AttestationService {
 
     /// Get Attestation Verification Policy List.
     /// The result is a `policy-id` -> `policy hash` map.
-    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
+    pub async fn list_policies(&self) -> Result<Vec<String>> {
         self.token_broker
             .list_policies()
             .await
