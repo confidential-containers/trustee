@@ -36,7 +36,7 @@ fn default_timeout() -> i64 {
 pub enum AttestationServiceConfig {
     #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
     #[serde(alias = "coco_as_builtin")]
-    CoCoASBuiltIn(attestation_service::config::Config),
+    CoCoASBuiltIn(super::coco::builtin::Config),
 
     #[cfg(feature = "coco-as-grpc")]
     #[serde(alias = "coco_as_grpc")]
@@ -51,7 +51,7 @@ impl Default for AttestationServiceConfig {
     fn default() -> Self {
         cfg_if::cfg_if! {
             if #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))] {
-                AttestationServiceConfig::CoCoASBuiltIn(attestation_service::config::Config::default())
+                AttestationServiceConfig::CoCoASBuiltIn(super::coco::builtin::Config::default())
             } else if #[cfg(feature = "coco-as-grpc")] {
                 AttestationServiceConfig::CoCoASGrpc(super::coco::grpc::GrpcConfig::default())
             } else {
