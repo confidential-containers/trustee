@@ -4,11 +4,11 @@
 
 use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
-use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 use clap::Parser;
 use config::{Config, File};
+use policy_engine::PolicyEngineConfig;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -108,7 +108,7 @@ pub struct Cli {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use crate::{
         admin::{
@@ -119,12 +119,9 @@ mod tests {
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
-            implementations::{
-                resource::local_fs::LocalFsRepoDesc, RepositoryConfig, SampleConfig,
-            },
+            implementations::{RepositoryConfig, SampleConfig},
             PluginsConfig,
         },
-        policy_engine::{PolicyEngineConfig, DEFAULT_POLICY_PATH},
         token::AttestationTokenVerifierConfig,
     };
 
@@ -136,8 +133,9 @@ mod tests {
         rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
     };
 
-    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
+    use key_value_storage::{local_fs, local_json, KeyValueStorageConfig};
 
+    use policy_engine::PolicyEngineConfig;
     use rstest::rstest;
 
     #[rstest]
@@ -171,15 +169,17 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+            storage: KeyValueStorageConfig::LocalJson(local_json::Config {
+                file_path: "/etc/kbs-policy.rego".into(),
+            }),
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
+        PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage(
+            KeyValueStorageConfig::LocalFs(local_fs::Config {
                 dir_path: "/tmp/kbs-resource".into(),
-            },
+            }),
         ))],
     })]
     #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
@@ -221,7 +221,9 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
-            policy_path: DEFAULT_POLICY_PATH.into(),
+            storage: KeyValueStorageConfig::LocalJson(local_json::Config {
+                file_path: "/opt/confidential-containers/kbs/policy.rego".into(),
+            }),
         },
         plugins: Vec::new(),
     })]
@@ -258,15 +260,17 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
         },
         policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+            storage: KeyValueStorageConfig::LocalJson(local_json::Config {
+                file_path: "/etc/kbs-policy.rego".into(),
+            }),
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
+        PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage(
+            KeyValueStorageConfig::LocalFs(local_fs::Config {
                 dir_path: "/tmp/kbs-resource".into(),
-            },
+            }),
         ))],
     })]
     #[case("test_data/configs/coco-as-grpc-2.toml",         KbsConfig {
@@ -317,8 +321,8 @@ mod tests {
                     attestation_service::config::Config {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
                         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig{
-                            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config{
-                                file_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
+                            storage: KeyValueStorageConfig::LocalFs(local_fs::Config{
+                                dir_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
                             }),
                             extractors: None,
                         }),
@@ -449,10 +453,17 @@ mod tests {
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     attestation_service::config::Config {
                         work_dir: "/opt/confidential-containers/attestation-service".into(),
-                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
+                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig{
+                            storage: KeyValueStorageConfig::LocalFs(local_fs::Config::default()),
+                            extractors: None,
+                        }),
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
-                            policy_dir: "/opt/confidential-containers/attestation-service/ear-policies".into(),
+                            policy_engine: PolicyEngineConfig {
+                                storage: KeyValueStorageConfig::LocalJson(local_json::Config {
+                                    file_path: "/opt/confidential-containers/attestation-service/ear-policies.json".into(),
+                                }),
+                            },
                             ..Default::default()
                         },
                         verifier_config: None,
@@ -470,13 +481,15 @@ mod tests {
             }),
         },
         policy_engine: PolicyEngineConfig {
-            policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
+            storage: KeyValueStorageConfig::LocalJson(local_json::Config {
+                file_path: "/opa/confidential-containers/kbs/policy.json".into(),
+            }),
         },
         plugins: vec![
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
+        PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage(
+            KeyValueStorageConfig::LocalFs(local_fs::Config {
                 dir_path: "/opt/confidential-containers/kbs/repository".into(),
-            },
+            }),
         ))],
     })]
     fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
