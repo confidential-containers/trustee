@@ -31,7 +31,7 @@ docker compose up -d
 
 Note that by default the KBS cluster blocks sample evidence.
 If you are testing with sample evidence you will need to
-set a more permissive resource policy.
+set a more permissive request policy.
 
 Then the kbs cluster is launched.
 
