@@ -110,28 +110,29 @@ enum ConfigCommands {
         policy_file: PathBuf,
     },
 
-    /// Set resource policy
-    SetResourcePolicy {
+    /// Set request policy
+    #[command(alias = "set-resource-policy")]
+    SetRequestPolicy {
         /// Policy file path
-        #[clap(long, value_parser, group = "resource_policy")]
+        #[clap(long, value_parser, group = "request_policy")]
         policy_file: Option<PathBuf>,
 
         /// Use built-in policy that allows access to all resources
-        #[clap(long, action, group = "resource_policy")]
+        #[clap(long, action, group = "request_policy")]
         allow_all: bool,
 
         /// Use built-in policy that does not allow access to any resources
-        #[clap(long, action, group = "resource_policy")]
+        #[clap(long, action, group = "request_policy")]
         deny_all: bool,
 
         /// Use built-in policy that only releases resources if the attestation
         /// token is affirming (i.e. the attestation policy is met)
-        #[clap(long, action, group = "resource_policy")]
+        #[clap(long, action, group = "request_policy")]
         affirming: bool,
 
         /// Use built-in default policy that allows access to all policies
         /// unless the sample evidence is provided
-        #[clap(long, action, group = "resource_policy")]
+        #[clap(long, action, group = "request_policy")]
         default: bool,
     },
 
@@ -273,7 +274,7 @@ async fn main() -> Result<()> {
                         STANDARD.encode(policy_bytes)
                     );
                 }
-                ConfigCommands::SetResourcePolicy {
+                ConfigCommands::SetRequestPolicy {
                     policy_file,
                     allow_all,
                     deny_all,
@@ -294,7 +295,7 @@ async fn main() -> Result<()> {
                     } else {
                         bail!("No policy specified")
                     };
-                    kbs_client::set_resource_policy(
+                    kbs_client::set_request_policy(
                         &cli.url,
                         auth_key.clone(),
                         policy_bytes.clone(),
@@ -302,7 +303,7 @@ async fn main() -> Result<()> {
                     )
                     .await?;
                     println!(
-                        "Set resource policy success \n policy: {}",
+                        "Set request policy success \n policy: {}",
                         STANDARD.encode(policy_bytes)
                     );
                 }
