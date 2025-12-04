@@ -120,7 +120,7 @@ mod tests {
         let data = format!(
             r#"
         {{
-            "resource-path": "{resource_path}"
+            "request_path": "{resource_path}"
         }}
         "#
         );

@@ -16,8 +16,8 @@ pub enum KbsPolicyEngineError {
     #[error("Failed to load data for policy")]
     DataLoadError,
 
-    #[error("Invalid resource path format")]
-    ResourcePathError,
+    #[error("Invalid data format")]
+    RequestDataError,
 
     #[error("Policy IO Error: {0}")]
     IOError(#[from] std::io::Error),
