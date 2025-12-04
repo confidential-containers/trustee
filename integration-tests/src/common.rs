@@ -254,7 +254,7 @@ impl TestHarness {
     }
 
     pub async fn set_policy(&self, policy: PolicyType) -> Result<()> {
-        info!("TEST: Setting Resource Policy");
+        info!("TEST: Setting Request Policy");
 
         let policy_bytes = match policy {
             PolicyType::AllowAll => ALLOW_ALL_POLICY.as_bytes().to_vec(),
@@ -262,7 +262,7 @@ impl TestHarness {
             PolicyType::Custom(p) => p.to_string().into_bytes(),
         };
 
-        kbs_client::set_resource_policy(
+        kbs_client::set_request_policy(
             KBS_URL,
             self.auth_privkey.clone(),
             policy_bytes,

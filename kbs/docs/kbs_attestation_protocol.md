@@ -609,12 +609,12 @@ Only authenticated users can send a POST request to this endpoint.
 KBS verifies the user identity with the user's private key signed JSON Web Token (JWT) that must be included in the
 request.
 
-### Set Resource Policy
+### Set Request Policy
 
-User of KBS can set an resource policy through the following endpoint:
+User of KBS can set an request policy through the following endpoint:
 
 ```
-/kbs/v0/resource-policy
+/kbs/v0/request-policy
 ```
 
 The payload of the POST request should like:

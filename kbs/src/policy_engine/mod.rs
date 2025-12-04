@@ -17,14 +17,14 @@ pub use error::*;
 
 pub const DEFAULT_POLICY_PATH: &str = "/opt/confidential-containers/kbs/policy.rego";
 
-/// Resource policy engine interface
+/// Request policy engine interface
 ///
 /// TODO: Use a better authentication and authorization policy
 #[async_trait]
 pub(crate) trait PolicyEngineInterface: Send + Sync {
     /// Determine whether there is access to a specific path based on the input claims.
     /// Input parameters:
-    /// request_path: Required to be a string in segments path format:<FIRST>/.../<END>, for example: "my'repo/License/key".
+    /// request_path: Required to be a string in segments path format:<plugin-name>/.../<END>[?<QUERY>], for example: "my'repo/License/key?version=1.0.0".
     /// input_claims: Parsed claims from Attestation Token.
     ///
     /// return value:
@@ -67,12 +67,8 @@ impl PolicyEngine {
         Ok(Self(policy_engine))
     }
 
-    pub async fn evaluate(&self, request_path: &str, input_claims: &str) -> Result<bool> {
-        self.0
-            .lock()
-            .await
-            .evaluate(request_path, input_claims)
-            .await
+    pub async fn evaluate(&self, data: &str, input_claims: &str) -> Result<bool> {
+        self.0.lock().await.evaluate(data, input_claims).await
     }
 
     pub async fn set_policy(&self, request: &[u8]) -> Result<()> {

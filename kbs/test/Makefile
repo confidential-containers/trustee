@@ -47,6 +47,8 @@ package policy
 default allow = false
 
 allow if {
+	data.plugin == "resource"
+	data.subpath == "/one/two/three"
 	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef
@@ -189,7 +191,7 @@ test-bgcheck: client start-kbs
 		--cert-file "$(HTTPS_CERT)" \
 		config \
 		--auth-private-key "$(KBS_KEY)" \
-		set-resource-policy \
+		set-request-policy \
 		--policy-file <(echo "$$TEE_POLICY_REGO") && \
 	./client \
 		--url https://127.0.0.1:8080 \
@@ -212,7 +214,7 @@ $(ATTESTATION_TOKEN): client $(TEE_KEY) start-kbs
 test-passport: client $(ATTESTATION_TOKEN) start-resource-kbs
 	./client --url http://127.0.0.1:50002 \
 		config --auth-private-key "$(KBS_KEY)" \
-		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
+		set-request-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
 	./client --url http://127.0.0.1:50002 get-resource \
 		--attestation-token "$(ATTESTATION_TOKEN)" \
 		--tee-key-file "$(TEE_KEY)" \

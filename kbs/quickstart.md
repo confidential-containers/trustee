@@ -90,11 +90,11 @@ kbs-client --url http://127.0.0.1:8080 get-resource --path default/test/dummy
 
 If you run the client outside of a TEE, the sample attester will be used.
 By default the KBS rejects all sample evidence.
-To test the KBS with sample evidence, you'll need to update the resource policy
+To test the KBS with sample evidence, you'll need to update the request policy
 to something more permissive.
 This can be done with a command such as
 ```shell
-kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key  set-resource-policy --policy-file sample_policies/allow_all.rego
+kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key  set-request-policy --policy-file sample_policies/allow_all.rego
 ```
 
 ## Passport Mode
@@ -187,17 +187,17 @@ allow if {
 
 Refer to [Attestation-Service](https://github.com/confidential-containers/attestation-service) for filed names.
 
-### Resource Policy
-Use `kbs-client` to set custom resource policy to KBS:
+### Request Policy
+Use `kbs-client` to set custom request policy to KBS:
 ```shell
 kbs-client --url http://127.0.0.1:50002 config --auth-private-key config/private.key set-attestation-policy --policy-file /path/to/policy
 ```
 
 Where `/path/to/policy` should be replaced by the real path to your policy file.
 
-Resource policy also needs to be the `rego` syntax defined by [Open Policy Agent](https://www.openpolicyagent.org/).
+Request policy also needs to be the `rego` syntax defined by [Open Policy Agent](https://www.openpolicyagent.org/).
 
-You can read the notes of [default resource policy file](src/policy_engine/opa/default_policy.rego) for more details of resource policy.
+You can read the notes of [default request policy file](src/policy_engine/opa/default_policy.rego) for more details of request policy.
 
 ## Attestation Token Certificate
 

@@ -89,13 +89,24 @@ paths:
   /resource-policy:
     post:
       operationId: setResourcePolicy
-      summary: Set resource distribution policy
+      summary: Set resource distribution policy (to be deprecated, and replaced by request-policy)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResourcePolicy'
+              $ref: '#/components/schemas/Policy'
+
+  /request-policy:
+    post:
+      operationId: setRequestPolicy
+      summary: Set request policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPolicy'
 
   /resource/{repository}/{type}/{tag}:
     get:
@@ -284,14 +295,14 @@ components:
           description: >-
             Base64 encoded attestation verification policy.
 
-    ResourcePolicy:
+    Policy:
       required:
         - policy
       properties:
         policy:
           type: string
           description: >-
-            Base64 encoded resource distribution policy.
+            Base64-encoded policy for resource distribution, formerly referred to as ResourcePolicy.
 
     AttestationToken:
       required:

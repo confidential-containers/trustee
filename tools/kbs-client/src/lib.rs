@@ -164,17 +164,17 @@ pub async fn set_attestation_policy(
 }
 
 #[derive(Clone, Serialize)]
-struct ResourcePolicyData {
+struct PolicyData {
     pub policy: String,
 }
 
-/// Set resource policy
+/// Set request policy
 /// Input parameters:
 /// - url: KBS server root URL.
 /// - auth_key: KBS owner's authenticate private key (PEM string).
 /// - policy_bytes: Policy file content in `Vec<u8>`.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
-pub async fn set_resource_policy(
+pub async fn set_request_policy(
     url: &str,
     auth_key: String,
     policy_bytes: Vec<u8>,
@@ -186,8 +186,8 @@ pub async fn set_resource_policy(
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/resource-policy", url);
-    let post_input = ResourcePolicyData {
+    let set_policy_url = format!("{}/{KBS_URL_PREFIX}/request-policy", url);
+    let post_input = PolicyData {
         policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
 
@@ -195,7 +195,7 @@ pub async fn set_resource_policy(
         .post(set_policy_url)
         .header("Content-Type", "application/json")
         .bearer_auth(token.clone())
-        .json::<ResourcePolicyData>(&post_input)
+        .json::<PolicyData>(&post_input)
         .send()
         .await?;
 

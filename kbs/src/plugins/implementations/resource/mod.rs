@@ -10,6 +10,8 @@ pub mod aliyun_kms;
 #[cfg(feature = "vault")]
 pub mod vault_kv;
 
+use std::collections::HashMap;
+
 use actix_web::http::Method;
 use anyhow::{bail, Context, Result};
 
@@ -23,7 +25,7 @@ impl ClientPlugin for ResourceStorage {
     async fn handle(
         &self,
         body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<Vec<u8>> {
@@ -49,7 +51,7 @@ impl ClientPlugin for ResourceStorage {
     async fn validate_auth(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         method: &Method,
     ) -> Result<bool> {
@@ -63,7 +65,7 @@ impl ClientPlugin for ResourceStorage {
     async fn encrypted(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         method: &Method,
     ) -> Result<bool> {
