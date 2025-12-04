@@ -68,7 +68,7 @@ jobs:
 
     - name: Update policy
       working-directory: target/release/
-      run: ./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-resource-policy --policy-file "$policy_path"
+      run: ./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-request-policy --policy-file "$policy_path"
       env:
         policy_path: ../../kbs/test/data/policy_2.rego
 
