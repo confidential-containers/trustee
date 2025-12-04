@@ -63,7 +63,6 @@ pub async fn to_verifier(
     _config: Option<VerifierConfig>,
 ) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
-        Tee::Sev => todo!(),
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
