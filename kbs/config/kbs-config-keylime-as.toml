@@ -1,0 +1,20 @@
+[http_server]
+insecure_http = true
+
+[attestation_token]
+insecure_key = true
+
+[attestation_service]
+type = "keylime-tee"
+base_url = "https://0.0.0.0:8881"
+api_version_major = 2
+api_version_minor = 4
+cv_ca_path = "/var/lib/keylime/cv_ca"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"
+
+[admin]
+insecure_api = true

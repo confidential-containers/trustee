@@ -55,7 +55,7 @@ csv-rs = { git = "https://github.com/openanolis/csv-rs", rev = "b67a07e", option
 eventlog = { path = "../eventlog", optional = true }
 hex.workspace = true
 jsonwebkey = "0.3.5"
-jsonwebtoken = { workspace = true, default-features = false, optional = true }
+jsonwebtoken = { workspace = true, optional = true }
 kbs-types.workspace = true
 openssl = { version = "0.10.75", optional = true }
 pv = { version = "0.10.0", package = "s390_pv", optional = true }

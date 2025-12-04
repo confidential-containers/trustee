@@ -50,6 +50,7 @@ lazy_static! {
 pub type TeeEvidence = serde_json::Value;
 
 /// IndependentEvidence is one set of evidence from one attester.
+#[derive(Debug)]
 pub struct IndependentEvidence {
     pub tee: Tee,
     pub tee_evidence: TeeEvidence,
@@ -166,6 +167,13 @@ impl AttestationService {
                     .await
                     .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
                 Arc::new(intel_ta) as _
+            }
+            #[cfg(feature = "keylime-as")]
+            AttestationServiceConfig::Keylime(cfg) => {
+                let keylime = super::keylime::KeylimeTeeHandler::new(cfg)
+                    .await
+                    .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
+                Arc::new(keylime) as _
             }
         };
 
