@@ -18,7 +18,8 @@ duration_min = 5
 type = "BuiltIn"
 
 [attestation_service.rvps_config.storage]
-type = "LocalFs"
+type = "LocalJson"
+dir_path = "/opt/confidential-containers/attestation-service/reference_values.json"
 
 [admin]
 # Do not use in production

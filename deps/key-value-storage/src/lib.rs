@@ -12,10 +12,14 @@ use std::sync::Arc;
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
 
-pub mod simple;
+pub mod memory;
 
 #[cfg(feature = "postgres")]
 pub mod postgres;
+
+pub mod local_json;
+
+pub mod local_fs;
 
 #[derive(Default)]
 pub struct SetParameters {
@@ -41,14 +45,21 @@ pub trait KeyValueStorage: Send + Sync {
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueStorageConfig {
     #[cfg(feature = "postgres")]
     #[serde(alias = "postgres")]
     Postgres(postgres::Config),
 
-    #[serde(alias = "simple")]
+    #[serde(alias = "memory")]
     #[default]
-    Simple,
+    Memory,
+
+    #[serde(alias = "LocalJson")]
+    LocalJson(local_json::Config),
+
+    #[serde(alias = "LocalFs")]
+    LocalFs(local_fs::Config),
 }
 
 impl KeyValueStorageConfig {
@@ -62,7 +73,13 @@ impl KeyValueStorageConfig {
                         source: e.into(),
                     })?,
             )),
-            KeyValueStorageConfig::Simple => Ok(Arc::new(simple::SimpleKeyValueStorage::default())),
+            KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
+            KeyValueStorageConfig::LocalJson(config) => {
+                Ok(Arc::new(local_json::LocalJson::new(config.clone())?))
+            }
+            KeyValueStorageConfig::LocalFs(config) => {
+                Ok(Arc::new(local_fs::LocalFs::new(config.clone())?))
+            }
         }
     }
 }

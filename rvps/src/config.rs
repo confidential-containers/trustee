@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 use anyhow::{Context, Result};
+use key_value_storage::KeyValueStorageConfig;
 use serde::Deserialize;
 
 use crate::extractors::ExtractorsConfig;
-use crate::storage::ReferenceValueStorageConfig;
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Config {
     #[serde(default)]
-    pub storage: ReferenceValueStorageConfig,
+    pub storage: KeyValueStorageConfig,
 
     #[serde(default)]
     pub extractors: Option<ExtractorsConfig>,
