@@ -409,22 +409,21 @@ mod tests {
     /// Test to verify the TDX quote, both in v4 and v5 format.
     ///
     /// This unit test requires two packages, s.t. `libsgx-dcap-quote-verify-dev` and `libsgx-dcap-default-qpl`
-    /// On ubuntu 22.04, you need to run the following scripts to install.
+    /// On ubuntu 24.04, you need to run the following scripts to install.
     /// ```shell
     /// curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    /// echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
-    /// apt-get update && \
-    /// apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify
+    /// echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
+    /// sudo apt-get update && \
+    /// sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
     /// ```
     ///
     /// Also, you need to configure DCAP to work with alibaba cloud's PCCS.
-    /// edit `/etc/sgx_default_qcnl.conf` and replace the whole content with
+    /// create `/tmp/sgx_test_qcnl.conf` with content
     /// ```json
     /// {"pccs_url" :"https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/"}
     /// ```
-    ///
-    /// The manual modification upon `sgx_default_qcnl.conf` could be promoted after
-    /// https://github.com/intel/confidential-computing.tee.dcap/issues/409 is resolved.
+    /// Test can be run using exported environment variable:
+    /// ```QCNL_CONF_PATH=/tmp/sgx_test_qcnl.conf```
     ///
     /// Finally, DCAP only provides packages on x86-64 platform, thus we only test this on x86-64
     /// platforms.
@@ -434,13 +433,13 @@ mod tests {
     #[tokio::test]
     #[case(
         "./test_data/tdx_quote_4.dat",
-        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986"],"collateral_expiration_status":"0","earliest_expiration_date":"2025-10-09T15:02:24Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-09-09T15:15:14Z","pck_crl_num":1,"platform_provider_id":"df4c32a9d8d86009aaf380ec43cfcefb","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-02-15T00:00:00Z","tcb_eval_num":1,"tcb_status":"OutOfDate"}"#
+        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986","INTEL-SA-01010","INTEL-SA-01036","INTEL-SA-01076","INTEL-SA-01079","INTEL-SA-01099","INTEL-SA-01103","INTEL-SA-01111"],"collateral_expiration_status":"0","earliest_expiration_date":"2026-01-06T15:39:51Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-12-07T15:45:03Z","pck_crl_num":1,"platform_provider_id":"df4c32a9d8d86009aaf380ec43cfcefb","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-02-15T00:00:00Z","tcb_eval_num":1,"tcb_status":"OutOfDate"}"#
     )]
     #[ignore]
     #[tokio::test]
     #[case(
         "./test_data/tdx_quote_5.dat",
-        r#"{"advisory_ids":[],"collateral_expiration_status":"1","earliest_expiration_date":"2024-10-08T23:59:59Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-09-09T15:15:14Z","pck_crl_num":1,"platform_provider_id":"f06984c8d9343452b997c48b36d6e678","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-08-09T00:00:00Z","tcb_eval_num":1,"tcb_status":"UpToDate"}"#
+        r#"{"advisory_ids":[],"collateral_expiration_status":"1","earliest_expiration_date":"2024-10-08T23:59:59Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-12-07T15:45:01Z","pck_crl_num":1,"platform_provider_id":"f06984c8d9343452b997c48b36d6e678","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-08-09T00:00:00Z","tcb_eval_num":1,"tcb_status":"UpToDate"}"#
     )]
     async fn test_verify_tdx_quote(#[case] quote: &str, #[case] expected_output: &str) {
         let quote_bin = fs::read(quote).unwrap();
