@@ -787,7 +787,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b3d0900c6757c9674b05b0479236458297026e25fb505186dc8d7735091a21c"
 dependencies = [
  "bincode 1.3.3",
- "jsonwebkey",
+ "jsonwebkey 0.3.5",
  "memoffset",
  "openssl",
  "serde",
@@ -3290,6 +3290,20 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "yasna 0.4.0",
+ "zeroize",
+]
+
+[[package]]
+name = "jsonwebkey"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba781c43eb46c3bbf5bfda541139eed9a52b78d7c3aa74d516918885ecd63c40"
+dependencies = [
+ "base64 0.22.1",
+ "bitflags 2.10.0",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
  "zeroize",
 ]
 
@@ -7312,7 +7326,7 @@ source = "git+https://github.com/veraison/rust-apiclient?rev=fe149cd#fe149cdace1
 dependencies = [
  "base64 0.13.1",
  "chrono",
- "jsonwebkey",
+ "jsonwebkey 0.3.5",
  "reqwest 0.12.24",
  "serde",
  "serde_with",
@@ -7345,7 +7359,7 @@ dependencies = [
  "eventlog",
  "hex",
  "intel-tee-quote-verification-rs",
- "jsonwebkey",
+ "jsonwebkey 0.4.0",
  "jsonwebtoken 10.2.0",
  "kbs-types",
  "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
