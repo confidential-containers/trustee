@@ -54,7 +54,7 @@ csv-rs = { git = "https://github.com/openanolis/csv-rs", rev = "b67a07e", option
 ] }
 eventlog = { path = "../eventlog", optional = true }
 hex.workspace = true
-jsonwebkey = "0.3.5"
+jsonwebkey = "0.4.0"
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 openssl = { version = "0.10.75", optional = true }
