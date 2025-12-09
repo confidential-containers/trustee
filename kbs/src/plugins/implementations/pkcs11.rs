@@ -23,7 +23,7 @@ use cryptoki::{
 };
 use educe::Educe;
 use serde::Deserialize;
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
 use super::super::plugin_manager::ClientPlugin;
@@ -120,7 +120,7 @@ impl ClientPlugin for Pkcs11Backend {
     async fn handle(
         &self,
         body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<Vec<u8>> {
@@ -143,7 +143,7 @@ impl ClientPlugin for Pkcs11Backend {
     async fn validate_auth(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         method: &Method,
     ) -> Result<bool> {
@@ -157,7 +157,7 @@ impl ClientPlugin for Pkcs11Backend {
     async fn encrypted(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         _method: &Method,
     ) -> Result<bool> {
