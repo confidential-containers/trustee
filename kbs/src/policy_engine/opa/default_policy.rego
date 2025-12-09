@@ -1,41 +1,86 @@
-# Resource Policy
-# ---------------
+# KBS Resource Policy
+# ==================
 #
-# The resource policy of KBS is to make a strategic decision on
-# whether the requester has access to resources based on the
-# input Attestation Claims (including tee-pubkey, tcb-status, and other information)
-# and KBS Resource Path.
+# Purpose
+# -------
+# This policy makes strategic decisions on whether a requester has access to
+# plugin based on:
+#   - Input Attestation Claims (including tee-pubkey, tcb-status, and other information)
+#   - The plugin name, sub path and http query fields
 #
-# The format of the resource path data is:
-# ```
-# {
-# 	  "resource-path": <PATH>
-# }
-# ```
+# Input Data Format
+# -----------------
 #
-# The <PATH> variable is a KBS resource path,
-# which is required to be a string in three segment path format:<TOP>/<MIDDLE>/<TAIL>,
-# for example: "repo/License/key".
+# 1. Attestation Claims Input
+#    The format is defined by the attestation service. Example:
+#    ```
+#    {
+#        "submods": {
+#            "cpu0": {
+#                "ear.veraison.annotated-evidence": {
+#                    "sample": {
+#                        "productId": "",
+#                        "svn": ""
+#                    }
+#                }
+#            }
+#        }
+#    }
+#    ```
 #
-# The format of Attestation Claims Input is defined by the attestation service,
-# and its format may look like the following:
-# ```
-# {
-#     "tee-pubkey": "",
-#     "tcb-status": {
-#         "productId": “”,
-#         "svn": “”,
-# 		  ……
-#     }
-#	  ……
-# }
-# ```
+# 2. Resource Path data
+#    A KBS plugin call upon <plugin-name> to KBS server's path usually has format
+#    `/kbs/v0/<plugin-name>/.../<END>[?a=b&...&<QUERY>]`
+#    It will be parsed into three parts in a structured format as policy data:
+#    ```
+#    {
+#        "plugin": <plugin-name>,
+#        "resource-path": </.../<END>>,
+#        "query": {
+#            "a": "b",
+#            ...
+#        }
+#    }
+#    ```
+#    Examples:
+#    1. "resource/myrepo/License/key"
+#    ```
+#    {
+#        "plugin": "resource",
+#        "resource-path": "/myrepo/License/key",
+#        "query": {}
+#    }
+#    ```
+#    2. "plugin1/para/meters?version=1.0.0"
+#    ```
+#    {
+#        "plugin": "plugin1",
+#        "resource-path": "/para/meters",
+#        "query": {
+#           "version": "1.0.0"
+#        }	
+#    }
+#    ```
+#
+#    For the "resource" plugin specifically:
+#      - resource-path format: /<repo>/<type>/<tag>
+#      - query: {}
+#
+# Policy Rules
+# ------------
+# The policy evaluates access based on the above inputs. See the allow rules
+# below for specific conditions.
+# 
+# This default policy will only allow accesses to "resource" plugin if the client
+# is a TEE/TPM platform.
 
 package policy
 
 default allow = false
 
+plugin = data.plugin
+
 allow if {
+	plugin == "resource"
 	not input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]
 }
-
