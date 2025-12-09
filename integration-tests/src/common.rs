@@ -30,8 +30,11 @@ use reference_value_provider_service::rvps_api::reference::reference_value_provi
 use reference_value_provider_service::storage::{local_json, ReferenceValueStorageConfig};
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
-use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose::STANDARD, Engine};
+use anyhow::{anyhow, bail, Result};
+use base64::{
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+    Engine,
+};
 use log::info;
 use openssl::pkey::PKey;
 use serde_json::json;
@@ -339,5 +342,24 @@ impl TestHarness {
         rvps_client::register(RVPS_URL.to_string(), message.to_string()).await?;
 
         Ok(())
+    }
+
+    pub async fn get_attestation_token_payload(
+        &self,
+        init_data: Option<String>,
+    ) -> Result<serde_json::Value> {
+        let token = kbs_client::attestation(KBS_URL, None, vec![], init_data).await?;
+
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() != 3 {
+            bail!("Invalid attestation token.");
+        }
+
+        let payload_base64 = parts[1];
+        let payload_bytes = URL_SAFE_NO_PAD.decode(payload_base64)?;
+
+        let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)?;
+
+        Ok(payload)
     }
 }
