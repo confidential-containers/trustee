@@ -47,6 +47,8 @@ package policy
 default allow = false
 
 allow if {
+	data.plugin == "resource"
+	data["resource-path"] == "/one/two/three"
 	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef
