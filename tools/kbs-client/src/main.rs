@@ -296,7 +296,7 @@ async fn main() -> Result<()> {
                     } else if affirming {
                         include_bytes!("../../../kbs/sample_policies/affirming.rego").into()
                     } else if default {
-                        include_bytes!("../../../kbs/src/policy/default_policy.rego").into()
+                        include_bytes!("../../../kbs/sample_policies/deny_all.rego").into()
                     } else {
                         bail!("No policy specified")
                     };
