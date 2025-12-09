@@ -77,6 +77,9 @@ enum Commands {
         /// KBS client will generate a new TEE Key pair internally.
         #[clap(long, value_parser)]
         tee_key_file: Option<PathBuf>,
+
+        /// InitData plaintext. See GetResource
+        init_data: Option<String>,
     },
 }
 
@@ -188,7 +191,10 @@ async fn main() -> Result<()> {
     };
 
     match cli.command {
-        Commands::Attest { tee_key_file } => {
+        Commands::Attest {
+            tee_key_file,
+            init_data,
+        } => {
             let tee_key = match tee_key_file {
                 Some(ref f) => Some(
                     std::fs::read_to_string(f)
@@ -196,7 +202,8 @@ async fn main() -> Result<()> {
                 ),
                 None => None,
             };
-            let token = kbs_client::attestation(&cli.url, tee_key, kbs_cert.clone()).await?;
+            let token =
+                kbs_client::attestation(&cli.url, tee_key, kbs_cert.clone(), init_data).await?;
             println!("{token}");
         }
         Commands::GetResource {
