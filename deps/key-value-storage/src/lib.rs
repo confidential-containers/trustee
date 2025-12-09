@@ -7,7 +7,10 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
@@ -82,6 +85,23 @@ impl KeyValueStorageConfig {
             }
         }
     }
+
+    pub fn replace_base_dir(&mut self, base_dir: &Path) {
+        match self {
+            KeyValueStorageConfig::Postgres(_) => {}
+            KeyValueStorageConfig::Memory => {}
+            KeyValueStorageConfig::LocalJson(config) => {
+                config.file_path = replace_base_dir(Path::new(&config.file_path), base_dir)
+                    .to_string_lossy()
+                    .into_owned();
+            }
+            KeyValueStorageConfig::LocalFs(config) => {
+                config.dir_path = replace_base_dir(Path::new(&config.dir_path), base_dir)
+                    .to_string_lossy()
+                    .into_owned();
+            }
+        }
+    }
 }
 
 /// Check if the key is valid.
@@ -91,4 +111,19 @@ impl KeyValueStorageConfig {
 pub(crate) fn is_valid_key(key: &str) -> bool {
     key.chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+/// replace_base_dir replaces the leading `/opt/confidential-containers/` in the path with a new base path.
+///
+/// This behavior is a compromise to set the base directory at runtime and workaround the hardcoded paths all around the codebase.
+/// replace_base_dir will become obsolete when it's possible to set the base directory at runtime project-wide.
+fn replace_base_dir(path: &Path, new_base: &Path) -> PathBuf {
+    let old_base = "/opt/confidential-containers/";
+    if let Ok(suffix) = path.strip_prefix(old_base) {
+        new_base.join(suffix)
+    } else if path.starts_with("/") {
+        path.to_path_buf()
+    } else {
+        new_base.join(path)
+    }
 }
