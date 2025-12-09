@@ -23,19 +23,28 @@ const KBS_URL_PREFIX: &str = "kbs/v0";
 /// - [tee_pubkey_pem]: Public key (PEM format) of the RSA key pair generated in TEE.
 ///     This public key will be contained in attestation results token.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
+/// - init_data: Plaintext init-data; should correspond to init-data measured at boot time.
 pub async fn attestation(
     url: &str,
     tee_key_pem: Option<String>,
     kbs_root_certs_pem: Vec<String>,
+    init_data: Option<String>,
 ) -> Result<String> {
     let evidence_provider = Box::new(NativeEvidenceProvider::new()?);
     let mut client_builder = KbsClientBuilder::with_evidence_provider(evidence_provider, url);
+
     if let Some(key) = tee_key_pem {
         client_builder = client_builder.set_tee_key(&key)
     }
+
     for cert in kbs_root_certs_pem {
         client_builder = client_builder.add_kbs_cert(&cert)
     }
+
+    if let Some(init_data) = init_data {
+        client_builder = client_builder.add_initdata(init_data);
+    }
+
     let mut client = client_builder.build()?;
 
     let (token, _) = client.get_token().await?;
