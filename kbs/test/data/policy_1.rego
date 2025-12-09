@@ -2,9 +2,10 @@ package policy
 
 default allow = false
 
-path := split(data["resource-path"], "/")
+subpaths := split(data["resource-path"], "/")
 
 allow if {
-    count(path) == 3
-    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == path[1]
+    count(subpaths) == 4
+    data.plugin == "resource"
+    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == subpaths[2]
 }
