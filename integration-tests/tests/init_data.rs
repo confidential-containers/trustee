@@ -2,9 +2,10 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use log::info;
+use serde_json::json;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 
@@ -238,3 +239,36 @@ allow if {
     input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
 }
 ";
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial]
+// Check if using initrd with a policy will result in the expected
+// validated identifiers.
+async fn check_validated_identifiers() -> Result<()> {
+    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    harness.wait().await;
+
+    let token_payload = harness
+        .get_attestation_token_payload(Some(POLICY_INIT_DATA.to_string()))
+        .await?;
+
+    harness.cleanup().await?;
+
+    let validated_identifiers = token_payload
+        .pointer("/submods/cpu0/ear.trustee.identifiers/validated")
+        .ok_or(anyhow!("Could not find validated identifiers."))?;
+
+    let expected_identifiers =
+        json!({"container_images":["bitnami/nginx:latest"],"container_uids":[65535,1001]});
+
+    if *validated_identifiers == expected_identifiers {
+        return Ok(());
+    }
+    bail!(
+        "Unexpected identifiers\n\nExpected: {}\n\n Got: {}",
+        validated_identifiers,
+        expected_identifiers
+    )
+}
