@@ -12,6 +12,7 @@ use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use semver::{Version, VersionReq};
 use std::{
+    collections::HashMap,
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
@@ -68,11 +69,12 @@ pub struct NebulaCredentialParams {
     subnets: Option<String>,
 }
 
-impl TryFrom<&str> for NebulaCredentialParams {
+impl TryFrom<&HashMap<String, String>> for NebulaCredentialParams {
     type Error = Error;
 
-    fn try_from(query: &str) -> Result<Self> {
-        let params: NebulaCredentialParams = serde_qs::from_str(query)?;
+    fn try_from(query: &HashMap<String, String>) -> Result<Self> {
+        let query_string = serde_json::to_string(query)?;
+        let params: NebulaCredentialParams = serde_json::from_str(&query_string)?;
         Ok(params)
     }
 }
@@ -396,7 +398,7 @@ impl ClientPlugin for NebulaCaPlugin {
     async fn handle(
         &self,
         _body: &[u8],
-        query: &str,
+        query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<Vec<u8>> {
@@ -432,7 +434,7 @@ impl ClientPlugin for NebulaCaPlugin {
     async fn validate_auth(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         _method: &Method,
     ) -> Result<bool> {
@@ -442,7 +444,7 @@ impl ClientPlugin for NebulaCaPlugin {
     async fn encrypted(
         &self,
         _body: &[u8],
-        _query: &str,
+        _query: &HashMap<String, String>,
         _path: &str,
         _method: &Method,
     ) -> Result<bool> {

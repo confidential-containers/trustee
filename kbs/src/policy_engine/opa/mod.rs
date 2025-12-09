@@ -29,11 +29,7 @@ impl Opa {
 
 #[async_trait]
 impl PolicyEngineInterface for Opa {
-    async fn evaluate(
-        &self,
-        resource_path: &str,
-        input_claims: &str,
-    ) -> Result<bool, KbsPolicyEngineError> {
+    async fn evaluate(&self, data: &str, input_claims: &str) -> Result<bool, KbsPolicyEngineError> {
         let mut engine = regorus::Engine::new();
 
         // Add policy as data
@@ -42,9 +38,7 @@ impl PolicyEngineInterface for Opa {
             .map_err(|_| KbsPolicyEngineError::PolicyLoadError)?;
 
         // Add resource path as data
-        let resource_path_object =
-            regorus::Value::from_json_str(&format!("{{\"resource-path\":\"{}\"}}", resource_path))
-                .map_err(|_| KbsPolicyEngineError::ResourcePathError)?;
+        let resource_path_object = regorus::Value::from_json_str(data)?;
 
         engine
             .add_data(resource_path_object)
@@ -175,35 +169,141 @@ mod tests {
     }
 
     #[rstest]
-    #[case("test/data/policy_1.rego", "my_repo/Alice/key", "Alice", 1, Ok(true))]
-    #[case("test/data/policy_4.rego", "my_repo/Alice/key", "Alice", 1, Ok(true))]
-    #[case("test/data/policy_1.rego", "my_repo/Alice/key", "Bob", 1, Ok(false))]
-    #[case("test/data/policy_3.rego", "my_repo/Alice/key", "Alice", 1, Ok(false))]
     #[case(
         "test/data/policy_1.rego",
-        "\"",
-        "",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
+        "Alice",
         1,
-        Err(KbsPolicyEngineError::ResourcePathError)
+        Ok(true)
+    )]
+    #[case(
+        "test/data/policy_1.rego",
+        json!({
+            "plugin": "another-plugin",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
+        "Alice",
+        1,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_4.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
+        "Alice",
+        1,
+        Ok(true)
+    )]
+    #[case(
+        "test/data/policy_1.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
+        "Bob",
+        1,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_3.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
+        "Alice",
+        1,
+        Ok(false)
     )]
     #[case(
         "test/data/policy_invalid_2.rego",
-        "my_repo/Alice/key",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/my_repo/Alice/key",
+            "query": {}
+        }),
         "Alice",
         1,
         Err(KbsPolicyEngineError::EvaluationError(anyhow::anyhow!("test")))
     )]
-    #[case("test/data/policy_5.rego", "myrepo/secret/secret1", "n", 2, Ok(true))]
-    #[case("test/data/policy_5.rego", "myrepo/secret/secret1", "n", 1, Ok(false))]
-    #[case("test/data/policy_5.rego", "myrepo/secret/secret2", "n", 3, Ok(true))]
-    #[case("test/data/policy_5.rego", "myrepo/secret/secret2", "n", 2, Ok(false))]
-    #[case("test/data/policy_5.rego", "myrepo/secret/secret3", "n", 3, Ok(false))]
-    #[case("test/data/policy_5.rego", "a/b/secret2", "n", 3, Ok(false))]
-    #[case("test/data/policy_5.rego", "abc", "n", 3, Ok(false))]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/myrepo/secret/secret",
+            "query": {}
+        }),
+        "n",
+        2,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/myrepo/secret/secret1",
+            "query": {}
+        }),
+        "n",
+        1,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/myrepo/secret/secret2",
+            "query": {}
+        }),
+        "n",
+        3,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/myrepo/secret/secret2",
+            "query": {}
+        }),
+        "n",
+        2,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": "/myrepo/secret/secret3",
+            "query": {}
+        }),
+        "n",
+        3,
+        Ok(false)
+    )]
+    #[case("test/data/policy_5.rego", json!({
+            "plugin": "resource",
+            "resource-path": "/a/b/secret2",
+            "query": {}
+        }), "n", 3, Ok(false))]
+    #[case("test/data/policy_5.rego", json!({
+            "plugin": "abc",
+            "resource-path": "",
+            "query": {}
+        }), "n", 3, Ok(false))]
     #[tokio::test]
     async fn test_evaluate(
         #[case] policy_path: &str,
-        #[case] resource_path: &str,
+        #[case] data: serde_json::Value,
         #[case] input_name: &str,
         #[case] input_svn: u64,
         #[case] expected: Result<bool, KbsPolicyEngineError>,
@@ -213,8 +313,9 @@ mod tests {
 
         set_policy_from_file(&mut opa, policy_path).await.unwrap();
 
+        let data = data.to_string();
         let res = opa
-            .evaluate(resource_path, &dummy_input(input_name, input_svn, 2, 3))
+            .evaluate(&data, &dummy_input(input_name, input_svn, 2, 3))
             .await;
 
         if let Ok(actual) = res {

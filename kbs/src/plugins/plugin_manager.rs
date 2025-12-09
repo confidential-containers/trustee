@@ -29,7 +29,7 @@ pub trait ClientPlugin: Send + Sync {
     async fn handle(
         &self,
         body: &[u8],
-        query: &str,
+        query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<Vec<u8>>;
@@ -40,7 +40,7 @@ pub trait ClientPlugin: Send + Sync {
     async fn validate_auth(
         &self,
         body: &[u8],
-        query: &str,
+        query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<bool>;
@@ -51,7 +51,7 @@ pub trait ClientPlugin: Send + Sync {
     async fn encrypted(
         &self,
         body: &[u8],
-        query: &str,
+        query: &HashMap<String, String>,
         path: &str,
         method: &Method,
     ) -> Result<bool>;

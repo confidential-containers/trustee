@@ -2,13 +2,18 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
+
 use actix_web::{
     http::{header::Header, Method},
-    middleware, web, App, HttpRequest, HttpResponse, HttpServer,
+    middleware,
+    web::{self, Query},
+    App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use log::info;
+use serde_json::json;
 
 use crate::{
     admin::Admin,
@@ -125,7 +130,7 @@ impl ApiServer {
                         (1024 * 1024 * http_config.payload_request_size) as usize,
                     ))
                     .service(
-                        web::resource([kbs_path!("{base_path}{additional_path:.*}")])
+                        web::resource([kbs_path!("{path:.*}")])
                             .route(web::get().to(api))
                             .route(web::post().to(api)),
                     )
@@ -165,25 +170,40 @@ pub(crate) async fn api(
     request: HttpRequest,
     body: web::Bytes,
     core: web::Data<ApiServer>,
+    path: web::Path<String>,
+    query: Query<HashMap<String, String>>,
 ) -> Result<HttpResponse> {
-    let query = request.query_string();
-    let base_path = request
-        .match_info()
-        .get("base_path")
-        .ok_or(Error::InvalidRequestPath {
-            path: request.path().to_string(),
-        })?;
-    let additional_path =
-        request
-            .match_info()
-            .get("additional_path")
-            .ok_or(Error::InvalidRequestPath {
-                path: request.path().to_string(),
-            })?;
+    let path = path.into_inner();
+    let path_parts = path.split('/').collect::<Vec<&str>>();
+    if path_parts.is_empty() {
+        return Err(Error::InvalidRequestPath {
+            path: path.to_string(),
+        });
+    }
 
-    let endpoint = format!("{base_path}{additional_path}");
+    // path looks like `plugin/.../<END>`
+    // the index 0 of the path parts is the plugin
+    // the rest of the path parts is the resource path
+    // if the path parts is equal to 1, return an empty vector
+    let plugin = path_parts[0];
 
-    match base_path {
+    let trailing_resource_path = match &path_parts[..] {
+        [_, rest @ ..] => rest,
+        _ => &[],
+    }
+    .join("/");
+    let resource_path = format!("/{}", trailing_resource_path);
+    let query = query.into_inner();
+    let policy_data = json!(
+        {
+            "plugin": plugin,
+            "resource-path":resource_path,
+            "query": query,
+        }
+    );
+
+    let policy_data_str = policy_data.to_string();
+    match plugin {
         #[cfg(feature = "as")]
         "auth" if request.method() == Method::POST => core
             .attestation_service
@@ -208,7 +228,7 @@ pub(crate) async fn api(
         // GET /reference-value/<reference_value_id>
         "reference-value" if request.method() == Method::GET => {
             core.admin.validate_admin_token(&request)?;
-            let reference_value_id = additional_path.trim_start_matches('/');
+            let reference_value_id = resource_path.trim_start_matches('/');
             let reference_values = core
                 .attestation_service
                 .query_reference_value(reference_value_id)
@@ -268,14 +288,14 @@ pub(crate) async fn api(
 
             let body = body.to_vec();
             if plugin
-                .validate_auth(&body, query, additional_path, request.method())
+                .validate_auth(&body, &query, &resource_path, request.method())
                 .await
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.validate_admin_token(&request)?;
                 let response = plugin
-                    .handle(&body, query, additional_path, request.method())
+                    .handle(&body, &query, &resource_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -295,7 +315,7 @@ pub(crate) async fn api(
                 // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
-                    .evaluate(&endpoint, &claim_str)
+                    .evaluate(&policy_data_str, &claim_str)
                     .await
                     .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
                 {
@@ -305,11 +325,11 @@ pub(crate) async fn api(
                 KBS_POLICY_APPROVALS.inc();
 
                 let response = plugin
-                    .handle(&body, query, additional_path, request.method())
+                    .handle(&body, &query, resource_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
                 if plugin
-                    .encrypted(&body, query, additional_path, request.method())
+                    .encrypted(&body, &query, resource_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
