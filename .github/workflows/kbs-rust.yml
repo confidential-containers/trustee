@@ -70,6 +70,18 @@ jobs:
       working-directory: kbs
       run: make AS_TYPE=intel-trust-authority-as
 
+    - name: KBS Build [background-check-kbs with ALIYUN, NEBULA_CA_PLUGIN, VAULT]
+      working-directory: kbs
+      run: make background-check-kbs ALIYUN=true NEBULA_CA_PLUGIN=true VAULT=true
+
+    - name: KBS Build [passport-issuer-kbs with ALIYUN, NEBULA_CA_PLUGIN, VAULT]
+      working-directory: kbs
+      run: make passport-issuer-kbs ALIYUN=true NEBULA_CA_PLUGIN=true VAULT=true
+
+    - name: KBS Build [passport-resource-kbs with ALIYUN, NEBULA_CA_PLUGIN, VAULT]
+      working-directory: kbs
+      run: make passport-resource-kbs ALIYUN=true NEBULA_CA_PLUGIN=true VAULT=true
+
     - name: Lint
       working-directory: kbs
       run: make lint TEST_FEATURES=${{ matrix.test_features }}
