@@ -82,5 +82,5 @@ impl KeyValueStorageConfig {
 /// No spaces and other special characters are allowed to prevent SQL injection.
 pub(crate) fn is_valid_key(key: &str) -> bool {
     key.chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/')
 }
