@@ -7,7 +7,7 @@
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::{KeyValueStorage, Result, SetParameters};
+use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters};
 use std::collections::HashMap;
 use tracing::instrument;
 
@@ -27,7 +27,10 @@ impl KeyValueStorage for MemoryKeyValueStorage {
                 .insert(key.to_string(), value.to_vec());
         } else {
             if self.items.read().await.contains_key(key) {
-                return Ok(());
+                return Err(KeyValueStorageError::SetKeyFailed {
+                    source: anyhow::anyhow!("key already exists"),
+                    key: key.to_string(),
+                });
             }
             self.items
                 .write()
