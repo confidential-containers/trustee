@@ -30,7 +30,7 @@ pub trait ClientPlugin: Send + Sync {
         &self,
         body: &[u8],
         query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<Vec<u8>>;
 
@@ -41,7 +41,7 @@ pub trait ClientPlugin: Send + Sync {
         &self,
         body: &[u8],
         query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<bool>;
 
@@ -52,7 +52,7 @@ pub trait ClientPlugin: Send + Sync {
         &self,
         body: &[u8],
         query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<bool>;
 }

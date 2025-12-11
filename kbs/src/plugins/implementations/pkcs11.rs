@@ -121,14 +121,12 @@ impl ClientPlugin for Pkcs11Backend {
         &self,
         body: &[u8],
         _query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<Vec<u8>> {
-        let desc = path
-            .strip_prefix('/')
-            .context("accessed path is illegal, should start with '/'")?;
+        let desc = path.join("/");
 
-        match desc {
+        match &desc[..] {
             "wrap-key" => self.wrap_key_handle(body, method).await,
             _ => {
                 let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
@@ -144,7 +142,7 @@ impl ClientPlugin for Pkcs11Backend {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         method: &Method,
     ) -> Result<bool> {
         match *method {
@@ -158,7 +156,7 @@ impl ClientPlugin for Pkcs11Backend {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<bool> {
         Ok(true)
