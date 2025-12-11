@@ -6,7 +6,6 @@ This module provides a PostgreSQL-backed implementation of `KeyValueStorage` for
 
 - Stores key-value pairs in a configurable table (`key` primary key, `value` as binary)
 - Safe parameter binding via `sqlx`
-- Input validation for keys (ASCII alphanumeric, `-`, `_`, `.`)
 
 ## Quick start (with Docker)
 
