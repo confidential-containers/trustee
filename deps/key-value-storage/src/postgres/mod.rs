@@ -125,24 +125,41 @@ impl KeyValueStorage for PostgresClient {
             });
         }
 
-        let mut sql = format!(
-            "INSERT INTO {} ({KEY_COLUMN}, {VALUE_COLUMN}) VALUES ( $1, $2 )",
-            self.table
-        );
-
         if parameters.overwrite {
-            sql = format!("{sql} ON CONFLICT ({KEY_COLUMN}) DO UPDATE SET {VALUE_COLUMN} = $2");
+            let sql = format!(
+                "INSERT INTO {} ({KEY_COLUMN}, {VALUE_COLUMN}) VALUES ( $1, $2 ) ON CONFLICT ({KEY_COLUMN}) DO UPDATE SET {VALUE_COLUMN} = $2",
+                self.table
+            );
+            let _ = query(&sql)
+                .bind(key)
+                .bind(value)
+                .execute(&*self.pool)
+                .await
+                .map_err(|e| KeyValueStorageError::SetKeyFailed {
+                    source: e.into(),
+                    key: key.to_string(),
+                })?;
+        } else {
+            let sql = format!(
+                "INSERT INTO {} ({KEY_COLUMN}, {VALUE_COLUMN}) VALUES ( $1, $2 ) ON CONFLICT ({KEY_COLUMN}) DO NOTHING RETURNING *",
+                self.table
+            );
+            let result = query(&sql)
+                .bind(key)
+                .bind(value)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| KeyValueStorageError::SetKeyFailed {
+                    source: e.into(),
+                    key: key.to_string(),
+                })?;
+            if result.is_none() {
+                return Err(KeyValueStorageError::SetKeyFailed {
+                    source: anyhow::anyhow!("key already exists"),
+                    key: key.to_string(),
+                });
+            }
         }
-
-        let _ = query(&sql)
-            .bind(key)
-            .bind(value)
-            .execute(&*self.pool)
-            .await
-            .map_err(|e| KeyValueStorageError::SetKeyFailed {
-                source: e.into(),
-                key: key.to_string(),
-            })?;
 
         Ok(())
     }
@@ -232,6 +249,10 @@ mod tests {
         assert_eq!(keys, vec!["test"]);
         let value = client.get("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
+        let res = client
+            .set("test", b"test2", SetParameters { overwrite: false })
+            .await;
+        assert!(res.is_err());
         let value = client.delete("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
         let keys = client.list().await.unwrap();
