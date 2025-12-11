@@ -187,12 +187,11 @@ pub(crate) async fn api(
     // if the path parts is equal to 1, return an empty vector
     let plugin = path_parts[0];
 
-    let trailing_resource_path = match &path_parts[..] {
+    let resource_path = match &path_parts[..] {
         [_, rest @ ..] => rest,
         _ => &[],
-    }
-    .join("/");
-    let resource_path = format!("/{}", trailing_resource_path);
+    };
+
     let query = query.into_inner();
     let policy_data = json!(
         {
@@ -228,10 +227,10 @@ pub(crate) async fn api(
         // GET /reference-value/<reference_value_id>
         "reference-value" if request.method() == Method::GET => {
             core.admin.validate_admin_token(&request)?;
-            let reference_value_id = resource_path.trim_start_matches('/');
+            let reference_value_id = resource_path.join("/");
             let reference_values = core
                 .attestation_service
-                .query_reference_value(reference_value_id)
+                .query_reference_value(&reference_value_id)
                 .await
                 .map_err(|e| Error::RvpsError {
                     message: format!("Failed to get reference_values: {e}").to_string(),
@@ -288,14 +287,14 @@ pub(crate) async fn api(
 
             let body = body.to_vec();
             if plugin
-                .validate_auth(&body, &query, &resource_path, request.method())
+                .validate_auth(&body, &query, resource_path, request.method())
                 .await
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.validate_admin_token(&request)?;
                 let response = plugin
-                    .handle(&body, &query, &resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 

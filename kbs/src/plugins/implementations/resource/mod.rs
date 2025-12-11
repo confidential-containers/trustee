@@ -13,7 +13,7 @@ pub mod vault_kv;
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 
 pub mod backend;
 pub use backend::*;
@@ -26,20 +26,18 @@ impl ClientPlugin for ResourceStorage {
         &self,
         body: &[u8],
         _query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<Vec<u8>> {
-        let resource_desc = path
-            .strip_prefix('/')
-            .context("accessed path is illegal, should start with `/`")?;
+        let resource_desc = path.join("/");
         match method.as_str() {
             "POST" => {
-                let resource_description = ResourceDesc::try_from(resource_desc)?;
+                let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
                 self.set_secret_resource(resource_description, body).await?;
                 Ok(vec![])
             }
             "GET" => {
-                let resource_description = ResourceDesc::try_from(resource_desc)?;
+                let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
                 let resource = self.get_secret_resource(resource_description).await?;
 
                 Ok(resource)
@@ -52,7 +50,7 @@ impl ClientPlugin for ResourceStorage {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         method: &Method,
     ) -> Result<bool> {
         if method.as_str() == "POST" {
@@ -66,7 +64,7 @@ impl ClientPlugin for ResourceStorage {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         method: &Method,
     ) -> Result<bool> {
         if method.as_str() == "GET" {

@@ -35,7 +35,7 @@ impl ClientPlugin for Sample {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<Vec<u8>> {
         Ok("sample plugin response".as_bytes().to_vec())
@@ -45,7 +45,7 @@ impl ClientPlugin for Sample {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<bool> {
         Ok(true)
@@ -58,7 +58,7 @@ impl ClientPlugin for Sample {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<bool> {
         Ok(false)

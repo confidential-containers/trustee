@@ -173,7 +173,7 @@ mod tests {
         "test/data/policy_1.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Alice",
@@ -184,7 +184,7 @@ mod tests {
         "test/data/policy_1.rego",
         json!({
             "plugin": "another-plugin",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Alice",
@@ -195,7 +195,7 @@ mod tests {
         "test/data/policy_4.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Alice",
@@ -206,7 +206,7 @@ mod tests {
         "test/data/policy_1.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Bob",
@@ -217,7 +217,7 @@ mod tests {
         "test/data/policy_3.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Alice",
@@ -228,7 +228,7 @@ mod tests {
         "test/data/policy_invalid_2.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/my_repo/Alice/key",
+            "resource-path": ["my_repo", "Alice", "key"],
             "query": {}
         }),
         "Alice",
@@ -239,7 +239,7 @@ mod tests {
         "test/data/policy_5.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/myrepo/secret/secret",
+            "resource-path": ["myrepo", "secret", "secret"],
             "query": {}
         }),
         "n",
@@ -250,7 +250,7 @@ mod tests {
         "test/data/policy_5.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/myrepo/secret/secret1",
+            "resource-path": ["myrepo", "secret", "secret1"],
             "query": {}
         }),
         "n",
@@ -261,18 +261,7 @@ mod tests {
         "test/data/policy_5.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/myrepo/secret/secret2",
-            "query": {}
-        }),
-        "n",
-        3,
-        Ok(false)
-    )]
-    #[case(
-        "test/data/policy_5.rego",
-        json!({
-            "plugin": "resource",
-            "resource-path": "/myrepo/secret/secret2",
+            "resource-path": ["myrepo", "secret", "secret2"],
             "query": {}
         }),
         "n",
@@ -283,7 +272,18 @@ mod tests {
         "test/data/policy_5.rego",
         json!({
             "plugin": "resource",
-            "resource-path": "/myrepo/secret/secret3",
+            "resource-path": ["myrepo", "secret", "secret2"],
+            "query": {}
+        }),
+        "n",
+        2,
+        Ok(false)
+    )]
+    #[case(
+        "test/data/policy_5.rego",
+        json!({
+            "plugin": "resource",
+            "resource-path": ["myrepo", "secret", "secret3"],
             "query": {}
         }),
         "n",
@@ -292,12 +292,12 @@ mod tests {
     )]
     #[case("test/data/policy_5.rego", json!({
             "plugin": "resource",
-            "resource-path": "/a/b/secret2",
+            "resource-path": ["a", "b", "secret2"],
             "query": {}
         }), "n", 3, Ok(false))]
     #[case("test/data/policy_5.rego", json!({
             "plugin": "abc",
-            "resource-path": "",
+            "resource-path": [],
             "query": {}
         }), "n", 3, Ok(false))]
     #[tokio::test]

@@ -48,7 +48,9 @@ default allow = false
 
 allow if {
 	data.plugin == "resource"
-	data["resource-path"] == "/one/two/three"
+	data["resource-path"][0] == "one"
+	data["resource-path"][1] == "two"
+	data["resource-path"][2] == "three"
 	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
 }
 endef

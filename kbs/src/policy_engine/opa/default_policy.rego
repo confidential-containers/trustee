@@ -35,7 +35,7 @@
 #    ```
 #    {
 #        "plugin": <plugin-name>,
-#        "resource-path": </.../<END>>,
+#        "resource-path": [<...>, <sections>, <END>],
 #        "query": {
 #            "a": "b",
 #            ...
@@ -47,7 +47,7 @@
 #    ```
 #    {
 #        "plugin": "resource",
-#        "resource-path": "/myrepo/License/key",
+#        "resource-path": ["myrepo", "License", "key"],
 #        "query": {}
 #    }
 #    ```
@@ -55,7 +55,7 @@
 #    ```
 #    {
 #        "plugin": "plugin1",
-#        "resource-path": "/para/meters",
+#        "resource-path": ["para", "meters"],
 #        "query": {
 #           "version": "1.0.0"
 #        }	
@@ -63,7 +63,7 @@
 #    ```
 #
 #    For the "resource" plugin specifically:
-#      - resource-path format: /<repo>/<type>/<tag>
+#      - resource-path format: three items slice
 #      - query: {}
 #
 # Policy Rules

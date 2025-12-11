@@ -10,10 +10,9 @@ package policy
 default allow = false
 
 input_tcb := input["tcb-status"]
-subpaths := split(data["resource-path"], "/")
 
 allow if {
-    count(subpaths) == 4
+    count(data["resource-path"]) == 3
     data.plugin == "resource"
 
 
@@ -21,7 +20,7 @@ allow if {
 
 
 
-    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == subpaths[2]
+    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == data["resource-path"][1]
 }
 
 

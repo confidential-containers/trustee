@@ -399,19 +399,19 @@ impl ClientPlugin for NebulaCaPlugin {
         &self,
         _body: &[u8],
         query: &HashMap<String, String>,
-        path: &str,
+        path: &[&str],
         method: &Method,
     ) -> Result<Vec<u8>> {
-        let sub_path = path
-            .strip_prefix('/')
-            .context("accessed path is illegal, should start with `/`")?;
+        if path.len() != 1 {
+            bail!("Illegal path. Only one path segment is supported");
+        }
         if method.as_str() != "GET" {
             bail!("Illegal HTTP method. Only GET is supported");
         }
 
         // The Nebula CA plugin is stateless, so none of request types below should
         // store state.
-        match sub_path {
+        match path[0] {
             // Create credential for the provided parameters.
             // The credential directory (and its files) is auto-deleted after the Credential is returned.
             "credential" => {
@@ -427,7 +427,7 @@ impl ClientPlugin for NebulaCaPlugin {
 
                 Ok(serde_json::to_vec(&credential)?)
             }
-            _ => Err(anyhow!("{} not supported", sub_path))?,
+            _ => Err(anyhow!("{} not supported", path[0]))?,
         }
     }
 
@@ -435,7 +435,7 @@ impl ClientPlugin for NebulaCaPlugin {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<bool> {
         Ok(false)
@@ -445,7 +445,7 @@ impl ClientPlugin for NebulaCaPlugin {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &str,
+        _path: &[&str],
         _method: &Method,
     ) -> Result<bool> {
         Ok(true)
