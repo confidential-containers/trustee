@@ -18,8 +18,9 @@ insecure_http = false
 [admin]
 type = "DenyAll"
 
-[policy_engine]
-policy_path = "/etc/kbs-policy.rego"
+[policy_engine.storage]
+type = "LocalJson"
+file_path = "/etc/kbs-policy.rego"
 
 [[plugins]]
 name = "sample"
@@ -27,5 +28,6 @@ item = "value1"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/tmp/kbs-resource"

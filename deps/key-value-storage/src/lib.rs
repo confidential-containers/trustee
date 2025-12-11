@@ -7,15 +7,22 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
 
-pub mod simple;
+pub mod memory;
 
 #[cfg(feature = "postgres")]
 pub mod postgres;
+
+pub mod local_json;
+
+pub mod local_fs;
 
 #[derive(Default)]
 pub struct SetParameters {
@@ -41,14 +48,21 @@ pub trait KeyValueStorage: Send + Sync {
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueStorageConfig {
     #[cfg(feature = "postgres")]
     #[serde(alias = "postgres")]
     Postgres(postgres::Config),
 
-    #[serde(alias = "simple")]
+    #[serde(alias = "Memory")]
     #[default]
-    Simple,
+    Memory,
+
+    #[serde(alias = "LocalJson")]
+    LocalJson(local_json::Config),
+
+    #[serde(alias = "LocalFs")]
+    LocalFs(local_fs::Config),
 }
 
 impl KeyValueStorageConfig {
@@ -62,7 +76,30 @@ impl KeyValueStorageConfig {
                         source: e.into(),
                     })?,
             )),
-            KeyValueStorageConfig::Simple => Ok(Arc::new(simple::SimpleKeyValueStorage::default())),
+            KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
+            KeyValueStorageConfig::LocalJson(config) => {
+                Ok(Arc::new(local_json::LocalJson::new(config.clone())?))
+            }
+            KeyValueStorageConfig::LocalFs(config) => {
+                Ok(Arc::new(local_fs::LocalFs::new(config.clone())?))
+            }
+        }
+    }
+
+    pub fn replace_base_dir(&mut self, base_dir: &Path) {
+        match self {
+            KeyValueStorageConfig::Postgres(_) => {}
+            KeyValueStorageConfig::Memory => {}
+            KeyValueStorageConfig::LocalJson(config) => {
+                config.file_path = replace_base_dir(Path::new(&config.file_path), base_dir)
+                    .to_string_lossy()
+                    .into_owned();
+            }
+            KeyValueStorageConfig::LocalFs(config) => {
+                config.dir_path = replace_base_dir(Path::new(&config.dir_path), base_dir)
+                    .to_string_lossy()
+                    .into_owned();
+            }
         }
     }
 }
@@ -74,4 +111,19 @@ impl KeyValueStorageConfig {
 pub(crate) fn is_valid_key(key: &str) -> bool {
     key.chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+/// replace_base_dir replaces the leading `/opt/confidential-containers/` in the path with a new base path.
+///
+/// This behavior is a compromise to set the base directory at runtime and workaround the hardcoded paths all around the codebase.
+/// replace_base_dir will become obsolete when it's possible to set the base directory at runtime project-wide.
+fn replace_base_dir(path: &Path, new_base: &Path) -> PathBuf {
+    let old_base = "/opt/confidential-containers/";
+    if let Ok(suffix) = path.strip_prefix(old_base) {
+        new_base.join(suffix)
+    } else if path.starts_with("/") {
+        path.to_path_buf()
+    } else {
+        new_base.join(path)
+    }
 }

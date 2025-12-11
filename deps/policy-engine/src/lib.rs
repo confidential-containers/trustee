@@ -19,56 +19,59 @@ pub use key_value_storage::{KeyValueStorage, KeyValueStorageConfig};
 pub struct PolicyEngineConfig {
     /// The storage to store the policies.
     pub storage: KeyValueStorageConfig,
+}
 
-    /// The type of policy engine to use.
-    /// Currently, only Rego is supported.
-    pub policy_type: PolicyType,
+pub trait EngineTrait {
+    /// The suffix of the policy file.
+    /// Concrete policy engine backend may handle the policy in different ways.
+    /// For example, the policy engine may store the policy in a different format.
+    /// In this case, the policy engine may need to add a suffix to the policy id to distinguish the policy.
+    /// This is also for compatibility with the existing policy setting and getting
+    /// APIs. Concretely, users do not need to specify the `.rego` suffix.
+    fn policy_suffix() -> &'static str {
+        ""
+    }
 }
 
 #[derive(Clone)]
-pub struct PolicyEngine {
+pub struct PolicyEngine<T: Send + Sync + EngineTrait> {
     pub storage: Arc<dyn KeyValueStorage>,
-    pub engine: Arc<dyn Engine>,
+    pub engine: T,
 }
 
-impl PolicyEngine {
-    pub async fn new(config: PolicyEngineConfig) -> Result<Self> {
-        let storage = config.storage.to_key_value_storage().await?;
-        let engine = config.policy_type.to_engine();
-        Ok(Self { storage, engine })
-    }
-
-    pub async fn evaluate(
-        &self,
-        data: &str,
-        input: &str,
-        policy_id: &str,
-    ) -> Result<EvaluationResult> {
-        let policy = self.get_policy(policy_id).await?;
-        self.engine.evaluate(data, input, &policy).await
-    }
-
+impl<T: Send + Sync + EngineTrait> PolicyEngine<T> {
     /// Set a policy to the backend.
     /// The policy is expected to be provided as string.
     /// Concrete policy engine backend may handle the policy in different ways.
     pub async fn set_policy(&self, policy_id: &str, policy: &str, overwrite: bool) -> Result<()> {
         let params = SetParameters { overwrite };
+        let policy_id = format!("{}{}", policy_id, T::policy_suffix());
         self.storage
-            .set(policy_id, policy.as_bytes(), params)
+            .set(&policy_id, policy.as_bytes(), params)
             .await
             .map_err(From::from)
     }
 
     /// List all policies in the backend.
     pub async fn list_policies(&self) -> Result<Vec<String>> {
-        self.storage.list().await.map_err(From::from)
+        let policies = self.storage.list().await?;
+        let policies = policies
+            .into_iter()
+            .filter_map(|policy| {
+                policy
+                    .strip_suffix(T::policy_suffix())
+                    .map(|policy| policy.to_string())
+            })
+            .collect();
+        Ok(policies)
     }
 
     /// Get a policy from the backend.
     /// The policy is expected to be provided as string.
     /// Concrete policy engine backend may handle the policy in different ways.
     pub async fn get_policy(&self, policy_id: &str) -> Result<String> {
-        let policy_str = self.storage.get(policy_id).await?;
+        let policy_id = format!("{}{}", policy_id, T::policy_suffix());
+        let policy_str = self.storage.get(&policy_id).await?;
 
         match policy_str {
             Some(policy_str) => {
