@@ -3512,6 +3512,7 @@ dependencies = [
  "rstest",
  "serde",
  "sqlx",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "toml 0.9.8",

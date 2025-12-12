@@ -12,10 +12,12 @@ use std::sync::Arc;
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
 
-pub mod simple;
+pub mod memory;
 
 #[cfg(feature = "postgres")]
 pub mod postgres;
+
+pub mod local_fs;
 
 #[derive(Default)]
 pub struct SetParameters {
@@ -41,14 +43,18 @@ pub trait KeyValueStorage: Send + Sync {
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(tag = "type")]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueStorageConfig {
     #[cfg(feature = "postgres")]
     #[serde(alias = "postgres")]
     Postgres(postgres::Config),
 
-    #[serde(alias = "simple")]
+    #[serde(alias = "Memory")]
     #[default]
-    Simple,
+    Memory,
+
+    #[serde(alias = "LocalFs")]
+    LocalFs(local_fs::Config),
 }
 
 impl KeyValueStorageConfig {
@@ -62,7 +68,10 @@ impl KeyValueStorageConfig {
                         source: e.into(),
                     })?,
             )),
-            KeyValueStorageConfig::Simple => Ok(Arc::new(simple::SimpleKeyValueStorage::default())),
+            KeyValueStorageConfig::Memory => Ok(Arc::new(memory::MemoryKeyValueStorage::default())),
+            KeyValueStorageConfig::LocalFs(config) => {
+                Ok(Arc::new(local_fs::LocalFs::new(config.clone())?))
+            }
         }
     }
 }
@@ -73,5 +82,5 @@ impl KeyValueStorageConfig {
 /// No spaces and other special characters are allowed to prevent SQL injection.
 pub(crate) fn is_valid_key(key: &str) -> bool {
     key.chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/')
 }

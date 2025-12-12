@@ -125,14 +125,31 @@ impl KeyValueStorage for PostgresClient {
             });
         }
 
-        let mut sql = format!(
-            "INSERT INTO {} ({KEY_COLUMN}, {VALUE_COLUMN}) VALUES ( $1, $2 )",
+        if !parameters.overwrite {
+            let sql = format!(
+                "SELECT COUNT(*) FROM {} WHERE {KEY_COLUMN} = $1",
+                self.table
+            );
+            let count = query(&sql)
+                .bind(key)
+                .fetch_one(&*self.pool)
+                .await
+                .map_err(|e| KeyValueStorageError::SetKeyFailed {
+                    source: e.into(),
+                    key: key.to_string(),
+                })?;
+            if count.get::<i64, _>(0) > 0 {
+                return Err(KeyValueStorageError::SetKeyFailed {
+                    source: anyhow::anyhow!("key already exists"),
+                    key: key.to_string(),
+                });
+            }
+        }
+
+        let sql = format!(
+            "INSERT INTO {} ({KEY_COLUMN}, {VALUE_COLUMN}) VALUES ( $1, $2 ) ON CONFLICT ({KEY_COLUMN}) DO UPDATE SET {VALUE_COLUMN} = $2",
             self.table
         );
-
-        if parameters.overwrite {
-            sql = format!("{sql} ON CONFLICT ({KEY_COLUMN}) DO UPDATE SET {VALUE_COLUMN} = $2");
-        }
 
         let _ = query(&sql)
             .bind(key)
