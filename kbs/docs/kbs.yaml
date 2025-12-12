@@ -11,6 +11,7 @@ info:
 
 servers:
 - url: http://<kbs>/kbs/v0
+  description: KBS API endpoints
 
 paths:
   /auth:
@@ -85,6 +86,82 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AttestationPolicy'
+      responses:
+        200:
+          description: Policy set successfully
+        401:
+          description: Missing or invalid admin token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+        400:
+          description: Invalid policy format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+
+  /reference-value/{reference_value_id}:
+    get:
+      operationId: getReferenceValue
+      summary: Query reference value by ID
+      parameters:
+        - name: reference_value_id
+          in: path
+          description: Reference value ID (can contain slashes for nested paths)
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Reference value retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        401:
+          description: Missing or invalid admin token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+        404:
+          description: Reference value not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+
+  /reference-value:
+    post:
+      operationId: registerReferenceValue
+      summary: Register a reference value
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Reference value registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        401:
+          description: Missing or invalid admin token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+        400:
+          description: Invalid reference value format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
   
   /resource-policy:
     post:
@@ -96,6 +173,60 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ResourcePolicy'
+      responses:
+        200:
+          description: Policy set successfully
+        401:
+          description: Missing or invalid admin token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+        400:
+          description: Invalid policy format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+    get:
+      operationId: getResourcePolicy
+      summary: Get resource distribution policy
+      responses:
+        200:
+          description: Policy retrieved successfully
+          content:
+            text/xml:
+              schema:
+                type: string
+        401:
+          description: Missing or invalid admin token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInformation'
+
+  /metrics:
+    servers:
+    - url: http://<kbs>
+      description: Metrics endpoint (not under /kbs/v0 prefix)
+    get:
+      operationId: getMetrics
+      summary: Get Prometheus metrics
+      description: Returns Prometheus-formatted metrics for monitoring
+      responses:
+        200:
+          description: Metrics retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus metrics in text format
+    post:
+      operationId: metricsMethodNotAllowed
+      summary: Metrics endpoint does not support POST
+      responses:
+        405:
+          description: Method not allowed
 
   /resource/{repository}/{type}/{tag}:
     get:
@@ -138,7 +269,7 @@ paths:
           content:
             application/jwe:
               schema:
-                $ref: '#/components/schemas/Response'
+                $ref: '#/components/schemas/JweResponse'
         401:
           description: Missing or invalid session ID
         403:
@@ -185,7 +316,7 @@ components:
           type: string
         tee:
           type: string
-          enum: [amd-sev, intel-sgx, intel-tdx]
+          enum: [az-snp-vtpm, az-tdx-vtpm, nvidia, sgx, snp, tdx, cca, csv, se, hygondcu, tpm, sample, sampledevice]
         extra-params:
           description: >-
             Freely formatted JSON object used for HW-TEE specific attestation
@@ -210,19 +341,127 @@ components:
 
     Attestation:
       required:
-        - tee-pubkey
+        - runtime-data
         - tee-evidence
       type: object
       properties:
-        tee-pubkey:
-          $ref: '#/components/schemas/PublicKey'
+        init-data:
+          $ref: '#/components/schemas/InitData'
+        runtime-data:
+          $ref: '#/components/schemas/RuntimeData'
         tee-evidence:
-          description: HW-TEE specific attestation evidence.
-          type: object
+          $ref: '#/components/schemas/CompositeEvidence'
       description: >-
-        KBS attestation challenge, sent in response to the KBC Request.
+        Attestation evidence sent from KBC to KBS, including runtime data and TEE evidence.
+
+    InitData:
+      type: object
+      required:
+        - format
+        - body
+      properties:
+        format:
+          type: string
+          description: Format that INITDATA body should be deserialized/read to
+          enum: [json, toml]
+        body:
+          type: string
+          description: Initialization data contents, in the format specified by `format`
+
+    CompositeEvidence:
+      type: object
+      required:
+        - primary_evidence
+        - additional_evidence
+      properties:
+        primary_evidence:
+          description: Primary TEE evidence. Deserialization dependent on underlying attestation service.
+          type: object
+        additional_evidence:
+          type: string
+          description: >-
+            Additional evidence for secondary TEE devices within a client.
+            JSON mapping of Tee --> (TEE class, TEE evidence), represented as string
+            to avoid {de}serialization inconsistencies.
+
+    TeePubKey:
+      type: object
+      discriminator:
+        propertyName: kty
+      oneOf:
+        - $ref: '#/components/schemas/TeePubKeyRSA'
+        - $ref: '#/components/schemas/TeePubKeyEC'
+      description: TEE public key, can be either RSA or EC format
+
+    TeePubKeyRSA:
+      type: object
+      required:
+        - kty
+        - alg
+        - n
+        - e
+      properties:
+        kty:
+          type: string
+          enum: [RSA]
+          description: Key type
+        alg:
+          type: string
+          description: Algorithm
+        n:
+          type: string
+          description: RSA key modulus
+        e:
+          type: string
+          description: RSA key exponent
+
+    TeePubKeyEC:
+      type: object
+      required:
+        - kty
+        - crv
+        - alg
+        - x
+        - y
+      properties:
+        kty:
+          type: string
+          enum: [EC]
+          description: Key type
+        crv:
+          type: string
+          description: Elliptic curve name
+        alg:
+          type: string
+          description: Algorithm
+        x:
+          type: string
+          description: EC key x coordinate
+        y:
+          type: string
+          description: EC key y coordinate
 
     Response:
+      required:
+        - token
+      type: object
+      properties:
+        token:
+          type: string
+          description: >-
+            A serialized JSON Web Token (https://jwt.io).
+            The token value is a string, which is made of 3 strings, separated
+            by dots.
+            The first string is a Base64-url encoding of
+            '#/components/schemas/AttestationTokenHeader'.
+            The second string is a Base64-url encoding of
+            '#/components/schemas/AttestationTokenPayload'.
+            The third string is a Base64-url encoding of the token signature.
+      description: >-
+        Attestation token returned by the attestation service.
+        This is the same as AttestationToken schema.
+
+    JweResponse:
       required:
         - protected
         - encrypted_key
@@ -246,11 +485,17 @@ components:
           description: >-
             A Base64-url encoding of the encryption algorithm initialisation
             vector.
+        aad:
+          type: string
+          description: >-
+            Additional authenticated data (optional).
         tag:
           type: string
+          description: >-
+            Authentication tag for the encrypted data.
       description: >-
         A JSON Web Encryption (https://www.rfc-editor.org/rfc/rfc7516)
-        formatted object.
+        formatted object used for encrypted resource responses.
 
     KeyHeader:
       required:
@@ -267,14 +512,9 @@ components:
 
     AttestationPolicy:
       required:
-        - type
         - policy_id
         - policy
       properties:
-        type:
-          type: string
-          description: >-
-            Policy Engine type, for example: "opa"
         policy_id:
           type: string
           description: >-
@@ -347,7 +587,7 @@ components:
           description: >-
             A JSON Web Key (https://www.rfc-editor.org/rfc/rfc7517) formatted RSA Public Key for token signature verification.
         tee-pubkey:
-          $ref: '#/components/schemas/PublicKey'
+          $ref: '#/components/schemas/TeePubKey'
         tcb-status:
           type: string
           description: Parsed claims from TEE evidence.
@@ -363,7 +603,7 @@ components:
         - e
       properties:
         kty:
-          type: stinrg
+          type: string
           description: Key Type
         alg:
           type: string
