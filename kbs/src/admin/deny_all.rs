@@ -12,7 +12,7 @@ use crate::admin::AdminBackend;
 pub struct DenyAllBackend {}
 
 impl AdminBackend for DenyAllBackend {
-    fn validate_admin_token(&self, _request: &HttpRequest) -> Result<()> {
+    fn validate_admin_token(&self, _request: &HttpRequest) -> Result<String> {
         warn!("Admin endpoints are disabled");
         Err(Error::AdminEndpointsDisabled)
     }

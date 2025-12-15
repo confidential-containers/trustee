@@ -56,9 +56,7 @@ impl SimpleAdminBackend {
 }
 
 impl AdminBackend for SimpleAdminBackend {
-    fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
-        let mut token_validated = false;
-
+    fn validate_admin_token(&self, request: &HttpRequest) -> Result<String> {
         let bearer = Authorization::<Bearer>::parse(request)?.into_scheme();
         let token = bearer.token();
 
@@ -68,9 +66,10 @@ impl AdminBackend for SimpleAdminBackend {
                 .verify_token::<NoCustomClaims>(token, Some(VerificationOptions::default()));
             match res {
                 Ok(_claims) => {
-                    token_validated = true;
                     info!("Admin access granted for {}", persona.id);
-                    break;
+
+                    // Return the first matching persona
+                    return Ok(persona.id.clone());
                 }
                 Err(e) => {
                     info!("Access not granted for {} due to: \n{}", persona.id, e);
@@ -78,10 +77,6 @@ impl AdminBackend for SimpleAdminBackend {
             }
         }
 
-        if !token_validated {
-            Err(Error::AdminAccessDenied)
-        } else {
-            Ok(())
-        }
+        Err(Error::AdminAccessDenied)
     }
 }
