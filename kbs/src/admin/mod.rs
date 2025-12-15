@@ -67,7 +67,11 @@ impl Admin {
     pub fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
         let res = self.backend.validate_admin_token(request);
         match res {
-            Ok(()) => info!("Allowing Admin access for {}", request.full_url().as_str()),
+            Ok(ref role) => info!(
+                "Allowing Admin access to {} for {}",
+                request.full_url().as_str(),
+                role
+            ),
             Err(ref e) => info!(
                 "Not allowing Admin access for {} due to: \n{}",
                 request.full_url().as_str(),
@@ -75,7 +79,8 @@ impl Admin {
             ),
         }
 
-        res
+        // Don't pass the role to the caller.
+        res.map(|_| ())
     }
 }
 
@@ -85,5 +90,7 @@ pub(crate) trait AdminBackend: Send + Sync {
     /// When a request is made to an admin endpoint, this method should be called
     /// to validate that the user making the request is authorized
     /// to access admin functionality.
-    fn validate_admin_token(&self, request: &HttpRequest) -> Result<()>;
+    ///
+    /// If the token is valid, the backend will return an admin role.
+    fn validate_admin_token(&self, request: &HttpRequest) -> Result<String>;
 }
