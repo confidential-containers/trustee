@@ -4,7 +4,9 @@
 
 use actix_web::HttpRequest;
 use log::{info, warn};
+use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub mod allow_all;
@@ -21,9 +23,9 @@ use simple::{SimpleAdminBackend, SimpleAdminConfig};
 #[derive(Clone)]
 pub(crate) struct Admin {
     backend: Arc<dyn AdminBackend>,
+    roles: HashMap<String, Regex>,
 }
 
-// create a simple backend
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum AdminBackendType {
@@ -45,7 +47,26 @@ impl Default for AdminBackendType {
 pub struct AdminConfig {
     #[serde(flatten)]
     pub admin_backend: AdminBackendType,
+    /// Admin roles control which admin personas can access
+    /// which endpoints.
+    ///
+    /// If no admin roles are specified, all admin will be able
+    /// to access all endpoints.
+    pub roles: Vec<AdminRole>,
 }
+
+/// An admin role is a rule that grants access for some roles to some endpoints.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct AdminRole {
+    /// The admin role that this rule applies to.
+    /// The id is case insensitive.
+    pub id: String,
+    /// A regular expression selecting request paths this rule allows.
+    /// In other words, the paths that the above role can access.
+    #[serde(default)]
+    pub allowed_endpoints: String,
+}
+
 
 impl TryFrom<AdminConfig> for Admin {
     type Error = Error;
@@ -59,28 +80,47 @@ impl TryFrom<AdminConfig> for Admin {
             AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
         };
 
-        Ok(Admin { backend })
+        // Parse roles to ensure valid regexes and no duplicates.
+        let mut roles = HashMap::new();
+        for role in value.roles {
+            let re = Regex::new(&role.allowed_endpoints)?;
+
+            if roles.insert(role.id.to_lowercase(), re).is_some() {
+                return Err(Error::DuplicateAdminRole);
+            }
+        }
+
+        Ok(Admin { backend, roles })
     }
 }
 
 impl Admin {
-    pub fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
-        let res = self.backend.validate_admin_token(request);
-        match res {
-            Ok(ref role) => info!(
-                "Allowing Admin access to {} for {}",
-                request.full_url().as_str(),
-                role
-            ),
-            Err(ref e) => info!(
-                "Not allowing Admin access for {} due to: \n{}",
-                request.full_url().as_str(),
-                e
-            ),
+    pub fn check_admin_access(&self, request: &HttpRequest) -> Result<()> {
+        if let Ok(role) = self.backend.validate_admin_token(request) {
+            info!("Admin Role: {role}");
+
+            // If there are no roles specified, allow all.
+            if self.roles.is_empty() {
+                info!(
+                    "No admin roles configured. Allowing Request to {}",
+                    request.full_url().as_str()
+                );
+                return Ok(());
+            }
+
+            if let Some(re) = self.roles.get(&role.to_lowercase()) {
+                if re.is_match(&request.uri().to_string()) {
+                    info!("Allowing Request to {}", request.full_url().as_str());
+                    return Ok(());
+                }
+            }
         }
 
-        // Don't pass the role to the caller.
-        res.map(|_| ())
+        info!(
+            "Not allowing Admin access to {}",
+            request.full_url().as_str()
+        );
+        Err(Error::AdminAccessDenied)
     }
 }
 
