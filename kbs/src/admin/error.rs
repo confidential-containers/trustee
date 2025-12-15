@@ -16,6 +16,12 @@ pub enum Error {
     #[error("Admin endpoints disabled.")]
     AdminEndpointsDisabled,
 
+    #[error("Duplicate Admin Role")]
+    DuplicateAdminRole,
+
+    #[error("Invalid Regular Expression in Role")]
+    InvalidRoleRegex(#[from] regex::Error),
+
     #[error("`auth_public_key` is not set in the config file")]
     NoPublicKeyGiven,
 
@@ -27,4 +33,7 @@ pub enum Error {
 
     #[error("Read admin public key failed")]
     ReadPublicKey(#[from] std::io::Error),
+
+    #[error("Admin Role regex must be anchored.")]
+    UnanchoredRegex,
 }
