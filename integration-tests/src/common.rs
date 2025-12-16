@@ -193,9 +193,11 @@ impl TestHarness {
                         public_key_path: auth_pubkey_path.as_path().to_path_buf(),
                     }],
                 }),
+                roles: Vec::new(),
             },
             AdminType::DenyAll => AdminConfig {
                 admin_backend: AdminBackendType::DenyAll,
+                roles: Vec::new(),
             },
         };
 
