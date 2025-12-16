@@ -57,6 +57,7 @@ pub struct AdminConfig {
 
 /// An admin role is a rule that grants access for some roles to some endpoints.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct AdminRole {
     /// The admin role that this rule applies to.
     /// The id is case insensitive.
@@ -66,7 +67,6 @@ pub struct AdminRole {
     #[serde(default)]
     pub allowed_endpoints: String,
 }
-
 
 impl TryFrom<AdminConfig> for Admin {
     type Error = Error;
@@ -133,4 +133,109 @@ pub(crate) trait AdminBackend: Send + Sync {
     ///
     /// If the token is valid, the backend will return an admin role.
     fn validate_admin_token(&self, request: &HttpRequest) -> Result<String>;
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    pub fn make_admin_object() {
+        // basic (backwards compatible)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let _admin = Admin::try_from(config).unwrap();
+
+        // with invalid role (wrong field name)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_paths": "xyz"
+            }]
+        });
+
+        let config = serde_json::from_value::<AdminConfig>(admin_config_json);
+        assert!(config.is_err());
+
+        // with invalid role (bad regex)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "(xyz"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config);
+        assert!(admin.is_err());
+
+        // with invalid role (duplicate role)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "xyz"
+            },
+            {
+                "id": "Anonymous",
+                "allowed_endpoints": "abc"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config);
+        assert!(admin.is_err());
+    }
+
+    #[test]
+    pub fn check_requests() {
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "^/resource/a/.+/c$"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config).unwrap();
+
+        // valid request
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/a/b/c")
+            .to_http_request();
+        admin.check_admin_access(&req).unwrap();
+
+        // invalid request
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/b/b/c")
+            .to_http_request();
+        assert!(admin.check_admin_access(&req).is_err());
+    }
+
+    #[test]
+    pub fn check_requests_wrong_role() {
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Steve",
+                "allowed_endpoints": "^/resource/a/.+/c$"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config).unwrap();
+
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/a/b/c")
+            .to_http_request();
+        assert!(admin.check_admin_access(&req).is_err());
+    }
 }
