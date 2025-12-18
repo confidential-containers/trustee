@@ -108,7 +108,7 @@ Deploy KBS by running the following command:
 ./deploy-kbs.sh
 ```
 
-When deploying trustee on an [IBM Secure Execution](https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonibm/com.ibm.linux.z.lxse/lxse_t_secureexecution.htm)
+When deploying trustee on an [IBM Secure Execution](https://www.ibm.com/docs/en/linux-on-systems?topic=management-secure-execution)
 enabled environment, where the IBM SE verifier verifier is needed,
 an environment variable `IBM_SE_CREDS_DIR` is needed that points to a directory containing extra files required for
 attestation on IBM Secure Execution:

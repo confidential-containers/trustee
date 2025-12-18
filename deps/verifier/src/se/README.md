@@ -46,10 +46,10 @@ Note: `DigiCertTrustedRootG4.crl` and `DigiCertTrustedG4CodeSigningRSA4096SHA384
 ```
 
 ## Download HKD
-Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonibm/com.ibm.linux.z.lxse/lxse_t_hkd_tools.htm
+Download IBM Secure Execution Host Key Document following: https://www.ibm.com/docs/en/linux-on-systems?topic=execution-obtain-host-key-document
 
 ## Get SE Header
-Build `se.img` following [Generate an IBM Secure Execution image](https://www.ibm.com/docs/en/linux-on-systems?topic=linuxonibm/com.ibm.linux.z.lxse/lxse_t_guestsecure.htm) and retrieve the hdr.bin via command like below.
+Build `se.img` following [Generate an IBM Secure Execution image](https://www.ibm.com/docs/en/cic/1.2.5?topic=kvm-generate-secure-execution-image) and retrieve the hdr.bin via command like below.
 ```bash
 ./pvextract-hdr -o hdr.bin se.img
 ```
