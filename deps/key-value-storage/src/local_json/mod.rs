@@ -80,7 +80,7 @@ impl KeyValueStorage for LocalJson {
         })?;
         let mut items: HashMap<String, String> = serde_json::from_slice(&file)
             .map_err(|e| KeyValueStorageError::MalformedValue { source: e.into() })?;
-        let value_b64 = URL_SAFE.encode(&value);
+        let value_b64 = URL_SAFE.encode(value);
         if parameters.overwrite && items.contains_key(key) {
             return Err(KeyValueStorageError::SetKeyFailed {
                 source: anyhow::anyhow!("key already exists"),
