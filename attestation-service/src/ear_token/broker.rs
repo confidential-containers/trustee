@@ -83,18 +83,8 @@ impl EarAttestationTokenBroker {
             .map(|cert_path| -> Result<Vec<X509>> {
                 let pem_cert_chain = std::fs::read_to_string(cert_path)
                     .map_err(|e| anyhow!("Read Token Signer cert file failed: {:?}", e))?;
-                let mut chain = Vec::new();
-
-                for pem in pem_cert_chain.split("-----END CERTIFICATE-----") {
-                    let trimmed = format!("{}\n-----END CERTIFICATE-----", pem.trim());
-                    if !trimmed.starts_with("-----BEGIN CERTIFICATE-----") {
-                        continue;
-                    }
-                    let cert = X509::from_pem(trimmed.as_bytes())
-                        .map_err(|_| anyhow!("Invalid PEM certificate chain"))?;
-                    chain.push(cert);
-                }
-                Ok(chain)
+                X509::stack_from_pem(pem_cert_chain.as_bytes())
+                    .map_err(|_| anyhow!("Invalid PEM certificate chain"))
             })
             .transpose()?;
 
