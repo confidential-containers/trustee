@@ -75,5 +75,5 @@ tempfile = "3.20.0"
 tonic = "0.14"
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
-tracing = "0.1.43"
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
