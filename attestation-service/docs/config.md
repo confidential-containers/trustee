@@ -38,13 +38,13 @@ section:
 
 #### TokenSignerConfig
 
-This section is **optional**. When omitted, a new RSA key pair is generated and used.
+This section is **optional**. When omitted, a new EC key pair is generated and used.
 
-| Property       | Type    | Description                                              | Required | Default |
-|----------------|---------|----------------------------------------------------------|----------|---------|
-| `key_path`     | String  | RSA Key Pair file (PEM format) path.                     | Yes      | -       |
-| `cert_url`     | String  | RSA Public Key certificate chain (PEM format) URL.       | No       | -       |
-| `cert_path`    | String  | RSA Public Key certificate chain (PEM format) file path. | No       | -       |
+| Property       | Type    | Description                                             | Required | Default |
+|----------------|---------|---------------------------------------------------------|----------|---------|
+| `key_path`     | String  | EC Key Pair file (PEM format) path.                     | Yes      | -       |
+| `cert_url`     | String  | EC Public Key certificate chain (PEM format) URL.       | No       | -       |
+| `cert_path`    | String  | EC Public Key certificate chain (PEM format) file path. | No       | -       |
 
 #### RVPS Configuration
 
