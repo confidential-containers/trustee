@@ -6,7 +6,7 @@ use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use http_cache_reqwest::{
-    MokaManager, MokaCacheBuilder, Cache, CacheMode, HttpCache, HttpCacheOptions,
+    Cache, CacheMode, HttpCache, HttpCacheOptions, MokaCacheBuilder, MokaManager,
 };
 use openssl::{
     nid::Nid,
@@ -106,8 +106,7 @@ fn init_cache_manager() -> MokaManager {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Snp {
-}
+pub struct Snp {}
 
 impl Snp {
     pub async fn new() -> Result<Self> {
@@ -120,9 +119,7 @@ impl Snp {
             ..Default::default()
         };
 
-        let manager = VCEK_CACHE_MANAGER
-            .get_or_init(init_cache_manager)
-            .clone();
+        let manager = VCEK_CACHE_MANAGER.get_or_init(init_cache_manager).clone();
 
         let cache = Cache(HttpCache {
             mode: CacheMode::Default,
@@ -130,7 +127,9 @@ impl Snp {
             options: client_options,
         });
 
-        ClientBuilder::new(reqwest::Client::new()).with(cache).build()
+        ClientBuilder::new(reqwest::Client::new())
+            .with(cache)
+            .build()
     }
 
     /// Asynchronously fetches the VCEK from the Key Distribution Service (KDS) using the provided attestation report.
@@ -146,12 +145,12 @@ impl Snp {
         }
 
         let hw_id = match proc_gen {
-                ProcessorGeneration::Turin => {
-                    let shorter_bytes: &[u8] = &att_report.chip_id[0..8];
-                    hex::encode(shorter_bytes)
-                }
-                _ => hex::encode(att_report.chip_id),
-            };
+            ProcessorGeneration::Turin => {
+                let shorter_bytes: &[u8] = &att_report.chip_id[0..8];
+                hex::encode(shorter_bytes)
+            }
+            _ => hex::encode(att_report.chip_id),
+        };
 
         // Request VCEK from KDS
         let vcek_url: String = match proc_gen {
