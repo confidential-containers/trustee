@@ -114,7 +114,7 @@ pub(crate) fn prepare_custom_claims_map(
     claims_map
 }
 
-fn get_sa_list(sa_list: &[c_char; 320]) -> Value {
+fn get_sa_list(sa_list: &[c_char; 450]) -> Value {
     let c_str = unsafe { CStr::from_ptr(sa_list.as_ptr()) };
 
     let advisory_ids = c_str.to_string_lossy();
