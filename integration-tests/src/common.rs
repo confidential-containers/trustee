@@ -45,7 +45,7 @@ use tonic::transport::Server;
 
 const KBS_URL: &str = "http://127.0.0.1:8081";
 const RVPS_URL: &str = "http://127.0.0.1:51003";
-const WAIT_TIME: u64 = 10000;
+const WAIT_TIME: u64 = 5000;
 
 const ALLOW_ALL_POLICY: &str = "
     package policy
@@ -178,6 +178,10 @@ impl TestHarness {
                     .serve("127.0.0.1:51003".parse()?);
 
                 tokio::spawn(rvps_future);
+
+                // Wait for rvps to start
+                let duration = tokio::time::Duration::from_millis(WAIT_TIME);
+                tokio::time::sleep(duration).await;
 
                 RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                     address: RVPS_URL.to_string(),
