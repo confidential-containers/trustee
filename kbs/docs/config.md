@@ -186,15 +186,23 @@ Detailed [documentation](https://docs.trustauthority.intel.com).
 
 ### Admin API Configuration
 
-Multiple Admin backends are available. These control access to admin endpoints such as `set_policy`.
-Today, the available backends are `DenyAll` (disables admin endpoints), `InsecureAllowAll` (for debugging)
-and `Simple`.
+The admin configuration has two parts.
+The admin backend is used for validating the admin token and extracting a role.
+The admin configuration can also specify which endpoints the role has access to.
+
+
+Multiple Admin backends are available. 
+Today, the available backends are `DenyAll` (rejects all admin tokens, thereby blocking all admin interfaces),
+`InsecureAllowAll` (treats every request as if there is a valid admin token and return the role `Anonymous`)
+and `Simple` (checks the admin token based on a set of public keys).
+
 By default, the simple backend will be used, but no personas will be enabled.
 Use the `type` field to set the admin backend.
 
 | Property          | Type    | Description                                                       | Required | Default |
 |-------------------|---------|-------------------------------------------------------------------|----------|---------|
-| `type`            | String  | The backend used to validate admiin requests.                     | No       | Simple  |
+| `type`            | String  | The backend used to validate admin requests.                      | No       | Simple  |
+| `roles`           |         | Rules for accessing admin endpoints                               | No       | Empty   |
 
 If the `Simple` backend is used, a list of admin personas can be provided, each with the following properties:
 
@@ -203,6 +211,23 @@ If the `Simple` backend is used, a list of admin personas can be provided, each 
 | `id`              | String  | A string used to identify the admin.                              | Yes      | Simple  |
 | `public_key_path` | String  | The path to the public key corresponding to the admin token.      | Yes      | Simple  |
 
+The role field can specify rules that govern which endpoints an admin is allowed to visit.
+If no roles are specified, all admin can access all admin endpoints.
+Otherwise, the roles field should be a list of role entries.
+One role entry looks like this.
+
+| Property          | Type   | Description                                              | Required |
+|-------------------|--------|----------------------------------------------------------|----------|
+| id                | String | The role that this rule applies to                       | Yes      |
+| allowed_endpoints | String | A regular expression matching endpoints that are allowed | Yes      |
+
+After the admin token is validated, the role extracted from the token will be checked against
+the roles specified in the config file.
+If a matching role is found, the `allowed_endpoints` regular expression is used to determine
+which endpoints the admin can access.
+The regular expression must start with `^/kbs` and end with `$` to avoid ambiguity.
+If no matching role is found (and at least one role is specified), the admin will not be able
+to access any endpoints.
 
 ### Policy Engine Configuration
 
