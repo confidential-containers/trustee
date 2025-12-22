@@ -8,7 +8,7 @@ tar gzip
 
 # Install build dependencies from Intel repo.
 WORKDIR /root
-RUN curl -O https://download.01.org/intel-sgx/sgx-linux/2.24/distro/centos-stream9/sgx_rpm_local_repo.tgz && \
+RUN curl -O https://download.01.org/intel-sgx/sgx-linux/2.27/distro/centos-stream9/sgx_rpm_local_repo.tgz && \
 tar -xaf sgx_rpm_local_repo.tgz && \
 dnf -y install --nogpgcheck --repofrompath "sgx,file:///root/sgx_rpm_local_repo" libsgx-dcap-quote-verify-devel
 
