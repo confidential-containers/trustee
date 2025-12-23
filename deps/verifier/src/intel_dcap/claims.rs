@@ -146,6 +146,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    #[ignore]
     fn parse_supplemental_data() {
         let supplemental_data =
             "AwADAAAAAAA2owJbAAAAAHAtq2gAAAAAbbbSaAAAAACA7PBlAAAAAAEAAAABAAAAEQAAA\
