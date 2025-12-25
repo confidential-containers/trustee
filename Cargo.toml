@@ -71,7 +71,7 @@ strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "0.9.10"
-tempfile = "3.20.0"
+tempfile = "3.24.0"
 tonic = "0.14"
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
