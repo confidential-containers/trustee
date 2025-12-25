@@ -13,7 +13,9 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 use tracing::instrument;
 
-use crate::{is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters};
+use crate::{
+    is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
+};
 
 /// Default file path for the local JSON file.
 const FILE_PATH: &str = "/opt/confidential-containers/storage/local_fs";
@@ -54,7 +56,7 @@ impl LocalFs {
 #[async_trait]
 impl KeyValueStorage for LocalFs {
     #[instrument(skip_all, name = "LocalFs::set", fields(key = key))]
-    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult> {
         if !is_valid_key(key) {
             return Err(KeyValueStorageError::SetKeyFailed {
                 source: anyhow::anyhow!("key contains invalid characters"),
@@ -75,13 +77,10 @@ impl KeyValueStorage for LocalFs {
         }
 
         if !parameters.overwrite && file_path.exists() {
-            return Err(KeyValueStorageError::SetKeyFailed {
-                source: anyhow::anyhow!("key already exists"),
-                key: key.to_string(),
-            });
+            return Ok(SetResult::AlreadyExists);
         }
 
-        Ok(())
+        Ok(SetResult::Inserted)
     }
 
     #[instrument(skip_all, name = "LocalFs::get", fields(key = key))]
