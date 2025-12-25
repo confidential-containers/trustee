@@ -89,6 +89,7 @@ impl TryFrom<&Path> for Config {
 
 #[cfg(test)]
 mod tests {
+    use policy_engine::PolicyEngineConfig;
     use rstest::rstest;
     use std::path::PathBuf;
 
@@ -96,20 +97,20 @@ mod tests {
     use crate::ear_token::TokenSignerConfig;
     use crate::rvps::RvpsCrateConfig;
     use crate::{ear_token::EarTokenConfiguration, rvps::RvpsConfig};
-    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
+    use key_value_storage::{local_fs, KeyValueStorageConfig};
 
     #[rstest]
     #[case("./tests/configs/example1.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            storage: KeyValueStorageConfig::LocalFs(local_fs::Config::default()),
             extractors: None,
         }),
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
             signer: None,
-            policy_dir: "/var/lib/attestation-service/policies".into(),
+            policy_engine: PolicyEngineConfig::default(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
@@ -119,13 +120,15 @@ mod tests {
     #[case("./tests/configs/example2.json", Config {
         work_dir: PathBuf::from("/var/lib/attestation-service/"),
         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
+            storage: KeyValueStorageConfig::Memory,
             extractors: None,
         }),
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
-            policy_dir: "/var/lib/attestation-service/policies".into(),
+            policy_engine: PolicyEngineConfig {
+                storage: KeyValueStorageConfig::Memory,
+            },
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
