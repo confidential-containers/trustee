@@ -16,7 +16,9 @@ use sqlx::PgPool;
 use sqlx::{postgres::PgPoolOptions, query, Row};
 use tracing::{debug, info, instrument};
 
-use crate::{is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters};
+use crate::{
+    is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
+};
 
 /// The maximum number of connections to the PostgreSQL database.
 pub const MAX_CONNECTIONS: u32 = 5;
@@ -117,7 +119,7 @@ pub struct PolicyItem {
 #[async_trait]
 impl KeyValueStorage for PostgresClient {
     #[instrument(skip_all, name = "PostgresClient::set")]
-    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult> {
         if !is_valid_key(key) {
             return Err(KeyValueStorageError::SetKeyFailed {
                 source: anyhow::anyhow!("key contains invalid characters"),
@@ -154,14 +156,11 @@ impl KeyValueStorage for PostgresClient {
                     key: key.to_string(),
                 })?;
             if result.is_none() {
-                return Err(KeyValueStorageError::SetKeyFailed {
-                    source: anyhow::anyhow!("key already exists"),
-                    key: key.to_string(),
-                });
+                return Ok(SetResult::AlreadyExists);
             }
         }
 
-        Ok(())
+        Ok(SetResult::Inserted)
     }
 
     #[instrument(skip_all, name = "PostgresClient::list")]

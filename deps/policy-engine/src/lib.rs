@@ -53,10 +53,12 @@ impl PolicyEngine {
     /// Concrete policy engine backend may handle the policy in different ways.
     pub async fn set_policy(&self, policy_id: &str, policy: &str, overwrite: bool) -> Result<()> {
         let params = SetParameters { overwrite };
-        self.storage
+        let _ = self
+            .storage
             .set(policy_id, policy.as_bytes(), params)
             .await
-            .map_err(From::from)
+            .map_err(PolicyError::from)?;
+        Ok(())
     }
 
     /// List all policies in the backend.
