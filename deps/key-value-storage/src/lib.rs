@@ -27,10 +27,15 @@ pub struct SetParameters {
     pub overwrite: bool,
 }
 
+pub enum SetResult {
+    Inserted,
+    AlreadyExists,
+}
+
 #[async_trait]
 pub trait KeyValueStorage: Send + Sync {
     /// Set a value for a key.
-    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()>;
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult>;
 
     /// List all keys.
     async fn list(&self) -> Result<Vec<String>>;
