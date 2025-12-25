@@ -14,7 +14,7 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 use tracing::{debug, instrument};
 
-use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters};
+use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult};
 
 /// Default file path for the local JSON file.
 const FILE_PATH: &str = "/opt/confidential-containers/storage/local_json/key_value.json";
@@ -70,7 +70,7 @@ impl LocalJson {
 #[async_trait]
 impl KeyValueStorage for LocalJson {
     #[instrument(skip_all, name = "LocalJson::set", fields(key = key))]
-    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult> {
         let _ = self.lock.write().await;
         let file = tokio::fs::read(&self.file_path).await.map_err(|e| {
             KeyValueStorageError::GetKeyFailed {
@@ -82,10 +82,7 @@ impl KeyValueStorage for LocalJson {
             .map_err(|e| KeyValueStorageError::MalformedValue { source: e.into() })?;
         let value_b64 = URL_SAFE.encode(value);
         if parameters.overwrite && items.contains_key(key) {
-            return Err(KeyValueStorageError::SetKeyFailed {
-                source: anyhow::anyhow!("key already exists"),
-                key: key.to_string(),
-            });
+            return Ok(SetResult::AlreadyExists);
         }
 
         items.insert(key.to_string(), value_b64);
@@ -101,7 +98,7 @@ impl KeyValueStorage for LocalJson {
                 source: e.into(),
                 key: key.to_string(),
             })?;
-        Ok(())
+        Ok(SetResult::Inserted)
     }
 
     #[instrument(skip_all, name = "LocalJson::get", fields(key = key))]
