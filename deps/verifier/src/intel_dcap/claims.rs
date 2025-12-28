@@ -146,20 +146,10 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    #[ignore]
     fn parse_supplemental_data() {
-        let supplemental_data =
-            "AwADAAAAAAA2owJbAAAAAHAtq2gAAAAAbbbSaAAAAACA7PBlAAAAAAEAAAABAAAAEQAAA\
-        EbkA7008Fo/KBerm63KrMf/yY4PJhAIzTDa6TbKzhjV3PWO7zFGNhPeFXDVFiAJkyfg6mPFvHZoUiXGOj2EQXAHBw\
-        ICAwEAAwAAAAAAAAAACwAAAAAAAAABsNXfABIi8QI8B6FCx2f9QgAAAAEAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAA\
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADajAlsAAAAAbNUZaAAAAADs4ER1AAAA\
-        AIDs8GUAAAAAEQAAAAAAAAA=";
+        let supplemental_data = create_supp_data();
 
-        let mut supp = deserialize_supp_data(supplemental_data);
+        let mut supp = deserialize_supp_data(&supplemental_data);
 
         let claims =
             prepare_custom_claims_map(&mut supp, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK);
@@ -201,5 +191,42 @@ mod tests {
         }
 
         supp
+    }
+    
+    fn create_supp_data() -> String {
+        use std::mem::size_of;
+
+        let root_key_id = hex::decode("46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993")
+            .expect("invalid root_key_id hex");
+
+        let pck_ppid =
+            hex::decode("27e0ea63c5bc76685225c63a3d844170").expect("invalid pck_ppid hex");
+
+        let mut supp: sgx_ql_qv_supplemental_t = unsafe { std::mem::zeroed() };
+
+        supp.earliest_issue_date = 1526899510;
+        supp.latest_issue_date = 1756048752;
+        supp.earliest_expiration_date = 1758639725;
+        supp.tcb_level_date_tag = 1710288000;
+        supp.tcb_eval_ref_num = 1;
+        supp.pck_crl_num = 1;
+        supp.root_ca_crl_num = 1;
+        supp.sgx_type = 1; // Scalable
+        supp.dynamic_platform = 1;
+        supp.cached_keys = 1;
+        supp.smt_enabled = 1;
+
+        supp.root_key_id[..48].copy_from_slice(&root_key_id[..48]);
+        supp.pck_ppid[..16].copy_from_slice(&pck_ppid[..16]);
+
+
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                &supp as *const _ as *const u8,
+                size_of::<sgx_ql_qv_supplemental_t>(),
+            )
+        };
+
+        STANDARD.encode(bytes)
     }
 }
