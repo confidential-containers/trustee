@@ -56,6 +56,9 @@ pub struct VerifierConfig {
 
     #[cfg(feature = "tpm-verifier")]
     tpm_verifier: Option<tpm::config::TpmVerifierConfig>,
+
+    #[cfg(feature = "snp-verifier")]
+    snp_verifier: Option<snp::SnpVerifierConfig>,
 }
 
 pub async fn to_verifier(
@@ -95,8 +98,8 @@ pub async fn to_verifier(
         Tee::Snp => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "snp-verifier")] {
-                    let verifier = snp::Snp::default();
-                    Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
+                    let snp_config = _config.map(|c| c.snp_verifier).unwrap_or(None);
+                    Ok(Box::<snp::Snp>::new(snp::Snp::new(snp_config).await?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `snp-verifier` is not enabled for `verifier` crate.")
                 }
