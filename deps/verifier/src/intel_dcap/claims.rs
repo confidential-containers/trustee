@@ -192,7 +192,7 @@ mod tests {
 
         supp
     }
-    
+
     fn create_supp_data() -> String {
         use std::mem::size_of;
 
@@ -218,7 +218,6 @@ mod tests {
 
         supp.root_key_id[..48].copy_from_slice(&root_key_id[..48]);
         supp.pck_ppid[..16].copy_from_slice(&pck_ppid[..16]);
-
 
         let bytes = unsafe {
             std::slice::from_raw_parts(
