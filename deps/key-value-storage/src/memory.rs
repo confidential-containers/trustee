@@ -7,7 +7,7 @@
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters};
+use crate::{KeyValueStorage, Result, SetParameters, SetResult};
 use std::collections::HashMap;
 use tracing::instrument;
 
@@ -19,7 +19,7 @@ pub struct MemoryKeyValueStorage {
 #[async_trait]
 impl KeyValueStorage for MemoryKeyValueStorage {
     #[instrument(skip_all, name = "MemoryKeyValueStorage::set", fields(key = key))]
-    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<()> {
+    async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult> {
         if parameters.overwrite {
             self.items
                 .write()
@@ -27,17 +27,14 @@ impl KeyValueStorage for MemoryKeyValueStorage {
                 .insert(key.to_string(), value.to_vec());
         } else {
             if self.items.read().await.contains_key(key) {
-                return Err(KeyValueStorageError::SetKeyFailed {
-                    source: anyhow::anyhow!("key already exists"),
-                    key: key.to_string(),
-                });
+                return Ok(SetResult::AlreadyExists);
             }
             self.items
                 .write()
                 .await
                 .insert(key.to_string(), value.to_vec());
         }
-        Ok(())
+        Ok(SetResult::Inserted)
     }
 
     #[instrument(skip_all, name = "MemoryKeyValueStorage::list")]
