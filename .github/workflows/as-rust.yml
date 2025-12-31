@@ -6,18 +6,14 @@ on:
     paths:
       - 'attestation-service/**'
       - 'rvps'
-      - 'deps/verifier'
-      - 'deps/key-value-storage'
-      - 'deps/policy-engine'
+      - 'deps/**'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   pull_request:
     paths:
       - 'attestation-service/**'
       - 'rvps'
-      - 'deps/verifier'
-      - 'deps/key-value-storage'
-      - 'deps/policy-engine'
+      - 'deps/**'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   create:
@@ -68,6 +64,14 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Run cargo fmt check
+        run: |
+          cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine --check
+
+      - name: Run rust lint check
+        run: |
+          cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine -- -D warnings
+
       - name: Build
         working-directory: attestation-service
         run: |
@@ -76,11 +80,3 @@ jobs:
       - name: Run cargo test
         run: |
           sudo -E PATH="$PATH" -s cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog -p key-value-storage -p policy-engine
-
-      - name: Run cargo fmt check
-        run: |
-          sudo -E PATH="$PATH" -s cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine --check
-
-      - name: Run rust lint check
-        run: |
-          sudo -E PATH="$PATH" -s cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine -- -D warnings -A clippy::derive_partial_eq_without_eq
