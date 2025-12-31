@@ -5,13 +5,15 @@
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{bail, Context, Error, Result};
+use key_value_storage::KeyValueStorageConfig;
 use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
 
-use crate::prometheus::{RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL};
-
-use super::local_fs;
+use crate::{
+    plugins::resource::kv_storage,
+    prometheus::{RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
+};
 
 #[cfg(feature = "vault")]
 use super::vault_kv;
@@ -70,9 +72,10 @@ impl fmt::Display for ResourceDesc {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(tag = "type")]
+#[serde(tag = "backend")]
 pub enum RepositoryConfig {
-    LocalFs(local_fs::LocalFsRepoDesc),
+    #[serde(alias = "kvstorage")]
+    KvStorage(KeyValueStorageConfig),
 
     #[cfg(feature = "aliyun")]
     #[serde(alias = "aliyun")]
@@ -85,7 +88,7 @@ pub enum RepositoryConfig {
 
 impl Default for RepositoryConfig {
     fn default() -> Self {
-        Self::LocalFs(local_fs::LocalFsRepoDesc::default())
+        Self::KvStorage(KeyValueStorageConfig::Memory)
     }
 }
 
@@ -94,13 +97,12 @@ pub struct ResourceStorage {
     backend: RepositoryInstance,
 }
 
-impl TryFrom<RepositoryConfig> for ResourceStorage {
-    type Error = Error;
-
-    fn try_from(value: RepositoryConfig) -> Result<Self> {
+impl ResourceStorage {
+    pub async fn new(value: RepositoryConfig) -> Result<Self> {
         match value {
-            RepositoryConfig::LocalFs(desc) => {
-                let backend = local_fs::LocalFs::new(&desc)
+            RepositoryConfig::KvStorage(desc) => {
+                let backend = kv_storage::KvStorage::new(&desc)
+                    .await
                     .context("Failed to initialize Resource Storage")?;
                 Ok(Self {
                     backend: Arc::new(backend),

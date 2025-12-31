@@ -18,5 +18,6 @@ public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"

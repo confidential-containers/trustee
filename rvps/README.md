@@ -9,7 +9,7 @@ RVPS contains the following components:
 
 - Extractors : Extractors has sub-modules to process different types of provenance. Each sub-module will consume the input Message, and then generate an output Reference Value.
 
-- Storage : ReferenceValueStorage is a trait object, which can provide a key-value like API. All verified reference values will be stored in a storage backend. When requested by Attestation Service, related reference value will be provided.
+- Storage : RVPS uses the `key-value-storage` crate to provide a unified key-value storage interface. All verified reference values will be stored in a storage backend. When requested by Attestation Service, related reference value will be provided. The storage backend can be configured to use different implementations such as in-memory, local file system, local JSON file, or PostgreSQL.
 
 ## Message Flow
 
@@ -97,12 +97,18 @@ RVPS can be launched with a specified configuration file by `-c` flag. A configu
 {
     "storage": {
         "type": "LocalFs",
-        "file_path": "/opt/confidential-containers/attestation-service/reference_values"
+        "dir_path": "/opt/confidential-containers/storage/local_fs"
     }
 }
 ```
-- `storage.type`: backend storage type to store reference values. Currently `LocalFs` and `LocalJson` are supported.
-- `storage.*`: Each different type of storage has its own associated configuration parameters. This is also a JSON map object.
+
+Storage backend types:
+- `Memory`: In-memory storage (default). Data is not persisted and will be lost when the program terminates.
+- `LocalFs`: Local file system storage. Each key-value pair is stored as a separate file. Configuration:
+  - `dir_path`: Directory path to store the files (default: `/opt/confidential-containers/storage/local_fs`)
+- `LocalJson`: Local JSON file storage. All key-value pairs are stored in a single JSON file. Configuration:
+  - `file_path`: Path to the JSON file (default: `/opt/confidential-containers/storage/local_json/key_value.json`)
+- `Postgres`: PostgreSQL storage (optional, requires feature flag). Stores key-value pairs in a PostgreSQL database table.
 
 ## Integrate RVPS into the Attestation Service
 

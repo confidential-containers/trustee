@@ -303,7 +303,7 @@ pub async fn get_policies(
                 .await
                 .context("get policies")?
                 .into_iter()
-                .map(|(id, digest)| json!({"policy-id": id, "policy-hash": digest}))
+                .map(|id| json!({"policy-id": id}))
                 .collect::<Vec<_>>();
 
             let policy_list =
