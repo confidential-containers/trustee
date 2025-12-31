@@ -5,14 +5,14 @@ on:
       - "main"
     paths:
       - 'attestation-service/**'
-      - 'rvps'
+      - 'rvps/**'
       - 'deps/**'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
   pull_request:
     paths:
       - 'attestation-service/**'
-      - 'rvps'
+      - 'rvps/**'
       - 'deps/**'
       - '.github/workflows/as_rust.yml'
       - 'Cargo.toml'
