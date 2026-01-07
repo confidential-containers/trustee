@@ -333,25 +333,35 @@ mod tests {
     }
 
     #[rstest]
-    #[case::local_verifier(true)]
+    #[case::local_verifier(true, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"))]
+    // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
+    // Please run these tests if you make any changes to the verifier.
     #[ignore]
-    #[case::remote_verifier(false)]
+    #[case::remote_verifier(false, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"))]
+    // Use the remote verifier with evidence from a CoCo CI run
+    #[ignore]
+    #[case::remote_verifier_coco(false, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"))]
+    // The local verifier does not currently work with this report, which is from a newer device
+    // that has some unknown fields in opaque data.
+    #[ignore]
+    #[case::local_verifier_coco(true, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"))]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_evaluation(#[case] local_verifier: bool) {
+    async fn test_evaluation(
+        #[case] local_verifier: bool,
+        // The expected report data (as hex) that was used to create the evidence.
+        #[case] expected_report_data: &str,
+        // HW evidence as a hex string
+        #[case] report_str: &str,
+        // Cert Chain from device as PEM
+        #[case] cert_chain: &str,
+    ) {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let device_uuid: &str = "1111-2222-33333-444444-555555";
 
-        let expected_nonce: &str =
-            "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb";
-        let expected_nonce_vec: Vec<u8> = hex::decode(expected_nonce).unwrap();
+        let expected_report_data_vec: Vec<u8> = hex::decode(expected_report_data).unwrap();
 
-        // The report certificate chain is stored in PEM format
-        let cert_chain_bytes = include_bytes!("../../test_data/nvidia/hopper_cert_chain_case1.txt");
-        let cert_chain = b64_engine.encode(cert_chain_bytes);
-
-        // The attestation report is stored in text and hex encoded.
-        let report_str = include_str!("../../test_data/nvidia/hopperAttestationReport.txt");
+        let cert_chain = b64_engine.encode(cert_chain);
 
         // Create evidence as it would come from an attester
         let report = NvDeviceReportAndCert {
@@ -367,7 +377,7 @@ mod tests {
 
         let evidence = serde_json::to_value(evidence).unwrap();
 
-        let report_data = ReportData::Value(&expected_nonce_vec);
+        let report_data = ReportData::Value(&expected_report_data_vec);
         let init_data = InitDataHash::NotProvided;
 
         let verifier_type = match local_verifier {
