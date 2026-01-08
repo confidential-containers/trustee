@@ -17,9 +17,12 @@ RUN apt-get update && \
 
 RUN if [ "${ARCH}" = "aarch64" ]; then apt-get install -y libc-bin; fi
 
+ARG DCAP_VERSION=1_24_100
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | \
+    curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
+    tee -a /etc/apt/preferences.d/99dcap && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | \
     tee /etc/apt/sources.list.d/intel-sgx.list; fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -50,6 +53,7 @@ ARG ARCH=x86_64
 
 WORKDIR /tmp
 
+ARG DCAP_VERSION=1_24_100
 RUN apt-get update && \
     apt-get install -y \
     curl \
@@ -57,7 +61,9 @@ RUN apt-get update && \
     gnupg-agent && \
     if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
+    tee -a /etc/apt/preferences.d/99dcap && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     libsgx-dcap-default-qpl \
