@@ -12,9 +12,6 @@ pub mod config;
 pub use config::KbsConfig;
 pub mod token;
 
-/// Resource Policy Engine
-pub mod policy_engine;
-
 pub mod api_server;
 pub use api_server::ApiServer;
 

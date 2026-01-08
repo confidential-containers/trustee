@@ -35,7 +35,7 @@ pub enum PolicyError {
         source: std::string::FromUtf8Error,
     },
 
-    // Opa Related Errors
+    // Regorus Related Errors
     #[error("Failed to load policy: {0}")]
     LoadPolicyFailed(#[source] anyhow::Error),
 
@@ -50,4 +50,12 @@ pub enum PolicyError {
 
     #[error("Failed to eval policy: {0}")]
     EvalPolicyFailed(#[source] anyhow::Error),
+
+    #[error("Failed to add regorus extension: {name} with id {id}: {source}")]
+    AddRegorusExtensionFailed {
+        name: String,
+        id: u8,
+        #[source]
+        source: anyhow::Error,
+    },
 }
