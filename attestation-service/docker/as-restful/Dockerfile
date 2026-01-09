@@ -16,9 +16,12 @@ COPY . .
 RUN apt-get update && apt-get install -y protobuf-compiler clang libtss2-dev cmake
 
 # Install TDX Build Dependencies
+ARG DCAP_VERSION=1_24_100
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
-    apt-get update && apt-get install -y libsgx-dcap-quote-verify-dev; fi
+    curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
+    tee -a /etc/apt/preferences.d/99dcap && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    apt-get update && apt-get install --no-install-recommends -y libsgx-dcap-quote-verify-dev; fi
 
 # Build and Install RESTful attestation-service
 RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
@@ -47,12 +50,15 @@ RUN apt-get update && apt-get install openssl -y && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 # Install TDX Runtime Dependencies
+ARG DCAP_VERSION=1_24_100
 RUN if [ "${ARCH}" = "x86_64" ] && ( [ "${VERIFIER}" = "all-verifier" ] || [ "${VERIFIER}" = "tdx-verifier" ] ); \
     then apt-get update && apt-get install curl gnupg -y && \
     curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
+    tee -a /etc/apt/preferences.d/99dcap && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
-    apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
+    apt-get install --no-install-recommends -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
     apt-get remove curl gnupg -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*; fi
