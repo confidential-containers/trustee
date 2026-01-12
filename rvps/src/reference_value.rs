@@ -9,9 +9,10 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Months, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::time::SystemTime;
+use uuid::Uuid;
 
 /// Default version of ReferenceValue
-pub const REFERENCE_VALUE_VERSION: &str = "0.1.0";
+pub const REFERENCE_VALUE_VERSION: &str = "0.2.0";
 pub const MONTHS_BEFORE_EXPIRATION: u32 = 12;
 
 /// Helper to deserialize an expired time
@@ -35,6 +36,10 @@ fn primitive_date_time_from_str<'de, D: Deserializer<'de>>(
 /// or the RVPS API.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ReferenceValue {
+    /// Unique identifier for this reference value, automatically
+    /// generated when the reference value is created.
+    #[serde(default = "default_uuid")]
+    pub id: Uuid,
     /// Since the reference values will be written to storage,
     /// keep track of the version in case the RVPS implementation
     /// is updated.
@@ -57,13 +62,20 @@ fn default_version() -> String {
     REFERENCE_VALUE_VERSION.into()
 }
 
+/// Generate a default UUID for deserialization of legacy values
+fn default_uuid() -> Uuid {
+    Uuid::new_v4()
+}
+
 impl ReferenceValue {
     /// Create a new `ReferenceValue`, the `expiration`
     /// field's nanosecond will be set to 0. This avoid
     /// a rare bug that when the nanosecond of the time
     /// is not 0, the test case will fail.
+    /// A new UUID is automatically generated for each reference value.
     pub fn new() -> Result<Self> {
         Ok(ReferenceValue {
+            id: Uuid::new_v4(),
             version: REFERENCE_VALUE_VERSION.into(),
             name: String::new(),
             expiration: Utc::now()
@@ -72,6 +84,11 @@ impl ReferenceValue {
                 .ok_or_else(|| anyhow!("Failed to set time."))?,
             value: serde_json::Value::Null,
         })
+    }
+
+    /// Get the UUID of the ReferenceValue.
+    pub fn id(&self) -> &Uuid {
+        &self.id
     }
 
     /// Set version of the ReferenceValue.
@@ -138,7 +155,7 @@ pub struct TrustedDigest {
 #[cfg(test)]
 mod test {
     use chrono::{TimeZone, Utc};
-    use serde_json::json;
+    use uuid::Uuid;
 
     use super::ReferenceValue;
 
@@ -153,34 +170,57 @@ mod test {
 
         assert_eq!(rv.version(), "1.0.0");
 
-        let rv_json = json!({
-            "expiration": "1970-01-01T00:00:00Z",
-            "name": "artifact",
-            "version": "1.0.0",
-            "value": "abc"
-        });
-
         let serialized_rf = serde_json::to_value(&rv).unwrap();
-        assert_eq!(serialized_rf, rv_json);
+
+        let id_str = serialized_rf["id"].as_str().unwrap();
+        assert!(Uuid::parse_str(id_str).is_ok());
+
+        assert_eq!(serialized_rf["expiration"], "1970-01-01T00:00:00Z");
+        assert_eq!(serialized_rf["name"], "artifact");
+        assert_eq!(serialized_rf["version"], "1.0.0");
+        assert_eq!(serialized_rf["value"], "abc");
     }
 
     #[test]
-    fn reference_value_deserialize() {
-        let rv = ReferenceValue::new()
-            .expect("create ReferenceValue failed.")
-            .set_version("1.0.0")
-            .set_name("artifact")
-            .set_expiration(Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap())
-            .set_value(serde_json::Value::String("abcd".to_string()));
+    fn reference_value_deserialize_with_id() {
+        let test_uuid = Uuid::new_v4();
+        let rv_json = format!(
+            r#"{{
+            "id": "{}",
+            "expiration": "1970-01-01T00:00:00Z",
+            "name": "artifact",
+            "version": "1.0.0",
+            "value": "abcd"
+        }}"#,
+            test_uuid
+        );
+        let deserialized_rv: ReferenceValue = serde_json::from_str(&rv_json).unwrap();
 
-        assert_eq!(rv.version(), "1.0.0");
+        assert_eq!(deserialized_rv.id, test_uuid);
+        assert_eq!(deserialized_rv.version, "1.0.0");
+        assert_eq!(deserialized_rv.name, "artifact");
+        assert_eq!(
+            deserialized_rv.expiration,
+            Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap()
+        );
+        assert_eq!(
+            deserialized_rv.value,
+            serde_json::Value::String("abcd".to_string())
+        );
+    }
+
+    #[test]
+    fn reference_value_deserialize_without_id() {
         let rv_json = r#"{
             "expiration": "1970-01-01T00:00:00Z",
             "name": "artifact",
             "version": "1.0.0",
             "value": "abcd"
         }"#;
-        let deserialized_rf: ReferenceValue = serde_json::from_str(rv_json).unwrap();
-        assert_eq!(deserialized_rf, rv);
+        let deserialized_rv: ReferenceValue = serde_json::from_str(rv_json).unwrap();
+
+        assert!(!deserialized_rv.id.is_nil());
+        assert_eq!(deserialized_rv.version, "1.0.0");
+        assert_eq!(deserialized_rv.name, "artifact");
     }
 }

@@ -44,6 +44,7 @@ tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true
 tonic-prost.workspace = true
+uuid = { version = "1", features = ["v4", "serde"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
