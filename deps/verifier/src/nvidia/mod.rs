@@ -19,6 +19,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::result::Result::Ok;
 use std::str::FromStr;
+use strum::{Display, EnumString};
 use tracing::{instrument, trace};
 
 use super::*;
@@ -69,9 +70,21 @@ struct NvDeviceEvidence {
     device_evidence_list: Vec<NvDeviceReportAndCert>,
 }
 
+// NVML Wrapper does not know about switches,
+// so create our own enum for the device architecture.
+#[derive(Debug, Deserialize, Display, EnumString, PartialEq, Serialize)]
+#[strum(ascii_case_insensitive)]
+enum Architecture {
+    #[serde(alias = "BLACKWELL")]
+    Blackwell,
+    #[serde(alias = "HOPPER")]
+    Hopper,
+    LS10,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct NvDeviceReportAndCert {
-    arch: DeviceArchitecture,
+    arch: Architecture,
     uuid: String,
     evidence: String,
     certificate: String,
@@ -132,8 +145,9 @@ impl Nvidia {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let (tee_class, endpoint) = match device.arch {
-            DeviceArchitecture::Hopper => ("gpu", "gpu"),
-            _ => todo!(),
+            Architecture::Blackwell => ("gpu", "gpu"),
+            Architecture::Hopper => ("gpu", "gpu"),
+            Architecture::LS10 => ("switch", "switch"),
         };
 
         // Try hex::decode() to see if someone uses the original encoding still.
@@ -190,7 +204,9 @@ impl Nvidia {
         // Check that the nonce matches the expected report data.
         // Consider moving this logic into the NrasResponse struct.
         let nonce_ok = claims
-            .pointer("/x-nvidia-gpu-attestation-report-nonce-match")
+            .pointer(&format!(
+                "/x-nvidia-{endpoint}-attestation-report-nonce-match"
+            ))
             .ok_or_else(|| anyhow!("Couldn't find nonce status."))?;
         let nonce_ok = nonce_ok
             .as_bool()
@@ -208,7 +224,7 @@ impl Nvidia {
         expected_nonce_vec: Vec<u8>,
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
         // Only Hopper GPU is supported for local verification.
-        if device.arch != DeviceArchitecture::Hopper {
+        if device.arch != Architecture::Hopper {
             bail!("Device architecture not supported");
         }
 
@@ -234,8 +250,11 @@ impl Nvidia {
         trace!("{}", &report);
 
         // Build the device claims
-        let device_claims =
-            NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
+        let device_claims = NvDeviceReportAndCertClaim::new(
+            &DeviceArchitecture::Hopper,
+            device.uuid.as_str(),
+            &report,
+        );
         let value = serde_json::to_value(device_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
 
@@ -333,18 +352,18 @@ mod tests {
     }
 
     #[rstest]
-    #[case::local_verifier(true, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"))]
+    #[case::local_verifier(true, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
     // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
     // Please run these tests if you make any changes to the verifier.
     #[ignore]
-    #[case::remote_verifier(false, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"))]
+    #[case::remote_verifier(false, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
     // Use the remote verifier with evidence from a CoCo CI run
     #[ignore]
-    #[case::remote_verifier_coco(false, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"))]
+    #[case::remote_verifier_coco(false, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
     // The local verifier does not currently work with this report, which is from a newer device
     // that has some unknown fields in opaque data.
     #[ignore]
-    #[case::local_verifier_coco(true, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"))]
+    #[case::local_verifier_coco(true, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_evaluation(
         #[case] local_verifier: bool,
@@ -354,6 +373,8 @@ mod tests {
         #[case] report_str: &str,
         // Cert Chain from device as PEM
         #[case] cert_chain: &str,
+        // Architecture of the device
+        #[case] arch: Architecture,
     ) {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
@@ -365,7 +386,7 @@ mod tests {
 
         // Create evidence as it would come from an attester
         let report = NvDeviceReportAndCert {
-            arch: DeviceArchitecture::Hopper,
+            arch,
             uuid: device_uuid.to_string(),
             evidence: report_str.to_string(),
             certificate: cert_chain.to_string(),
