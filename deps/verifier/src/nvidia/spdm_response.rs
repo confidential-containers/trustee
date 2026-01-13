@@ -286,7 +286,7 @@ impl OpaqueData {
     fn decode_switch_pdi(bytes: &[u8]) -> Result<Value> {
         const PDI_DATA_SIZE: usize = 8;
 
-        if bytes.len() % PDI_DATA_SIZE != 0 {
+        if !bytes.len().is_multiple_of(PDI_DATA_SIZE) {
             bail!("OpaqueDataType is not multiple of {}", PDI_DATA_SIZE)
         }
         let mut values: Vec<Value> = Vec::new();
@@ -302,7 +302,7 @@ impl OpaqueData {
     fn decode_measurement_count(bytes: &[u8]) -> Result<Value> {
         const MSR_COUNT_SIZE: usize = 4;
 
-        if bytes.len() % MSR_COUNT_SIZE != 0 {
+        if !bytes.len().is_multiple_of(MSR_COUNT_SIZE) {
             bail!("OpaqueDataType is not multiple of {}", MSR_COUNT_SIZE)
         }
         let mut values: Map<String, Value> = Map::new();
