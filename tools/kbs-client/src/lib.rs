@@ -21,7 +21,7 @@ const KBS_URL_PREFIX: &str = "kbs/v0";
 /// Input parameters:
 /// - url: KBS server root URL.
 /// - [tee_pubkey_pem]: Public key (PEM format) of the RSA key pair generated in TEE.
-///     This public key will be contained in attestation results token.
+///   This public key will be contained in attestation results token.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 /// - init_data: Plaintext init-data; should correspond to init-data measured at boot time.
 pub async fn attestation(

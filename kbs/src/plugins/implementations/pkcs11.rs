@@ -44,7 +44,7 @@ pub enum RsaMechanism {
 
 impl RsaMechanism {
     /// Converts the enum variant into a corresponding PKCS#11 mechanism.
-    pub fn to_pkcs11_mechanism(&self) -> Mechanism {
+    pub fn to_pkcs11_mechanism(&self) -> Mechanism<'_> {
         match self {
             RsaMechanism::RsaPkcsOaep => Mechanism::RsaPkcsOaep(PkcsOaepParams::new(
                 MechanismType::SHA256,
