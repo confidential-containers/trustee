@@ -4,7 +4,9 @@
 
 use actix_web::HttpRequest;
 use log::{info, warn};
+use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub mod allow_all;
@@ -21,9 +23,9 @@ use simple::{SimpleAdminBackend, SimpleAdminConfig};
 #[derive(Clone)]
 pub(crate) struct Admin {
     backend: Arc<dyn AdminBackend>,
+    roles: HashMap<String, Regex>,
 }
 
-// create a simple backend
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum AdminBackendType {
@@ -45,6 +47,25 @@ impl Default for AdminBackendType {
 pub struct AdminConfig {
     #[serde(flatten)]
     pub admin_backend: AdminBackendType,
+    /// Admin roles control which admin personas can access
+    /// which endpoints.
+    ///
+    /// If no admin roles are specified, all admin will be able
+    /// to access all endpoints.
+    pub roles: Vec<AdminRole>,
+}
+
+/// An admin role is a rule that grants access for some roles to some endpoints.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AdminRole {
+    /// The admin role that this rule applies to.
+    /// The id is case insensitive.
+    pub id: String,
+    /// A regular expression selecting request paths this rule allows.
+    /// In other words, the paths that the above role can access.
+    #[serde(default)]
+    pub allowed_endpoints: String,
 }
 
 impl TryFrom<AdminConfig> for Admin {
@@ -59,23 +80,47 @@ impl TryFrom<AdminConfig> for Admin {
             AdminBackendType::DenyAll => Arc::new(DenyAllBackend::default()) as _,
         };
 
-        Ok(Admin { backend })
+        // Parse roles to ensure valid regexes and no duplicates.
+        let mut roles = HashMap::new();
+        for role in value.roles {
+            let re = Regex::new(&role.allowed_endpoints)?;
+
+            if roles.insert(role.id.to_lowercase(), re).is_some() {
+                return Err(Error::DuplicateAdminRole);
+            }
+        }
+
+        Ok(Admin { backend, roles })
     }
 }
 
 impl Admin {
-    pub fn validate_admin_token(&self, request: &HttpRequest) -> Result<()> {
-        let res = self.backend.validate_admin_token(request);
-        match res {
-            Ok(()) => info!("Allowing Admin access for {}", request.full_url().as_str()),
-            Err(ref e) => info!(
-                "Not allowing Admin access for {} due to: \n{}",
-                request.full_url().as_str(),
-                e
-            ),
+    pub fn check_admin_access(&self, request: &HttpRequest) -> Result<()> {
+        if let Ok(role) = self.backend.validate_admin_token(request) {
+            info!("Admin Role: {role}");
+
+            // If there are no roles specified, allow all.
+            if self.roles.is_empty() {
+                info!(
+                    "No admin roles configured. Allowing Request to {}",
+                    request.full_url().as_str()
+                );
+                return Ok(());
+            }
+
+            if let Some(re) = self.roles.get(&role.to_lowercase()) {
+                if re.is_match(&request.uri().to_string()) {
+                    info!("Allowing Request to {}", request.full_url().as_str());
+                    return Ok(());
+                }
+            }
         }
 
-        res
+        info!(
+            "Not allowing Admin access to {}",
+            request.full_url().as_str()
+        );
+        Err(Error::AdminAccessDenied)
     }
 }
 
@@ -85,5 +130,112 @@ pub(crate) trait AdminBackend: Send + Sync {
     /// When a request is made to an admin endpoint, this method should be called
     /// to validate that the user making the request is authorized
     /// to access admin functionality.
-    fn validate_admin_token(&self, request: &HttpRequest) -> Result<()>;
+    ///
+    /// If the token is valid, the backend will return an admin role.
+    fn validate_admin_token(&self, request: &HttpRequest) -> Result<String>;
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    pub fn make_admin_object() {
+        // basic (backwards compatible)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let _admin = Admin::try_from(config).unwrap();
+
+        // with invalid role (wrong field name)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_paths": "xyz"
+            }]
+        });
+
+        let config = serde_json::from_value::<AdminConfig>(admin_config_json);
+        assert!(config.is_err());
+
+        // with invalid role (bad regex)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "(xyz"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config);
+        assert!(admin.is_err());
+
+        // with invalid role (duplicate role)
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "xyz"
+            },
+            {
+                "id": "Anonymous",
+                "allowed_endpoints": "abc"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config);
+        assert!(admin.is_err());
+    }
+
+    #[test]
+    pub fn check_requests() {
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Anonymous",
+                "allowed_endpoints": "^/resource/a/.+/c$"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config).unwrap();
+
+        // valid request
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/a/b/c")
+            .to_http_request();
+        admin.check_admin_access(&req).unwrap();
+
+        // invalid request
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/b/b/c")
+            .to_http_request();
+        assert!(admin.check_admin_access(&req).is_err());
+    }
+
+    #[test]
+    pub fn check_requests_wrong_role() {
+        let admin_config_json = json!({
+            "type": "InsecureAllowAll",
+            "roles" : [{
+                "id": "Steve",
+                "allowed_endpoints": "^/resource/a/.+/c$"
+            }]
+        });
+
+        let config: AdminConfig = serde_json::from_value(admin_config_json).unwrap();
+        let admin = Admin::try_from(config).unwrap();
+
+        let req = actix_web::test::TestRequest::post()
+            .uri("/resource/a/b/c")
+            .to_http_request();
+        assert!(admin.check_admin_access(&req).is_err());
+    }
 }

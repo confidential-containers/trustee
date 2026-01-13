@@ -12,8 +12,8 @@ use crate::admin::AdminBackend;
 pub struct InsecureAllowAllBackend {}
 
 impl AdminBackend for InsecureAllowAllBackend {
-    fn validate_admin_token(&self, _request: &HttpRequest) -> Result<()> {
+    fn validate_admin_token(&self, _request: &HttpRequest) -> Result<String> {
         warn!("Allow All admin backend is set. Anyone can access admin APIs");
-        Ok(())
+        Ok("Anonymous".to_string())
     }
 }

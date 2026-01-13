@@ -169,6 +169,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
@@ -219,6 +220,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig {
             policy_path: DEFAULT_POLICY_PATH.into(),
@@ -256,6 +258,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
@@ -299,6 +302,7 @@ mod tests {
                     public_key_path: "/opt/confidential-containers/trustee/admin1-pubkey.pem".into()
                 }],
             }),
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -341,6 +345,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::InsecureAllowAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -376,6 +381,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -401,6 +407,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -432,6 +439,7 @@ mod tests {
         },
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
@@ -468,6 +476,7 @@ mod tests {
             admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
                 personas: Vec::new(),
             }),
+            roles: Vec::new(),
         },
         policy_engine: PolicyEngineConfig {
             policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
