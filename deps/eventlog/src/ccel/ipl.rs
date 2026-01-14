@@ -24,7 +24,7 @@ impl EventDataParser for EvIplParser {
             let prefix_len = GCE_IPL_PREFIX.len();
             let len_minus_stop = data.len() - prefix_len;
 
-            if len_minus_stop == 0 || len_minus_stop % 2 != 0 {
+            if len_minus_stop == 0 || !len_minus_stop.is_multiple_of(2) {
                 bail!("Data is too short or not UTF-16 string");
             }
 

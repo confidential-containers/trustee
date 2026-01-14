@@ -9,9 +9,7 @@
 
 use anyhow::Result;
 use bitflags::{bitflags, Flags};
-use byteorder::{LittleEndian, ReadBytesExt};
 use serde_json::{Map, Value};
-use thiserror::Error;
 
 use super::quote::Quote;
 use crate::{tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
@@ -172,6 +170,10 @@ fn parse_td_attributes(data: &[u8]) -> Result<Map<String, Value>> {
     Ok(attribs)
 }
 
+#[cfg(test)]
+use thiserror::Error;
+
+#[cfg(test)]
 #[derive(Error, Debug, PartialEq)]
 pub enum PlatformConfigInfoError {
     #[error("Failed to parse `Descriptor`")]
@@ -187,10 +189,13 @@ pub enum PlatformConfigInfoError {
     NotEnoughData,
 }
 
+#[cfg(test)]
 type Descriptor = [u8; 16];
+#[cfg(test)]
 type InfoLength = u32;
 
 /// Kernel Commandline Event inside Eventlog
+#[cfg(test)]
 #[derive(Debug, PartialEq)]
 pub struct TdShimPlatformConfigInfo<'a> {
     pub descriptor: Descriptor,
@@ -198,6 +203,7 @@ pub struct TdShimPlatformConfigInfo<'a> {
     pub data: &'a [u8],
 }
 
+#[cfg(test)]
 impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
     type Error = PlatformConfigInfoError;
 
@@ -216,9 +222,11 @@ impl<'a> TryFrom<&'a [u8]> for TdShimPlatformConfigInfo<'a> {
             .try_into()
             .map_err(|_| PlatformConfigInfoError::ParseDescriptor)?;
 
-        let info_length = (&data[descriptor_size..header_size])
-            .read_u32::<LittleEndian>()
+        let info_bytes: [u8; 4] = data[descriptor_size..header_size]
+            .try_into()
             .map_err(|_| PlatformConfigInfoError::ReadInfoLength)?;
+
+        let info_length = u32::from_le_bytes(info_bytes);
 
         let total_size = header_size + info_length as usize;
 
