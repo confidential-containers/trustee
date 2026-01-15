@@ -3,7 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use super::az_snp_vtpm::{extend_claim, verify_init_data};
+mod compat;
+
+use self::compat::Evidence;
+use super::az_snp_vtpm::{
+    extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs, verify_tpm_signature,
+    TpmQuote,
+};
 use super::tdx::claims::generate_parsed_claim;
 use super::tdx::quote::{parse_tdx_quote, Quote as TdQuote};
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
@@ -12,17 +18,7 @@ use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_tdx_vtpm::hcl::HclReport;
-use az_tdx_vtpm::vtpm::Quote as TpmQuote;
-use openssl::pkey::PKey;
-use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
-
-#[derive(Serialize, Deserialize)]
-struct Evidence {
-    tpm_quote: TpmQuote,
-    hcl_report: Vec<u8>,
-    td_quote: Vec<u8>,
-}
 
 #[derive(Default)]
 pub struct AzTdxVtpm;
@@ -50,27 +46,41 @@ impl Verifier for AzTdxVtpm {
         let evidence = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize Azure vTPM TDX evidence")?;
 
-        let hcl_report = HclReport::new(evidence.hcl_report)?;
-        verify_tpm_signature(&evidence.tpm_quote, &hcl_report)?;
+        let hcl_report = HclReport::new(evidence.hcl_report().into())?;
+        let tpm_quote = evidence.tpm_quote()?;
+        verify_tpm_signature(&tpm_quote, &hcl_report)?;
 
-        verify_tpm_nonce(&evidence.tpm_quote, expected_report_data)?;
+        verify_tpm_nonce(&tpm_quote, expected_report_data)?;
 
-        verify_pcrs(&evidence.tpm_quote)?;
+        verify_tpm_pcrs(&tpm_quote)?;
 
-        let custom_claims = ecdsa_quote_verification(&evidence.td_quote).await?;
-        let td_quote = parse_tdx_quote(&evidence.td_quote)?;
+        let custom_claims = ecdsa_quote_verification(evidence.td_quote()).await?;
+        let td_quote = parse_tdx_quote(evidence.td_quote())?;
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
 
-        let pcrs: Vec<&[u8; 32]> = evidence.tpm_quote.pcrs_sha256().collect();
-        verify_init_data(expected_init_data_hash, &pcrs)?;
+        let pcrs = get_pcrs(&tpm_quote)?;
+        let pcr_refs: Vec<&[u8; 32]> = pcrs.iter().collect();
+        verify_init_data(expected_init_data_hash, &pcr_refs)?;
 
         let mut claim = generate_parsed_claim(td_quote, None)?;
-        extend_claim(&mut claim, &evidence.tpm_quote)?;
+        extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
         Ok(vec![(claim, "cpu".to_string())])
     }
+}
+
+fn get_pcrs(tpm_quote: &TpmQuote) -> Result<Vec<[u8; 32]>> {
+    tpm_quote
+        .pcrs
+        .iter()
+        .map(|p| {
+            p.as_slice()
+                .try_into()
+                .context("Invalid PCR length, expected 32 bytes")
+        })
+        .collect()
 }
 
 fn verify_hcl_var_data(hcl_report: &HclReport, td_quote: &TdQuote) -> Result<()> {
@@ -82,43 +92,47 @@ fn verify_hcl_var_data(hcl_report: &HclReport, td_quote: &TdQuote) -> Result<()>
     Ok(())
 }
 
-fn verify_tpm_signature(quote: &TpmQuote, hcl_report: &HclReport) -> Result<()> {
-    let ak_pub = hcl_report.ak_pub().context("Failed to get AKpub")?;
-    let der = ak_pub.key.try_to_der()?;
-    let ak_pub = PKey::public_key_from_der(&der).context("Failed to parse AKpub")?;
-
-    quote
-        .verify_signature(&ak_pub)
-        .context("Failed to verify vTPM quote")?;
-    Ok(())
-}
-
-fn verify_pcrs(quote: &TpmQuote) -> Result<()> {
-    quote
-        .verify_pcrs()
-        .context("Digest of PCRs does not match digest in Quote")?;
-    debug!("PCR verification completed successfully");
-    Ok(())
-}
-
-fn verify_tpm_nonce(quote: &TpmQuote, report_data: &[u8]) -> Result<()> {
-    let nonce = quote.nonce()?;
-    if nonce != report_data[..] {
-        bail!("TPM quote nonce doesn't match expected report_data");
-    }
-    debug!("TPM report_data verification completed successfully");
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use az_tdx_vtpm::vtpm::Quote;
-    use az_tdx_vtpm::vtpm::VerifyError;
+    use rstest::rstest;
 
     const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-tdx-vtpm/hcl-report.bin");
-    const QUOTE: &[u8; 1170] = include_bytes!("../../test_data/az-tdx-vtpm/quote.bin");
+    const TPM_QUOTE_V1_JSON: &str = include_str!("../../test_data/az-tdx-vtpm/tpm-quote-v1.json");
     const TD_QUOTE: &[u8; 5006] = include_bytes!("../../test_data/az-tdx-vtpm/td-quote.bin");
+    const REPORT_DATA: &[u8] = "challenge".as_bytes();
+    const EVIDENCE_V0_JSON: &str = include_str!("../../test_data/az-tdx-vtpm/evidence-v0.json");
+    const EVIDENCE_V1_JSON: &str = include_str!("../../test_data/az-tdx-vtpm/evidence-v1.json");
+
+    fn load_tpm_quote() -> TpmQuote {
+        serde_json::from_str(TPM_QUOTE_V1_JSON).unwrap()
+    }
+
+    // Note: these tests are skipped by default because they depend on a collateral service
+    #[rstest]
+    #[ignore]
+    #[case::v0(EVIDENCE_V0_JSON)]
+    #[ignore]
+    #[case::v1(EVIDENCE_V1_JSON)]
+    #[tokio::test]
+    async fn test_evaluate(#[case] evidence_json: &str) {
+        let tee_evidence: TeeEvidence = serde_json::from_str(evidence_json).unwrap();
+        let verifier = AzTdxVtpm;
+        let result = verifier
+            .evaluate(
+                tee_evidence,
+                &ReportData::Value(REPORT_DATA),
+                &InitDataHash::NotProvided,
+            )
+            .await;
+        let claims = result.unwrap();
+        let claims_values = claims[0].0.clone();
+        assert!(claims_values["report_data"] == "6368616c6c656e6765");
+        assert!(
+            claims_values["tpm"]["pcr00"]
+                == "782b20b10f55cc46e2142cc2145d548698073e5beb82752c8d7f9279f0d8a273"
+        );
+    }
 
     #[test]
     fn test_verify_hcl_var_data() {
@@ -143,61 +157,45 @@ mod tests {
 
     #[test]
     fn test_verify_tpm_signature() {
-        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
+        let tpm_quote = load_tpm_quote();
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        verify_tpm_signature(&quote, &hcl_report).unwrap();
+        verify_tpm_signature(&tpm_quote, &hcl_report).unwrap();
     }
 
     #[test]
     fn test_verify_tpm_signature_failure() {
-        let mut quote = *QUOTE;
-        quote[0x020] = 0;
-        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+        let mut tpm_quote = load_tpm_quote();
+        tpm_quote.signature[0] ^= 1;
 
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        assert_eq!(
-            verify_tpm_signature(&wrong_quote, &hcl_report)
-                .unwrap_err()
-                .downcast_ref::<VerifyError>()
-                .unwrap()
-                .to_string(),
-            VerifyError::SignatureMismatch.to_string()
-        );
+        assert!(verify_tpm_signature(&tpm_quote, &hcl_report).is_err());
     }
 
     #[test]
     fn test_verify_tpm_nonce() {
-        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        let nonce = "challenge".as_bytes();
-        verify_tpm_nonce(&quote, nonce).unwrap();
+        let tpm_quote = load_tpm_quote();
+        verify_tpm_nonce(&tpm_quote, REPORT_DATA).unwrap();
     }
 
     #[test]
     fn test_verify_tpm_nonce_failure() {
-        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        let wrong_nonce = "wrong".as_bytes();
-        verify_tpm_nonce(&quote, wrong_nonce).unwrap_err();
+        let tpm_quote = load_tpm_quote();
+        let mut wrong_report_data = REPORT_DATA.to_vec();
+        wrong_report_data.reverse();
+        verify_tpm_nonce(&tpm_quote, &wrong_report_data).unwrap_err();
     }
 
     #[test]
     fn test_verify_pcrs() {
-        let quote: Quote = bincode::deserialize(QUOTE).unwrap();
-        verify_pcrs(&quote).unwrap();
+        let tpm_quote = load_tpm_quote();
+        verify_tpm_pcrs(&tpm_quote).unwrap();
     }
 
     #[test]
     fn test_verify_pcrs_failure() {
-        let mut quote = *QUOTE;
-        quote[0x0169] = 0;
-        let wrong_quote: Quote = bincode::deserialize(&quote).unwrap();
+        let mut tpm_quote = load_tpm_quote();
+        tpm_quote.pcrs[0][0] ^= 1;
 
-        assert_eq!(
-            verify_pcrs(&wrong_quote)
-                .unwrap_err()
-                .downcast_ref::<VerifyError>()
-                .unwrap()
-                .to_string(),
-            VerifyError::PcrMismatch.to_string()
-        );
+        assert!(verify_tpm_pcrs(&tpm_quote).is_err());
     }
 }
