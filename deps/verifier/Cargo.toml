@@ -35,13 +35,13 @@ anyhow.workspace = true
 thiserror.workspace = true
 asn1-rs = { version = "0.7.1", optional = true }
 async-trait.workspace = true
-az-snp-vtpm = { version = "0.7.4", default-features = false, features = [
+az-snp-vtpm = { version = "0.8.0", default-features = false, features = [
     "verifier",
 ], optional = true }
-az-cvm-vtpm = { version = "0.7.4", default-features = false, features = [
+az-cvm-vtpm = { version = "0.8.0", default-features = false, features = [
     "verifier",
 ], optional = true }
-az-tdx-vtpm = { version = "0.7.4", default-features = false, features = [
+az-tdx-vtpm = { version = "0.8.0", default-features = false, features = [
     "verifier",
 ], optional = true }
 base64 = "0.22.1"
@@ -65,7 +65,10 @@ scroll = { version = "0.13.0", default-features = false, features = [
 serde.workspace = true
 serde_json.workspace = true
 serde_with = { workspace = true, optional = true }
-sev = { git = "https://github.com/virtee/sev", rev = "d487809188c3c92e397bc92e2cb2a85eb982c980", default-features = false, features = [
+# note: this one is overriden in the workspace Cargo.toml, because the
+# 7.1.0 version doesn't build w/ sev + serde features enabled. The
+# override can be removed once 7.2.0 is released
+sev = { version = "7", default-features = false, features = [
     "openssl",
     "snp",
     "serde",

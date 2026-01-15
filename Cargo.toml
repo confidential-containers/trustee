@@ -77,3 +77,6 @@ tonic-prost = "0.14"
 tonic-prost-build = "0.14"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[patch.crates-io]
+sev = { git = "https://github.com/virtee/sev", rev = "d487809188c3c92e397bc92e2cb2a85eb982c980" }
