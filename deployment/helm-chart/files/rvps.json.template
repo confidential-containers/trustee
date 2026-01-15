@@ -1,0 +1,7 @@
+{
+    "storage": {
+        "type": "LocalFs",
+        "file_path": "/opt/confidential-containers/attestation-service/reference_values"
+    }
+}
+

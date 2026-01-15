@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: attestation-service
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.as.replicaCount }}
+  serviceName: as
+  selector:
+    matchLabels:
+      app: attestation-service
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.as.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: attestation-service
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.as.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.as.podSecurityContext | nindent 8 }}
+      containers:
+        - name: as
+          securityContext:
+            {{- toYaml .Values.as.securityContext | nindent 12 }}
+          image: "{{ .Values.as.image.repository }}:{{ .Values.as.image.tag }}"
+          imagePullPolicy: {{ .Values.as.image.pullPolicy }}
+          command:
+            - "grpc-as"
+            - "--socket"
+            - "0.0.0.0:{{ .Values.as.service.port }}"
+            - "--config-file"
+            - "/etc/attestation-service/config.json"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+          ports:
+            - name: tcp
+              containerPort: {{ .Values.as.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.as.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/attestation-service
+            - name: sgx-config
+              mountPath: /etc/sgx_default_qcnl.conf
+              subPath: sgx_default_qcnl.conf
+            - name: policy
+              mountPath: /opt/confidential-containers/attestation-service/token/ear/policies/opa
+            - name: user-keys
+              mountPath: /opt/confidential-containers/kbs/user-keys
+            - name: data
+              mountPath: /opt/confidential-containers/attestation-service
+      volumes:
+        - name: config
+          configMap:
+            name: attestation-service-config
+        - name: sgx-config
+          configMap:
+            name: sgx-config
+        - name: policy
+          emptyDir: {}
+        - name: user-keys
+          secret:
+            optional: true
+            secretName: {{ .Values.kbs.userKeysSecretName }}
+  {{- if not .Values.as.storage.enabled }}
+        - name: data
+          emptyDir: {}
+  {{- end }}
+      {{- with .Values.as.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.as.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.as.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if .Values.as.storage.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ {{ .Values.as.storage.accessMode }} ]
+      storageClassName: {{ .Values.as.storage.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.as.storage.size }}
+{{- end }}
+

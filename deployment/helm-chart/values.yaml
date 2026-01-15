@@ -1,0 +1,98 @@
+# Default values for CoCo Trustee.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+kbs:
+  replicaCount: 1
+  # Secret name containing user keys (private.key, public.pub, token.key, etc.)
+  # If provided and exists, will be used; otherwise keys will be auto-generated via initContainer
+  userKeysSecretName: ""
+  # Set to true to enable auto-generation of keys via initContainer when Secret is not provided
+  # This allows seamless extension: set userKeysSecretName to use existing keys, or leave empty for auto-generation
+  autoGenerateKeys: true
+  resourceRepository: []
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext:
+     allowPrivilegeEscalation: false
+     capabilities:
+       drop:
+       - ALL
+     seccompProfile:
+       type: RuntimeDefault
+  service:
+    type: LoadBalancer
+    port: 8080
+    loadBalancerType: intranet
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  storage:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+    accessMode: ReadWriteOnce
+
+as:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext:
+     allowPrivilegeEscalation: false
+     capabilities:
+       drop:
+       - ALL
+     seccompProfile:
+       type: RuntimeDefault
+  service:
+    type: ClusterIP
+    port: 50004
+    loadBalancerType: intranet
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  storage:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+    accessMode: ReadWriteOnce
+
+rvps:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/rvps
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext:
+     allowPrivilegeEscalation: false
+     capabilities:
+       drop:
+       - ALL
+     seccompProfile:
+       type: RuntimeDefault
+  service:
+    type: ClusterIP
+    port: 50003
+    loadBalancerType: intranet
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  storage:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+    accessMode: ReadWriteOnce
+log_level: info

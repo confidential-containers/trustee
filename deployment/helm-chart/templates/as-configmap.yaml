@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attestation-service-config
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+data:
+  config.json: |
+{{ tpl (.Files.Get "files/as-config.json.template") . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sgx-config
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+data:
+  sgx_default_qcnl.conf: |
+{{ tpl (.Files.Get "files/sgx_default_qcnl.conf") . | nindent 4 }}
