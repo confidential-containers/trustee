@@ -12,7 +12,7 @@ use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek};
-use az_snp_vtpm::hcl::{HclReport, SNP_REPORT_SIZE};
+use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::Quote;
 use az_snp_vtpm::vtpm::QuoteError;
@@ -21,6 +21,7 @@ use openssl::pkey::PKey;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sev::parser::ByteParser;
 use thiserror::Error;
 use tracing::{debug, instrument};
 use x509_parser::prelude::*;
@@ -223,7 +224,7 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // if the common name is "VCEK", then the key is a VCEK
     // so lets check the chip id
     if common_name == "VCEK"
-        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != *report.chip_id
+        && get_oid_octets::<64>(&parsed_endorsement_key, HW_ID_OID)? != report.chip_id
     {
         bail!("Chip ID mismatch");
     }
@@ -249,9 +250,8 @@ fn verify_report_signature(report: &AttestationReport, vcek: &Vcek) -> Result<()
     // verify report signature
     let sig = ecdsa::EcdsaSig::try_from(&report.signature)?;
     // Get the offset of the signature field in the report struct
-    let mut raw_report_bytes = [0u8; SNP_REPORT_SIZE];
-    report
-        .write_bytes(&mut raw_report_bytes[..])
+    let raw_report_bytes = report
+        .to_bytes()
         .context("Failed to write report bytes")?;
     let data = &raw_report_bytes[..SNP_REPORT_SIGNATURE_OFFSET];
 
