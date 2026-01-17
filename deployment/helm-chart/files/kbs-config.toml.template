@@ -1,0 +1,22 @@
+[http_server]
+sockets = ["0.0.0.0:{{ .Values.kbs.service.port }}"]
+insecure_http = true
+
+[attestation_token]
+trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/ca-cert.pem"]
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://as:{{ .Values.as.service.port }}"
+
+[admin]
+type = "Simple"
+
+[[admin.personas]]
+id = "admin"
+public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
+
+[[plugins]]
+name = "resource"
+type = "LocalFs"
+dir_path = "/opt/confidential-containers/kbs/repository"

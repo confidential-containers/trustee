@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: reference-value-provider-service
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.rvps.replicaCount }}
+  serviceName: rvps
+  selector:
+    matchLabels:
+      app: reference-value-provider-service
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.rvps.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: reference-value-provider-service
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.rvps.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.rvps.podSecurityContext | nindent 8 }}
+      containers:
+        - name: rvps
+          securityContext:
+            {{- toYaml .Values.rvps.securityContext | nindent 12 }}
+          image: "{{ .Values.rvps.image.repository }}:{{ .Values.rvps.image.tag }}"
+          imagePullPolicy: {{ .Values.rvps.image.pullPolicy }}
+          command:
+            - "rvps"
+            - "--address"
+            - "0.0.0.0:{{ .Values.rvps.service.port }}"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+          ports:
+            - name: tcp
+              containerPort: {{ .Values.rvps.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.rvps.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/rvps.json
+              subPath: rvps.json
+            - name: reference-values
+              mountPath: /opt/confidential-containers/attestation-service/reference_values
+      volumes:
+        - name: config
+          configMap:
+            name: rvps-config
+  {{- if not .Values.rvps.storage.enabled }}
+        - name: reference-values
+          emptyDir: {}
+  {{- end }}
+      {{- with .Values.rvps.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if .Values.rvps.storage.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: reference-values
+    spec:
+      accessModes: [ {{ .Values.rvps.storage.accessMode }} ]
+      storageClassName: {{ .Values.rvps.storage.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.rvps.storage.size }}
+{{- end }}
+
