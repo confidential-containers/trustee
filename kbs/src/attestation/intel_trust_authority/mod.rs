@@ -15,6 +15,8 @@ use kbs_types::{Challenge, HashAlgorithm, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
+use serde_with::base64::{Base64, UrlSafe};
+use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
 
@@ -42,9 +44,49 @@ struct DcapTeeEvidence {
 }
 
 #[derive(Deserialize, Debug)]
-struct AzItaTeeEvidence {
+struct AzItaTeeEvidenceV0 {
     hcl_report: Vec<u8>,
     td_quote: Vec<u8>,
+}
+
+#[derive(Deserialize, Debug)]
+enum AzItaTeeEvidenceVersion {
+    #[serde(rename = "1")]
+    V1,
+}
+
+#[serde_as]
+#[derive(Deserialize, Debug)]
+struct AzItaTeeEvidenceV1 {
+    #[allow(dead_code)]
+    version: AzItaTeeEvidenceVersion,
+    #[serde_as(as = "Base64<UrlSafe>")]
+    hcl_report: Vec<u8>,
+    #[serde_as(as = "Base64<UrlSafe>")]
+    td_quote: Vec<u8>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+enum AzItaTeeEvidence {
+    V0(AzItaTeeEvidenceV0),
+    V1(AzItaTeeEvidenceV1),
+}
+
+impl AzItaTeeEvidence {
+    fn hcl_report(&self) -> &Vec<u8> {
+        match self {
+            Self::V0(evidence) => &evidence.hcl_report,
+            Self::V1(evidence) => &evidence.hcl_report,
+        }
+    }
+
+    fn td_quote(&self) -> &Vec<u8> {
+        match self {
+            Self::V0(evidence) => &evidence.td_quote,
+            Self::V1(evidence) => &evidence.td_quote,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -132,10 +174,10 @@ impl Attest for IntelTrustAuthority {
                             independent_evidence.tee
                         ))?;
 
-                    let hcl_report = HclReport::new(evidence.hcl_report.clone())?;
+                    let hcl_report = HclReport::new(evidence.hcl_report().clone())?;
 
                     req_data.tdx = Some(DcapTeeEvidence {
-                        quote: STANDARD.encode(evidence.td_quote),
+                        quote: STANDARD.encode(evidence.td_quote()),
                         runtime_data: STANDARD.encode(hcl_report.var_data()),
                         user_data: Some(
                             STANDARD.encode(independent_evidence.runtime_data.to_string()),
