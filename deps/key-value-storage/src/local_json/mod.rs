@@ -19,9 +19,34 @@ use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetRes
 /// Default file path for the local JSON file.
 const FILE_PATH: &str = "/opt/confidential-containers/storage/local_json/key_value.json";
 
+/// Default file directory path for the local JSON file.
+const FILE_DIR_PATH: &str = "/opt/confidential-containers/storage/local_json";
+
 pub struct LocalJson {
     file_path: String,
     lock: RwLock<i32>,
+}
+
+#[derive(Deserialize, Clone, PartialEq, Debug)]
+#[serde(default)]
+pub struct ShimConfig {
+    pub file_dir_path: String,
+}
+
+impl Default for ShimConfig {
+    fn default() -> Self {
+        Self {
+            file_dir_path: FILE_DIR_PATH.to_string(),
+        }
+    }
+}
+
+impl ShimConfig {
+    pub fn to_instance_config(&self, file_name: &str) -> Config {
+        Config {
+            file_path: self.file_dir_path.clone() + "/" + file_name,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
