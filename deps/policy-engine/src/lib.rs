@@ -10,16 +10,8 @@ pub use policy::*;
 pub mod error;
 pub use error::*;
 use key_value_storage::SetParameters;
-use serde::Deserialize;
 
 pub use key_value_storage::{KeyValueStorage, KeyValueStorageConfig};
-
-#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
-#[serde(default)]
-pub struct PolicyEngineConfig {
-    /// The storage to store the policies.
-    pub storage: KeyValueStorageConfig,
-}
 
 pub trait EngineTrait {
     /// The suffix of the policy file.
