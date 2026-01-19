@@ -50,4 +50,4 @@ There is an ignored async test that demonstrates end-to-end usage. To run it loc
 cargo test --package key-value-storage --lib -- postgres::tests::test_postgres_client --exact --show-output --ignored
 ```
 
-Alternatively, run your regular test suite after ensuring a reachable PostgreSQL instance matching your `Config`.
+Alternatively, run your regular test suite after ensuring a reachable PostgreSQL namespace matching your `Config`.

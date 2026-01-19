@@ -16,32 +16,32 @@ use tracing::{debug, instrument};
 
 use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult};
 
-/// Default file path for the local JSON file.
-const FILE_PATH: &str = "/opt/confidential-containers/storage/local_json/key_value.json";
+/// Default file directory path for the local JSON file.
+const FILE_DIR_PATH: &str = "/opt/confidential-containers/storage/local_json";
 
 pub struct LocalJson {
     file_path: String,
     lock: RwLock<i32>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Deserialize, Clone, PartialEq, Debug)]
 #[serde(default)]
 pub struct Config {
-    pub file_path: String,
+    pub file_dir_path: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            file_path: FILE_PATH.to_string(),
+            file_dir_path: FILE_DIR_PATH.to_string(),
         }
     }
 }
 
 impl LocalJson {
-    pub fn new(config: Config) -> Result<Self> {
-        let mut path = PathBuf::new();
-        path.push(&config.file_path);
+    pub fn new(config: Config, namespace: &str) -> Result<Self> {
+        let path = PathBuf::new();
+        let path = path.join(&config.file_dir_path).join(namespace);
 
         let parent_dir =
             path.parent()
@@ -56,12 +56,12 @@ impl LocalJson {
 
         if !path.exists() {
             debug!(path =? path, "creating empty file for LocalJson backend");
-            std::fs::write(config.file_path.clone(), "{}")
+            std::fs::write(&path, "{}")
                 .map_err(|e| KeyValueStorageError::InitializeBackendFailed { source: e.into() })?;
         }
 
         Ok(Self {
-            file_path: config.file_path,
+            file_path: path.to_string_lossy().to_string(),
             lock: RwLock::new(0),
         })
     }
@@ -184,11 +184,10 @@ mod tests {
     #[tokio::test]
     async fn test_local_json() {
         let work_dir = tempfile::tempdir().unwrap();
-        let json_file = work_dir.path().join("key_value.json");
         let config = Config {
-            file_path: json_file.to_string_lossy().to_string(),
+            file_dir_path: work_dir.path().to_string_lossy().to_string(),
         };
-        let storage = LocalJson::new(config).unwrap();
+        let storage = LocalJson::new(config, "key_value.json").unwrap();
         storage
             .set("test", b"test", SetParameters::default())
             .await
