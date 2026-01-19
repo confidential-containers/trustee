@@ -46,4 +46,7 @@ pub enum KeyValueStorageError {
         #[source]
         source: anyhow::Error,
     },
+
+    #[error("invalid configuration: {message}")]
+    InvalidConfiguration { message: String },
 }

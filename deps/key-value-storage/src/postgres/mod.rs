@@ -51,9 +51,6 @@ pub struct Config {
 
     /// The host of the PostgreSQL database.
     pub host: String,
-
-    /// The name of the policy table.
-    pub table: String,
 }
 
 impl Default for Config {
@@ -64,7 +61,6 @@ impl Default for Config {
             password: None,
             port: 5432,
             host: "localhost".to_string(),
-            table: "key_value".to_string(),
         }
     }
 }
@@ -75,7 +71,7 @@ pub struct PostgresClient {
 }
 
 impl PostgresClient {
-    pub async fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: Config, namespace: &str) -> Result<Self> {
         info!("Initializing PostgreSQL client");
         debug!("Connecting to PostgreSQL DB: {config:?}");
         let url = env::var(POSTGRES_URL_ENV_VAR).unwrap_or(format!(
@@ -106,7 +102,7 @@ impl PostgresClient {
 
         Ok(Self {
             pool: Arc::new(pool),
-            table: config.table,
+            table: namespace.to_string(),
         })
     }
 }
@@ -237,9 +233,8 @@ mod tests {
             port: 6432,
             username: "postgres".to_string(),
             password: None,
-            table: "key_value".to_string(),
         };
-        let client = PostgresClient::new(config).await.unwrap();
+        let client = PostgresClient::new(config, "key_value").await.unwrap();
         client
             .set("test", b"test", SetParameters { overwrite: true })
             .await
@@ -270,6 +265,5 @@ username = "username"
         assert_eq!(config.password, None);
         assert_eq!(config.port, 5432);
         assert_eq!(config.host, "localhost");
-        assert_eq!(config.table, "key_value");
     }
 }

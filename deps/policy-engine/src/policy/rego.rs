@@ -4,11 +4,12 @@
 
 use std::collections::HashMap;
 
+use key_value_storage::KeyValueStorageInstance;
 use regorus::Extension;
 use serde_json::Value;
 use tracing::{info, instrument};
 
-use crate::{EngineTrait, EvaluationResult, PolicyEngine, PolicyEngineConfig, PolicyError, Result};
+use crate::{EngineTrait, EvaluationResult, PolicyEngine, PolicyError, Result};
 
 /// The rule to evaluate the policy.
 /// Note that only the result of this rule will be returned.
@@ -117,8 +118,7 @@ impl Regorus {
 }
 
 impl PolicyEngine<Regorus> {
-    pub async fn new(config: PolicyEngineConfig) -> Result<Self> {
-        let storage = config.storage.to_key_value_storage().await?;
+    pub async fn new(storage: KeyValueStorageInstance) -> Result<Self> {
         let engine = Regorus::default();
         Ok(Self { storage, engine })
     }
