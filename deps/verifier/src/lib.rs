@@ -59,6 +59,13 @@ pub struct VerifierConfig {
 
     #[cfg(feature = "snp-verifier")]
     snp_verifier: Option<snp::SnpVerifierConfig>,
+
+    #[cfg(any(
+        feature = "tdx-verifier",
+        feature = "sgx-verifier",
+        feature = "az-tdx-vtpm-verifier"
+    ))]
+    dcap_verifier: Option<intel_dcap::QcnlConfig>,
 }
 
 pub async fn to_verifier(
@@ -80,6 +87,8 @@ pub async fn to_verifier(
         Tee::AzTdxVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-tdx-vtpm-verifier")] {
+                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
+                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
                     Ok(Box::<az_tdx_vtpm::AzTdxVtpm>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `az-tdx-vtpm-verifier` is not enabled for `verifier` crate.");
@@ -89,6 +98,8 @@ pub async fn to_verifier(
         Tee::Tdx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "tdx-verifier")] {
+                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
+                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
                     Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `tdx-verifier` is not enabled for `verifier` crate.")
@@ -111,6 +122,8 @@ pub async fn to_verifier(
         Tee::Sgx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "sgx-verifier")] {
+                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
+                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
                     Ok(Box::<sgx::SgxVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `sgx-verifier` is not enabled for `verifier` crate.")
