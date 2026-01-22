@@ -7,13 +7,73 @@ use intel_tee_quote_verification_rs::{
     sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
     tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::env;
+use std::fs::File;
+use std::io::{ErrorKind, Write};
 use std::mem;
 use std::time::{Duration, SystemTime};
 use tracing::{debug, warn};
 
 mod claims;
 mod error;
+
+const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certification/v4/";
+
+#[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TcbUpdateType {
+    Early,
+    #[default]
+    Standard,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct QcnlConfig {
+    collateral_service: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    use_secure_cert: Option<bool>,
+    #[serde(default)]
+    tcb_update_type: TcbUpdateType,
+}
+
+impl Default for QcnlConfig {
+    fn default() -> Self {
+        Self {
+            collateral_service: INTEL_PCS_URL.to_string(),
+            use_secure_cert: None,
+            tcb_update_type: TcbUpdateType::Standard,
+        }
+    }
+}
+
+pub fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Error> {
+    env::var("QCNL_CONF_PATH")
+        .map_err(std::io::Error::other)
+        .and_then(File::create_new)
+        .and_then(|mut f| {
+            f.write_all(
+                serde_json::to_string(&c.unwrap_or_default())
+                    .map_err(|_| std::io::Error::from(ErrorKind::InvalidInput))?
+                    .as_bytes(),
+            )
+        })
+        .inspect_err(|e| match e.kind() {
+            ErrorKind::Other => debug!(
+                "QCNL_CONF_PATH environment variable is not set so configuration was skipped."
+            ),
+            ErrorKind::AlreadyExists => debug!("DCAP QCNL is already configured."),
+            ErrorKind::PermissionDenied => {
+                warn!("DCAP QCNL configuration failed due to permission error.")
+            }
+            ErrorKind::InvalidInput => {
+                warn!("DCAP QCNL configuration failed due to invalid JSON.")
+            }
+            _ => warn!("DCAP QCNL configuration failed due to an unknown error."),
+        })
+        .inspect(|_| debug!("DCAP QCNL configuration was written to $QCNL_CONF_PATH."))
+}
 
 pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
