@@ -21,18 +21,10 @@ Users can use a [community version of restful CoCoAS image](https://github.com/c
 ```shell
 # run restful CoCoAS server locally
 docker run -d \
-  -v <path-to-attestation-service>/docs/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf \ # this qcnl config is used when verifying SGX/TDX quotes
+  -e QCNL_CONF_PATH=/run/dcap/qcnl.conf --tmpfs /run/dcap \
   -p 8080:8080 \
   ghcr.io/confidential-containers/staged-images/coco-as-restful:latest
 ```
-
-The `sgx_default_qcnl.conf` configures the PCS (Provisioning Certification Service) / PCCS (Provisioning Certification Cache Service) of Intel platforms. A workable file is given [here](./sgx_default_qcnl.conf) which will directly connect to [Intel's PCS](https://api.portal.trustedservices.intel.com/provisioning-certification) without caching.
-This can be used for test. Users are expected to set the file to connect to another available PCCS which keeps cache.
-PCCS are usually supported by cloud providers, you can find the steps to configure `/etc/sgx_default_qcnl.conf` for
-- Aliyun (Alibaba Cloud): [Build an SGX confidential computing environment](https://www.alibabacloud.com/help/en/ecs/user-guide/build-an-sgx-encrypted-computing-environment)
-- Azure: [Trusted Hardware Identity Management](https://learn.microsoft.com/en-us/azure/security/fundamentals/trusted-hardware-identity-management)
-- IBM Cloud: [Attestation with Intel SGX and Data Center Attestation Primitives (DCAP) for Virtual Servers for VPC](https://cloud.ibm.com/docs/vpc?topic=vpc-about-attestation-sgx-dcap-vpc)
-Or you can [set-up a PCCS yourself](https://download.01.org/intel-sgx/sgx-dcap/1.9/windows/docs/Intel_SGX_DCAP_Windows_SW_Installation_Guide.pdf).
 
 Then an attestation request can be used to request the server. We provide an [example request of validating a SGX quote](../tests/coco-as/request.json).
 
