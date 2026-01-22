@@ -24,8 +24,8 @@ const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certifica
 #[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TcbUpdateType {
-    Early,
     #[default]
+    Early,
     Standard,
 }
 
@@ -43,7 +43,7 @@ impl Default for QcnlConfig {
         Self {
             collateral_service: INTEL_PCS_URL.to_string(),
             use_secure_cert: None,
-            tcb_update_type: TcbUpdateType::Standard,
+            tcb_update_type: TcbUpdateType::Early,
         }
     }
 }
