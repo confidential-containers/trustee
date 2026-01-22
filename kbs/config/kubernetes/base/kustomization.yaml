@@ -5,7 +5,7 @@ namespace: coco-tenant
 images:
 - name: kbs-container-image
   newName: ghcr.io/confidential-containers/key-broker-service
-  newTag: built-in-as-v0.16.0
+  newTag: built-in-as-v0.17.0
 
 resources:
 - namespace.yaml
