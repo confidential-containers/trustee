@@ -53,64 +53,26 @@ pub trait KeyValueStorage: Send + Sync {
 
 pub type KeyValueStorageInstance = Arc<dyn KeyValueStorage>;
 
-#[derive(Deserialize, Debug, Default, Clone, PartialEq)]
-#[serde(tag = "type")]
-#[serde(rename_all = "camelCase")]
-pub enum KeyValueStorageConfig {
-    #[cfg(feature = "postgres")]
-    #[serde(alias = "postgres")]
-    Postgres(postgres::Config),
-
-    #[serde(alias = "Memory")]
-    #[default]
-    Memory,
-
-    #[serde(alias = "LocalJson")]
-    LocalJson(local_json::Config),
-
-    #[serde(alias = "LocalFs")]
-    LocalFs(local_fs::Config),
-}
-
-impl KeyValueStorageConfig {
-    pub async fn to_key_value_storage(&self) -> Result<Arc<dyn KeyValueStorage>> {
-        match self {
-            #[cfg(feature = "postgres")]
-            KeyValueStorageConfig::Postgres(config) => Ok(Arc::new(
-                postgres::PostgresClient::new(config.clone())
-                    .await
-                    .map_err(|e| KeyValueStorageError::InitializeBackendFailed {
-                        source: e.into(),
-                    })?,
-            ) as _),
-            KeyValueStorageConfig::Memory => {
-                Ok(Arc::new(memory::MemoryKeyValueStorage::default()) as _)
-            }
-            KeyValueStorageConfig::LocalJson(config) => {
-                Ok(Arc::new(local_json::LocalJson::new(config.clone())?) as _)
-            }
-            KeyValueStorageConfig::LocalFs(config) => {
-                Ok(Arc::new(local_fs::LocalFs::new(config.clone())?) as _)
-            }
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq)]
 pub enum KeyValueStorageType {
     #[default]
+    #[serde(alias = "memory")]
     Memory,
+    #[serde(alias = "local_json")]
     LocalJson,
+    #[serde(alias = "local_fs")]
     LocalFs,
+    #[serde(alias = "postgres")]
     Postgres,
 }
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
 pub struct KeyValueStorageStructConfig {
     #[cfg(feature = "postgres")]
-    postgres: Option<postgres::ShimConfig>,
-    local_json: Option<local_json::ShimConfig>,
-    local_fs: Option<local_fs::ShimConfig>,
+    pub postgres: Option<postgres::ShimConfig>,
+    pub local_json: Option<local_json::ShimConfig>,
+    pub local_fs: Option<local_fs::ShimConfig>,
 }
 
 impl KeyValueStorageStructConfig {
@@ -175,6 +137,18 @@ impl KeyValueStorageStructConfig {
                 .into_owned()
         };
     }
+}
+
+/// Unified storage backend configuration
+#[derive(Debug, Clone, Deserialize, PartialEq, Default)]
+#[serde(default)]
+pub struct StorageBackendConfig {
+    // Note: this field is aiming to serving all the persistent storages in KBS.
+    /// Storage backend type
+    pub storage_type: KeyValueStorageType,
+
+    /// Backend-specific configuration
+    pub backends: KeyValueStorageStructConfig,
 }
 
 /// Check if the key is valid.
