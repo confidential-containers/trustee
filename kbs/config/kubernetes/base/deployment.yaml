@@ -35,6 +35,9 @@ spec:
         - /usr/local/bin/kbs
         - --config-file
         - /etc/kbs/kbs-config.toml
+        env:
+        - name: QCNL_CONF_PATH
+          value: "/run/dcap/qcnl.conf"
         volumeMounts:
         - name: kbs-auth-public-key
           mountPath: /kbs/
@@ -42,7 +45,12 @@ spec:
           mountPath: /etc/kbs/
         - name: policy-volume
           mountPath: /opt/confidential-containers/kbs/
+        - name: dcap-qcnl-config
+          mountPath: /run/dcap/
       volumes:
+      - name: dcap-qcnl-config
+        emptyDir:
+          sizeLimit: 1Mi
       - name: kbs-auth-public-key
         secret:
           secretName: kbs-auth-public-key

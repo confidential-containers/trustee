@@ -31,13 +31,15 @@ services:
     image: ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest
     environment:
       - RUST_LOG
+      - QCNL_CONF_PATH=/run/dcap/qcnl.conf
     ports:
     - "50004:50004"
     restart: always
+    tmpfs:
+    - /run/dcap:size=50k
     volumes:
     - ./kbs/data/attestation-service:/opt/confidential-containers/attestation-service:rw
     - ./kbs/config/as-config.json:/etc/as-config.json:rw
-    - ./kbs/config/sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf:rw
     - ./kbs/config:/opt/confidential-containers/kbs/user-keys
     command: [
       "grpc-as",
