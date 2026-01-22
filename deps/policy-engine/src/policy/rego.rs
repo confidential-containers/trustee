@@ -118,9 +118,9 @@ impl Regorus {
 }
 
 impl PolicyEngine<Regorus> {
-    pub async fn new(storage: KeyValueStorageInstance) -> Result<Self> {
+    pub fn new(storage: KeyValueStorageInstance) -> Self {
         let engine = Regorus::default();
-        Ok(Self { storage, engine })
+        Self { storage, engine }
     }
 
     pub async fn evaluate_rego(

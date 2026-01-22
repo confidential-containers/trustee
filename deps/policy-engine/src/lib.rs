@@ -11,7 +11,7 @@ pub mod error;
 pub use error::*;
 use key_value_storage::SetParameters;
 
-pub use key_value_storage::{KeyValueStorage, KeyValueStorageConfig};
+pub use key_value_storage::KeyValueStorage;
 
 pub trait EngineTrait {
     /// The suffix of the policy file.
