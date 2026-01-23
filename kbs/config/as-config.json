@@ -1,6 +1,12 @@
 {
-    "work_dir": "/opt/confidential-containers/attestation-service",
-    "policy_engine": "opa",
+    "storage_backend": {
+        "storage_type": "LocalFs",
+        "backends": {
+            "local_fs": {
+                "dir_path": "/var/lib/attestation-service/storage"
+            }
+        }
+    },
     "rvps_config": {
         "type": "GrpcRemote",
         "address": "http://rvps:50003"
