@@ -85,13 +85,15 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 |----------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | `timeout`                  | Integer                     | The maximum time (in minutes) of the attestation session | 5                                                                                                             |
 | `work_dir`                 | String                      | The location for Attestation Service to store data.      | First try from env `AS_WORK_DIR`. If no this env, then use `/opt/confidential-containers/attestation-service` |
-| `policy_engine`            | String                      | Policy engine type. Valid values: `opa`                  | `opa`                                                                                                         |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                       | See [RVPSConfiguration][2]                                                                                    |
 | `attestation_token_broker` | [AttestationTokenBroker][1] | Attestation result token configuration.                  | See [AttestationTokenBroker][1]                                                                               |
+| `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM)| None                                                                                                          |
 
 [1]: #attestationtokenbroker
-
 [2]: #rvps-configuration
+[3]: #policy-engine-configuration
+[4]: #keyvaluestorage
+[5]: #tokensignerconfig
 
 ##### AttestationTokenBroker
 
@@ -102,10 +104,8 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `developer_name` | String                 | The developer name to be used as part of the Verifier ID in the EAR            | No       | `https://confidentialcontainers.org`                                  |
 | `build_name`     | String                 | The build name to be used as part of the Verifier ID in the EAR                | No       | Automatically generated from Cargo package and AS version             |
 | `profile_name`   | String                 | The Profile that describes the EAR token                                       | No       | tag:github.com,2024:confidential-containers/Trustee`                  |
-| `policy_dir`     | String                 | The path to the work directory that contains policies to provision the tokens. | No       | `/opt/confidential-containers/attestation-service/token/policies` |
-| `signer`         | [TokenSignerConfig][1] | Signing material of the attestation result token.                              | No       | None                                                                  |
-
-[1]: #tokensignerconfig
+| `policy_engine`  | [PolicyEngineConfig][3]| Storage backend used to persist EAR policies                                   | No       | `Memory`                                                              |
+| `signer`         | [TokenSignerConfig][5] | Signing material of the attestation result token.                              | No       | None                                                                  |
 
 ##### TokenSignerConfig
 
@@ -125,25 +125,15 @@ This section is **optional**. When omitted, an ephemeral RSA key pair is generat
 
 ##### BuiltIn RVPS
 
-If `type` is set to `BuiltIn`, the following extra properties can be set
+If `type` is set to `BuiltIn`, the following extra properties can be set:
 
-| Property  | Type                        | Description                                                                  | Required | Default   |
-|-----------|-----------------------------|------------------------------------------------------------------------------|----------|-----------|
-| `storage` | ReferenceValueStorageConfig | Configuration of the storage for reference values (`LocalFs` or `LocalJson`) | No       | `LocalFs` |
+| Property | Type | Description | Required | Default |
+|----------|------|-------------|----------|---------|
+| `extractors` | Object | Optional configuration for provenance extractors | No | None |
 
-A `ReferenceValueStorageConfig` can either be of type `LocalFs` or `LocalJson`
+**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference-value` instance from the unified storage backend.
 
-For `LocalFs`, the following properties can be set
-
-| Property    | Type   | Description                                        | Required | Default                                                             |
-|-------------|--------|----------------------------------------------------|----------|---------------------------------------------------------------------|
-| `file_path` | String | The path to the directory storing reference values | No       | `/opt/confidential-containers/attestation-service/reference_values` |
-
-For `LocalJson`, the following properties can be set
-
-| Property    | Type   | Description                                        | Required | Default                                                                  |
-|-------------|--------|----------------------------------------------------|----------|--------------------------------------------------------------------------|
-| `file_path` | String | The path to the file that storing reference values | No       | `/opt/confidential-containers/attestation-service/reference_values.json` |
+For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
 ##### Remote RVPS
 
@@ -204,15 +194,29 @@ If the `Simple` backend is used, a list of admin personas can be provided, each 
 | `public_key_path` | String  | The path to the public key corresponding to the admin token.      | Yes      | Simple  |
 
 
-### Policy Engine Configuration
+### Storage Backend Configuration
 
-The following properties can be set under the `[policy_engine]` section.
+KBS supports a unified storage backend configuration that allows you to declare a single storage configuration that will be used for all storage needs in KBS, including
+all the persistent storages that KBS relies on.
 
-This section is **optional**. When omitted, a default configuration is used.
+This simplifies deployment by eliminating the need to configure storage separately for each component.
 
-| Property      | Type   | Description                                                                                                | Required | Default                                        |
-|---------------|--------|------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------|
-| `policy_path` | String | Path to a file containing a policy for evaluating whether the TCB status has access to specific resources. | No       | `/opa/confidential-containers/kbs/policy.rego` |
+For detailed information about the unified storage backend configuration format, including what an **instance** is and how it works, see the [Key-Value Storage README](../../deps/key-value-storage/README.md#unified-storage-backend-configuration).
+
+#### Storage Instances in KBS
+
+When using the unified storage backend configuration, KBS creates the following storage instances:
+
+| Instance Name | Component | Description |
+|---------------|-----------|-------------|
+| `kbs` | KBS Policy Engine | Stores the things used by KBS, like KBS Resource Policy |
+| `repository` | Resource Plugin | Stores secret resources managed by the resource plugin |
+| `attestation-service-policy` | Built-in AS | Stores EAR policies for the built-in Attestation Service |
+| `referene-values` | Built-in AS RVPS | Stores reference values for the built-in RVPS |
+
+The KBS Resource Policy will be stored inside `kbs` instance with key `resource-policy`.
+
+For detailed configuration options and examples, see the [Key-Value Storage README](../../deps/key-value-storage/README.md#unified-storage-backend-configuration).
 
 ### Plugins Configuration
 
@@ -228,17 +232,13 @@ The `name` field is `resource` to enable this plugin.
 Resource plugin allows user with proper attestation token to access storage that KBS keeps.
 This is also called "Repository" in old versions. The properties to be configured are listed.
 
-| Property | Type   | Description                                                              | Required | Default   |
-|----------|--------|--------------------------------------------------------------------------|----------|-----------|
-| `type`   | String | The resource repository type. Valid values: `LocalFs`, `Aliyun`, `Vault` | Yes      | `LocalFs` |
+| Property | Type   | Description                                                   | Required | Default    |
+|----------|--------|---------------------------------------------------------------|----------|------------|
+| `backend`| String | Storage backend for resources: `kvstorage`, `Aliyun`, `Vault` | No       | `kvstorage`|
 
-**`LocalFs` Properties**
+When `backend = "kvstorage"` (default), remaining fields follow [KeyValueStorage][4]. See [KeyValueStorage][4] for available storage backends and their configuration options.
 
-| Property   | Type   | Description                     | Required | Default                                       |
-|------------|--------|---------------------------------|----------|-----------------------------------------------|
-| `dir_path` | String | Path to a repository directory. | No       | `/opt/confidential-containers/kbs/repository` |
-
-**`Aliyun` Properties**
+When `backend = "Aliyun"`:
 
 | Property          | Type   | Description                       | Required | Example                                             |
 |-------------------|--------|-----------------------------------|----------|-----------------------------------------------------|
@@ -247,7 +247,7 @@ This is also called "Repository" in old versions. The properties to be configure
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
-** `Vault` Properties **
+When `backend = "Vault"`:
 
 | Property     | Type          | Required | Description                                 | Default    |
 |--------------|---------------|----------|---------------------------------------------|------------|
@@ -299,7 +299,56 @@ Detailed [documentation](#kbs/docs/plugins/nebula_ca.md).
 
 ## Configuration Examples
 
-Using a built-in CoCo AS:
+### Using Storage Backend
+
+With unified storage backend, you only need to declare one storage configuration that will be used for all storage needs:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_token]
+
+# Unified storage backend configuration
+# This single configuration will be used for:
+# - KBS policy engine (instance: "kbs")
+# - Resource plugin storage (instance: "resource")
+# - Built-in AS policy storage (instance: "attestation-service-policy")
+# - Built-in AS RVPS storage (instance: "reference-value")
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/opt/confidential-containers/attestation-service"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+# Note: policy_storage will be overridden by storage_backend if provided
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+# Note: storage will be overridden by storage_backend if provided
+# Optional: configure extractors
+# [attestation_service.rvps_config.extractors]
+# swid_extractor = {}
+
+[[plugins]]
+name = "resource"
+backend = "kvstorage"
+# Note: When using kvstorage backend, storage will be overridden by storage_backend if provided
+```
+
+### Using Legacy Per-Component Storage Configuration
+
+You can still configure storage for each component individually (legacy mode):
 
 ```toml
 [http_server]
@@ -314,19 +363,26 @@ type = "InsecureAllowAll"
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
-policy_engine = "opa"
 
 [attestation_service.attestation_token_broker]
 duration_min = 5
+[attestation_service.attestation_token_broker.policy_storage]
+type = "LocalJson"
+file_path = "/opt/confidential-containers/attestation-service/ear-policies.json"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
+# Note: storage is now managed by storage_backend configuration (legacy mode shown above)
 
-[attestation_service.rvps_config.storage]
-type = "LocalFs"
+# Legacy per-component storage configuration (deprecated, use storage_backend instead)
+# [policy_engine]
+# [policy_engine.storage]
+# type = "LocalJson"
+# file_path = "/opt/confidential-containers/kbs/kbs-policy.json"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 ```
@@ -346,6 +402,7 @@ as_addr = "http://127.0.0.1:50004"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 ```
@@ -377,11 +434,14 @@ type = "Simple"
 id = "admin"
 public_key_path = "/etc/kbs-admin.pub"
 
-[policy_engine]
-policy_path = "/etc/kbs-policy.rego"
+# Legacy per-component storage configuration (deprecated, use storage_backend instead)
+# [policy_engine.storage]
+# type = "LocalJson"
+# file_path = "/etc/kbs-policy.json"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 ```
@@ -401,19 +461,20 @@ type = "InsecureAllowAll"
 [attestation_service]
 type = "coco_as_builtin"
 work_dir = "/opt/confidential-containers/attestation-service"
-policy_engine = "opa"
 
 [attestation_service.attestation_token_broker]
 duration_min = 5
+[attestation_service.attestation_token_broker.policy_engine.storage]
+type = "LocalJson"
+file_path = "/opt/confidential-containers/attestation-service/ear-policies.json"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-
-[attestation_service.rvps_config.storage]
-type = "LocalFs"
+# Note: storage is now managed by storage_backend configuration (legacy mode shown above)
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "/opt/confidential-containers/kbs/repository"
 
@@ -444,11 +505,15 @@ public_key_path = "./work/kbs.pem"
 trusted_certs_paths = ["./work/ca-cert.pem"]
 insecure_key = false
 
-[policy_engine]
-policy_path = "./work/kbs-policy.rego"
+# Legacy per-component storage configuration (deprecated, use storage_backend instead)
+# [policy_engine]
+# [policy_engine.storage]
+# type = "LocalJson"
+# file_path = "./work/kbs-policy.rego"
 
 [[plugins]]
 name = "resource"
+backend = "kvstorage"
 type = "LocalFs"
 dir_path = "./work/repository"
 ```

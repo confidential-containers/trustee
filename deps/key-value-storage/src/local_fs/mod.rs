@@ -18,11 +18,40 @@ use crate::{
 };
 
 /// Default file path for the local JSON file.
-const FILE_PATH: &str = "/opt/confidential-containers/storage/local_fs";
+const FILE_PATH: &str = "/opt/confidential-containers/storage/local_fs/default";
+
+/// Default directory path for the local file system.
+const DEFAULT_DIR_PATH: &str = "/opt/confidential-containers/storage/local_fs";
 
 pub struct LocalFs {
     dir_path: PathBuf,
     lock: RwLock<i32>,
+}
+
+#[derive(Deserialize, Clone, PartialEq, Debug)]
+#[serde(default)]
+pub struct ShimConfig {
+    /// The directory path for the local file system.
+    /// Note that this is a common directory path for all instances.
+    ///
+    /// Different instances will be stored in different subdirectories under this path.
+    pub dir_path: String,
+}
+
+impl Default for ShimConfig {
+    fn default() -> Self {
+        Self {
+            dir_path: DEFAULT_DIR_PATH.to_string(),
+        }
+    }
+}
+
+impl ShimConfig {
+    pub fn to_instance_config(&self, instance: &str) -> Config {
+        Config {
+            dir_path: self.dir_path.clone() + "/" + instance,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]

@@ -5,6 +5,7 @@ timeout = 5
 
 [attestation_service.attestation_token_broker]
 issuer_name = "CoCo-Attestation-Service"
+duration_min = 5
 
 [attestation_service.rvps_config]
 type = "GrpcRemote"
@@ -17,5 +18,6 @@ insecure_http = false
 [admin]
 type = "DenyAll"
 
-[policy_engine]
-policy_path = "/opt/confidential-containers/kbs/policy.rego"
+[storage_backend]
+storage_type = "local_json"
+backends.local_json.file_dir_path = "/opt/confidential-containers/trustee"

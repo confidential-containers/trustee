@@ -5,12 +5,13 @@
 
 pub mod config;
 pub mod ear_token;
-pub mod policy_engine;
 pub mod rvps;
 use crate::rvps::RvpsClient;
 
+use base64::Engine;
 use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
+use key_value_storage::KeyValueStorageError;
 pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -19,11 +20,12 @@ use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-use tokio::fs;
 use tracing::{debug, info};
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
+
+pub const AS_POLICY_STORAGE_INSTANCE: &str = "attestation-service-policy";
 
 fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
@@ -73,6 +75,8 @@ pub enum ServiceError {
     Rvps(#[source] RvpsError),
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
+    #[error(transparent)]
+    KeyValueStorage(#[from] KeyValueStorageError),
 }
 
 /// Initdata defined in
@@ -130,18 +134,25 @@ pub struct AttestationService {
 impl AttestationService {
     /// Create a new Attestation Service instance.
     pub async fn new(config: Config) -> Result<Self, ServiceError> {
-        if !config.work_dir.as_path().exists() {
-            fs::create_dir_all(&config.work_dir)
-                .await
-                .map_err(ServiceError::CreateDir)?;
-        }
+        let rvps = rvps::initialize_rvps_client(
+            &config.rvps_config,
+            config.storage_backend.storage_type,
+            &config.storage_backend.backends,
+        )
+        .await
+        .map_err(ServiceError::Rvps)?;
 
-        let rvps = rvps::initialize_rvps_client(&config.rvps_config)
-            .await
-            .map_err(ServiceError::Rvps)?;
-
+        let policy_storage = config
+            .storage_backend
+            .backends
+            .to_client_with_instance(
+                config.storage_backend.storage_type,
+                AS_POLICY_STORAGE_INSTANCE,
+            )
+            .await?;
         let token_broker =
-            EarAttestationTokenBroker::new(config.attestation_token_broker.clone()).await?;
+            EarAttestationTokenBroker::new(config.attestation_token_broker.clone(), policy_storage)
+                .await?;
 
         Ok(Self {
             config,
@@ -152,13 +163,15 @@ impl AttestationService {
 
     /// Set Attestation Verification Policy.
     pub async fn set_policy(&mut self, policy_id: String, policy: String) -> Result<()> {
+        let policy_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(policy)?;
+        let policy = String::from_utf8(policy_bytes)?;
         self.token_broker.set_policy(policy_id, policy).await?;
         Ok(())
     }
 
     /// Get Attestation Verification Policy List.
     /// The result is a `policy-id` -> `policy hash` map.
-    pub async fn list_policies(&self) -> Result<HashMap<String, String>> {
+    pub async fn list_policies(&self) -> Result<Vec<String>> {
         self.token_broker
             .list_policies()
             .await

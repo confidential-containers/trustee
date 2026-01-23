@@ -76,7 +76,7 @@ impl ReferenceValueProviderService for RvpsServer {
 }
 
 pub async fn start(socket: SocketAddr, config: Config) -> Result<()> {
-    let service = Rvps::new(config)?;
+    let service = Rvps::new(config).await?;
     let inner = Arc::new(RwLock::new(service));
     let rvps_server = RvpsServer::new(inner.clone());
 

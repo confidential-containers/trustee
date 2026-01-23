@@ -47,8 +47,10 @@ futures = "0.3.17"
 hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
+key-value-storage.path = "../deps/key-value-storage"
 lazy_static.workspace = true
 openssl.workspace = true
+policy-engine.path = "../deps/policy-engine"
 prost = { workspace = true, optional = true }
 rand = "0.8.5"
 reference-value-provider-service.path = "../rvps"
