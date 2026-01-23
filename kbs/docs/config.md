@@ -240,6 +240,9 @@ The KBS Resource Policy will be stored inside `kbs` namespace with key `resource
 
 For detailed configuration options and examples, see the [Key-Value Storage README](../../deps/key-value-storage/README.md#unified-storage-backend-configuration).
 
+> [!NOTE]
+> All persistent storage is configured via `[storage_backend]`. If `[storage_backend]` is omitted, the default in-memory storage is used (data is not persisted across restarts).
+
 ### Plugins Configuration
 
 KBS supports different kinds of plugins, and they can be enabled via add corresponding configs.
@@ -258,7 +261,7 @@ This is also called "Repository" in old versions. The properties to be configure
 |----------|--------|---------------------------------------------------------------|----------|------------|
 | `backend`| String | Storage backend for resources: `kvstorage`, `Aliyun`, `Vault` | No       | `kvstorage`|
 
-When `backend = "kvstorage"` (default), remaining fields follow [KeyValueStorage][3]. See [KeyValueStorage][3] for available storage backends and their configuration options.
+When `backend = "kvstorage"` (default), the resource plugin uses the unified [storage backend](#storage-backend-configuration) with namespace `repository`. Configure storage in the `[storage_backend]` section only.
 
 When `backend = "Aliyun"`:
 
@@ -366,44 +369,7 @@ backend = "kvstorage"
 # Note: When using kvstorage backend, storage will be overridden by storage_backend if provided
 ```
 
-### Using Legacy Per-Component Storage Configuration
-
-You can still configure storage for each component individually (legacy mode):
-
-```toml
-[http_server]
-sockets = ["0.0.0.0:8080"]
-insecure_http = true
-
-[admin]
-type = "InsecureAllowAll"
-
-[attestation_token]
-
-[attestation_service]
-type = "coco_as_builtin"
-
-[attestation_service.attestation_token_broker]
-duration_min = 5
-
-[attestation_service.rvps_config]
-type = "BuiltIn"
-# Note: storage is now managed by storage_backend configuration (legacy mode shown above)
-
-# Legacy per-component storage configuration (deprecated, use storage_backend instead)
-# [policy_engine]
-# [policy_engine.storage]
-# type = "LocalJson"
-# file_path = "/opt/confidential-containers/kbs/kbs-policy.json"
-
-[[plugins]]
-name = "resource"
-backend = "kvstorage"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
-```
-
-Using a remote CoCo AS:
+### Using a remote CoCo AS
 
 ```toml
 [http_server]
@@ -416,11 +382,15 @@ type = "InsecureAllowAll"
 type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50004"
 
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
+
 [[plugins]]
 name = "resource"
 backend = "kvstorage"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
 ```
 
 Running with Intel Trust Authority attestation service:
@@ -450,16 +420,15 @@ type = "Simple"
 id = "admin"
 public_key_path = "/etc/kbs-admin.pub"
 
-# Legacy per-component storage configuration (deprecated, use storage_backend instead)
-# [policy_engine.storage]
-# type = "LocalJson"
-# file_path = "/etc/kbs-policy.json"
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
 backend = "kvstorage"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
 ```
 
 Using Nebula CA plugin:
@@ -482,13 +451,16 @@ duration_min = 5
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-# Note: storage is now managed by storage_backend configuration (legacy mode shown above)
+
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
 backend = "kvstorage"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
 
 [[plugins]]
 name = "nebula-ca"
@@ -517,15 +489,13 @@ public_key_path = "./work/kbs.pem"
 trusted_certs_paths = ["./work/ca-cert.pem"]
 insecure_key = false
 
-# Legacy per-component storage configuration (deprecated, use storage_backend instead)
-# [policy_engine]
-# [policy_engine.storage]
-# type = "LocalJson"
-# file_path = "./work/kbs-policy.rego"
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "./work/storage"
 
 [[plugins]]
 name = "resource"
 backend = "kvstorage"
-type = "LocalFs"
-dir_path = "./work/repository"
 ```
