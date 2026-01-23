@@ -115,7 +115,7 @@ pub struct FilePathParser;
 
 impl DeviceSubTypeParser for FilePathParser {
     fn parse(&self, data: &[u8]) -> Result<String> {
-        if data.is_empty() || data.len() % 2 != 0 {
+        if data.is_empty() || !data.len().is_multiple_of(2) {
             bail!("File path is too short");
         }
         let utf16_words: Vec<u16> = data[0..data.len() - 2]

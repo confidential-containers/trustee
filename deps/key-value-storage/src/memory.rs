@@ -39,13 +39,7 @@ impl KeyValueStorage for MemoryKeyValueStorage {
 
     #[instrument(skip_all, name = "MemoryKeyValueStorage::list")]
     async fn list(&self) -> Result<Vec<String>> {
-        let keys = self
-            .items
-            .read()
-            .await
-            .iter()
-            .map(|(k, _)| k.clone())
-            .collect();
+        let keys = self.items.read().await.keys().cloned().collect();
         Ok(keys)
     }
 
