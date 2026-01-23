@@ -1,6 +1,13 @@
 {
     "storage": {
-	"type":"LocalFs",
-	"file_path": "/opt/confidential-containers/attestation-service/reference_values"
+        "storage_type": "LocalFs",
+        "backends": {
+            "local_fs": {
+                "dir_path": "/opt/confidential-containers/storage/local_fs"
+            }
+        }
+    },
+    "extractors": {
+        "swid_extractor": {}
     }
 }
