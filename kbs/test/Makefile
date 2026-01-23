@@ -11,11 +11,12 @@ BOLD := $(shell tput bold)
 SGR0 := $(shell tput sgr0)
 TEE ?= sample
 WORK_DIR := $(MAKEFILE_DIR)/work
-KBS_REPO_PATH := $(WORK_DIR)/repository
+KBS_REPO_PATH := $(WORK_DIR)/storage/repository
 ATTESTATION_TOKEN := $(WORK_DIR)/attestation_token
 ROUNDTRIP_FILE := $(WORK_DIR)/secret
 REPOSITORY_SECRET := one/two/three
-SECRET_FILE := $(KBS_REPO_PATH)/$(REPOSITORY_SECRET)
+SECRET_FILE_NAME := $(subst /,\\x2F,$(REPOSITORY_SECRET))
+SECRET_FILE := $(KBS_REPO_PATH)/$(SECRET_FILE_NAME)
 
 # match those with the entries in the config/*.toml files
 CA_KEY := $(WORK_DIR)/ca.key
