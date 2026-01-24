@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kbs
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kbs.replicaCount }}
+  serviceName: kbs
+  selector:
+    matchLabels:
+      app: kbs
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.kbs.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: kbs
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.kbs.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.kbs.podSecurityContext | nindent 8 }}
+      {{- if and .Values.kbs.autoGenerateKeys (not .Values.kbs.userKeysSecretName) }}
+      initContainers:
+        - name: setup-keys
+          image: alpine/openssl:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/ash
+            - -c
+            - |
+              set -e
+              KEY_DIR="/opt/confidential-containers/kbs/user-keys"
+              
+              # Generate private.key and public.pub if they don't exist
+              if [ ! -s "$KEY_DIR/private.key" ]; then
+                echo "Generating private.key and public.pub..."
+                /usr/bin/openssl genpkey -algorithm ed25519 > "$KEY_DIR/private.key"
+                /usr/bin/openssl pkey -in "$KEY_DIR/private.key" -pubout -out "$KEY_DIR/public.pub"
+              fi
+              
+              # Generate token-related keys if they don't exist
+              cd "$KEY_DIR"
+              if [ ! -s token.key ]; then
+                echo "Generating token keys..."
+                openssl genrsa -traditional -out ca.key 2048
+                openssl req -new -key ca.key -out ca-req.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-compose-root"
+                openssl req -x509 -days 3650 -key ca.key -in ca-req.csr -out ca-cert.pem
+                openssl ecparam -name prime256v1 -genkey -noout -out token.key
+                openssl req -new -key token.key -out token-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS"
+                openssl x509 -req -in token-req.csr -CA ca-cert.pem -CAkey ca.key -CAcreateserial -out token-cert.pem -extensions req_ext
+                cat token-cert.pem ca-cert.pem > token-cert-chain.pem
+              fi
+              
+              echo "Key generation completed"
+          volumeMounts:
+            - name: user-keys
+              mountPath: /opt/confidential-containers/kbs/user-keys
+      {{- end }}
+      containers:
+        - name: kbs
+          securityContext:
+            {{- toYaml .Values.kbs.securityContext | nindent 12 }}
+          image: "{{ .Values.kbs.image.repository }}:{{ .Values.kbs.image.tag }}"
+          imagePullPolicy: {{ .Values.kbs.image.pullPolicy }}
+          command:
+            - "/usr/local/bin/kbs"
+            - "--config-file"
+            - "/etc/kbs/kbs-config.toml"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.kbs.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.kbs.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kbs
+            - name: user-keys
+              mountPath: /opt/confidential-containers/kbs/user-keys
+            - name: data
+              mountPath: /opt/confidential-containers/kbs/repository
+            - name: nebula-ca
+              mountPath: /opt/confidential-containers/kbs/nebula-ca
+            {{- range .Values.kbs.resourceRepository }}
+            - name: "{{ .repoName }}-{{ .type }}"
+              mountPath: "/opt/confidential-containers/kbs/repository/{{ .repoName }}/{{ .type }}"
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: kbs-config
+        - name: user-keys
+        {{- if and .Values.kbs.autoGenerateKeys (not .Values.kbs.userKeysSecretName) }}
+          emptyDir: {}
+        {{- else if .Values.kbs.userKeysSecretName }}
+          secret:
+            optional: true
+            secretName: {{ .Values.kbs.userKeysSecretName }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+  {{- if not .Values.kbs.storage.enabled }}
+        - name: data
+          emptyDir: {}
+  {{- end }}
+        - name: nebula-ca
+          emptyDir: {}
+        {{- range .Values.kbs.resourceRepository }}
+        - name: "{{ .repoName }}-{{ .type }}"
+          secret:
+            secretName: {{ .secretName }}
+        {{- end }}
+      {{- with .Values.kbs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kbs.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kbs.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if .Values.kbs.storage.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ {{ .Values.kbs.storage.accessMode }} ]
+      storageClassName: {{ .Values.kbs.storage.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.kbs.storage.size }}
+{{- end }}
