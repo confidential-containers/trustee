@@ -1,0 +1,37 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kbs
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.kbs.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: kbs
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+
+---
+{{- if eq .Values.kbs.service.type "LoadBalancer" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kbs-slb-intranet
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.kbs.service.type }}
+  ports:
+    - port: {{ .Values.kbs.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: kbs
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+{{- end }}
