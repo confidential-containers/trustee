@@ -1,5 +1,5 @@
 
 package policy
 
-default result = false
+default allow = false
 

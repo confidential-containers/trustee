@@ -35,6 +35,52 @@ pub const POSTGRES_URL_ENV_VAR: &str = "POSTGRES_URL";
 #[derive(Deserialize, Educe, Clone, PartialEq)]
 #[educe(Debug)]
 #[serde(default)]
+pub struct ShimConfig {
+    /// The name of the PostgreSQL database.
+    pub db: String,
+
+    /// The username of the PostgreSQL database.
+    pub username: String,
+
+    /// The password of the PostgreSQL database.
+    #[educe(Debug(ignore))]
+    pub password: Option<String>,
+
+    /// The port of the PostgreSQL database.
+    pub port: u16,
+
+    /// The host of the PostgreSQL database.
+    pub host: String,
+}
+
+impl Default for ShimConfig {
+    fn default() -> Self {
+        Self {
+            db: "postgres".to_string(),
+            username: "postgres".to_string(),
+            password: None,
+            port: 5432,
+            host: "localhost".to_string(),
+        }
+    }
+}
+
+impl ShimConfig {
+    pub fn to_instance_config(&self, table: &str) -> Config {
+        Config {
+            db: self.db.clone(),
+            username: self.username.clone(),
+            password: self.password.clone(),
+            port: self.port,
+            host: self.host.clone(),
+            table: table.to_string(),
+        }
+    }
+}
+
+#[derive(Deserialize, Educe, Clone, PartialEq)]
+#[educe(Debug)]
+#[serde(default)]
 pub struct Config {
     /// The name of the PostgreSQL database.
     pub db: String,
