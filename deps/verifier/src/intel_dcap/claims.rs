@@ -67,7 +67,7 @@ pub(crate) fn prepare_custom_claims_map(
     );
     claims_map.insert(
         "tcb_eval_num".to_string(),
-        Value::from(Number::from(supp_data.root_ca_crl_num)),
+        Value::from(Number::from(supp_data.tcb_eval_ref_num)),
     );
     claims_map.insert(
         "platform_provider_id".to_string(),
