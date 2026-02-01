@@ -58,7 +58,7 @@ jobs:
         cache: false
 
     - name: Set up rust build cache
-      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       continue-on-error: false
       with:
         path: |
@@ -101,7 +101,7 @@ jobs:
 
     - name: Set up SGX/TDX certificates cache
       if: inputs.tee == 'az-tdx-vtpm'
-      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
         path: .dcap-qcnl
         key: ${{ runner.os }}-dcap-qcnl
