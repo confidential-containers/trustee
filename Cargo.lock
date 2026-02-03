@@ -598,7 +598,7 @@ dependencies = [
  "ear 0.4.0 (git+https://github.com/veraison/rust-ear.git?rev=3d5fa46)",
  "futures",
  "hex",
- "jsonwebtoken 10.2.0",
+ "jsonwebtoken 10.3.0",
  "kbs-types",
  "lazy_static",
  "openssl",
@@ -2106,7 +2106,7 @@ dependencies = [
  "ciborium",
  "cose-rust",
  "hex",
- "jsonwebtoken 10.2.0",
+ "jsonwebtoken 10.3.0",
  "lazy_static",
  "openssl",
  "phf 0.13.1",
@@ -3445,9 +3445,9 @@ dependencies = [
 
 [[package]]
 name = "jsonwebtoken"
-version = "10.2.0"
+version = "10.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c76e1c7d7df3e34443b3621b459b066a7b79644f059fc8b2db7070c825fd417e"
+checksum = "0529410abe238729a60b108898784df8984c87f6054c9c4fcacc47e4803c1ce1"
 dependencies = [
  "aws-lc-rs",
  "base64 0.22.1",
@@ -3524,7 +3524,7 @@ dependencies = [
  "env_logger",
  "hex",
  "josekit",
- "jsonwebtoken 10.2.0",
+ "jsonwebtoken 10.3.0",
  "jwt-simple",
  "kbs-types",
  "kms",
@@ -7506,7 +7506,7 @@ dependencies = [
  "http-cache-reqwest",
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
- "jsonwebtoken 10.2.0",
+ "jsonwebtoken 10.3.0",
  "kbs-types",
  "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl",
