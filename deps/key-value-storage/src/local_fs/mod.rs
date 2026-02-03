@@ -17,31 +17,35 @@ use crate::{
     is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
 };
 
-/// Default file path for the local JSON file.
-const FILE_PATH: &str = "/opt/confidential-containers/storage/local_fs";
+/// Default directory path for the local file system.
+const DEFAULT_DIR_PATH: &str = "/opt/confidential-containers/storage/local_fs";
 
 pub struct LocalFs {
     dir_path: PathBuf,
     lock: RwLock<i32>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Deserialize, Clone, PartialEq, Debug)]
 #[serde(default)]
 pub struct Config {
+    /// The directory path for the local file system.
+    /// Note that this is a common directory path for all instances.
+    ///
+    /// Different instances will be stored in different subdirectories under this path.
     pub dir_path: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            dir_path: FILE_PATH.to_string(),
+            dir_path: DEFAULT_DIR_PATH.to_string(),
         }
     }
 }
 
 impl LocalFs {
-    pub fn new(config: Config) -> Result<Self> {
-        let dir_path = PathBuf::from(&config.dir_path);
+    pub fn new(config: Config, namespace: &str) -> Result<Self> {
+        let dir_path = PathBuf::from(&config.dir_path).join(namespace);
 
         fs::create_dir_all(&dir_path)
             .map_err(|e| KeyValueStorageError::InitializeBackendFailed { source: e.into() })?;
@@ -168,7 +172,7 @@ mod tests {
         let config = Config {
             dir_path: work_dir.path().to_string_lossy().to_string(),
         };
-        let local_fs = LocalFs::new(config).unwrap();
+        let local_fs = LocalFs::new(config, "test").unwrap();
         local_fs
             .set("test/12/3", b"test", SetParameters { overwrite: true })
             .await
