@@ -2,6 +2,8 @@ AS_TYPE ?= coco-as
 ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= false
+SPLITAPI_PLUGIN ?= false
+PKI_VAULT_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -54,6 +56,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   FEATURES := $(FEATURES),nebula-ca-plugin
+endif
+
+ifeq ($(PKI_VAULT_PLUGIN), true)
+  FEATURES += pki-vault-plugin
 endif
 
 ifeq ($(VAULT), true)
