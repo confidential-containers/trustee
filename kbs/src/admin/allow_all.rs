@@ -13,7 +13,7 @@ pub struct InsecureAllowAllBackend {}
 
 impl AdminBackend for InsecureAllowAllBackend {
     fn validate_admin_token(&self, _request: &HttpRequest) -> Result<String> {
-        warn!("Allow All admin backend is set. Anyone can access admin APIs");
+        warn!("Allow All admin backend is set. All admin tokens are valid.");
         Ok("Anonymous".to_string())
     }
 }
