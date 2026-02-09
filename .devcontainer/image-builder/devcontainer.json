@@ -20,7 +20,7 @@
     ],
     "features": {
         "ghcr.io/devcontainers/features/common-utils:": {},
-        "ghcr.io/devcontainers/features/node:1": {},
+        "ghcr.io/devcontainers/features/node:": {},
         "ghcr.io/devcontainers-extra/features/devcontainers-cli:1": {
             "version": "latest"
         }
