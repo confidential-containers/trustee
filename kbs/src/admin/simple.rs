@@ -66,13 +66,16 @@ impl AdminBackend for SimpleAdminBackend {
                 .verify_token::<NoCustomClaims>(token, Some(VerificationOptions::default()));
             match res {
                 Ok(_claims) => {
-                    info!("Admin access granted for {}", persona.id);
+                    info!("Admin token validated (simple) for persona: {}", persona.id);
 
                     // Return the first matching persona
                     return Ok(persona.id.clone());
                 }
                 Err(e) => {
-                    info!("Access not granted for {} due to: \n{}", persona.id, e);
+                    info!(
+                        "Admin token not validated for {} due to: \n{}",
+                        persona.id, e
+                    );
                 }
             }
         }
