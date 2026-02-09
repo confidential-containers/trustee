@@ -39,8 +39,6 @@ When `type` is `remote`, the verifier location and (optional) trust anchor are s
 
 The verifier must implement Veraison's ["challenge-response"](https://github.com/veraison/docs/tree/main/api/challenge-response) and ["well-known"](https://github.com/veraison/docs/tree/main/api/well-known) APIs.
 
-Example deployment that uses [Linaro's public test verifier](http://veraison.test.linaro.org/):
-
 ~~~json
 {
     "cca-verifier": {
