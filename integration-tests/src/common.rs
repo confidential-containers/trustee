@@ -4,7 +4,7 @@
 
 use kbs::admin::{
     simple::{SimpleAdminConfig, SimplePersonaConfig},
-    AdminBackendType, AdminConfig,
+    AdminBackendType, AdminConfig, AdminRole,
 };
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
@@ -71,6 +71,7 @@ pub enum RvpsType {
 pub enum AdminType {
     DenyAll,
     Simple,
+    SimpleRestricted,
 }
 
 /// An enum that selects between TestParameter configurations
@@ -79,6 +80,7 @@ pub enum AdminType {
 pub enum KbsConfigType {
     EarTokenBuiltInRvps,
     EarTokenBuiltInRvpsDenyAllAdmin,
+    EarTokenBuiltInRvpsSimpleRestrictedAdmin,
     EarTokenRemoteRvps,
 }
 
@@ -97,6 +99,10 @@ impl From<KbsConfigType> for TestParameters {
             KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::DenyAll,
+            },
+            KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin => TestParameters {
+                rvps_type: RvpsType::Builtin,
+                admin_type: AdminType::SimpleRestricted,
             },
         }
     }
@@ -199,6 +205,19 @@ impl TestHarness {
                 }),
                 roles: Vec::new(),
             },
+            AdminType::SimpleRestricted => AdminConfig {
+                admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
+                    personas: vec![SimplePersonaConfig {
+                        id: "tester".to_string(),
+                        public_key_path: auth_pubkey_path.as_path().to_path_buf(),
+                    }],
+                }),
+                roles: vec![AdminRole {
+                    id: "tester".to_string(),
+                    allowed_endpoints: "^/kbs/v0/reference-value/[a-zA-Z0-9]+$".to_string(),
+                }],
+            },
+
             AdminType::DenyAll => AdminConfig {
                 admin_backend: AdminBackendType::DenyAll,
                 roles: Vec::new(),
