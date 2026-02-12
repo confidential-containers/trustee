@@ -6,7 +6,6 @@
 //! Compatibility layer for legacy (v0) evidence format conversion.
 
 use super::super::az_snp_vtpm::TpmQuote;
-use anyhow::Result;
 use az_tdx_vtpm::vtpm::Quote;
 use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};
@@ -55,13 +54,10 @@ impl Evidence {
         }
     }
 
-    pub(super) fn tpm_quote(&self) -> Result<TpmQuote> {
+    pub(super) fn tpm_quote(&self) -> TpmQuote {
         match self {
-            Evidence::V0(v0) => {
-                let tpm_quote: TpmQuote = v0.tpm_quote.clone().try_into()?;
-                Ok(tpm_quote)
-            }
-            Evidence::V1(v1) => Ok(v1.tpm_quote.clone()),
+            Evidence::V0(v0) => v0.tpm_quote.clone().into(),
+            Evidence::V1(v1) => v1.tpm_quote.clone(),
         }
     }
 }
