@@ -132,7 +132,7 @@ impl Verifier for AzSnpVtpm {
             .context("Failed to deserialize Azure vTPM SEV-SNP evidence")?;
 
         let hcl_report = HclReport::new(evidence.hcl_report().into())?;
-        let tpm_quote = &evidence.tpm_quote()?;
+        let tpm_quote = &evidence.tpm_quote();
         verify_tpm_signature(tpm_quote, &hcl_report)?;
 
         verify_tpm_nonce(tpm_quote, expected_report_data)?;

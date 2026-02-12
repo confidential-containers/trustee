@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::hex::Hex;
 use serde_with::serde_as;
-use std::convert::TryFrom;
+use std::convert::From;
 
 /// Legacy evidence format (v0) - no version field
 #[derive(Serialize, Deserialize)]
@@ -54,25 +54,15 @@ pub(crate) struct TpmQuote {
     pub(crate) pcrs: Vec<Vec<u8>>,
 }
 
-/// Helper struct to extract Quote fields via serde (fields are private in Quote)
-#[derive(Deserialize)]
-struct QuoteFields {
-    signature: Vec<u8>,
-    message: Vec<u8>,
-    pcrs: Vec<[u8; 32]>,
-}
+impl From<Quote> for TpmQuote {
+    fn from(quote: Quote) -> Self {
+        let pcrs = quote.pcrs_sha256().map(|p| p.to_vec()).collect();
 
-impl TryFrom<Quote> for TpmQuote {
-    type Error = anyhow::Error;
-    fn try_from(quote: Quote) -> Result<Self> {
-        let quote_json = serde_json::to_value(&quote)?;
-        let fields: QuoteFields = serde_json::from_value(quote_json)?;
-
-        Ok(TpmQuote {
-            signature: fields.signature,
-            message: fields.message,
-            pcrs: fields.pcrs.into_iter().map(|p| p.to_vec()).collect(),
-        })
+        TpmQuote {
+            signature: quote.signature(),
+            message: quote.message(),
+            pcrs,
+        }
     }
 }
 
@@ -89,13 +79,10 @@ impl Evidence {
         }
     }
 
-    pub(super) fn tpm_quote(&self) -> Result<TpmQuote> {
+    pub(super) fn tpm_quote(&self) -> TpmQuote {
         match self {
-            Evidence::V0(v0) => {
-                let tpm_quote: TpmQuote = v0.quote.clone().try_into()?;
-                Ok(tpm_quote)
-            }
-            Evidence::V1(v1) => Ok(v1.tpm_quote.clone()),
+            Evidence::V0(v0) => v0.quote.clone().into(),
+            Evidence::V1(v1) => v1.tpm_quote.clone(),
         }
     }
 
