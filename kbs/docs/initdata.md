@@ -239,7 +239,7 @@ producer side and consumer side use the same encoding.
 
 Confidential Containers (CoCo) leverages Initdata to inject configurations like
 [kata-agent's policy](https://github.com/kata-containers/kata-containers/blob/main/docs/how-to/how-to-use-the-kata-agent-policy.md),
-configurations for [guest components](https://github.com/confidential-containers/guest-components).
+configurations (including a flag to enable debugging) for [guest components](https://github.com/confidential-containers/guest-components). 
 
 Approach in [Confidential Containers PeerPod](https://github.com/confidential-containers/cloud-api-adaptor/blob/main/src/cloud-api-adaptor/docs/initdata.md)
 
