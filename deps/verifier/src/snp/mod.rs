@@ -596,6 +596,7 @@ pub(crate) fn verify_report_tcb(
 
 /// Parses the attestation report and extracts the TEE evidence claims.
 /// Returns a JSON-formatted map of parsed claims.
+/// Note: Uses hex encoding for consistency with other verifiers (TDX, SGX, vTPM).
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     let claims_map = json!({
         // policy fields
