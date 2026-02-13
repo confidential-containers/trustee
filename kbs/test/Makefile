@@ -3,9 +3,8 @@ OS := $(shell lsb_release -si)
 RELEASE := $(shell lsb_release -sr)
 CODENAME := $(shell lsb_release -sc)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
-SGX_COLLATERAL_URL := https://api.trustedservices.intel.com/sgx/certification/v4/
-SGX_QCNL_CONFIG := /etc/sgx_default_qcnl.conf
 KBS_CONFIG_PATH := ./config
+QCNL_CONF_PATH := $(shell mktemp --suffix=.kbs-qcnl.conf)
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(MAKEFILE_DIR)/..
 BOLD := $(shell tput bold)
@@ -87,8 +86,7 @@ install-dependencies:
 		libsgx-urts \
 		libtss2-esys-3.0.2-0 \
 		libtss2-tctildr0 \
-		openssl && \
-	echo '{"collateral_service": "$(SGX_COLLATERAL_URL)"}' | sudo tee $(SGX_QCNL_CONFIG); fi
+		openssl; fi
 
 kbs:
 	cd $(PROJECT_DIR) && \
