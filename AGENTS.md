@@ -89,6 +89,7 @@ sample verifier.
 - **Protobuf compiler** (`protoc`) for gRPC code generation
 - **OpenSSL** development libraries
 - **tpm2-tss** (for TPM verifier features)
+- **libsgx-dcap-default-qpl** (for Intel SGX and TDX verifier features) installed from https://download.01.org/intel-sgx/.
 
 ### Building
 
