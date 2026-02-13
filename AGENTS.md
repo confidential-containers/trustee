@@ -1,4 +1,4 @@
-# AGENT.md
+# AGENTS.md
 
 ## Project Overview
 
@@ -47,6 +47,25 @@ pairs that can be used as dummy stubs for testing end-to-end flow in local  deve
 testing. Any default policies that is shipped as part of the release should make sure to
 reject these dummy evidences and release builds of attestation service should exclude the
 sample verifier.
+
+## Conventions
+
+### Commits
+
+Commit messages have to contain a subsystem, indicated by a prefix plus colon, e.g.
+"verifier: fix hex encoding". This doesn't have to match strictly, but it should still
+indicate a general area of the codebase that is being affected, e.g. "kbs:", "as:", "ci:",
+etc.
+
+Commits should compile individually and contain atomic changes.
+
+## PRs
+
+PRs names have to contain a subsystem, indicated by a prefix plus colon, similar to commit
+messages. We refrain from overloading the PR description with too much information, especially
+excessive use of buzzwords and emojis is discouraged. We want to know _why_ a change is
+being made, _how_ it is being made, and if applicable potential negative implications and
+alternative options that have been considered.
 
 ## Repository Structure
 
@@ -118,6 +137,14 @@ Or build the entire workspace:
 
 ```bash
 cargo build --workspace
+```
+
+Run test with on individal crates with features:
+
+```bash
+cargo test -p verifier \
+    --no-default-features \
+    --features snp-verifier
 ```
 
 ### Feature Flags
