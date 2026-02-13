@@ -4,7 +4,6 @@ use self::serde::{Deserialize, Serialize};
 use anyhow::anyhow;
 use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD, Engine};
 use http_cache_reqwest::{
     Cache, CacheMode, HttpCache, HttpCacheOptions, MokaCacheBuilder, MokaManager,
 };
@@ -597,6 +596,7 @@ pub(crate) fn verify_report_tcb(
 
 /// Parses the attestation report and extracts the TEE evidence claims.
 /// Returns a JSON-formatted map of parsed claims.
+/// Note: Uses hex encoding for consistency with other verifiers (TDX, SGX, vTPM).
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
     let claims_map = json!({
         // policy fields
@@ -618,9 +618,9 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "platform_smt_enabled": report.plat_info.smt_enabled(),
 
         // measurements
-        "measurement": STANDARD.encode(report.measurement),
-        "report_data": STANDARD.encode(report.report_data),
-        "init_data": STANDARD.encode(report.host_data),
+        "measurement": hex::encode(report.measurement),
+        "report_data": hex::encode(report.report_data),
+        "init_data": hex::encode(report.host_data),
     });
 
     claims_map as TeeEvidenceParsedClaim
