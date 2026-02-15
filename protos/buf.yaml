@@ -1,0 +1,46 @@
+version: v2
+modules:
+  - path: .
+breaking:
+  use:
+    # FILE category provides the strictest breaking change detection. It catches:
+    # - Field number reuse (wire-format corruption)
+    # - Method/field renames (breaks generated code)
+    # - Type changes (e.g., string to bytes)
+    # - Package moves (breaks imports)
+    # This ensures backward compatibility for both wire protocol AND generated SDKs.
+    - FILE
+lint:
+  use:
+    - STANDARD
+  except:
+    # RPC_REQUEST_STANDARD_NAME and RPC_RESPONSE_STANDARD_NAME require message
+    # names to follow {ServiceName}{MethodName}Request/Response convention.
+    # Existing attestation.proto and reference.proto use names like
+    # AttestationRequest (not AttestationServiceAttestationEvaluateRequest).
+    # Our new plugin.proto DOES follow the convention, but we exclude these
+    # rules to avoid failing on existing protos.
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    # SERVICE_SUFFIX requires service names to end with "Service".
+    # Our new KbsPlugin service intentionally omits the redundant suffix per
+    # research decision. Existing AttestationService and
+    # ReferenceValueProviderService would pass, but our intentional naming
+    # choice would fail.
+    - SERVICE_SUFFIX
+    # PACKAGE_VERSION_SUFFIX requires packages to end with a version like .v1.
+    # Our new kbs.plugin.v1 follows this, but existing attestation and reference
+    # packages lack version suffixes. Exclude to avoid failing on existing protos.
+    - PACKAGE_VERSION_SUFFIX
+    # PACKAGE_DIRECTORY_MATCH requires proto files to be in directories matching
+    # their package name (e.g., package attestation in attestation/ directory).
+    # Existing protos use a flat structure in protos/ directory. Restructuring
+    # would require updating all imports in the Rust codebase.
+    - PACKAGE_DIRECTORY_MATCH
+    # PACKAGE_SAME_DIRECTORY requires all files with the same package to be in
+    # the same directory. This repo intentionally uses multiple packages
+    # (attestation, reference, kbs.plugin.v1) in the same protos/ directory.
+    - PACKAGE_SAME_DIRECTORY
+    # DIRECTORY_SAME_PACKAGE requires all files in a directory to have the same
+    # package. This repo uses multiple packages in the protos/ directory.
+    - DIRECTORY_SAME_PACKAGE
