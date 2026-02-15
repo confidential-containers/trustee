@@ -8,3 +8,6 @@ pub mod implementations;
 pub use implementations::*;
 
 pub use plugin_manager::{PluginManager, PluginsConfig};
+
+#[cfg(feature = "external-plugin")]
+pub mod external;
