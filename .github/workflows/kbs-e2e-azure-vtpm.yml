@@ -1,9 +1,11 @@
 name: KBS e2e (Azure vTPM TEE)
 
 on:
-  push:
-    branches:
-    - main
+  workflow_dispatch:
+# reactivate once we have a token that can add runners
+#   push:
+#     branches:
+#     - main
 
 permissions:
   contents: read
