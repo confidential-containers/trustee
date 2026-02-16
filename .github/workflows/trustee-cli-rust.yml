@@ -9,6 +9,7 @@ on:
       - "attestation-service/**"
       - "kbs/**"
       - "rvps/**"
+      - "deps/**"
       - ".github/workflows/trustee-cli-rust.yml"
       - "Cargo.toml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "attestation-service/**"
       - "kbs/**"
       - "rvps/**"
+      - "deps/**"
       - ".github/workflows/trustee-cli-rust.yml"
       - "Cargo.toml"
 
