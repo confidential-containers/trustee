@@ -98,6 +98,46 @@ The parameters
 - `AS_TYPES`: The KBS supports multiple backend attestation services. `AS_TYPES` selects which verifier to use. The options are `coco-as` and `intel-trust-authority-as`.
 - `COCO_AS_INTEGRATION_TYPE`:  The KBS can connect to the CoCo AS in multiple ways. `COCO_AS_INTEGRATION_TYPE` can be set either to `grpc` or `builtin`. With `grpc` the KBS will make a remote connection to the AS. If you are manually building and configuring the components, you'll need to set them up so that this connection can be established. Similar to passport mode, the remote AS can be useful if secret provisioning and attestation verification are not in the same scope. With `builtin` the KBA uses the AS as a crate. This is recommended if you want to avoid the complexity of a remote connection.
 - `ALIYUN`: The kbs support aliyun KMS as secret storage backend. `true` to enable building this feature. By default it is `false`.
+## External Plugins
+
+KBS supports external plugins written in any language with gRPC support. External plugins run as independent services and communicate with KBS over gRPC, coexisting with compiled-in Rust plugins.
+
+### Building with External Plugin Support
+
+```shell
+make background-check-kbs-external-plugin
+```
+
+Or add `external-plugin` to the features manually:
+
+```shell
+cargo build -p kbs --release --features coco-as-builtin,external-plugin
+```
+
+### Plugin SDKs
+
+SDKs are available for three languages:
+
+| Language | Location | Install |
+|----------|----------|---------|
+| Rust | [rust-sdk](../rust-sdk/README.md) | `cargo add kbs-plugin-sdk` |
+| Go | [go-sdk](../go-sdk/README.md) | `go get github.com/confidential-containers/trustee/go-sdk` |
+| Python | [python-sdk](../python-sdk/README.md) | `pip install ./python-sdk` |
+
+### Plugin Configuration
+
+External plugins are registered in the KBS TOML config:
+
+```toml
+[[plugins]]
+name = "external"
+plugin_name = "my-plugin"
+endpoint = "http://127.0.0.1:50051"
+tls_mode = "insecure"  # or "tls" or "mtls"
+```
+
+See the [Plugin Author Guide](docs/PLUGIN_GUIDE.md) for the full lifecycle: writing, building, configuring, deploying, and monitoring plugins.
+
 ## HTTPS Support
 
 The KBS can use HTTPS. This is facilitated by openssl crypto backend.
