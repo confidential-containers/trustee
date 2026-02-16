@@ -70,11 +70,16 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     }
 
     if test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin {
-         match res {
+        match res {
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e) if e.to_string().contains("Admin Token could not be verified for any admin persona") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
@@ -149,15 +154,19 @@ async fn set_attestation_policy(
     }
 
     if test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin {
-         match res {
+        match res {
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e) if e.to_string().contains("Admin Token could not be verified for any admin persona") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
-
 
     res
 }
@@ -228,15 +237,19 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     }
 
     if test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin {
-         match res {
+        match res {
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e) if e.to_string().contains("Admin Token could not be verified for any admin persona") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("Admin Token could not be verified for any admin persona") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
-
 
     res
 }
