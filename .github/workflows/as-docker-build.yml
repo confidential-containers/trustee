@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'attestation-service/**'
+      - 'rvps/**'
+      - 'deps/**'
       - '.github/workflows/as-docker-build.yml'
       - '.github/workflows/build-as-image.yml'
       - 'Cargo.toml'
