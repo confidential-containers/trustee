@@ -206,6 +206,8 @@ Starts: **setup** (cert generation) → **rvps** (:50003) → **as** (:50004) �
 - **Logging**: `log` crate + `env_logger`, migrating toward `tracing` / `tracing-subscriber`
 - **CLI parsing**: `clap` with derive macros
 - **Testing**: `rstest` for parameterized tests, `serial_test` for tests requiring exclusive access
+- **Formatting**: Always run `cargo fmt --all` on submissions before committing to ensure consistent code formatting
+- **Linting**: Always run `cargo clippy --all-targets -- -D warnings` and fix all warnings and errors before committing
 
 ## CI/CD
 
