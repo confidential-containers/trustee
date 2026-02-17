@@ -6,11 +6,17 @@ on:
       - "main"
     paths:
       - 'kbs/**'
+      - 'attestation-service/**'
+      - 'deps/**'
+      - 'rvps/**'
       - '.github/workflows/kbs-rust.yml'
       - 'Cargo.toml'
   pull_request:
     paths:
       - 'kbs/**'
+      - 'attestation-service/**'
+      - 'deps/**'
+      - 'rvps/**'
       - '.github/workflows/kbs-rust.yml'
       - 'Cargo.toml'
 
