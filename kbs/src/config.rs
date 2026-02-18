@@ -136,6 +136,7 @@ mod tests {
         rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
     };
 
+    #[cfg(feature = "coco-as-builtin")]
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     use rstest::rstest;
