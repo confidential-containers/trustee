@@ -360,9 +360,6 @@ mod tests {
     // Use the remote verifier with evidence from a CoCo CI run
     #[ignore]
     #[case::remote_verifier_coco(false, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
-    // The local verifier does not currently work with this report, which is from a newer device
-    // that has some unknown fields in opaque data.
-    #[ignore]
     #[case::local_verifier_coco(true, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_evaluation(
