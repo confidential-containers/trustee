@@ -224,7 +224,8 @@ impl OpaqueData {
                 | OpaqueDataType::Nvdec0Status
                 | OpaqueDataType::Project
                 | OpaqueDataType::ProjectSku
-                | OpaqueDataType::ProtectedPcieStatus => Value::String(
+                | OpaqueDataType::ProtectedPcieStatus
+                | OpaqueDataType::ChipInfo => Value::String(
                     String::from_utf8_lossy(data_bytes)
                         .trim_end_matches('\0')
                         .to_string(),
@@ -235,6 +236,10 @@ impl OpaqueData {
                 ),
                 OpaqueDataType::MsrsCnt => Self::decode_measurement_count(data_bytes)?,
                 OpaqueDataType::SwitchPdi => Self::decode_switch_pdi(data_bytes)?,
+                OpaqueDataType::OpaqueDataVersion => {
+                    Value::Number(Self::decode_le_u64(data_bytes)?.into())
+                }
+                OpaqueDataType::FeatureFlag => Self::decode_feature_flag(data_bytes)?,
                 OpaqueDataType::Invalid => bail!(anyhow!("Hashmap: Invalid OpaqueDataType")),
                 _ => Value::String(hex::encode(data_bytes)),
             };
@@ -315,6 +320,29 @@ impl OpaqueData {
         }
 
         Ok(Value::Object(values))
+    }
+
+    fn decode_feature_flag(bytes: &[u8]) -> Result<Value> {
+        let value = Self::decode_le_u64(bytes)?;
+        let feature = match value {
+            0 => "SPT",
+            1 => "MPT",
+            2 => "PPCIE",
+            _ => "unknown",
+        };
+        Ok(Value::String(feature.to_string()))
+    }
+
+    fn decode_le_u64(bytes: &[u8]) -> Result<u64> {
+        if bytes.len() > 8 {
+            bail!("OpaqueDataType integer larger than 8 bytes");
+        }
+        let mut padded = [0u8; 8];
+        let len = bytes.len().min(8);
+        padded[..len].copy_from_slice(&bytes[..len]);
+
+        let value = u64::from_le_bytes(padded);
+        Ok(value)
     }
 }
 
@@ -467,6 +495,10 @@ pub enum OpaqueDataType {
     PositionId = 24,
     LockSwitchStatus = 25,
     GpuLinkConn = 32,
+    SysEnableStatus = 33,
+    OpaqueDataVersion = 34,
+    ChipInfo = 35,
+    FeatureFlag = 36,
     #[default]
     Invalid = 255,
 }
@@ -499,6 +531,10 @@ impl OpaqueDataType {
             24 => Some(OpaqueDataType::PositionId),
             25 => Some(OpaqueDataType::LockSwitchStatus),
             32 => Some(OpaqueDataType::GpuLinkConn),
+            33 => Some(OpaqueDataType::SysEnableStatus),
+            34 => Some(OpaqueDataType::OpaqueDataVersion),
+            35 => Some(OpaqueDataType::ChipInfo),
+            36 => Some(OpaqueDataType::FeatureFlag),
             _ => None,
         }
     }
@@ -536,6 +572,10 @@ impl fmt::Display for OpaqueDataType {
             OpaqueDataType::PositionId => write!(f, "position_id"),
             OpaqueDataType::LockSwitchStatus => write!(f, "lock_switch_status"),
             OpaqueDataType::GpuLinkConn => write!(f, "gpu_link_conn"),
+            OpaqueDataType::SysEnableStatus => write!(f, "sys_enable_status"),
+            OpaqueDataType::OpaqueDataVersion => write!(f, "opaque_data_version"),
+            OpaqueDataType::ChipInfo => write!(f, "chip_info"),
+            OpaqueDataType::FeatureFlag => write!(f, "feature_flag"),
             OpaqueDataType::Invalid => write!(f, "invalid"),
         }
     }
