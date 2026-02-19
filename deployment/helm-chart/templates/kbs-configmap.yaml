@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kbs-config
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+data:
+  "kbs-config.toml": |
+{{ tpl (.Files.Get "files/kbs-config.toml.template") . | nindent 4 }}
