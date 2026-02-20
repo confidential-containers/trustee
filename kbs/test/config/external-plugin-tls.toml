@@ -1,0 +1,31 @@
+[http_server]
+sockets = ["127.0.0.1:8086"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "./work/as-external-plugin-tls"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
+file_path = "./work/as-external-plugin-tls/reference_values"
+
+[attestation_service.attestation_token_broker]
+policy_dir = "./work/as-external-plugin-tls/policies"
+
+[policy_engine]
+policy_path = "../../sample_policies/allow_all.rego"
+
+[[plugins]]
+name = "external"
+plugin_name = "echo-test"
+endpoint = "https://127.0.0.1:50052"
+timeout_ms = 5000
+tls_mode = "tls"
+ca_cert_path = "./work/echo-plugin-ca.pem"
