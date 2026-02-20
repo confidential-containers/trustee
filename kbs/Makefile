@@ -88,6 +88,10 @@ passport-resource-kbs:
 	$(CARGO_ENV) cargo build -p kbs --locked --release --no-default-features --features $(FEATURES), $(TARGET_FLAG)
 	mv ../target/release/kbs ../target/release/resource-kbs
 
+.PHONY: background-check-kbs-external-plugin
+background-check-kbs-external-plugin:
+	$(CARGO_ENV) cargo build -p kbs --locked --release --no-default-features --features $(AS_FEATURE),external-plugin,$(FEATURES) $(TARGET_FLAG)
+
 .PHONY: cli
 cli:
 	$(CARGO_ENV) cargo build -p kbs-client --locked --release --no-default-features --features $(RUST_CLI_FEATURES) $(TARGET_FLAG)
