@@ -20,12 +20,26 @@ use tonic_health::pb::health_check_response::ServingStatus;
 use tonic_health::pb::health_client::HealthClient;
 use tonic_health::pb::HealthCheckRequest;
 
+use crate::error::PluginCallError;
 use crate::plugins::external::plugin_api::{
-    kbs_plugin_client::KbsPluginClient, GetCapabilitiesRequest, PluginRequest,
+    kbs_plugin_client::KbsPluginClient, GetCapabilitiesRequest, NeedsEncryptionRequest,
+    PluginRequest, ValidateAuthRequest,
 };
-use crate::plugins::plugin_manager::{ClientPlugin, ExternalPluginConfig, PluginContext, TlsMode};
+use crate::plugins::plugin_manager::{
+    ClientPlugin, ExternalPluginConfig, PluginContext, PluginOutput, TlsMode,
+};
+use crate::prometheus::{
+    PLUGIN_ERRORS_TOTAL, PLUGIN_REQUESTS_TOTAL, PLUGIN_REQUEST_DURATION_SECONDS,
+};
 
+/// Maximum open gRPC connections to the plugin per KBS instance.
+/// Sized to handle bursts of concurrent attestation requests without
+/// creating per-request connection overhead.
 const DEFAULT_POOL_SIZE: u64 = 100;
+
+/// gRPC health check service name for the KBS plugin protocol.
+/// Must match the service name registered by the plugin's health server.
+const PLUGIN_HEALTH_SERVICE: &str = "kbs.plugin.v1.KbsPlugin";
 
 /// Interval between background health check probes.
 const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(10);
@@ -61,6 +75,7 @@ pub struct GrpcPluginProxy {
     config: ExternalPluginConfig,
     state: Arc<RwLock<PluginState>>,
     _health_task: JoinHandle<()>,
+    supported_methods: Vec<String>,
 }
 
 impl std::fmt::Debug for GrpcPluginProxy {
@@ -88,7 +103,6 @@ impl GrpcPluginProxy {
         };
         let pool = Pool::builder().max_open(DEFAULT_POOL_SIZE).build(manager);
 
-        // Get capabilities at startup (per Phase 1 decision)
         let mut client = pool
             .get()
             .await
@@ -101,16 +115,26 @@ impl GrpcPluginProxy {
             .context("Failed to get plugin capabilities")?
             .into_inner();
 
-        // Log capabilities at info level (per Phase 1 decision)
+        let supported_methods = caps_response.supported_methods.clone();
+
         info!(
             "Connected to external plugin '{}' (version {}, endpoint {})",
             caps_response.name, caps_response.version, config.endpoint
         );
 
-        if !caps_response.supported_methods.is_empty() {
+        if caps_response.name != config.plugin_name {
+            warn!(
+                "Plugin name mismatch: KBS config registers '{}' but plugin reports '{}'. \
+                 Requests will be routed using the config name. Update the config or plugin \
+                 binary to align the names.",
+                config.plugin_name, caps_response.name
+            );
+        }
+
+        if !supported_methods.is_empty() {
             info!(
                 "Plugin '{}' supports HTTP methods: {:?}",
-                caps_response.name, caps_response.supported_methods
+                caps_response.name, supported_methods
             );
         }
 
@@ -139,6 +163,7 @@ impl GrpcPluginProxy {
             config,
             state,
             _health_task: health_task,
+            supported_methods,
         })
     }
 
@@ -260,7 +285,7 @@ async fn create_channel(config: &ExternalPluginConfig) -> Result<Channel> {
 async fn check_health(channel: Channel, timeout: Duration) -> Result<()> {
     let mut client = HealthClient::new(channel);
     let mut request = tonic::Request::new(HealthCheckRequest {
-        service: String::new(), // Empty string = overall server health per gRPC spec
+        service: PLUGIN_HEALTH_SERVICE.to_string(),
     });
     request.set_timeout(timeout);
 
@@ -376,7 +401,7 @@ impl ClientPlugin for GrpcPluginProxy {
         path: &[&str],
         method: &Method,
         context: Option<&PluginContext>,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<PluginOutput> {
         // Check plugin state before attempting request
         {
             let state = self
@@ -391,6 +416,28 @@ impl ClientPlugin for GrpcPluginProxy {
             }
         }
 
+        // Enforce method allowlist from capabilities
+        if !self.supported_methods.is_empty() {
+            let m = method.to_string();
+            if !self.supported_methods.contains(&m) {
+                return Err(anyhow::Error::new(PluginCallError {
+                    http_status: 405,
+                    message: format!(
+                        "Method {} not allowed (plugin supports: {:?})",
+                        m, self.supported_methods
+                    ),
+                }));
+            }
+        }
+
+        // Record per-plugin metrics
+        PLUGIN_REQUESTS_TOTAL
+            .with_label_values(&[&self.config.plugin_name])
+            .inc();
+        let timer = PLUGIN_REQUEST_DURATION_SECONDS
+            .with_label_values(&[&self.config.plugin_name])
+            .start_timer();
+
         let mut client = self.pool.get().await?;
 
         let mut request = tonic::Request::new(PluginRequest {
@@ -401,17 +448,33 @@ impl ClientPlugin for GrpcPluginProxy {
         });
 
         // Inject plugin context into gRPC request metadata.
-        // Metadata values must be valid ASCII; skip headers that fail to parse.
+        // gRPC metadata values must be valid ASCII. Session IDs (UUIDs), TEE
+        // types, and booleans are always ASCII in practice; warn if that
+        // assumption ever breaks rather than silently omitting the header.
         if let Some(ctx) = context {
             let metadata = request.metadata_mut();
             if let Some(session_id) = &ctx.session_id {
-                if let Ok(val) = session_id.parse() {
-                    metadata.insert("kbs-session-id", val);
+                match session_id.parse() {
+                    Ok(val) => {
+                        metadata.insert("kbs-session-id", val);
+                    }
+                    Err(_) => warn!(
+                        "Plugin '{}': kbs-session-id contains non-ASCII characters, \
+                         omitting from gRPC metadata",
+                        self.config.plugin_name
+                    ),
                 }
             }
             if let Some(tee_type) = &ctx.tee_type {
-                if let Ok(val) = tee_type.parse() {
-                    metadata.insert("kbs-tee-type", val);
+                match tee_type.parse() {
+                    Ok(val) => {
+                        metadata.insert("kbs-tee-type", val);
+                    }
+                    Err(_) => warn!(
+                        "Plugin '{}': kbs-tee-type contains non-ASCII characters, \
+                         omitting from gRPC metadata",
+                        self.config.plugin_name
+                    ),
                 }
             }
             if let Ok(val) = ctx.is_attested.to_string().parse() {
@@ -423,76 +486,177 @@ impl ClientPlugin for GrpcPluginProxy {
             request.set_timeout(timeout);
         }
 
-        let response = client.handle(request).await.map_err(|status| {
-            // Mark unavailable on transient errors
-            if matches!(
-                status.code(),
-                tonic::Code::Unavailable | tonic::Code::DeadlineExceeded
-            ) {
-                *self
-                    .state
-                    .write()
-                    .expect("invariant: state lock not poisoned") = PluginState::Unavailable;
-            }
-            map_grpc_error(status)
-        })?;
+        let result = client
+            .handle(request)
+            .await
+            .inspect_err(|status| {
+                if matches!(
+                    status.code(),
+                    tonic::Code::Unavailable | tonic::Code::DeadlineExceeded
+                ) {
+                    *self
+                        .state
+                        .write()
+                        .expect("invariant: state lock not poisoned") = PluginState::Unavailable;
+                }
+                PLUGIN_ERRORS_TOTAL
+                    .with_label_values(&[&self.config.plugin_name])
+                    .inc();
+            })
+            .map_err(map_grpc_error);
 
-        Ok(response.into_inner().body)
+        timer.observe_duration();
+
+        let response = result?.into_inner();
+        let status_code = if response.status_code == 0 {
+            None
+        } else {
+            Some(response.status_code as u16)
+        };
+        let content_type = if response.content_type.is_empty() {
+            None
+        } else {
+            Some(response.content_type)
+        };
+        Ok(PluginOutput {
+            body: response.body,
+            status_code,
+            content_type,
+        })
     }
 
     async fn validate_auth(
         &self,
-        _body: &[u8],
-        _query: &HashMap<String, String>,
-        _path: &[&str],
-        _method: &Method,
+        body: &[u8],
+        query: &HashMap<String, String>,
+        path: &[&str],
+        method: &Method,
     ) -> Result<bool> {
-        // Return config value directly (no gRPC call per Phase 1 decision)
-        Ok(self.config.validate_auth)
+        {
+            let state = self
+                .state
+                .read()
+                .expect("invariant: state lock not poisoned");
+            if matches!(*state, PluginState::Unavailable) {
+                anyhow::bail!(
+                    "Plugin '{}' is unavailable (health check failing)",
+                    self.config.plugin_name
+                );
+            }
+        }
+        let mut client = self.pool.get().await?;
+        let mut request = tonic::Request::new(ValidateAuthRequest {
+            body: body.to_vec(),
+            query: query.clone(),
+            path: path.iter().map(|s| s.to_string()).collect(),
+            method: method.to_string(),
+        });
+        if let Some(timeout) = self.timeout {
+            request.set_timeout(timeout);
+        }
+        let response = client
+            .validate_auth(request)
+            .await
+            .inspect_err(|status| {
+                if matches!(
+                    status.code(),
+                    tonic::Code::Unavailable | tonic::Code::DeadlineExceeded
+                ) {
+                    *self
+                        .state
+                        .write()
+                        .expect("invariant: state lock not poisoned") = PluginState::Unavailable;
+                }
+                PLUGIN_ERRORS_TOTAL
+                    .with_label_values(&[&self.config.plugin_name])
+                    .inc();
+            })
+            .map_err(map_grpc_error)?;
+        Ok(response.into_inner().requires_admin_auth)
     }
 
     async fn encrypted(
         &self,
-        _body: &[u8],
-        _query: &HashMap<String, String>,
-        _path: &[&str],
-        _method: &Method,
+        body: &[u8],
+        query: &HashMap<String, String>,
+        path: &[&str],
+        method: &Method,
     ) -> Result<bool> {
-        // Return config value directly (no gRPC call per Phase 1 decision)
-        Ok(self.config.encrypted)
+        {
+            let state = self
+                .state
+                .read()
+                .expect("invariant: state lock not poisoned");
+            if matches!(*state, PluginState::Unavailable) {
+                anyhow::bail!(
+                    "Plugin '{}' is unavailable (health check failing)",
+                    self.config.plugin_name
+                );
+            }
+        }
+        let mut client = self.pool.get().await?;
+        let mut request = tonic::Request::new(NeedsEncryptionRequest {
+            body: body.to_vec(),
+            query: query.clone(),
+            path: path.iter().map(|s| s.to_string()).collect(),
+            method: method.to_string(),
+        });
+        if let Some(timeout) = self.timeout {
+            request.set_timeout(timeout);
+        }
+        let response = client
+            .needs_encryption(request)
+            .await
+            .inspect_err(|status| {
+                if matches!(
+                    status.code(),
+                    tonic::Code::Unavailable | tonic::Code::DeadlineExceeded
+                ) {
+                    *self
+                        .state
+                        .write()
+                        .expect("invariant: state lock not poisoned") = PluginState::Unavailable;
+                }
+                PLUGIN_ERRORS_TOTAL
+                    .with_label_values(&[&self.config.plugin_name])
+                    .inc();
+            })
+            .map_err(map_grpc_error)?;
+        Ok(response.into_inner().encrypt)
     }
 }
 
-/// Map tonic::Status codes to anyhow errors with context.
+/// Map tonic::Status codes to HTTP-aware PluginCallError wrapped in anyhow.
 ///
-/// Note: KBS error.rs currently only distinguishes 404 NotFound and 401 Unauthorized.
-/// All plugin errors are wrapped in Error::PluginInternalError which returns 401.
-/// We provide detailed error messages for debugging even though HTTP status is simplified.
+/// The resulting error is downcast in `api_server.rs` to produce the correct
+/// HTTP status code rather than always returning 401 Unauthorized.
+///
+/// The full plugin error message (which may contain internal details such as
+/// stack traces or file paths) is logged server-side at debug level.  Only a
+/// sanitized, fixed string is returned to the HTTP client to avoid information
+/// disclosure.
 fn map_grpc_error(status: tonic::Status) -> anyhow::Error {
     use tonic::Code;
 
-    match status.code() {
-        Code::NotFound => {
-            anyhow::anyhow!("Plugin resource not found: {}", status.message())
-        }
+    // Log the full message server-side for debugging; do not forward it.
+    debug!(
+        "Plugin gRPC error: code={:?}, message={}",
+        status.code(),
+        status.message()
+    );
+
+    let (http_status, message) = match status.code() {
+        Code::NotFound => (404, "Plugin resource not found".to_string()),
+        Code::InvalidArgument => (400, "Invalid request to plugin".to_string()),
+        Code::PermissionDenied => (403, "Plugin access denied".to_string()),
+        Code::Unauthenticated => (401, "Plugin authentication required".to_string()),
         Code::Unavailable | Code::DeadlineExceeded => {
-            anyhow::anyhow!("Plugin service unavailable: {}", status.message())
+            (503, "Plugin service unavailable".to_string())
         }
-        Code::InvalidArgument => {
-            anyhow::anyhow!("Invalid request to plugin: {}", status.message())
-        }
-        Code::PermissionDenied | Code::Unauthenticated => {
-            anyhow::anyhow!("Plugin access denied: {}", status.message())
-        }
-        Code::Unimplemented => {
-            anyhow::anyhow!("Plugin operation not implemented: {}", status.message())
-        }
-        _ => {
-            anyhow::anyhow!(
-                "Plugin gRPC error ({}): {}",
-                status.code(),
-                status.message()
-            )
-        }
-    }
+        _ => (500, "Plugin internal error".to_string()),
+    };
+    anyhow::Error::new(PluginCallError {
+        http_status,
+        message,
+    })
 }

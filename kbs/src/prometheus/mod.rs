@@ -5,7 +5,7 @@
 
 use lazy_static::lazy_static;
 use prometheus::{
-    Counter, CounterVec, Gauge, Histogram, HistogramOpts, Opts, Registry, TextEncoder,
+    Counter, CounterVec, Gauge, Histogram, HistogramOpts, HistogramVec, Opts, Registry, TextEncoder,
 };
 
 macro_rules! make_counter {
@@ -135,6 +135,26 @@ lazy_static! {
         "Total count of errors during auth processing",
     };
 
+    /// External Plugin Requests Total
+    pub(crate) static ref PLUGIN_REQUESTS_TOTAL: CounterVec = make_counter_vec!{
+        "kbs_plugin_requests_total", "Total requests to external plugins", ["plugin_name"]
+    };
+
+    /// External Plugin Request Duration
+    pub(crate) static ref PLUGIN_REQUEST_DURATION_SECONDS: HistogramVec = {
+        let opts = HistogramOpts::new(
+            "kbs_plugin_request_duration_seconds",
+            "External plugin request duration in seconds",
+        )
+        .buckets(vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]);
+        HistogramVec::new(opts, &["plugin_name"]).unwrap()
+    };
+
+    /// External Plugin Errors Total
+    pub(crate) static ref PLUGIN_ERRORS_TOTAL: CounterVec = make_counter_vec!{
+        "kbs_plugin_errors_total", "Total errors from external plugins", ["plugin_name"]
+    };
+
     /// KBS Web Server Active Connections
     pub(crate) static ref ACTIVE_CONNECTIONS: Gauge = {
         let opts = Opts::new(
@@ -182,6 +202,9 @@ lazy_static! {
         registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
         registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
         registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
+        registry.register(Box::new(PLUGIN_REQUESTS_TOTAL.clone())).unwrap();
+        registry.register(Box::new(PLUGIN_REQUEST_DURATION_SECONDS.clone())).unwrap();
+        registry.register(Box::new(PLUGIN_ERRORS_TOTAL.clone())).unwrap();
         registry.register(Box::new(ACTIVE_CONNECTIONS.clone())).unwrap();
         registry.register(Box::new(BUILD_INFO.clone())).unwrap();
 
