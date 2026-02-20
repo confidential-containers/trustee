@@ -892,6 +892,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "backoff"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b62ddb9cb1ec0a098ad4bbf9344d0713fa193ae1a80af55febcff2627b6a00c1"
+dependencies = [
+ "futures-core",
+ "getrandom 0.2.16",
+ "instant",
+ "pin-project-lite",
+ "rand 0.8.5",
+ "tokio",
+]
+
+[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3527,6 +3541,7 @@ dependencies = [
  "async-trait",
  "attestation-service",
  "az-cvm-vtpm 0.8.1",
+ "backoff",
  "base64 0.22.1",
  "cfg-if",
  "chrono",
@@ -3572,6 +3587,7 @@ dependencies = [
  "tokio",
  "toml 0.9.10+spec-1.1.0",
  "tonic 0.14.2",
+ "tonic-health",
  "tonic-prost",
  "tonic-prost-build",
  "uuid",
@@ -6875,6 +6891,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -7067,6 +7084,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.110",
+]
+
+[[package]]
+name = "tonic-health"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "163e5ad9be2924d9cef75f02fcd44c1803a5af250f4ef7e085992270ac51fb9b"
+dependencies = [
+ "prost 0.14.1",
+ "tokio",
+ "tokio-stream",
+ "tonic 0.14.2",
+ "tonic-prost",
 ]
 
 [[package]]

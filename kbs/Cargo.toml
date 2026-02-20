@@ -51,6 +51,7 @@ aes-gcm = "0.10.1"
 aes-kw = "0.2.1"
 anyhow.workspace = true
 async-trait.workspace = true
+backoff = { version = "0.4", features = ["tokio"], optional = true }
 base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
@@ -89,6 +90,7 @@ thiserror.workspace = true
 time = { version = "0.3.40", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
+tonic-health = { version = "0.14", optional = true }
 tonic-prost = { workspace = true, optional = true }
 uuid = { version = "1.21.0", features = ["serde", "v4"] }
 openssl.workspace = true
