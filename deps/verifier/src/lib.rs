@@ -77,7 +77,7 @@ pub async fn to_verifier(
         Tee::AzSnpVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-snp-vtpm-verifier")] {
-                    let verifier = az_snp_vtpm::AzSnpVtpm::new()?;
+                    let verifier = az_snp_vtpm::AzSnpVtpm;
                     Ok(Box::new(verifier) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `az-snp-vtpm-verifier` is not enabled for `verifier` crate.")

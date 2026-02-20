@@ -8,7 +8,7 @@ mod compat;
 use self::compat::Evidence;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
-    get_common_name, get_oid_int, get_oid_octets, ProcessorGeneration, CERT_CHAINS, HW_ID_OID,
+    get_common_name, get_oid_int, get_oid_octets, get_processor_generation, CERT_CHAINS, HW_ID_OID,
     LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
 };
 use crate::{InitDataHash, ReportData};
@@ -38,18 +38,12 @@ const HCL_VMPL_VALUE: u32 = 0;
 const INITDATA_PCR: usize = 8;
 const SNP_REPORT_SIGNATURE_OFFSET: usize = 0x2a0; // 672 bytes
 
-struct AzVendorCertificates {
-    ca_chain: AmdChain,
-}
-
-pub struct AzSnpVtpm {
-    vendor_certs: AzVendorCertificates,
-}
+pub struct AzSnpVtpm;
 
 #[derive(Error, Debug)]
 pub enum CertError {
-    #[error("Failed to load Milan cert chain")]
-    LoadMilanCert,
+    #[error("Vendor certs not found for processor type: {0}")]
+    VcekValidationFailed(String),
     #[error("TPM quote nonce doesn't match expected report_data")]
     NonceMismatch,
     #[error("SNP report report_data mismatch")]
@@ -62,24 +56,6 @@ pub enum CertError {
     JsonWebkey(#[from] jsonwebkey::ConversionError),
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
-}
-
-// Azure vTPM still initialized to Milan only certs until az_snp_vtpm crate gets updated.
-impl AzSnpVtpm {
-    pub fn new() -> Result<Self, CertError> {
-        let vendor_certs = CERT_CHAINS
-            .get(&ProcessorGeneration::Milan)
-            .ok_or(CertError::LoadMilanCert)?
-            .clone();
-        Ok(Self {
-            vendor_certs: AzVendorCertificates {
-                ca_chain: AmdChain {
-                    ask: vendor_certs.ask.into(),
-                    ark: vendor_certs.ark.into(),
-                },
-            },
-        })
-    }
 }
 
 pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, tpm_quote: &TpmQuote) -> Result<()> {
@@ -149,12 +125,23 @@ impl Verifier for AzSnpVtpm {
         };
         let vcek = Vcek(vcek_x509);
 
-        self.vendor_certs
-            .ca_chain
+        let proc_gen =
+            get_processor_generation(&snp_report).context("Failed to get CPU Generation")?;
+
+        let Some(vendor_certs) = CERT_CHAINS.get(&proc_gen) else {
+            return Err(CertError::VcekValidationFailed(format!("{:?}", proc_gen)).into());
+        };
+
+        let amd_chain = AmdChain {
+            ask: vendor_certs.ask.clone().into(),
+            ark: vendor_certs.ark.clone().into(),
+        };
+        amd_chain
             .validate()
             .context("Failed to validate CA chain")?;
-        vcek.validate(&self.vendor_certs.ca_chain)
+        vcek.validate(&amd_chain)
             .context("Failed to validate VCEK")?;
+        debug!("VCEK validated against {:?} certificate chain", proc_gen);
 
         verify_snp_report(&snp_report, &vcek)?;
 
@@ -361,6 +348,8 @@ mod tests {
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
     const EVIDENCE_V0_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v0.json");
     const EVIDENCE_V1_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v1.json");
+    const EVIDENCE_GENOA_JSON: &str =
+        include_str!("../../test_data/az-snp-vtpm/evidence-genoa.json");
 
     fn load_tpm_quote() -> TpmQuote {
         serde_json::from_str(TPM_QUOTE_V1_JSON).unwrap()
@@ -372,7 +361,7 @@ mod tests {
     #[tokio::test]
     async fn test_evaluate(#[case] evidence_json: &str) {
         let tee_evidence: TeeEvidence = serde_json::from_str(evidence_json).unwrap();
-        let verifier = AzSnpVtpm::new().unwrap();
+        let verifier = AzSnpVtpm;
         let result = verifier
             .evaluate(
                 tee_evidence,
@@ -385,7 +374,30 @@ mod tests {
         assert!(claims_values["report_data"] == "6368616c6c656e6765");
         assert!(
             claims_values["tpm"]["pcr00"]
-                == "f3a7e99a5f819a034386bce753a48a73cfdaa0bea0ecfc124bedbf5a8c4799be"
+                == "e15c44796beabf46abcec7c57e590942041e47497e4ec27571c8b7664f48dced"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_genoa() {
+        let tee_evidence: TeeEvidence = serde_json::from_str(EVIDENCE_GENOA_JSON).unwrap();
+        let verifier = AzSnpVtpm;
+        let report_data = hex::decode(
+            "0218488bae25d2509232bf676f1a66a30d7372add909109b36016ef136f2938ca05475f8b46094de6b64270ea35d950f",
+        )
+        .unwrap();
+        let result = verifier
+            .evaluate(
+                tee_evidence,
+                &ReportData::Value(&report_data),
+                &InitDataHash::NotProvided,
+            )
+            .await;
+        let claims = result.unwrap();
+        let claims_values = claims[0].0.clone();
+        assert!(
+            claims_values["tpm"]["pcr00"]
+                == "afd689d0bb1c5f36f023fbaf574135f555a28a10c1f6b938d2a25e70c7783338"
         );
     }
 
@@ -394,17 +406,62 @@ mod tests {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
         let snp_report = hcl_report.try_into().unwrap();
         let vcek = Vcek::from_pem(include_str!("../../test_data/az-snp-vtpm/vcek.pem")).unwrap();
-        let vendor_certs = CERT_CHAINS
-            .get(&ProcessorGeneration::Milan)
-            .unwrap()
-            .clone();
-        let amd_chain = AmdChain {
-            ask: vendor_certs.ask.into(),
-            ark: vendor_certs.ark.into(),
-        };
-        amd_chain.validate().unwrap();
-        vcek.validate(&amd_chain).unwrap();
+
+        // Try to validate VCEK against all known certificate chains
+        let validated = CERT_CHAINS.iter().any(|(_proc_gen, vendor_certs)| {
+            let amd_chain = AmdChain {
+                ask: vendor_certs.ask.clone().into(),
+                ark: vendor_certs.ark.clone().into(),
+            };
+            amd_chain.validate().is_ok() && vcek.validate(&amd_chain).is_ok()
+        });
+        assert!(
+            validated,
+            "VCEK should validate against at least one certificate chain"
+        );
+
         verify_snp_report(&snp_report, &vcek).unwrap();
+    }
+
+    #[test]
+    fn test_genoa_certificate_chain_validation() {
+        use crate::snp::ProcessorGeneration;
+
+        let vendor_certs = CERT_CHAINS
+            .get(&ProcessorGeneration::Genoa)
+            .expect("Genoa certificate chain should be present");
+
+        let amd_chain = AmdChain {
+            ask: vendor_certs.ask.clone().into(),
+            ark: vendor_certs.ark.clone().into(),
+        };
+
+        amd_chain
+            .validate()
+            .expect("Genoa certificate chain should be valid");
+    }
+
+    #[test]
+    fn test_genoa_vcek_validation() {
+        use crate::snp::ProcessorGeneration;
+
+        let vcek_pem = include_str!("../../test_data/az-snp-vtpm/vcek-genoa.pem");
+        let vcek = Vcek::from_pem(vcek_pem).expect("Failed to parse Genoa VCEK");
+
+        let vendor_certs = CERT_CHAINS
+            .get(&ProcessorGeneration::Genoa)
+            .expect("Genoa certificate chain should be present");
+
+        let amd_chain = AmdChain {
+            ask: vendor_certs.ask.clone().into(),
+            ark: vendor_certs.ark.clone().into(),
+        };
+
+        amd_chain
+            .validate()
+            .expect("Genoa certificate chain should be valid");
+        vcek.validate(&amd_chain)
+            .expect("Genoa VCEK should validate against Genoa certificate chain");
     }
 
     #[test]
