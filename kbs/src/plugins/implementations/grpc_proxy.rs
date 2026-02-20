@@ -9,13 +9,14 @@ use async_trait::async_trait;
 use log::info;
 use mobc::{Manager, Pool};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::Duration;
-use tonic::transport::Channel;
+use tonic::transport::{Certificate, Channel, ClientTlsConfig, Identity};
 
 use crate::plugins::external::plugin_api::{
     kbs_plugin_client::KbsPluginClient, GetCapabilitiesRequest, PluginRequest,
 };
-use crate::plugins::plugin_manager::{ClientPlugin, ExternalPluginConfig};
+use crate::plugins::plugin_manager::{ClientPlugin, ExternalPluginConfig, TlsMode};
 
 const DEFAULT_POOL_SIZE: u64 = 100;
 
@@ -29,6 +30,10 @@ impl GrpcPluginProxy {
     pub async fn new(config: ExternalPluginConfig) -> Result<Self> {
         let manager = PluginGrpcManager {
             endpoint: config.endpoint.clone(),
+            tls_mode: config.tls_mode.clone(),
+            ca_cert_path: config.ca_cert_path.clone(),
+            client_cert_path: config.client_cert_path.clone(),
+            client_key_path: config.client_key_path.clone(),
         };
         let pool = Pool::builder().max_open(DEFAULT_POOL_SIZE).build(manager);
 
@@ -70,6 +75,10 @@ impl GrpcPluginProxy {
 
 pub struct PluginGrpcManager {
     endpoint: String,
+    tls_mode: TlsMode,
+    ca_cert_path: Option<PathBuf>,
+    client_cert_path: Option<PathBuf>,
+    client_key_path: Option<PathBuf>,
 }
 
 #[async_trait]
@@ -78,10 +87,55 @@ impl Manager for PluginGrpcManager {
     type Error = anyhow::Error;
 
     async fn connect(&self) -> Result<Self::Connection> {
-        let channel = Channel::from_shared(self.endpoint.clone())?
+        let mut channel = Channel::from_shared(self.endpoint.clone())?;
+
+        match &self.tls_mode {
+            TlsMode::Mtls => {
+                let ca_cert = std::fs::read(
+                    self.ca_cert_path
+                        .as_ref()
+                        .context("ca_cert_path required for mTLS")?,
+                )?;
+                let client_cert = std::fs::read(
+                    self.client_cert_path
+                        .as_ref()
+                        .context("client_cert_path required for mTLS")?,
+                )?;
+                let client_key = std::fs::read(
+                    self.client_key_path
+                        .as_ref()
+                        .context("client_key_path required for mTLS")?,
+                )?;
+
+                let tls_config = ClientTlsConfig::new()
+                    .ca_certificate(Certificate::from_pem(&ca_cert))
+                    .identity(Identity::from_pem(&client_cert, &client_key));
+
+                channel = channel.tls_config(tls_config)?;
+            }
+            TlsMode::Tls => {
+                let ca_cert = std::fs::read(
+                    self.ca_cert_path
+                        .as_ref()
+                        .context("ca_cert_path required for TLS")?,
+                )?;
+
+                let tls_config =
+                    ClientTlsConfig::new().ca_certificate(Certificate::from_pem(&ca_cert));
+
+                channel = channel.tls_config(tls_config)?;
+            }
+            TlsMode::Insecure => {
+                // No TLS config, plaintext connection
+            }
+        }
+
+        let connection = channel
             .connect()
-            .await?;
-        Ok(KbsPluginClient::new(channel))
+            .await
+            .context("Connect to plugin gRPC endpoint")?;
+
+        Ok(KbsPluginClient::new(connection))
     }
 
     async fn check(&self, conn: Self::Connection) -> Result<Self::Connection> {

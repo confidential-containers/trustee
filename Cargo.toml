@@ -72,7 +72,7 @@ thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "0.9.10"
 tempfile = "3.24.0"
-tonic = "0.14"
+tonic = { version = "0.14", features = ["tls-webpki-roots"] }
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
 tracing = "0.1.44"

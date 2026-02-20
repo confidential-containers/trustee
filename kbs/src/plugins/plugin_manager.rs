@@ -12,6 +12,9 @@ use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
 use serde::Deserialize;
 
+#[cfg(feature = "external-plugin")]
+use {log::warn, std::path::PathBuf};
+
 use super::{sample, RepositoryConfig, ResourceStorage};
 
 #[cfg(feature = "nebula-ca-plugin")]
@@ -19,6 +22,39 @@ use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
+
+#[cfg(feature = "external-plugin")]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TlsMode {
+    /// Mutual TLS: both client and server authenticate with certificates
+    Mtls,
+    /// Server-only TLS: client verifies server cert, no client cert
+    Tls,
+    /// Plaintext: no encryption (development only, requires explicit opt-in)
+    Insecure,
+}
+
+#[cfg(feature = "external-plugin")]
+impl TlsMode {
+    pub fn requires_client_cert(&self) -> bool {
+        matches!(self, TlsMode::Mtls)
+    }
+
+    pub fn is_insecure(&self) -> bool {
+        matches!(self, TlsMode::Insecure)
+    }
+}
+
+#[cfg(feature = "external-plugin")]
+impl Default for TlsMode {
+    fn default() -> Self {
+        // Secure-by-default: external plugins are a new feature with no existing
+        // configs to preserve, so omitting tls_mode should require a CA cert
+        // rather than silently falling back to plaintext.
+        TlsMode::Tls
+    }
+}
 
 #[cfg(feature = "external-plugin")]
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -31,6 +67,80 @@ pub struct ExternalPluginConfig {
     pub validate_auth: bool,
     #[serde(default)]
     pub encrypted: bool,
+
+    // TLS configuration fields
+    #[serde(default)]
+    pub tls_mode: TlsMode,
+    #[serde(default)]
+    pub ca_cert_path: Option<PathBuf>,
+    #[serde(default)]
+    pub client_cert_path: Option<PathBuf>,
+    #[serde(default)]
+    pub client_key_path: Option<PathBuf>,
+}
+
+#[cfg(feature = "external-plugin")]
+impl ExternalPluginConfig {
+    /// Validate TLS configuration at startup.
+    /// Ensures endpoint scheme matches TLS mode and required cert paths are present.
+    pub fn validate_tls_config(&self) -> anyhow::Result<()> {
+        let is_https = self.endpoint.starts_with("https://");
+        let is_http = self.endpoint.starts_with("http://");
+
+        // Validate scheme matches TLS mode
+        match (&self.tls_mode, is_https, is_http) {
+            (TlsMode::Insecure, false, true) => Ok(()),
+            (TlsMode::Insecure, true, false) => {
+                anyhow::bail!(
+                    "Plugin '{}': insecure mode requires http:// endpoint, got https://",
+                    self.plugin_name
+                )
+            }
+            (TlsMode::Tls | TlsMode::Mtls, true, false) => {
+                self.validate_tls_paths()?;
+                Ok(())
+            }
+            (TlsMode::Tls | TlsMode::Mtls, false, true) => {
+                anyhow::bail!(
+                    "Plugin '{}': TLS mode requires https:// endpoint, got http://",
+                    self.plugin_name
+                )
+            }
+            _ => anyhow::bail!(
+                "Plugin '{}': endpoint must be http:// or https://",
+                self.plugin_name
+            ),
+        }
+    }
+
+    fn validate_tls_paths(&self) -> anyhow::Result<()> {
+        match &self.tls_mode {
+            TlsMode::Mtls => {
+                if self.ca_cert_path.is_none() {
+                    anyhow::bail!(
+                        "Plugin '{}': mtls mode requires ca_cert_path",
+                        self.plugin_name
+                    );
+                }
+                if self.client_cert_path.is_none() || self.client_key_path.is_none() {
+                    anyhow::bail!(
+                        "Plugin '{}': mtls mode requires client_cert_path and client_key_path",
+                        self.plugin_name
+                    );
+                }
+            }
+            TlsMode::Tls => {
+                if self.ca_cert_path.is_none() {
+                    anyhow::bail!(
+                        "Plugin '{}': tls mode requires ca_cert_path",
+                        self.plugin_name
+                    );
+                }
+            }
+            TlsMode::Insecure => {}
+        }
+        Ok(())
+    }
 }
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
@@ -181,6 +291,20 @@ impl PluginManager {
             let plugin: ClientPluginInstance = match cfg {
                 #[cfg(feature = "external-plugin")]
                 PluginsConfig::ExternalPlugin(ext_cfg) => {
+                    // Validate TLS configuration before attempting connection
+                    ext_cfg
+                        .validate_tls_config()
+                        .context("Invalid TLS configuration")?;
+
+                    // Log warning for insecure mode
+                    if ext_cfg.tls_mode.is_insecure() {
+                        warn!(
+                            "External plugin '{}' configured with insecure mode (plaintext). \
+                             This is ONLY safe for development. Never use in production.",
+                            ext_cfg.plugin_name
+                        );
+                    }
+
                     let proxy = crate::plugins::implementations::GrpcPluginProxy::new(ext_cfg)
                         .await
                         .context("Initialize external gRPC plugin failed")?;
