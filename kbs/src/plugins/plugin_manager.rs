@@ -15,6 +15,19 @@ use serde::Deserialize;
 #[cfg(feature = "external-plugin")]
 use {log::warn, std::path::PathBuf};
 
+/// Built-in KBS route prefixes that external plugins must not shadow.
+/// The `api_server.rs` match arms guard specific (name, method) pairs, but
+/// other methods or unguarded combinations fall through to plugin lookup.
+/// Rejecting these names at startup prevents silent misbehaviour.
+#[cfg(feature = "external-plugin")]
+const RESERVED_PLUGIN_NAMES: &[&str] = &[
+    "auth",
+    "attest",
+    "attestation-policy",
+    "reference-value",
+    "resource-policy",
+];
+
 use super::{sample, RepositoryConfig, ResourceStorage};
 
 #[cfg(feature = "nebula-ca-plugin")]
@@ -63,10 +76,6 @@ pub struct ExternalPluginConfig {
     pub endpoint: String,
     #[serde(default)]
     pub timeout_ms: Option<u64>,
-    #[serde(default)]
-    pub validate_auth: bool,
-    #[serde(default)]
-    pub encrypted: bool,
 
     // TLS configuration fields
     #[serde(default)]
@@ -143,6 +152,53 @@ impl ExternalPluginConfig {
     }
 }
 
+/// Request context forwarded to plugins via gRPC metadata.
+///
+/// Provides session, TEE, and attestation information so that plugins
+/// can make authorization decisions and produce audit logs without
+/// receiving raw tokens (trust boundary preserved by omission).
+#[derive(Clone, Debug, Default)]
+pub struct PluginContext {
+    /// Session ID from KBS session cookie (if available)
+    pub session_id: Option<String>,
+    /// TEE type from attestation request (if attested)
+    pub tee_type: Option<String>,
+    /// Whether the request is from an attested session
+    pub is_attested: bool,
+}
+
+/// Return type from a plugin handler, carrying body plus optional HTTP hints.
+///
+/// External plugins can influence the HTTP response status code and content type.
+/// Built-in plugins return `None` for both hints, which KBS resolves to 200/text-xml.
+pub struct PluginOutput {
+    pub body: Vec<u8>,
+    /// HTTP status code. `None` → KBS default (200 OK).
+    pub status_code: Option<u16>,
+    /// Content-Type header value. `None` → KBS default ("text/xml").
+    pub content_type: Option<String>,
+}
+
+impl std::fmt::Debug for PluginOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PluginOutput")
+            .field("body", &format!("<{} bytes redacted>", self.body.len()))
+            .field("status_code", &self.status_code)
+            .field("content_type", &self.content_type)
+            .finish()
+    }
+}
+
+impl From<Vec<u8>> for PluginOutput {
+    fn from(body: Vec<u8>) -> Self {
+        Self {
+            body,
+            status_code: None,
+            content_type: None,
+        }
+    }
+}
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -159,7 +215,8 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<Vec<u8>>;
+        context: Option<&PluginContext>,
+    ) -> Result<PluginOutput>;
 
     /// Whether the concrete request needs to validate the admin auth.
     /// If returns `Ok(true)`, the KBS server will perform an admin auth
@@ -291,6 +348,16 @@ impl PluginManager {
             let plugin: ClientPluginInstance = match cfg {
                 #[cfg(feature = "external-plugin")]
                 PluginsConfig::ExternalPlugin(ext_cfg) => {
+                    // Reject names that collide with built-in KBS endpoints
+                    if RESERVED_PLUGIN_NAMES.contains(&ext_cfg.plugin_name.as_str()) {
+                        anyhow::bail!(
+                            "Plugin name '{}' conflicts with a built-in KBS endpoint. \
+                             Reserved names: {:?}",
+                            ext_cfg.plugin_name,
+                            RESERVED_PLUGIN_NAMES
+                        );
+                    }
+
                     // Validate TLS configuration before attempting connection
                     ext_cfg
                         .validate_tls_config()

@@ -20,7 +20,7 @@ use std::{
 };
 use tempfile::tempdir_in;
 
-use crate::plugins::plugin_manager::ClientPlugin;
+use crate::plugins::plugin_manager::{ClientPlugin, PluginContext, PluginOutput};
 
 /// Default Nebula CA name
 const DEFAULT_NEBULA_CA_NAME: &str = "Trustee Nebula CA plugin";
@@ -401,7 +401,8 @@ impl ClientPlugin for NebulaCaPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<Vec<u8>> {
+        _context: Option<&PluginContext>,
+    ) -> Result<PluginOutput> {
         if path.len() != 1 {
             bail!("Illegal path. Only one path segment is supported");
         }
@@ -425,7 +426,7 @@ impl ClientPlugin for NebulaCaPlugin {
                     .create_credential(node_key.as_path(), node_crt.as_path(), &params)
                     .await?;
 
-                Ok(serde_json::to_vec(&credential)?)
+                Ok(serde_json::to_vec(&credential)?.into())
             }
             _ => Err(anyhow!("{} not supported", path[0]))?,
         }

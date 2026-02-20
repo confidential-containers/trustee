@@ -18,7 +18,7 @@ use anyhow::{bail, Result};
 pub mod backend;
 pub use backend::*;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginContext, PluginOutput};
 
 #[async_trait::async_trait]
 impl ClientPlugin for ResourceStorage {
@@ -28,19 +28,20 @@ impl ClientPlugin for ResourceStorage {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<Vec<u8>> {
+        _context: Option<&PluginContext>,
+    ) -> Result<PluginOutput> {
         let resource_desc = path.join("/");
         match method.as_str() {
             "POST" => {
                 let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
                 self.set_secret_resource(resource_description, body).await?;
-                Ok(vec![])
+                Ok(vec![].into())
             }
             "GET" => {
                 let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
                 let resource = self.get_secret_resource(resource_description).await?;
 
-                Ok(resource)
+                Ok(resource.into())
             }
             _ => bail!("Illegal HTTP method. Only supports `GET` and `POST`"),
         }

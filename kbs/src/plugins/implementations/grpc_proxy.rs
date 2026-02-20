@@ -375,7 +375,7 @@ impl ClientPlugin for GrpcPluginProxy {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-        _context: Option<&PluginContext>,
+        context: Option<&PluginContext>,
     ) -> Result<Vec<u8>> {
         // Check plugin state before attempting request
         {
@@ -399,6 +399,25 @@ impl ClientPlugin for GrpcPluginProxy {
             path: path.iter().map(|s| s.to_string()).collect(),
             method: method.to_string(),
         });
+
+        // Inject plugin context into gRPC request metadata.
+        // Metadata values must be valid ASCII; skip headers that fail to parse.
+        if let Some(ctx) = context {
+            let metadata = request.metadata_mut();
+            if let Some(session_id) = &ctx.session_id {
+                if let Ok(val) = session_id.parse() {
+                    metadata.insert("kbs-session-id", val);
+                }
+            }
+            if let Some(tee_type) = &ctx.tee_type {
+                if let Ok(val) = tee_type.parse() {
+                    metadata.insert("kbs-tee-type", val);
+                }
+            }
+            if let Ok(val) = ctx.is_attested.to_string().parse() {
+                metadata.insert("kbs-attested", val);
+            }
+        }
 
         if let Some(timeout) = self.timeout {
             request.set_timeout(timeout);
