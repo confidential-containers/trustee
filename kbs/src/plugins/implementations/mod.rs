@@ -9,9 +9,15 @@ pub mod pkcs11;
 pub mod resource;
 pub mod sample;
 
+#[cfg(feature = "external-plugin")]
+pub mod grpc_proxy;
+
 #[cfg(feature = "nebula-ca-plugin")]
 pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]
 pub use pkcs11::{Pkcs11Backend, Pkcs11Config};
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
+
+#[cfg(feature = "external-plugin")]
+pub use grpc_proxy::GrpcPluginProxy;

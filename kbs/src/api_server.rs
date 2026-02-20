@@ -72,7 +72,8 @@ impl ApiServer {
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::try_from(config.plugins.clone())
+        let plugin_manager = PluginManager::new(config.plugins.clone())
+            .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
         let policy_engine = PolicyEngine::new(&config.policy_engine).await?;

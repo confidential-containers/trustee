@@ -2,7 +2,11 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    sync::Arc,
+};
 
 use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
@@ -15,6 +19,19 @@ use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
+
+#[cfg(feature = "external-plugin")]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct ExternalPluginConfig {
+    pub plugin_name: String,
+    pub endpoint: String,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+    #[serde(default)]
+    pub validate_auth: bool,
+    #[serde(default)]
+    pub encrypted: bool,
+}
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -73,6 +90,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
+
+    #[cfg(feature = "external-plugin")]
+    #[serde(alias = "external")]
+    ExternalPlugin(ExternalPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -84,6 +105,8 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
+            #[cfg(feature = "external-plugin")]
+            PluginsConfig::ExternalPlugin(cfg) => f.write_str(&cfg.plugin_name),
         }
     }
 }
@@ -115,6 +138,13 @@ impl TryInto<ClientPluginInstance> for PluginsConfig {
                     .context("Initialize 'pkcs11' plugin failed")?;
                 Arc::new(pkcs11) as _
             }
+            #[cfg(feature = "external-plugin")]
+            PluginsConfig::ExternalPlugin(_) => {
+                // External plugins are initialized asynchronously via PluginManager::new()
+                anyhow::bail!(
+                    "External plugins must be initialized via PluginManager::new(), not TryInto"
+                )
+            }
         };
 
         Ok(plugin)
@@ -127,18 +157,41 @@ pub struct PluginManager {
     plugins: HashMap<String, ClientPluginInstance>,
 }
 
-impl TryFrom<Vec<PluginsConfig>> for PluginManager {
-    type Error = Error;
+impl PluginManager {
+    /// Initialize plugin manager with async support for external gRPC plugins.
+    ///
+    /// Uses async initialization to avoid blocking the single-threaded actix runtime
+    /// when connecting to external plugin gRPC servers.
+    pub async fn new(value: Vec<PluginsConfig>) -> Result<Self> {
+        let mut seen_names = HashSet::new();
+        let mut plugins = HashMap::new();
 
-    fn try_from(value: Vec<PluginsConfig>) -> Result<Self> {
-        let plugins = value
-            .into_iter()
-            .map(|cfg| {
-                let name = cfg.to_string();
-                let plugin: ClientPluginInstance = cfg.try_into()?;
-                Ok((name, plugin))
-            })
-            .collect::<Result<HashMap<String, ClientPluginInstance>>>()?;
+        for cfg in value {
+            let name = cfg.to_string();
+
+            // Check for name collision
+            if !seen_names.insert(name.clone()) {
+                anyhow::bail!(
+                    "Plugin name collision detected: '{}' is already registered. \
+                     Each plugin must have a unique name.",
+                    name
+                );
+            }
+
+            let plugin: ClientPluginInstance = match cfg {
+                #[cfg(feature = "external-plugin")]
+                PluginsConfig::ExternalPlugin(ext_cfg) => {
+                    let proxy = crate::plugins::implementations::GrpcPluginProxy::new(ext_cfg)
+                        .await
+                        .context("Initialize external gRPC plugin failed")?;
+                    Arc::new(proxy) as _
+                }
+                other => other.try_into()?,
+            };
+
+            plugins.insert(name, plugin);
+        }
+
         Ok(Self { plugins })
     }
 }
