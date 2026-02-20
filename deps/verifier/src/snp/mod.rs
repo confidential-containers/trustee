@@ -641,7 +641,9 @@ pub(crate) fn get_common_name(cert: &x509::X509) -> Result<String> {
 }
 
 /// Determines the processor model based on the family and model IDs from the attestation report.
-fn get_processor_generation(att_report: &AttestationReport) -> Result<ProcessorGeneration> {
+pub(crate) fn get_processor_generation(
+    att_report: &AttestationReport,
+) -> Result<ProcessorGeneration> {
     let cpu_fam = att_report
         .cpuid_fam_id
         .ok_or_else(|| anyhow::anyhow!("Attestation report version 3+ is missing CPU family ID"))?;
