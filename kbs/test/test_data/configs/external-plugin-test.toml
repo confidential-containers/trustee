@@ -1,0 +1,42 @@
+# KBS configuration for external plugin integration testing
+
+[http_server]
+sockets = ["127.0.0.1:8080"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[policy_engine]
+policy_path = "sample_policies/allow_all.rego"
+
+# Built-in attestation service with local work directory
+# Before running: mkdir -p /tmp/kbs-as-work
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "/tmp/kbs-as-work"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
+file_path = "/tmp/kbs-as-work/reference_values"
+
+[attestation_service.attestation_token_broker]
+policy_dir = "/tmp/kbs-as-work/policies"
+
+# Compiled-in sample plugin
+[[plugins]]
+name = "sample"
+item = "test-value"
+
+# External gRPC echo plugin
+[[plugins]]
+name = "external"
+plugin_name = "echo-test"
+endpoint = "http://127.0.0.1:50051"
+tls_mode = "insecure"
+timeout_ms = 5000
+validate_auth = true
+encrypted = false

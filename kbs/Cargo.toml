@@ -28,7 +28,7 @@ coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost"]
 intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 
 # Support external gRPC plugins
-external-plugin = ["tonic", "tonic-prost", "prost"]
+external-plugin = ["tonic", "tonic-health", "tonic-prost", "prost", "backoff", "mobc"]
 
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
@@ -122,6 +122,11 @@ rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 serial_test = "3.0"
 toml = "0.9"
+
+[[bin]]
+name = "external_plugin_test_server"
+path = "test/external_plugin_test_server.rs"
+required-features = ["external-plugin"]
 
 [build-dependencies]
 tonic-prost-build.workspace = true

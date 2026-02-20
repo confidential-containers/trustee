@@ -31,6 +31,14 @@ TEE_KEY := $(WORK_DIR)/tee.key
 HTTPS_KEY := $(WORK_DIR)/https.key
 HTTPS_CERT := $(WORK_DIR)/https.crt
 KBS_POLICY := $(WORK_DIR)/kbs-policy.rego
+EXT_PLUGIN_ATTEST_POLICY := $(WORK_DIR)/ext-plugin-attest-policy.rego
+PLUGIN_ATTESTATION_TOKEN := $(WORK_DIR)/plugin-attestation-token
+
+# External plugin test certificates
+ECHO_PLUGIN_CA_KEY := $(WORK_DIR)/echo-plugin-ca.key
+ECHO_PLUGIN_CA_CERT := $(WORK_DIR)/echo-plugin-ca.pem
+ECHO_PLUGIN_SERVER_KEY := $(WORK_DIR)/echo-plugin-server.key
+ECHO_PLUGIN_SERVER_CERT := $(WORK_DIR)/echo-plugin-server.pem
 
 TEST_FEATURES ?=
 TEST_ARGUMENTS ?=
@@ -54,6 +62,18 @@ allow if {
 }
 endef
 export TEE_POLICY_REGO
+
+define EXT_PLUGIN_POLICY_REGO
+package policy
+
+default allow = false
+
+allow if {
+	data.plugin == "echo-test"
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+}
+endef
+export EXT_PLUGIN_POLICY_REGO
 
 ifneq ($(TEST_FEATURES),)
   TEST_ARGUMENTS = --no-default-features --features $(TEST_FEATURES)
@@ -102,6 +122,18 @@ client:
 	cd $(PROJECT_DIR) && \
 	cargo build -p kbs-client --release $(TEST_ARGUMENTS) && \
 	install -D --compare $(PROJECT_DIR)/../target/release/kbs-client $(CURDIR)/client
+
+# Build external plugin echo test server
+echo-plugin:
+	cd $(PROJECT_DIR) && \
+	cargo build --release --bin external_plugin_test_server --features external-plugin && \
+	install -D --compare $(PROJECT_DIR)/../target/release/external_plugin_test_server $(CURDIR)/echo-plugin
+
+# Build KBS with external-plugin feature
+ext-plugin-kbs:
+	cd $(PROJECT_DIR) && \
+	make background-check-kbs-external-plugin && \
+	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/ext-plugin-kbs
 
 .PHONY: bins
 bins: kbs resource-kbs client
@@ -224,10 +256,205 @@ test-passport: client $(ATTESTATION_TOKEN) start-resource-kbs
 	@printf "${BOLD}passport e2e test passed${SGR0}\n"
 
 .PHONY: stop
-stop: stop-kbs stop-resource-kbs
+stop: stop-kbs stop-resource-kbs stop-ext-plugins
 
 .PHONY: e2e-test
 e2e-test: test-bgcheck test-passport stop
+
+# External plugin certificate generation
+$(ECHO_PLUGIN_CA_KEY):
+	mkdir -p $(WORK_DIR) && \
+	openssl genrsa -out $(ECHO_PLUGIN_CA_KEY) 4096
+
+$(ECHO_PLUGIN_CA_CERT): $(ECHO_PLUGIN_CA_KEY)
+	openssl req -new -x509 -key $(ECHO_PLUGIN_CA_KEY) -out $(ECHO_PLUGIN_CA_CERT) -days 365 \
+		-subj "/C=US/ST=CA/L=Test/O=Test/OU=EchoPlugin/CN=Echo Plugin CA"
+
+$(ECHO_PLUGIN_SERVER_KEY):
+	mkdir -p $(WORK_DIR) && \
+	openssl genrsa -out $(ECHO_PLUGIN_SERVER_KEY) 4096
+
+$(ECHO_PLUGIN_SERVER_CERT): $(ECHO_PLUGIN_SERVER_KEY) $(ECHO_PLUGIN_CA_CERT) $(ECHO_PLUGIN_CA_KEY)
+	openssl req -new -key $(ECHO_PLUGIN_SERVER_KEY) -out $(WORK_DIR)/echo-plugin-server.csr \
+		-subj "/C=US/ST=CA/L=Test/O=Test/OU=EchoPlugin/CN=127.0.0.1" && \
+	echo -e "[v3_req]\nsubjectAltName=IP:127.0.0.1,DNS:localhost" > $(WORK_DIR)/echo-plugin-server.conf && \
+	openssl x509 -req -in $(WORK_DIR)/echo-plugin-server.csr -CA $(ECHO_PLUGIN_CA_CERT) -CAkey $(ECHO_PLUGIN_CA_KEY) \
+		-CAcreateserial -out $(ECHO_PLUGIN_SERVER_CERT) -days 365 -extensions v3_req \
+		-extfile $(WORK_DIR)/echo-plugin-server.conf
+
+# Start plaintext echo plugin server on :50051
+.PHONY: start-echo-plugin
+start-echo-plugin: echo-plugin.PID
+
+echo-plugin.PID: echo-plugin
+	@printf "${BOLD}start echo plugin (plaintext)${SGR0}\n"
+	{ \
+		ECHO_PLUGIN_LISTEN_ADDR=127.0.0.1:50051 \
+		"$(CURDIR)/echo-plugin" \
+		& echo $$! > echo-plugin.PID; \
+	} && \
+	sleep 1
+
+# Start TLS echo plugin server on :50052
+.PHONY: start-echo-plugin-tls
+start-echo-plugin-tls: echo-plugin-tls.PID
+
+echo-plugin-tls.PID: echo-plugin $(ECHO_PLUGIN_SERVER_CERT) $(ECHO_PLUGIN_SERVER_KEY)
+	@printf "${BOLD}start echo plugin (TLS)${SGR0}\n"
+	{ \
+		ECHO_PLUGIN_LISTEN_ADDR=127.0.0.1:50052 \
+		ECHO_PLUGIN_TLS_CERT=$(ECHO_PLUGIN_SERVER_CERT) \
+		ECHO_PLUGIN_TLS_KEY=$(ECHO_PLUGIN_SERVER_KEY) \
+		"$(CURDIR)/echo-plugin" \
+		& echo $$! > echo-plugin-tls.PID; \
+	} && \
+	sleep 1
+
+# Start KBS with external-plugin config (insecure, port 8085)
+.PHONY: start-ext-plugin-kbs
+start-ext-plugin-kbs: ext-plugin-kbs.PID
+
+ext-plugin-kbs.PID: ext-plugin-kbs
+	@printf "${BOLD}start ext-plugin-kbs (insecure)${SGR0}\n"
+	{ \
+		"$(CURDIR)/ext-plugin-kbs" --config-file "$(KBS_CONFIG_PATH)/external-plugin.toml" \
+		& echo $$! > ext-plugin-kbs.PID; \
+	} && \
+	sleep 1
+
+# Start KBS with external-plugin TLS config (port 8086)
+.PHONY: start-ext-plugin-tls-kbs
+start-ext-plugin-tls-kbs: ext-plugin-tls-kbs.PID
+
+ext-plugin-tls-kbs.PID: ext-plugin-kbs $(ECHO_PLUGIN_CA_CERT)
+	@printf "${BOLD}start ext-plugin-kbs (TLS)${SGR0}\n"
+	{ \
+		"$(CURDIR)/ext-plugin-kbs" --config-file "$(KBS_CONFIG_PATH)/external-plugin-tls.toml" \
+		& echo $$! > ext-plugin-tls-kbs.PID; \
+	} && \
+	sleep 1
+
+.PHONY: stop-echo-plugin
+stop-echo-plugin:
+	@if [ -f echo-plugin.PID ]; then \
+		printf "${BOLD}stop echo plugin (plaintext)${SGR0}\n"; \
+		kill $$(cat echo-plugin.PID) && rm echo-plugin.PID || rm -f echo-plugin.PID; \
+	fi
+
+.PHONY: stop-echo-plugin-tls
+stop-echo-plugin-tls:
+	@if [ -f echo-plugin-tls.PID ]; then \
+		printf "${BOLD}stop echo plugin (TLS)${SGR0}\n"; \
+		kill $$(cat echo-plugin-tls.PID) && rm echo-plugin-tls.PID || rm -f echo-plugin-tls.PID; \
+	fi
+
+.PHONY: stop-ext-plugin-kbs
+stop-ext-plugin-kbs:
+	@if [ -f ext-plugin-kbs.PID ]; then \
+		printf "${BOLD}stop ext-plugin-kbs (insecure)${SGR0}\n"; \
+		kill $$(cat ext-plugin-kbs.PID) && rm ext-plugin-kbs.PID || rm -f ext-plugin-kbs.PID; \
+	fi
+
+.PHONY: stop-ext-plugin-tls-kbs
+stop-ext-plugin-tls-kbs:
+	@if [ -f ext-plugin-tls-kbs.PID ]; then \
+		printf "${BOLD}stop ext-plugin-kbs (TLS)${SGR0}\n"; \
+		kill $$(cat ext-plugin-tls-kbs.PID) && rm ext-plugin-tls-kbs.PID || rm -f ext-plugin-tls-kbs.PID; \
+	fi
+
+# Write the attestation policy for external plugin test
+$(EXT_PLUGIN_ATTEST_POLICY):
+	echo "$$EXT_PLUGIN_POLICY_REGO" > $(EXT_PLUGIN_ATTEST_POLICY)
+
+# Start KBS with external-plugin attestation config (HTTPS, port 8087)
+.PHONY: start-ext-plugin-attest-kbs
+start-ext-plugin-attest-kbs: ext-plugin-attest-kbs.PID
+
+ext-plugin-attest-kbs.PID: ext-plugin-kbs kbs-keys kbs-certs $(EXT_PLUGIN_ATTEST_POLICY)
+	@printf "${BOLD}start ext-plugin-kbs (attestation)${SGR0}\n"
+	{ \
+		"$(CURDIR)/ext-plugin-kbs" --config-file "$(KBS_CONFIG_PATH)/external-plugin-attest.toml" \
+		& echo $$! > ext-plugin-attest-kbs.PID; \
+	} && \
+	sleep 1
+
+.PHONY: stop-ext-plugin-attest-kbs
+stop-ext-plugin-attest-kbs:
+	@if [ -f ext-plugin-attest-kbs.PID ]; then \
+		printf "${BOLD}stop ext-plugin-kbs (attestation)${SGR0}\n"; \
+		kill $$(cat ext-plugin-attest-kbs.PID) && rm ext-plugin-attest-kbs.PID || rm -f ext-plugin-attest-kbs.PID; \
+	fi
+
+# Get attestation token for external plugin test
+.PHONY: $(PLUGIN_ATTESTATION_TOKEN)
+$(PLUGIN_ATTESTATION_TOKEN): client $(TEE_KEY) start-ext-plugin-attest-kbs
+	./client \
+		--url https://127.0.0.1:8087 \
+		--cert-file "$(HTTPS_CERT)" \
+		attest \
+		--tee-key-file "$(TEE_KEY)" \
+		> "$(PLUGIN_ATTESTATION_TOKEN)"
+
+# External plugin integration test (insecure / plaintext)
+.PHONY: test-ext-plugin
+test-ext-plugin: start-echo-plugin start-ext-plugin-kbs
+	@printf "${BOLD}running external plugin integration test (insecure)${SGR0}\n"
+	curl -sf http://127.0.0.1:8085/kbs/v0/echo-test/admin/hello | grep -q "Echo:" && \
+	printf "${BOLD}external plugin integration test (insecure) passed${SGR0}\n"
+
+# External plugin integration test (TLS)
+.PHONY: test-ext-plugin-tls
+test-ext-plugin-tls: start-echo-plugin-tls start-ext-plugin-tls-kbs
+	@printf "${BOLD}running external plugin integration test (TLS)${SGR0}\n"
+	curl -sf http://127.0.0.1:8086/kbs/v0/echo-test/admin/hello | grep -q "Echo:" && \
+	printf "${BOLD}external plugin integration test (TLS) passed${SGR0}\n"
+
+# External plugin integration test (attestation path)
+.PHONY: test-ext-plugin-attest
+test-ext-plugin-attest: start-echo-plugin $(PLUGIN_ATTESTATION_TOKEN)
+	@printf "${BOLD}running external plugin integration test (attestation)${SGR0}\n"
+	! curl -sf --cacert "$(HTTPS_CERT)" https://127.0.0.1:8087/kbs/v0/echo-test/hello && \
+	curl -sf --cacert "$(HTTPS_CERT)" -H "Authorization: Bearer $$(cat $(PLUGIN_ATTESTATION_TOKEN))" \
+		https://127.0.0.1:8087/kbs/v0/echo-test/hello | grep -q "Echo:" && \
+	printf "${BOLD}external plugin integration test (attestation) passed${SGR0}\n"
+
+# External plugin metrics test (verifies /metrics endpoint has plugin counters)
+# Uses before/after snapshot so the test works regardless of prior requests.
+.PHONY: test-ext-plugin-metrics
+test-ext-plugin-metrics: start-echo-plugin start-ext-plugin-kbs
+	@printf "${BOLD}running external plugin metrics test${SGR0}\n"
+	before=$$(curl -sf http://127.0.0.1:8085/metrics | \
+		sed -n 's/^kbs_plugin_request_duration_seconds_count{plugin_name="echo-test"} //p'); \
+	before=$${before:-0}; \
+	curl -sf http://127.0.0.1:8085/kbs/v0/echo-test/admin/hello > /dev/null && \
+	curl -sf http://127.0.0.1:8085/kbs/v0/echo-test/admin/hello > /dev/null && \
+	after=$$(curl -sf http://127.0.0.1:8085/metrics | \
+		sed -n 's/^kbs_plugin_request_duration_seconds_count{plugin_name="echo-test"} //p') && \
+	curl -sf http://127.0.0.1:8085/metrics | grep -q 'kbs_plugin_requests_total{plugin_name="echo-test"}' && \
+	delta=$$((after - before)) && \
+	if [ "$$delta" -eq 2 ]; then \
+		printf "${BOLD}external plugin metrics test passed (count delta=%s)${SGR0}\n" "$$delta"; \
+	else \
+		printf "FAIL: expected delta=2, got delta=%s (before=%s, after=%s)\n" "$$delta" "$$before" "$$after"; \
+		exit 1; \
+	fi
+
+# Stop all external plugin processes
+.PHONY: stop-ext-plugins
+stop-ext-plugins: stop-echo-plugin stop-echo-plugin-tls stop-ext-plugin-kbs stop-ext-plugin-tls-kbs stop-ext-plugin-attest-kbs
+
+# Run all external plugin tests with cleanup
+.PHONY: e2e-ext-plugin
+e2e-ext-plugin:
+	@$(MAKE) test-ext-plugin test-ext-plugin-metrics test-ext-plugin-tls test-ext-plugin-attest; \
+	status=$$?; \
+	$(MAKE) stop-ext-plugins; \
+	if [ $$status -eq 0 ]; then \
+		printf "${BOLD}all external plugin e2e tests passed${SGR0}\n"; \
+	else \
+		printf "${BOLD}external plugin e2e tests FAILED${SGR0}\n"; \
+		exit 1; \
+	fi
 
 # Vault configuration (using OpenBao, an open-source Vault-compatible server)
 OPENBAO_VERSION := 2.5.0
@@ -422,4 +649,6 @@ clean:  clean-tpm
 		client \
 		resource-kbs \
 		vault-kbs \
+		echo-plugin \
+		ext-plugin-kbs \
 		work/*
