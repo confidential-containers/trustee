@@ -3612,6 +3612,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-plugin-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "prost 0.14.1",
+ "tokio",
+ "tonic 0.14.2",
+ "tonic-health",
+ "tonic-prost",
+ "tonic-prost-build",
+ "tonic-reflection",
+]
+
+[[package]]
 name = "kbs-types"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7124,6 +7138,20 @@ dependencies = [
  "syn 2.0.110",
  "tempfile",
  "tonic-build 0.14.2",
+]
+
+[[package]]
+name = "tonic-reflection"
+version = "0.14.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf0685a51e6d02b502ba0764002e766b7f3042aed13d9234925b6ffbfa3fca7"
+dependencies = [
+ "prost 0.14.3",
+ "prost-types 0.14.1",
+ "tokio",
+ "tokio-stream",
+ "tonic 0.14.2",
+ "tonic-prost",
 ]
 
 [[package]]

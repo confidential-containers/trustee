@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "kbs",
+    "rust-sdk",
     "attestation-service",
     "rvps",
     "tools/kbs-client",
