@@ -3616,7 +3616,7 @@ name = "kbs-plugin-sdk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "prost 0.14.1",
+ "prost 0.14.3",
  "tokio",
  "tonic 0.14.2",
  "tonic-health",
@@ -5700,6 +5700,7 @@ version = "0.23.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "533f54bc6a7d4f647e46ad909549eda97bf5afc1585190ef692b4286b198bd8f"
 dependencies = [
+ "log",
  "once_cell",
  "ring",
  "rustls-pki-types",
@@ -7071,7 +7072,7 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
- "webpki-roots 1.0.4",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -7106,7 +7107,7 @@ version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "163e5ad9be2924d9cef75f02fcd44c1803a5af250f4ef7e085992270ac51fb9b"
 dependencies = [
- "prost 0.14.1",
+ "prost 0.14.3",
  "tokio",
  "tokio-stream",
  "tonic 0.14.2",
