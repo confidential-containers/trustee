@@ -229,11 +229,10 @@ stop: stop-kbs stop-resource-kbs
 .PHONY: e2e-test
 e2e-test: test-bgcheck test-passport stop
 
-# Vault configuration
-VAULT_VERSION := 1.19.5
-VAULT_ARCH := linux_amd64
-VAULT_URL := https://releases.hashicorp.com/vault/$(VAULT_VERSION)/vault_$(VAULT_VERSION)_$(VAULT_ARCH).zip
-VAULT_BIN := $(WORK_DIR)/vault
+# Vault configuration (using OpenBao, an open-source Vault-compatible server)
+OPENBAO_VERSION := 2.5.0
+OPENBAO_URL := https://github.com/openbao/openbao/releases/download/v$(OPENBAO_VERSION)/bao_$(OPENBAO_VERSION)_Linux_x86_64.tar.gz
+VAULT_BIN := $(WORK_DIR)/bao
 VAULT_CONFIG := $(WORK_DIR)/vault-config.json
 VAULT_SSL_CONFIG := $(WORK_DIR)/vault-ssl-config.json
 VAULT_TOKEN_FILE := $(WORK_DIR)/vault-token
@@ -243,18 +242,18 @@ VAULT_CA_CERT := $(WORK_DIR)/vault-ca.pem
 VAULT_SERVER_KEY := $(WORK_DIR)/vault-server.key
 VAULT_SERVER_CERT := $(WORK_DIR)/vault-server.pem
 
-# Download and setup Vault binary
+# Download and setup OpenBao binary
 $(VAULT_BIN):
 	@if [ ! -f $(VAULT_BIN) ]; then \
-		printf "${BOLD}downloading vault binary${SGR0}\n"; \
+		printf "${BOLD}downloading openbao binary${SGR0}\n"; \
 		mkdir -p $(WORK_DIR) && \
 		cd $(WORK_DIR) && \
-		curl -L "$(VAULT_URL)" -o vault.zip && \
-		unzip vault.zip && \
-		chmod +x vault && \
-		rm vault.zip; \
+		curl -L "$(OPENBAO_URL)" -o bao.tar.gz && \
+		tar xzf bao.tar.gz bao && \
+		chmod +x bao && \
+		rm bao.tar.gz; \
 	else \
-		printf "${BOLD}vault binary already exists${SGR0}\n"; \
+		printf "${BOLD}openbao binary already exists${SGR0}\n"; \
 	fi
 
 # Create Vault configuration for kv1 engine
