@@ -317,6 +317,12 @@ vault.PID: $(VAULT_BIN) $(VAULT_CONFIG)
 		$(VAULT_BIN) kv put secret/test-repo/test-type/no-data-key value="some-value" other="content" && \
 		$(VAULT_BIN) kv put secret/test-repo/test-type/empty-data data="" && \
 		$(VAULT_BIN) kv put secret/test-repo/test-type/json-preloaded data='{"service":"database","credentials":{"host":"db.example.com","port":5432,"username":"app_user","password":"secure_pass"},"settings":{"max_connections":100,"timeout":30}}' && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/numeric-string data="12345" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/base64-encoded data="SGVsbG8gV29ybGQ=" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/unicode-value data="こんにちは世界" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/url-value data="https://user:pass@host:8080/path?key=val&foo=bar" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/pem-like data="-----BEGIN CERTIFICATE-----MIIBxTCCAW..." && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/whitespace-value data="  leading and trailing  " && \
 		printf "${BOLD}vault server started and configured${SGR0}\n"; \
 	else \
 		printf "${BOLD}vault server already running (vault.PID exists)${SGR0}\n"; \
@@ -351,6 +357,11 @@ vault-ssl.PID: $(VAULT_BIN) $(VAULT_SSL_CONFIG)
 		$(VAULT_BIN) secrets enable -version=1 -path=secret kv && \
 		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-test data="ssl-test-secret-value" && \
 		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-skip-verify-test data="ssl-skip-verify-test-value" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-numeric data="12345" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-base64 data="SGVsbG8gV29ybGQ=" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-unicode data="こんにちは世界" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-url data="https://user:pass@host:8080/path?key=val&foo=bar" && \
+		$(VAULT_BIN) kv put secret/test-repo/test-type/ssl-pem-like data="-----BEGIN CERTIFICATE-----MIIBxTCCAW..." && \
 		printf "${BOLD}vault SSL server started and configured${SGR0}\n"; \
 	else \
 		printf "${BOLD}vault SSL server already running (vault-ssl.PID exists)${SGR0}\n"; \

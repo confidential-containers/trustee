@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use educe::Educe;
 use log::info;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -65,7 +66,7 @@ impl StorageBackend for VaultKvBackend {
 
         info!("Reading secret from Vault path: {}", vault_path);
 
-        let secret_data: HashMap<String, Vec<u8>> =
+        let mut secret_data: HashMap<String, Value> =
             kv1::get(&self.client, &self.mount_path, &vault_path)
                 .await
                 .map_err(|e| {
@@ -82,7 +83,7 @@ impl StorageBackend for VaultKvBackend {
                     }
                 })?;
 
-        let bytes = secret_data.get("data").cloned().ok_or_else(|| {
+        let value = secret_data.remove("data").ok_or_else(|| {
             let available_keys = secret_data.keys().cloned().collect();
             VaultError::DataKeyMissing {
                 path: vault_path.clone(),
@@ -90,7 +91,16 @@ impl StorageBackend for VaultKvBackend {
             }
         })?;
 
-        Ok(bytes)
+        // Values stored via the CLI (e.g. `vault kv put ... data="value"`) are JSON
+        // strings, while values written through write_secret_resource are JSON byte
+        // arrays (Vec<u8> serialized as [n, n, ...]). Handle both formats.
+        match value {
+            Value::String(s) => Ok(s.into_bytes()),
+            arr @ Value::Array(_) => {
+                serde_json::from_value(arr).context("invalid byte array in data")
+            }
+            other => serde_json::to_vec(&other).context("failed to serialize data value"),
+        }
     }
 
     async fn write_secret_resource(&self, resource_desc: ResourceDesc, data: &[u8]) -> Result<()> {
@@ -424,6 +434,34 @@ mod integration_tests {
         println!("Correctly failed when 'data' key is missing.");
     }
 
+    /// Read various CLI-stored value types to verify string deserialization handles
+    /// numeric strings, base64, unicode, URLs, PEM-like data, and whitespace.
+    #[rstest]
+    #[case::numeric("numeric-string", b"12345")]
+    #[case::base64("base64-encoded", b"SGVsbG8gV29ybGQ=")]
+    #[case::unicode("unicode-value", "こんにちは世界".as_bytes())]
+    #[case::url("url-value", b"https://user:pass@host:8080/path?key=val&foo=bar")]
+    #[case::pem_like("pem-like", b"-----BEGIN CERTIFICATE-----MIIBxTCCAW...")]
+    #[case::whitespace("whitespace-value", b"  leading and trailing  ")]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_nossl_read_cli_value_types(
+        nossl_backend: VaultKvBackend,
+        #[case] tag: &str,
+        #[case] expected: &[u8],
+    ) {
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: tag.to_string(),
+        };
+        let data = nossl_backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("should read CLI-stored secret");
+        assert_eq!(data, expected);
+    }
+
     // --- Test Suite for SSL Operations ---
 
     #[rstest]
@@ -454,6 +492,52 @@ mod integration_tests {
 
         assert_eq!(read_data, test_data);
         println!("Successfully read back and verified secret over SSL.");
+    }
+
+    /// Read secrets pre-loaded via CLI to verify string-valued data is handled
+    /// correctly over SSL
+    #[rstest]
+    #[case::with_ssl_verification(ssl_backend::default())]
+    #[case::without_ssl_verification(ssl_no_verify_backend::default())]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_ssl_read_preloaded(#[case] backend: VaultKvBackend) {
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: "ssl-test".to_string(),
+        };
+        let data = backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("should read pre-loaded SSL secret");
+        assert_eq!(data, b"ssl-test-secret-value");
+    }
+
+    /// Read various CLI-stored value types over SSL to verify string deserialization.
+    #[rstest]
+    #[case::numeric("ssl-numeric", b"12345")]
+    #[case::base64("ssl-base64", b"SGVsbG8gV29ybGQ=")]
+    #[case::unicode("ssl-unicode", "こんにちは世界".as_bytes())]
+    #[case::url("ssl-url", b"https://user:pass@host:8080/path?key=val&foo=bar")]
+    #[case::pem_like("ssl-pem-like", b"-----BEGIN CERTIFICATE-----MIIBxTCCAW...")]
+    #[tokio::test]
+    #[ignore]
+    async fn test_vault_ssl_read_cli_value_types(
+        ssl_backend: VaultKvBackend,
+        #[case] tag: &str,
+        #[case] expected: &[u8],
+    ) {
+        let resource_desc = ResourceDesc {
+            repository_name: "test-repo".to_string(),
+            resource_type: "test-type".to_string(),
+            resource_tag: tag.to_string(),
+        };
+        let data = ssl_backend
+            .read_secret_resource(resource_desc)
+            .await
+            .expect("should read CLI-stored SSL secret");
+        assert_eq!(data, expected);
     }
 
     // --- Standalone tests for specific invalid configurations ---
