@@ -217,7 +217,10 @@ RUST_LOG=debug ./target/release/kbs --config-file /path/to/kbs-config.toml
 
 ## Testing
 
-The backend includes integration tests that require a running Vault or OpenBao server.
+The backend includes integration tests that use
+[OpenBao](https://openbao.org/), an open-source, API-compatible fork of
+HashiCorp Vault maintained by the Linux Foundation. The test Makefile
+automatically downloads the OpenBao binary and starts a local server.
 
 To run the tests without SSL setup:
 
