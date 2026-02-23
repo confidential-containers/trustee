@@ -34,7 +34,7 @@ clap = { version = "4", features = ["derive"] }
 config = "0.15.19"
 educe = "0.6"
 ear = { git = "https://github.com/veraison/rust-ear.git", rev = "3d5fa46" }
-env_logger = "0.11.8"
+env_logger = "0.11.9"
 hex = "0.4.3"
 jwt-simple = { version = "0.12", default-features = false, features = [
     "pure-rust",
