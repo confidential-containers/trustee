@@ -58,7 +58,6 @@ educe.workspace = true
 env_logger.workspace = true
 hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
-jwt-simple.workspace = true
 kbs-types.workspace = true
 kms = { workspace = true, default-features = false }
 lazy_static.workspace = true

@@ -4,11 +4,7 @@
 
 use actix_web::{http::header::Header, HttpRequest};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use jwt_simple::{
-    claims::NoCustomClaims,
-    common::VerificationOptions,
-    prelude::{Ed25519PublicKey, EdDSAPublicKeyLike},
-};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use log::info;
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -34,7 +30,7 @@ pub struct SimpleAdminBackend {
 
 pub struct SimplePersona {
     id: String,
-    public_key: Ed25519PublicKey,
+    public_key: DecodingKey,
 }
 
 impl SimpleAdminBackend {
@@ -43,7 +39,7 @@ impl SimpleAdminBackend {
 
         for persona_config in &config.personas {
             let user_public_key_pem = std::fs::read_to_string(&persona_config.public_key_path)?;
-            let public_key = Ed25519PublicKey::from_pem(&user_public_key_pem)?;
+            let public_key = DecodingKey::from_ed_pem(user_public_key_pem.as_bytes())?;
 
             personas.push(SimplePersona {
                 id: persona_config.id.clone(),
@@ -61,9 +57,8 @@ impl AdminBackend for SimpleAdminBackend {
         let token = bearer.token();
 
         for persona in &self.personas {
-            let res = persona
-                .public_key
-                .verify_token::<NoCustomClaims>(token, Some(VerificationOptions::default()));
+            let validation = Validation::new(Algorithm::EdDSA);
+            let res = decode::<serde_json::Value>(token, &persona.public_key, &validation);
             match res {
                 Ok(_claims) => {
                     info!("Admin token validated (simple) for persona: {}", persona.id);
