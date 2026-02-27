@@ -36,13 +36,10 @@ educe = "0.6"
 ear = { git = "https://github.com/veraison/rust-ear.git", rev = "3d5fa46" }
 env_logger = "0.11.9"
 hex = "0.4.3"
-jwt-simple = { version = "0.12", default-features = false, features = [
-    "pure-rust",
-] }
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "7be23a1", default-features = false }
 kbs-types = "0.14.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "7be23a1", default-features = false }
-jsonwebtoken = { version = "10", default-features = false, features = ["aws_lc_rs"] }
+jsonwebtoken = { version = "10", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 lazy_static = "1.4.0"
 log = "0.4.29"
 openssl = "0.10.75"
