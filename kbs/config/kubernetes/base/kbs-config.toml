@@ -9,10 +9,8 @@ insecure_key = true
 
 [attestation_service]
 type = "coco_as_builtin"
-work_dir = "/opt/confidential-containers/attestation-service"
 
 [attestation_service.attestation_token_broker]
-type = "Ear"
 duration_min = 5
 
 [attestation_service.rvps_config]
@@ -27,5 +25,10 @@ public_key_path = "/kbs/kbs.pem"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+backend = "kvstorage"
+
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/kbs"

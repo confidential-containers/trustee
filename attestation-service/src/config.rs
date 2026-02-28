@@ -1,23 +1,16 @@
 use crate::ear_token::EarTokenConfiguration;
 use crate::rvps::RvpsConfig;
 
-use verifier::VerifierConfig;
+use key_value_storage::StorageBackendConfig;
+pub use verifier::VerifierConfig;
 
 use serde::Deserialize;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use thiserror::Error;
 
-/// Environment macro for Attestation Service work dir.
-const AS_WORK_DIR: &str = "AS_WORK_DIR";
-pub const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/attestation-service";
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct Config {
-    /// The location for Attestation Service to store data.
-    #[serde(default = "default_work_dir")]
-    pub work_dir: PathBuf,
-
     /// Configurations for RVPS.
     #[serde(default)]
     pub rvps_config: RvpsConfig,
@@ -29,10 +22,13 @@ pub struct Config {
     /// Optional configuration for verifier modules
     #[serde(default)]
     pub verifier_config: Option<VerifierConfig>,
-}
 
-fn default_work_dir() -> PathBuf {
-    PathBuf::from(std::env::var(AS_WORK_DIR).unwrap_or_else(|_| DEFAULT_WORK_DIR.to_string()))
+    /// Unified storage backend configuration for all storage needs in KBS.
+    /// When provided, this will be used to create storage instances for:
+    /// - Built-in AS policy storage (instance: "attestation-service-policy")
+    /// - Built-in AS RVPS storage (instance: "reference-value")
+    #[serde(default)]
+    pub storage_backend: StorageBackendConfig,
 }
 
 #[derive(Error, Debug)]
@@ -45,18 +41,6 @@ pub enum ConfigError {
     JsonFileParse(#[source] serde_json::Error),
     #[error("Illegal format of the content of the configuration file: {0}")]
     SerdeJson(#[from] serde_json::Error),
-}
-
-impl Default for Config {
-    // Construct a default instance of `Config`
-    fn default() -> Config {
-        Config {
-            work_dir: default_work_dir(),
-            rvps_config: RvpsConfig::default(),
-            attestation_token_broker: EarTokenConfiguration::default(),
-            verifier_config: None,
-        }
-    }
 }
 
 impl TryFrom<&Path> for Config {
@@ -90,42 +74,42 @@ impl TryFrom<&Path> for Config {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
-    use std::path::PathBuf;
 
     use super::Config;
     use crate::ear_token::TokenSignerConfig;
-    use crate::rvps::RvpsCrateConfig;
     use crate::{ear_token::EarTokenConfiguration, rvps::RvpsConfig};
-    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
+    use key_value_storage::{
+        local_fs, KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig,
+    };
 
     #[rstest]
     #[case("./tests/configs/example1.json", Config {
-        work_dir: PathBuf::from("/var/lib/attestation-service/"),
-        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
-            extractors: None,
-        }),
+        rvps_config: RvpsConfig::BuiltIn { extractors: None },
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
             signer: None,
-            policy_dir: "/var/lib/attestation-service/policies".into(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
-            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
+            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
         },
         verifier_config: None,
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalFs,
+            backends: KeyValueStorageStructConfig {
+                local_fs: Some(local_fs::Config {
+                    dir_path: "/opt/confidential-containers/attestation-service".into(),
+                }),
+                local_json: None,
+                postgres: None,
+            },
+        },
     })]
     #[case("./tests/configs/example2.json", Config {
-        work_dir: PathBuf::from("/var/lib/attestation-service/"),
-        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig {
-            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config::default()),
-            extractors: None,
-        }),
+        rvps_config: RvpsConfig::BuiltIn { extractors: None },
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
-            policy_dir: "/var/lib/attestation-service/policies".into(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
@@ -133,7 +117,11 @@ mod tests {
                 key_path: "/etc/key".into(),
                 cert_url: Some("https://example.io".into()),
                 cert_path: Some("/etc/cert.pem".into())
-            })
+            }),
+        },
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::Memory,
+            backends: KeyValueStorageStructConfig::default(),
         },
         verifier_config: None,
     })]

@@ -159,13 +159,21 @@ kbs-keys: $(KBS_KEY) $(TOKEN_KEY) $(HTTPS_KEY)
 
 kbs-certs: $(KBS_PEM) $(TOKEN_CERT_CHAIN) $(HTTPS_CERT)
 
-kbs.PID: kbs kbs-keys kbs-certs $(SECRET_FILE)
+kbs.PID: kbs kbs-keys kbs-certs $(SECRET_FILE) client
 	@printf "${BOLD}start kbs${SGR0}\n"
 	{ \
 		"$(CURDIR)/kbs" --config-file "$(KBS_CONFIG_PATH)/kbs.toml" \
 		& echo $$! > kbs.PID; \
 	} && \
-	sleep 1
+	sleep 1 && \
+	./client \
+		--url https://127.0.0.1:8080 \
+		--cert-file "$(HTTPS_CERT)" \
+		config \
+		--auth-private-key "$(KBS_KEY)" \
+		set-resource \
+		--path "$(REPOSITORY_SECRET)" \
+		--resource-file $(SECRET_FILE)
 
 resource-kbs.PID: resource-kbs $(KBS_PEM) $(CA_CERT) $(SECRET_FILE)
 	@printf "${BOLD}start resource-kbs${SGR0}\n"
@@ -173,7 +181,14 @@ resource-kbs.PID: resource-kbs $(KBS_PEM) $(CA_CERT) $(SECRET_FILE)
 		./resource-kbs --config-file "$(KBS_CONFIG_PATH)/resource-kbs.toml" \
 		& echo $$! > resource-kbs.PID; \
 	} && \
-	sleep 1
+	sleep 1 && \
+	./client \
+		--url http://127.0.0.1:50002 \
+		config \
+		--auth-private-key "$(KBS_KEY)" \
+		set-resource \
+		--path "$(REPOSITORY_SECRET)" \
+		--resource-file $(SECRET_FILE)
 
 .PHONY: stop-kbs
 stop-kbs: kbs.PID

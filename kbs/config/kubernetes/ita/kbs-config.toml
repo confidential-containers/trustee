@@ -22,5 +22,10 @@ public_key_path = "/kbs/kbs.pem"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+backend = "kvstorage"
+
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/kbs"

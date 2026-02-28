@@ -4,11 +4,11 @@
 
 use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
-use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 use clap::Parser;
 use config::{Config, File};
+use key_value_storage::StorageBackendConfig;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -72,10 +72,14 @@ pub struct KbsConfig {
     /// Configuration for the KBS admin API
     pub admin: AdminConfig,
 
-    /// Policy engine configuration used for evaluating whether the TCB status has access to
-    /// specific resources.
+    /// Unified storage backend configuration for all storage needs in KBS.
+    /// When provided, this will be used to create storage instances for:
+    /// - KBS itself (instance: "kbs")
+    /// - Resource plugin storage (instance: [`plugins::RESOURCE_STORAGE_INSTANCE`])
+    /// - Built-in AS policy storage (instance: [`attestation_service::CONFIG_POLICY_STORAGE_INSTANCE`])
+    /// - Built-in AS RVPS storage (instance: [`rvps::REFERENCE_VALUE_STORAGE_INSTANCE`])
     #[serde(default)]
-    pub policy_engine: PolicyEngineConfig,
+    pub storage_backend: StorageBackendConfig,
 
     #[serde(default)]
     pub plugins: Vec<PluginsConfig>,
@@ -108,7 +112,7 @@ pub struct Cli {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use crate::{
         admin::{
@@ -119,12 +123,9 @@ mod tests {
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
-            implementations::{
-                resource::local_fs::LocalFsRepoDesc, RepositoryConfig, SampleConfig,
-            },
+            implementations::{RepositoryConfig, SampleConfig},
             PluginsConfig,
         },
-        policy_engine::{PolicyEngineConfig, DEFAULT_POLICY_PATH},
         token::AttestationTokenVerifierConfig,
     };
 
@@ -133,11 +134,12 @@ mod tests {
     #[cfg(feature = "coco-as-builtin")]
     use attestation_service::{
         ear_token::{EarTokenConfiguration, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
-        rvps::{grpc::RvpsRemoteConfig, RvpsConfig, RvpsCrateConfig},
+        rvps::{grpc::RvpsRemoteConfig, RvpsConfig},
     };
 
-    #[cfg(feature = "coco-as-builtin")]
-    use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
+    use key_value_storage::{
+        local_json, KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig,
+    };
 
     use rstest::rstest;
 
@@ -172,17 +174,20 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalJson,
+            backends: KeyValueStorageStructConfig {
+                local_json: Some(local_json::Config {
+                    file_dir_path: "/opt/confidential-containers/trustee".into(),
+                }),
+                local_fs: None,
+                postgres: None,
+            },
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
-                dir_path: "/tmp/kbs-resource".into(),
-            },
-        ))],
+        PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
     })]
     #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -195,8 +200,7 @@ mod tests {
         attestation_service: crate::attestation::config::AttestationConfig {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
-                    attestation_service::config::Config {
-                        work_dir: "/opt/coco/attestation-service".into(),
+                    crate::attestation::coco::builtin::Config {
                         rvps_config: RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                             address: "http://127.0.0.1:50003".into(),
                         }),
@@ -223,8 +227,15 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: DEFAULT_POLICY_PATH.into(),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalJson,
+            backends: KeyValueStorageStructConfig {
+                local_json: Some(local_json::Config {
+                    file_dir_path: "/opt/confidential-containers/trustee".into(),
+                }),
+                local_fs: None,
+                postgres: None,
+            },
         },
         plugins: Vec::new(),
     })]
@@ -261,17 +272,20 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalJson,
+            backends: KeyValueStorageStructConfig {
+                local_json: Some(local_json::Config {
+                    file_dir_path: "/opt/confidential-containers/trustee".into(),
+                }),
+                local_fs: None,
+                postgres: None,
+            },
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
-                dir_path: "/tmp/kbs-resource".into(),
-            },
-        ))],
+        PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
     })]
     #[case("test_data/configs/coco-as-grpc-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -305,7 +319,16 @@ mod tests {
             }),
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalJson,
+            backends: KeyValueStorageStructConfig {
+                local_json: Some(local_json::Config {
+                    file_dir_path: "/opt/confidential-containers/trustee".into(),
+                }),
+                local_fs: None,
+                postgres: None,
+            },
+        },
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
@@ -319,14 +342,8 @@ mod tests {
         attestation_service: crate::attestation::config::AttestationConfig {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
-                    attestation_service::config::Config {
-                        work_dir: "/opt/confidential-containers/attestation-service".into(),
-                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig{
-                            storage: ReferenceValueStorageConfig::LocalFs(local_fs::Config{
-                                file_path: "/opt/confidential-containers/attestation-service/reference_values".into(),
-                            }),
-                            extractors: None,
-                        }),
+                    crate::attestation::coco::builtin::Config {
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()
@@ -348,7 +365,14 @@ mod tests {
             admin_backend: AdminBackendType::InsecureAllowAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::Memory,
+            backends: KeyValueStorageStructConfig {
+                local_json: None,
+                local_fs: None,
+                postgres: None,
+            },
+        },
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
@@ -384,7 +408,7 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
+        storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
@@ -410,7 +434,7 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
+        storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
@@ -442,7 +466,7 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
+        storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
@@ -456,12 +480,10 @@ mod tests {
         attestation_service: crate::attestation::config::AttestationConfig {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
-                    attestation_service::config::Config {
-                        work_dir: "/opt/confidential-containers/attestation-service".into(),
-                        rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
+                    crate::attestation::coco::builtin::Config {
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
-                            policy_dir: "/opt/confidential-containers/attestation-service/ear-policies".into(),
                             ..Default::default()
                         },
                         verifier_config: None,
@@ -479,15 +501,19 @@ mod tests {
             }),
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
+        storage_backend: StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalJson,
+            backends: KeyValueStorageStructConfig {
+                    local_json: Some(local_json::Config {
+                    file_dir_path: "/opt/confidential-containers/trustee".into(),
+                }),
+                local_fs: None,
+                postgres: None,
+            },
         },
         plugins: vec![
-        PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
-            LocalFsRepoDesc {
-                dir_path: "/opt/confidential-containers/kbs/repository".into(),
-            },
-        ))],
+            PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage),
+        ],
     })]
     fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
         let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
