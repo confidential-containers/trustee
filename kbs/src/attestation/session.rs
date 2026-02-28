@@ -23,6 +23,7 @@ pub(crate) enum SessionStatus {
 
     Attested {
         token: String,
+        tee_type: String,
         id: String,
         timeout: OffsetDateTime,
     },
@@ -83,11 +84,12 @@ impl SessionStatus {
         *self.timeout() < OffsetDateTime::now_utc()
     }
 
-    pub fn attest(&mut self, token: String) {
+    pub fn attest(&mut self, token: String, tee_type: String) {
         match self {
             SessionStatus::Authed { id, timeout, .. } => {
                 *self = SessionStatus::Attested {
                     token,
+                    tee_type,
                     id: id.clone(),
                     timeout: *timeout,
                 };

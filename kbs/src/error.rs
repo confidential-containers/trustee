@@ -16,6 +16,26 @@ const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Carries an HTTP status code through the anyhow error chain for external plugin errors.
+/// Produced by `GrpcPluginProxy` and downcast in `api_server.rs`.
+#[derive(Debug)]
+pub struct PluginCallError {
+    pub http_status: u16,
+    pub message: String,
+}
+
+impl std::fmt::Display for PluginCallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Plugin error (HTTP {}): {}",
+            self.http_status, self.message
+        )
+    }
+}
+
+impl std::error::Error for PluginCallError {}
+
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
     #[error("Admin auth error: {0}")]
@@ -60,6 +80,9 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
+
+    #[error("Plugin error (HTTP {http_status}): {message}")]
+    PluginError { http_status: u16, message: String },
 
     #[error("Access denied by policy")]
     PolicyDeny,
@@ -107,6 +130,16 @@ impl ResponseError for Error {
             Error::InvalidRequestPath { .. } | Error::PluginNotFound { .. } => {
                 HttpResponse::NotFound()
             }
+            Error::PluginError { http_status, .. } => match http_status {
+                400 => HttpResponse::BadRequest(),
+                401 => HttpResponse::Unauthorized(),
+                403 => HttpResponse::Forbidden(),
+                404 => HttpResponse::NotFound(),
+                405 => HttpResponse::MethodNotAllowed(),
+                500 => HttpResponse::InternalServerError(),
+                503 => HttpResponse::ServiceUnavailable(),
+                _ => HttpResponse::InternalServerError(),
+            },
             _ => HttpResponse::Unauthorized(),
         };
 
@@ -125,6 +158,7 @@ mod tests {
     #[rstest]
     #[case(Error::InvalidRequestPath{path: "test".into()})]
     #[case(Error::PluginNotFound{plugin_name: "test".into()})]
+    #[case(Error::PluginError{http_status: 404, message: "test".into()})]
     fn into_error_response(#[case] err: Error) {
         let _ = actix_web::ResponseError::error_response(&err);
     }

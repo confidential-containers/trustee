@@ -393,7 +393,7 @@ impl AttestationService {
         .inspect_err(|_| ATTESTATION_ERRORS.inc())
         .context("Serialize token failed")?;
 
-        session.attest(token);
+        session.attest(token, tee_type_label);
 
         Ok(HttpResponse::Ok()
             .cookie(session.cookie())
@@ -429,6 +429,67 @@ impl AttestationService {
         };
 
         Ok(token.to_owned())
+    }
+
+    /// Build a PluginContext from the current session state.
+    ///
+    /// Checks for a session cookie first, then falls back to a Bearer token.
+    /// For cookie-based sessions the TEE type and attestation status are read
+    /// from the session store.  For Bearer token auth, KBS has already verified
+    /// the token before reaching the plugin handler, so is_attested is set to
+    /// true; tee_type is not available without re-parsing the JWT claims.
+    pub async fn get_plugin_context(&self, request: &HttpRequest) -> crate::plugins::PluginContext {
+        let cookie = match request.cookie(KBS_SESSION_ID) {
+            Some(c) => c,
+            None => {
+                // No session cookie — check for Bearer token auth.
+                // KBS verifies the token before the plugin handler is called,
+                // so a present Bearer header means the caller is attested.
+                let bearer_present = request
+                    .headers()
+                    .get(actix_web::http::header::AUTHORIZATION)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|v| v.starts_with("Bearer "))
+                    .unwrap_or(false);
+                return crate::plugins::PluginContext {
+                    session_id: None,
+                    tee_type: None,
+                    is_attested: bearer_present,
+                };
+            }
+        };
+
+        let session_id = cookie.value().to_owned();
+
+        let Some(session) = self.session_map.sessions.get_async(&session_id).await else {
+            return crate::plugins::PluginContext {
+                session_id: Some(session_id),
+                tee_type: None,
+                is_attested: false,
+            };
+        };
+
+        let session = session.get();
+
+        if session.is_expired() {
+            return crate::plugins::PluginContext::default();
+        }
+
+        let (is_attested, tee_type) = match session {
+            SessionStatus::Authed { request: req, .. } => {
+                let tee_type = serde_json::to_string(&req.tee)
+                    .ok()
+                    .map(|s| s.trim_matches('"').to_owned());
+                (false, tee_type)
+            }
+            SessionStatus::Attested { tee_type, .. } => (true, Some(tee_type.clone())),
+        };
+
+        crate::plugins::PluginContext {
+            session_id: Some(session_id),
+            tee_type,
+            is_attested,
+        }
     }
 
     pub async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {

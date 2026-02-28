@@ -1,0 +1,22 @@
+[package]
+name = "kbs-plugin-sdk"
+version.workspace = true
+authors.workspace = true
+description = "Rust SDK for building KBS external plugins"
+edition.workspace = true
+
+[dependencies]
+tonic.workspace = true
+tokio.workspace = true
+prost.workspace = true
+anyhow.workspace = true
+tonic-prost.workspace = true
+tonic-health = "0.14"
+tonic-reflection = { version = "0.14", features = ["server"] }
+
+[build-dependencies]
+tonic-prost-build.workspace = true
+
+[[example]]
+name = "echo"
+path = "examples/echo.rs"

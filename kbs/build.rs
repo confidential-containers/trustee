@@ -25,5 +25,7 @@ fn main() -> Result<(), String> {
     tonic_prost_build::compile_protos("../protos/attestation.proto").map_err(|e| format!("{e}"))?;
     #[cfg(feature = "coco-as-grpc")]
     tonic_prost_build::compile_protos("../protos/reference.proto").map_err(|e| format!("{e}"))?;
+    #[cfg(feature = "external-plugin")]
+    tonic_prost_build::compile_protos("../protos/plugin.proto").map_err(|e| format!("{e}"))?;
     Ok(())
 }

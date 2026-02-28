@@ -1,0 +1,38 @@
+name: Proto Breaking Change Detection
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - 'protos/**'
+      - '.github/workflows/proto-breaking.yml'
+  pull_request:
+    paths:
+      - 'protos/**'
+      - '.github/workflows/proto-breaking.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  proto-check:
+    name: Lint and Breaking Change Check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Fetch main branch for comparison
+        run: git fetch origin main
+
+      - name: Install buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Lint proto files
+        run: buf lint protos/
+
+      - name: Check for breaking changes
+        run: buf breaking protos/ --against '.git#branch=origin/main,subdir=protos'

@@ -1,0 +1,56 @@
+name: KBS e2e (External Plugin)
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - 'kbs/src/plugins/**'
+      - 'kbs/src/error.rs'
+      - 'kbs/src/prometheus/**'
+      - 'kbs/test/Makefile'
+      - 'kbs/test/config/external-plugin*.toml'
+      - 'kbs/test/external_plugin_test_server.rs'
+      - 'kbs/Cargo.toml'
+      - 'rust-sdk/**'
+      - '.github/workflows/kbs-e2e-ext-plugin.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ext-plugin-e2e-test:
+    runs-on: ubuntu-24.04
+    env:
+      OS_VERSION: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+
+    - name: Install Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+      with:
+        rustflags: ""
+        cache: false
+
+    - name: Set up rust build cache
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          target/
+        key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install build dependencies
+      working-directory: kbs/test
+      run: make install-dev-dependencies
+
+    - name: Run external plugin e2e tests
+      working-directory: kbs/test
+      run: make e2e-ext-plugin

@@ -27,6 +27,9 @@ coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost"]
 # Use Intel TA as backend attestation service
 intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 
+# Support external gRPC plugins
+external-plugin = ["tonic", "tonic-health", "tonic-prost", "prost", "backoff", "mobc"]
+
 # Use aliyun KMS as KBS backend
 aliyun = ["kms/aliyun"]
 
@@ -48,6 +51,7 @@ aes-gcm = "0.10.1"
 aes-kw = "0.2.1"
 anyhow.workspace = true
 async-trait.workspace = true
+backoff = { version = "0.4", features = ["tokio"], optional = true }
 base64.workspace = true
 cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
@@ -86,6 +90,7 @@ thiserror.workspace = true
 time = { version = "0.3.40", features = ["std"] }
 tokio.workspace = true
 tonic = { workspace = true, optional = true }
+tonic-health = { version = "0.14", optional = true }
 tonic-prost = { workspace = true, optional = true }
 uuid = { version = "1.21.0", features = ["serde", "v4"] }
 openssl.workspace = true
@@ -117,6 +122,11 @@ rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 serial_test = "3.0"
 toml = "0.9"
+
+[[bin]]
+name = "external_plugin_test_server"
+path = "test/external_plugin_test_server.rs"
+required-features = ["external-plugin"]
 
 [build-dependencies]
 tonic-prost-build.workspace = true

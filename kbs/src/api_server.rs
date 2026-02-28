@@ -72,7 +72,8 @@ impl ApiServer {
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::try_from(config.plugins.clone())
+        let plugin_manager = PluginManager::new(config.plugins.clone())
+            .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
         let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
@@ -132,7 +133,9 @@ impl ApiServer {
                     .service(
                         web::resource([kbs_path!("{path:.*}")])
                             .route(web::get().to(api))
-                            .route(web::post().to(api)),
+                            .route(web::post().to(api))
+                            .route(web::put().to(api))
+                            .route(web::delete().to(api)),
                     )
                     .service(
                         web::resource("/metrics")
@@ -285,6 +288,15 @@ pub(crate) async fn api(
                     plugin_name: plugin_name.to_string(),
                 })?;
 
+            // Build plugin context from session/attestation state.
+            // When the attestation service is available, extract session_id,
+            // tee_type, and is_attested from the session map. Otherwise,
+            // fall back to default (no context).
+            #[cfg(feature = "as")]
+            let plugin_context = core.attestation_service.get_plugin_context(&request).await;
+            #[cfg(not(feature = "as"))]
+            let plugin_context = crate::plugins::PluginContext::default();
+
             let body = body.to_vec();
             if plugin
                 .validate_auth(&body, &query, resource_path, request.method())
@@ -293,12 +305,35 @@ pub(crate) async fn api(
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
-                let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                let output = plugin
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        Some(&plugin_context),
+                    )
                     .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .map_err(|e| {
+                        if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                            Error::PluginError {
+                                http_status: call_err.http_status,
+                                message: call_err.message.clone(),
+                            }
+                        } else {
+                            Error::PluginInternalError { source: e }
+                        }
+                    })?;
 
-                Ok(HttpResponse::Ok().content_type("text/xml").body(response))
+                let status = output.status_code.unwrap_or(200);
+                let content_type = output
+                    .content_type
+                    .unwrap_or_else(|| "text/xml".to_string());
+                let http_status = actix_web::http::StatusCode::from_u16(status)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(http_status)
+                    .content_type(content_type)
+                    .body(output.body))
             } else {
                 // Plugin calls need to be authorized by the Token and policy
                 let token = core
@@ -323,10 +358,25 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                let output = plugin
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        Some(&plugin_context),
+                    )
                     .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .map_err(|e| {
+                        if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                            Error::PluginError {
+                                http_status: call_err.http_status,
+                                message: call_err.message.clone(),
+                            }
+                        } else {
+                            Error::PluginInternalError { source: e }
+                        }
+                    })?;
                 if plugin
                     .encrypted(&body, &query, resource_path, request.method())
                     .await
@@ -334,14 +384,22 @@ pub(crate) async fn api(
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
                     let jwe =
-                        jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
+                        jwe(public_key, output.body).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(res));
                 }
 
-                Ok(HttpResponse::Ok().content_type("text/xml").body(response))
+                let status = output.status_code.unwrap_or(200);
+                let content_type = output
+                    .content_type
+                    .unwrap_or_else(|| "text/xml".to_string());
+                let http_status = actix_web::http::StatusCode::from_u16(status)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(http_status)
+                    .content_type(content_type)
+                    .body(output.body))
             }
         }
     }

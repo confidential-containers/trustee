@@ -26,7 +26,7 @@ use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginContext, PluginOutput};
 
 /// Enum representing supported RSA mechanisms.
 #[derive(Educe, Deserialize, Clone, PartialEq, Default)]
@@ -123,10 +123,11 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<Vec<u8>> {
+        _context: Option<&PluginContext>,
+    ) -> Result<PluginOutput> {
         let desc = path.join("/");
 
-        match &desc[..] {
+        let bytes = match &desc[..] {
             "wrap-key" => self.wrap_key_handle(body, method).await,
             _ => {
                 let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
@@ -135,7 +136,8 @@ impl ClientPlugin for Pkcs11Backend {
                     _ => bail!("invalid path"),
                 }
             }
-        }
+        }?;
+        Ok(bytes.into())
     }
 
     async fn validate_auth(

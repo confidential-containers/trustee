@@ -1,0 +1,146 @@
+// Copyright (c) 2026 by Trustee Contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// Reserved Field Convention:
+// When removing a field, add its number AND name to `reserved` statements.
+// This prevents accidental reuse of field numbers, which causes silent
+// wire-format corruption with old clients. See protobuf.dev/best-practices.
+
+syntax = "proto3";
+package kbs.plugin.v1;
+
+// KbsPlugin defines the gRPC interface for external KBS plugins.
+//
+// External plugins receive HTTP requests from KBS, process them, and return
+// HTTP responses. This allows extending KBS with custom endpoints without
+// modifying the core codebase.
+service KbsPlugin {
+    // Handle processes an HTTP request and returns an HTTP response.
+    //
+    // The plugin receives the raw request details (method, path, query, body)
+    // and returns a response with optional status code and content type hints.
+    // KBS may override these hints based on its own policies.
+    rpc Handle(PluginRequest) returns (PluginResponse) {};
+
+    // GetCapabilities returns metadata about the plugin's supported features.
+    //
+    // This is called once at plugin startup to register the plugin with KBS.
+    // The response includes the plugin's name, version, supported HTTP methods,
+    // and optional key-value attributes for operational visibility.
+    rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse) {};
+
+    // ValidateAuth asks the plugin whether admin authentication is required
+    // for a specific request. KBS calls this before enforcing authentication
+    // and before Handle, so plugins can vary auth requirements per method or
+    // path (e.g. GET -> attestation-gated, POST -> admin-gated), matching the
+    // behaviour of built-in plugins such as pkcs11 and nebula-ca.
+    //
+    // If the plugin returns UNIMPLEMENTED, KBS falls back to the validate_auth
+    // value in the plugin's KBS config entry.
+    rpc ValidateAuth(ValidateAuthRequest) returns (ValidateAuthResponse) {};
+
+    // NeedsEncryption asks the plugin whether its Handle response should be
+    // JWE-encrypted with the TEE's ephemeral public key. KBS calls this after
+    // Handle returns, so the plugin can decide per-request based on what it
+    // actually returned (e.g. encrypt secret reads, skip encryption for health
+    // checks on the same endpoint).
+    //
+    // If the plugin returns UNIMPLEMENTED, KBS falls back to the encrypted
+    // value in the plugin's KBS config entry.
+    rpc NeedsEncryption(NeedsEncryptionRequest) returns (NeedsEncryptionResponse) {};
+}
+
+// PluginRequest carries the HTTP request details from KBS to the plugin.
+message PluginRequest {
+    // Raw HTTP request body. Uses bytes for binary safety (certificates,
+    // keys, JWE-encrypted payloads).
+    bytes body = 1;
+
+    // Query parameters from the HTTP request URL.
+    map<string, string> query = 2;
+
+    // Path segments after the plugin name. For /kbs/v0/my-plugin/foo/bar,
+    // this is ['foo', 'bar'].
+    repeated string path = 3;
+
+    // HTTP method: "GET", "POST", "PUT", "DELETE".
+    string method = 4;
+
+    // Reserved for future AttestationContext to pass attestation claims
+    // from KBS to plugins without breaking wire compatibility.
+    reserved 5;
+    reserved "attestation_context";
+}
+
+// ValidateAuthRequest carries the HTTP request details for the ValidateAuth RPC.
+// Fields mirror PluginRequest; a distinct message type satisfies the
+// RPC_REQUEST_RESPONSE_UNIQUE lint rule and allows the two RPCs to evolve
+// independently in future versions.
+message ValidateAuthRequest {
+    bytes body = 1;
+    map<string, string> query = 2;
+    repeated string path = 3;
+    string method = 4;
+}
+
+// NeedsEncryptionRequest carries the HTTP request details for the NeedsEncryption RPC.
+// Fields mirror PluginRequest; see ValidateAuthRequest for the rationale.
+message NeedsEncryptionRequest {
+    bytes body = 1;
+    map<string, string> query = 2;
+    repeated string path = 3;
+    string method = 4;
+}
+
+// PluginResponse carries the HTTP response from the plugin back to KBS.
+message PluginResponse {
+    // Raw HTTP response body. Uses bytes for binary safety (certificates,
+    // keys, JWE-encrypted payloads).
+    bytes body = 1;
+
+    // HTTP status code hint. 0 means use default (200 OK). KBS may override.
+    int32 status_code = 2;
+
+    // Content type hint (e.g., "application/json"). Empty string means use
+    // default. KBS may override.
+    string content_type = 3;
+}
+
+// GetCapabilitiesRequest is an empty message for forward compatibility.
+//
+// Using an explicit empty message (instead of google.protobuf.Empty) allows
+// adding optional fields in the future without breaking existing plugins.
+message GetCapabilitiesRequest {}
+
+// GetCapabilitiesResponse describes the plugin's supported features.
+message GetCapabilitiesResponse {
+    // Plugin name, used for routing (e.g., "my-plugin" for /kbs/v0/my-plugin).
+    string name = 1;
+
+    // Plugin version string (e.g., "1.0.0", "v2.3.1-beta").
+    string version = 2;
+
+    // HTTP methods this plugin supports. Empty list means all methods accepted.
+    repeated string supported_methods = 3;
+
+    // Open-ended key-value metadata for operational visibility.
+    // Examples: "author"="Acme Corp", "description"="JWT validator",
+    // "min_kbs_version"="1.0", "requires_attestation"="true".
+    map<string, string> attributes = 4;
+}
+
+// ValidateAuthResponse is returned by the ValidateAuth RPC.
+message ValidateAuthResponse {
+    // true  = KBS must verify admin credentials before calling Handle.
+    // false = KBS requires a valid attestation token and policy evaluation.
+    bool requires_admin_auth = 1;
+}
+
+// NeedsEncryptionResponse is returned by the NeedsEncryption RPC.
+message NeedsEncryptionResponse {
+    // true  = KBS JWE-encrypts the Handle response with the TEE public key.
+    // false = KBS returns the Handle response body as-is.
+    bool encrypt = 1;
+}
