@@ -26,7 +26,7 @@ pub enum Error {
     NoPublicKeyGiven,
 
     #[error("Failed to parse admin public key")]
-    ParsePublicKey(#[from] jwt_simple::Error),
+    ParsePublicKey(#[from] jsonwebtoken::errors::Error),
 
     #[error("Failed to parse HTTP Auth Bearer header")]
     ParseAuthHeaderFailed(#[from] actix_web::error::ParseError),
