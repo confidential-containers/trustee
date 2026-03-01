@@ -43,7 +43,7 @@ jobs:
       OS_VERSION: ubuntu-22.04
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
 
     - name: Extract tarball
       run: tar xzf "./${INPUTS_TARBALL}"
@@ -51,7 +51,7 @@ jobs:
         INPUTS_TARBALL: ${{ inputs.tarball }}
 
     - name: Install Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+      uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
       with:
         components: rustfmt, clippy
         rustflags: ""
@@ -78,7 +78,7 @@ jobs:
     - name: Archive test folder
       run: tar czf test.tar.gz kbs/test
 
-    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+    - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         path: test.tar.gz
         overwrite: true
@@ -92,7 +92,7 @@ jobs:
       RUST_LOG: warn
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
       with:
         name: artifacts-${{ inputs.tee }}-${{ inputs.arch }}
 
