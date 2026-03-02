@@ -12,7 +12,7 @@ use crate::plugins::resource::{ResourceDesc, StorageBackend};
 use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
-    context::{CInitializeArgs, Pkcs11},
+    context::{CInitializeArgs, CInitializeFlags, Pkcs11},
     mechanism::{
         rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
         Mechanism, MechanismType,
@@ -95,7 +95,9 @@ impl TryFrom<Pkcs11Config> for Pkcs11Backend {
     fn try_from(config: Pkcs11Config) -> anyhow::Result<Self> {
         let rsa_mechanism = Arc::new(config.rsa_mechanism);
         let pkcs11 = Pkcs11::new(config.module).context("unable to open pkcs11 module")?;
-        pkcs11.initialize(CInitializeArgs::OsThreads).unwrap();
+        pkcs11
+            .initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK))
+            .unwrap();
 
         let slots = pkcs11.get_slots_with_token()?;
         let slot_index = usize::from(config.slot_index);
@@ -104,7 +106,10 @@ impl TryFrom<Pkcs11Config> for Pkcs11Backend {
         }
 
         let session = pkcs11.open_rw_session(slots[slot_index])?;
-        session.login(UserType::User, Some(&AuthPin::new(config.pin.clone())))?;
+        session.login(
+            UserType::User,
+            Some(&AuthPin::new(config.pin.clone().into())),
+        )?;
 
         let lookup_label = config.lookup_label;
         Ok(Self {
