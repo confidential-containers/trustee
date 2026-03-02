@@ -8,9 +8,9 @@ use std::fmt::Write;
 
 use actix_web::{body::BoxBody, HttpResponse, ResponseError};
 use kbs_types::ErrorInformation;
-use log::error;
 use strum::AsRefStr;
 use thiserror::Error;
+use tracing::error;
 
 const ERROR_TYPE_PREFIX: &str = "https://github.com/confidential-containers/kbs/errors";
 

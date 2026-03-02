@@ -20,8 +20,8 @@ use extractors::Extractors;
 pub use serde_json::Value;
 
 use anyhow::{bail, Context, Result};
-use log::info;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";

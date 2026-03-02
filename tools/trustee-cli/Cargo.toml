@@ -15,10 +15,10 @@ anyhow.workspace = true
 attestation-service = { path = "../../attestation-service" }
 clap = { workspace = true, features = ["string"] }
 dirs = "6.0.0"
-env_logger.workspace = true
 kbs = { path = "../../kbs" }
-log.workspace = true
 nix = { version = "0.31.1", features = ["user"] }
 openssl.workspace = true
 reference-value-provider-service = { path = "../../rvps" }
 tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
