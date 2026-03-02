@@ -6,8 +6,8 @@ use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
 use educe::Educe;
 use kms::{plugins::aliyun::AliyunKmsClient, Annotations, Getter};
-use log::info;
 use serde::Deserialize;
+use tracing::info;
 
 #[derive(Educe, Deserialize, Clone, PartialEq)]
 #[educe(Debug)]

@@ -4,9 +4,9 @@ use super::ReferenceValueStorage;
 use crate::ReferenceValue;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use log::debug;
 use serde::Deserialize;
 use tokio::sync::RwLock;
+use tracing::debug;
 
 const FILE_PATH: &str = "/opt/confidential-containers/attestation-service/reference_values.json";
 

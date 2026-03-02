@@ -5,9 +5,9 @@
 use crate::policy_engine::{KbsPolicyEngineError, PolicyEngineInterface};
 use async_trait::async_trait;
 use base64::Engine;
-use log::debug;
 use std::fs;
 use std::path::PathBuf;
+use tracing::debug;
 
 #[derive(Debug, Clone)]
 pub struct Opa {

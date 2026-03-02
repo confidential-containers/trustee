@@ -6,9 +6,9 @@
 //! Extractors for RVPS.
 
 use anyhow::*;
-use log::warn;
 use serde::Deserialize;
 use std::collections::HashMap;
+use tracing::warn;
 
 use super::{Message, ReferenceValue};
 

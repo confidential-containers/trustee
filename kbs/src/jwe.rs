@@ -12,11 +12,11 @@ use aes_kw::{Kek, KekAes256};
 use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
-use log::warn;
 use p256::elliptic_curve::sec1::FromEncodedPoint;
 use rand::{rngs::OsRng, Rng};
 use rsa::{sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
 use serde_json::{json, Map};
+use tracing::warn;
 
 /// RSA PKCS#1 v1.5
 const RSA1_5_ALGORITHM: &str = "RSA1_5";

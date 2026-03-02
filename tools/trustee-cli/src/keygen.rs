@@ -1,6 +1,6 @@
 use anyhow::Result;
-use log::info;
 use std::path::Path;
+use tracing::info;
 
 use crate::write_new_auth_key_pair;
 

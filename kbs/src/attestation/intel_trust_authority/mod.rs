@@ -19,6 +19,7 @@ use serde_with::base64::{Base64, UrlSafe};
 use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
+use tracing::{debug, info, warn};
 
 const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
 const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
@@ -220,7 +221,7 @@ impl Attest for IntelTrustAuthority {
                         ))?;
 
                     if evidence.device_evidence_list.is_empty() {
-                        log::warn!(
+                        warn!(
                             "TEE {:?} evidence has empty device list. Drop the evidence.",
                             independent_evidence.tee
                         );
@@ -249,8 +250,8 @@ impl Attest for IntelTrustAuthority {
             .context("Failed to serialize attestation request body")?;
 
         // send attest request
-        log::info!("POST attestation request ...");
-        log::debug!("Attestation URL: {:?}", &att_url);
+        info!("POST attestation request ...");
+        debug!("Attestation URL: {:?}", &att_url);
 
         let user_agent = format!(
             "{TRUSTEE_USER_AGENT} {}/{}",
@@ -306,10 +307,10 @@ impl Attest for IntelTrustAuthority {
         tee: Tee,
         tee_parameters: serde_json::Value,
     ) -> Result<Challenge> {
-        log::debug!("ITA: generate_challenge: tee: {tee:?}, tee_parameters: {tee_parameters:?}");
+        debug!("ITA: generate_challenge: tee: {tee:?}, tee_parameters: {tee_parameters:?}");
 
         if tee_parameters.is_null() {
-            log::debug!(
+            debug!(
                 "ITA: generate_challenge: no TEE parameters so falling back to legacy behaviour"
             );
 
@@ -320,7 +321,7 @@ impl Attest for IntelTrustAuthority {
 
         let Some(hash_algorithms_found) = tee_parameters.get(SUPPORTED_HASH_ALGORITHMS_JSON_KEY)
         else {
-            log::info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
+            info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
 
             return generic_generate_challenge(tee, tee_parameters).await;
         };
@@ -339,14 +340,12 @@ impl Attest for IntelTrustAuthority {
         supported_hash_algorithms.append(&mut hash_algorithms.clone());
 
         if supported_hash_algorithms.is_empty() {
-            log::debug!("ITA: generate_challenge: no tee algorithms available");
+            debug!("ITA: generate_challenge: no tee algorithms available");
 
             bail!(ERR_NO_TEE_ALGOS);
         }
 
-        log::debug!(
-            "ITA: generate_challenge: supported_hash_algorithms: {supported_hash_algorithms:?}"
-        );
+        debug!("ITA: generate_challenge: supported_hash_algorithms: {supported_hash_algorithms:?}");
 
         let hash_algorithm: String = match tee {
             Tee::Sgx | Tee::AzTdxVtpm => {

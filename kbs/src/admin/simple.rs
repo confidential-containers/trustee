@@ -5,9 +5,9 @@
 use actix_web::{http::header::Header, HttpRequest};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use log::info;
 use serde::Deserialize;
 use std::path::PathBuf;
+use tracing::info;
 
 use crate::admin::error::*;
 use crate::admin::AdminBackend;

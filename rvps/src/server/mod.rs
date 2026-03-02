@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
-use log::{debug, info};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
+use tracing::{debug, info};
 
 use crate::{Config, Rvps};
 

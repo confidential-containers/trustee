@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use actix_web::HttpRequest;
-use log::warn;
+use tracing::warn;
 
 use crate::admin::error::*;
 use crate::admin::AdminBackend;

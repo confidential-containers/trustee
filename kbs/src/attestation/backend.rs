@@ -10,12 +10,12 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use lazy_static::lazy_static;
-use log::{debug, info};
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+use tracing::{debug, info};
 
 use crate::attestation::session::KBS_SESSION_ID;
 use crate::prometheus::{
