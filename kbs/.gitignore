@@ -9,5 +9,8 @@ data
 test/work
 !test/work/.gitkeep
 
-config/private.key
-config/public.pub
+config/*.pem
+config/*.srl
+config/*.csr
+config/*.key
+config/*.pub
