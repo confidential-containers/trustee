@@ -4,13 +4,13 @@
 
 use anyhow::{anyhow, bail, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
-use log::info;
 use serde_json::json;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
+use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
@@ -20,7 +20,7 @@ const SECRET_PATH: &str = "default/test/secret";
 // Check if we can set a policy that expects a particular init-data hash
 // and get a resource.
 async fn get_resource_with_init_data_hash() -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
 
@@ -85,7 +85,7 @@ allow if {
 #[serial]
 // Use a policy that checks a particular field of the CDH/AA config.
 async fn get_resource_with_init_data_config() -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
 
@@ -197,7 +197,7 @@ YXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl
 #[serial]
 // Check for a particular field in the kata agent policy claims
 async fn get_resource_with_policy_init_data() -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
 
@@ -245,7 +245,7 @@ allow if {
 // Check if using initrd with a policy will result in the expected
 // validated identifiers.
 async fn check_validated_identifiers() -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
     harness.wait().await;

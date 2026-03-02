@@ -5,8 +5,8 @@
 
 use anyhow::*;
 use base64::Engine;
-use log::{debug, info};
 use serde::Deserialize;
+use tracing::{debug, info};
 
 use crate::ReferenceValue;
 

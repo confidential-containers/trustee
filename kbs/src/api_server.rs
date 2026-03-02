@@ -12,8 +12,8 @@ use actix_web::{
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
-use log::info;
 use serde_json::json;
+use tracing::info;
 
 use crate::{
     admin::Admin,

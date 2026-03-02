@@ -12,11 +12,42 @@ use kbs::{
     config::{Cli, KbsConfig},
     ApiServer,
 };
-use log::{debug, info};
+use shadow_rs::shadow;
+use tracing::{debug, info};
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+
+shadow!(build);
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let env_filter = match std::env::var_os("RUST_LOG") {
+        Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
+        None => EnvFilter::new("info"),
+    };
+
+    let version = format!(
+        r"
+ ________  ________  ________  ________          ___  __    ________  ________      
+|\   ____\|\   __  \|\   ____\|\   __  \        |\  \|\  \ |\   __  \|\   ____\     
+\ \  \___|\ \  \|\  \ \  \___|\ \  \|\  \       \ \  \/  /|\ \  \|\ /\ \  \___|_    
+ \ \  \    \ \  \\\  \ \  \    \ \  \\\  \       \ \   ___  \ \   __  \ \_____  \   
+  \ \  \____\ \  \\\  \ \  \____\ \  \\\  \       \ \  \\ \  \ \  \|\  \|____|\  \  
+   \ \_______\ \_______\ \_______\ \_______\       \ \__\\ \__\ \_______\____\_\  \ 
+    \|_______|\|_______|\|_______|\|_______|        \|__| \|__|\|_______|\_________\
+                                                                        \|_________|                                                                                                                                                                                           
+                                                                                    
+version: v{}
+commit: {}
+buildtime: {}
+loglevel: {env_filter}
+",
+        build::PKG_VERSION,
+        build::COMMIT_HASH,
+        build::BUILD_TIME
+    );
+
+    Subscriber::builder().with_env_filter(env_filter).init();
+    info!("Welcome to Confidential Containers Key Broker Service!\n\n{version}");
 
     let cli = Cli::parse();
 

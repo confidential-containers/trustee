@@ -120,7 +120,7 @@ impl TryFrom<NebulaCaPluginConfig> for NebulaCaPlugin {
 
         // Check minimum nebula-cert version requirement
         let version: String = nebula.version_checked()?;
-        log::info!("nebula-cert version: {}", version);
+        tracing::info!("nebula-cert version: {}", version);
 
         if let Some(parent) = crt.as_path().parent() {
             fs::create_dir_all(parent)
@@ -134,7 +134,7 @@ impl TryFrom<NebulaCaPluginConfig> for NebulaCaPlugin {
                 crt.as_path(),
                 key.as_path(),
             )?;
-            log::info!("Self-signed Nebula CA created");
+            tracing::info!("Self-signed Nebula CA created");
         }
 
         // Check the provided or created Nebula CA exists.
@@ -142,8 +142,8 @@ impl TryFrom<NebulaCaPluginConfig> for NebulaCaPlugin {
             bail!("Nebula CA not found");
         }
 
-        log::info!("Nebula CA key: {}", key.display());
-        log::info!(
+        tracing::info!("Nebula CA key: {}", key.display());
+        tracing::info!(
             "Nebula CA certificate: {}\n{}",
             crt.display(),
             nebula.print(&crt)?

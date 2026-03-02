@@ -9,9 +9,9 @@ use jwt_simple::{
     common::VerificationOptions,
     prelude::{Ed25519PublicKey, EdDSAPublicKeyLike},
 };
-use log::info;
 use serde::Deserialize;
 use std::path::PathBuf;
+use tracing::info;
 
 use crate::admin::error::*;
 use crate::admin::AdminBackend;

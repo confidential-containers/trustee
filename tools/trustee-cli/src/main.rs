@@ -12,6 +12,7 @@ use std::{
 };
 
 use dirs::home_dir;
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 mod keygen;
 mod run;
 
@@ -64,7 +65,11 @@ fn default_home() -> OsString {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let env_filter = match std::env::var_os("RUST_LOG") {
+        Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
+        None => EnvFilter::new("info"),
+    };
+    Subscriber::builder().with_env_filter(env_filter).init();
 
     let cli = Cli::parse();
     std::fs::create_dir_all(&cli.home)?;

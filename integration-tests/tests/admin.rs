@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{bail, Result};
-use log::info;
 use openssl::pkey::PKey;
 use rstest::rstest;
 use serial_test::serial;
+use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
 
 //
 // Set the kbs policy with the a valid admin private key
@@ -26,7 +26,7 @@ use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness};
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
 async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;
@@ -108,7 +108,7 @@ async fn set_attestation_policy(
     #[case] test_config: KbsConfigType,
     #[case] valid_key: bool,
 ) -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;
@@ -193,7 +193,7 @@ default executables = 97
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[serial]
 async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
     harness.wait().await;

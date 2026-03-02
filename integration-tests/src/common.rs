@@ -35,13 +35,14 @@ use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
     Engine,
 };
-use log::info;
 use openssl::pkey::PKey;
 use serde_json::json;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 use tempfile::TempDir;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
+use tracing::info;
+use tracing_subscriber::{fmt, EnvFilter};
 
 const KBS_URL: &str = "http://127.0.0.1:8081";
 const RVPS_URL: &str = "http://127.0.0.1:51003";
@@ -387,4 +388,16 @@ impl TestHarness {
 
         Ok(payload)
     }
+}
+
+static LOGGING_INIT: Once = Once::new();
+
+pub fn init_tracing() {
+    LOGGING_INIT.call_once(|| {
+        fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .with_test_writer()
+            .try_init()
+            .ok();
+    });
 }

@@ -7,7 +7,7 @@ use actix_web::cookie::{
     Cookie,
 };
 use kbs_types::{Challenge, Request};
-use log::warn;
+use tracing::warn;
 use uuid::Uuid;
 
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";

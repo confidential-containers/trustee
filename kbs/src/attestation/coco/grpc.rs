@@ -10,11 +10,11 @@ use attestation::{
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{Challenge, Tee};
-use log::info;
 use mobc::{Manager, Pool};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tonic::transport::Channel;
+use tracing::info;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
 

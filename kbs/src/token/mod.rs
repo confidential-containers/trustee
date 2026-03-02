@@ -4,9 +4,9 @@
 
 use jwk::JwkAttestationTokenVerifier;
 use kbs_types::TeePubKey;
-use log::debug;
 use serde::Deserialize;
 use serde_json::Value;
+use tracing::debug;
 
 mod error;
 pub(crate) mod jwk;
