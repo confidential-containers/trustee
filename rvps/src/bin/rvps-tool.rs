@@ -2,8 +2,9 @@
 
 use anyhow::*;
 use clap::{Args, Parser};
-use log::info;
 use shadow_rs::shadow;
+use tracing::info;
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 use reference_value_provider_service::client;
 
@@ -69,7 +70,11 @@ struct QueryArgs {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let env_filter = match std::env::var_os("RUST_LOG") {
+        Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
+        None => EnvFilter::new("info"),
+    };
+    Subscriber::builder().with_env_filter(env_filter).init();
 
     let version = format!(
         "\nv{}\ncommit: {}\nbuildtime: {}",

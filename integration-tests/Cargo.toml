@@ -6,7 +6,7 @@ description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 
-[dependencies] 
+[dependencies]
 kbs = { path = "../kbs" }
 reference-value-provider-service = { path = "../rvps" }
 
@@ -14,8 +14,6 @@ actix-web.workspace = true
 actix-rt = "2.11.0"
 anyhow.workspace = true
 base64.workspace = true
-env_logger.workspace = true
-log.workspace = true
 openssl.workspace = true
 rstest.workspace = true
 serde_json.workspace = true
@@ -24,15 +22,27 @@ sha2.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
-attestation-service = { path = "../attestation-service"  }
-kbs-client = { path = "../tools/kbs-client"  }
+attestation-service = { path = "../attestation-service" }
+kbs-client = { path = "../tools/kbs-client" }
 
 [target.'cfg(target_arch = "s390x")'.dependencies]
-attestation-service = { path = "../attestation-service", default-features = false, features = [ "snp-verifier", "nvidia-verifier", "se-verifier", ] }
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "se-attester", ] }
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "snp-verifier",
+    "nvidia-verifier",
+    "se-verifier",
+] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "se-attester",
+] }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
-attestation-service = { path = "../attestation-service", default-features = false, features = [ "cca-verifier", ] }
-kbs-client = { path = "../tools/kbs-client", default-features = false, features = [ "cca-attester", ] }
+attestation-service = { path = "../attestation-service", default-features = false, features = [
+    "cca-verifier",
+] }
+kbs-client = { path = "../tools/kbs-client", default-features = false, features = [
+    "cca-attester",
+] }

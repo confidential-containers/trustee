@@ -220,7 +220,7 @@ impl Attest for IntelTrustAuthority {
                         ))?;
 
                     if evidence.device_evidence_list.is_empty() {
-                        log::warn!(
+                        tracing::warn!(
                             "TEE {:?} evidence has empty device list. Drop the evidence.",
                             independent_evidence.tee
                         );
@@ -249,8 +249,8 @@ impl Attest for IntelTrustAuthority {
             .context("Failed to serialize attestation request body")?;
 
         // send attest request
-        log::info!("POST attestation request ...");
-        log::debug!("Attestation URL: {:?}", &att_url);
+        tracing::info!("POST attestation request ...");
+        tracing::debug!("Attestation URL: {:?}", &att_url);
 
         let user_agent = format!(
             "{TRUSTEE_USER_AGENT} {}/{}",
@@ -306,10 +306,12 @@ impl Attest for IntelTrustAuthority {
         tee: Tee,
         tee_parameters: serde_json::Value,
     ) -> Result<Challenge> {
-        log::debug!("ITA: generate_challenge: tee: {tee:?}, tee_parameters: {tee_parameters:?}");
+        tracing::debug!(
+            "ITA: generate_challenge: tee: {tee:?}, tee_parameters: {tee_parameters:?}"
+        );
 
         if tee_parameters.is_null() {
-            log::debug!(
+            tracing::debug!(
                 "ITA: generate_challenge: no TEE parameters so falling back to legacy behaviour"
             );
 
@@ -320,7 +322,7 @@ impl Attest for IntelTrustAuthority {
 
         let Some(hash_algorithms_found) = tee_parameters.get(SUPPORTED_HASH_ALGORITHMS_JSON_KEY)
         else {
-            log::info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
+            tracing::info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
 
             return generic_generate_challenge(tee, tee_parameters).await;
         };
@@ -339,12 +341,12 @@ impl Attest for IntelTrustAuthority {
         supported_hash_algorithms.append(&mut hash_algorithms.clone());
 
         if supported_hash_algorithms.is_empty() {
-            log::debug!("ITA: generate_challenge: no tee algorithms available");
+            tracing::debug!("ITA: generate_challenge: no tee algorithms available");
 
             bail!(ERR_NO_TEE_ALGOS);
         }
 
-        log::debug!(
+        tracing::debug!(
             "ITA: generate_challenge: supported_hash_algorithms: {supported_hash_algorithms:?}"
         );
 

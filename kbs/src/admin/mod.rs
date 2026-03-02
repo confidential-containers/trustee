@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use actix_web::HttpRequest;
-use log::{info, warn};
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 pub mod allow_all;
 pub mod deny_all;

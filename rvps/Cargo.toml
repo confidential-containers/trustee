@@ -4,33 +4,31 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "bin" ]
+default = ["bin"]
 # Used to build rvps binary
-bin = [ "clap", "env_logger", "shadow-rs" ]
+bin = ["clap", "tracing-subscriber", "shadow-rs"]
 
 # Support in-toto provenance (not ready)
-in-toto =[ "path-clean", "sha2" ]
+in-toto = ["path-clean", "sha2"]
 
 rebuild-grpc-protos = []
 
 [[bin]]
 name = "rvps"
-required-features = [ "bin" ]
+required-features = ["bin"]
 
 [[bin]]
 name = "rvps-tool"
-required-features = [ "bin" ]
+required-features = ["bin"]
 
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 cfg-if.workspace = true
-chrono = { workspace = true, features = [ "serde" ] }
+chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, optional = true }
 config.workspace = true
-env_logger = { workspace = true, optional = true }
-log.workspace = true
 path-clean = { version = "1.0.1", optional = true }
 prost.workspace = true
 roxmltree = "0.21.1"
@@ -44,6 +42,8 @@ tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true
 tonic-prost.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
 
 [build-dependencies]
 shadow-rs.workspace = true

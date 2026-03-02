@@ -303,6 +303,7 @@ impl Verifier for Nvidia {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
+    use tracing_subscriber::{fmt, EnvFilter};
 
     use super::*;
 
@@ -315,7 +316,11 @@ mod tests {
     ///    python3 -m verifier.cc_admin --test_no_gpu --verbose
     #[test]
     fn test_build_claims_for_one_hopper_device() {
-        env_logger::init();
+        fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .with_test_writer()
+            .try_init()
+            .expect("Failed to initialize tracing");
 
         let device_arch = DeviceArchitecture::Hopper;
         let device_uuid: &str = "1111-2222-33333-444444-555555";

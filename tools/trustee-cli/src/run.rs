@@ -5,7 +5,6 @@ use kbs::attestation::config::AttestationServiceConfig::CoCoASBuiltIn;
 use kbs::plugins::PluginsConfig::{self, ResourceStorage};
 use kbs::plugins::RepositoryConfig::{self, LocalFs};
 use kbs::{ApiServer, KbsConfig};
-use log::{debug, info, warn};
 use openssl::asn1::Asn1Time;
 use openssl::bn::MsbOption;
 use openssl::hash::MessageDigest;
@@ -15,6 +14,7 @@ use openssl::x509::extension::SubjectAlternativeName;
 use openssl::x509::{X509NameBuilder, X509};
 use std::fs::write;
 use std::path::{Path, PathBuf};
+use tracing::{debug, info, warn};
 
 use crate::{write_new_auth_key_pair, write_pem};
 

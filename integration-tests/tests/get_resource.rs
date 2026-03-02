@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, bail, Result};
-use log::info;
 use rstest::rstest;
 use serde_json::{json, Value};
 use serial_test::serial;
+use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
@@ -105,7 +105,7 @@ async fn run_test(
     #[case] gpu_attestation_policy: Option<&str>,
     #[case] expected_result: Result<&[u8; 8]>,
 ) -> Result<()> {
-    let _ = env_logger::try_init_from_env(env_logger::Env::new().default_filter_or("warn"));
+    init_tracing();
 
     let harness = TestHarness::new(test_parameter_type.into()).await?;
     let test_result = get_secret(

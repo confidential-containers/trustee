@@ -5,11 +5,11 @@
 use super::backend::{ResourceDesc, StorageBackend};
 use anyhow::{Context, Result};
 use educe::Educe;
-use log::info;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
+use tracing::info;
 
 use vaultrs::{
     client::{VaultClient, VaultClientSettingsBuilder},
