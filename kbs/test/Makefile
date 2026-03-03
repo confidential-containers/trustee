@@ -34,6 +34,13 @@ HTTPS_CERT := $(WORK_DIR)/https.crt
 KBS_POLICY := $(WORK_DIR)/kbs-policy.rego
 EXT_PLUGIN_ATTEST_POLICY := $(WORK_DIR)/ext-plugin-attest-policy.rego
 PLUGIN_ATTESTATION_TOKEN := $(WORK_DIR)/plugin-attestation-token
+EXT_RESOURCE_SECRET := $(WORK_DIR)/ext-resource-secret
+EXT_RESOURCE_ROUNDTRIP := $(WORK_DIR)/ext-resource-roundtrip
+EXT_RESOURCE_POLICY := $(WORK_DIR)/ext-resource-policy.rego
+# Path for the external resource plugin roundtrip test.
+# kbs-client always constructs /kbs/v0/resource/<path>, so we use the
+# "resource" plugin_name in the KBS config and POST/GET under that prefix.
+EXT_STORE_PATH := one/two/three
 
 # External plugin test certificates
 ECHO_PLUGIN_CA_KEY := $(WORK_DIR)/echo-plugin-ca.key
@@ -75,6 +82,19 @@ allow if {
 }
 endef
 export EXT_PLUGIN_POLICY_REGO
+
+# Policy for the external resource plugin roundtrip test.
+define EXT_RESOURCE_PLUGIN_POLICY_REGO
+package policy
+
+default allow = false
+
+allow if {
+	data.plugin == "resource"
+	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+}
+endef
+export EXT_RESOURCE_PLUGIN_POLICY_REGO
 
 ifneq ($(TEST_FEATURES),)
   TEST_ARGUMENTS = --no-default-features --features $(TEST_FEATURES)
@@ -135,6 +155,12 @@ ext-plugin-kbs:
 	cd $(PROJECT_DIR) && \
 	make background-check-kbs-external-plugin && \
 	install -D --compare $(PROJECT_DIR)/../target/release/kbs $(CURDIR)/ext-plugin-kbs
+
+# Build resource plugin example
+plugin-resource:
+	cd $(PROJECT_DIR) && \
+	cargo build --release --example resource_plugin -p kbs-plugin-sdk && \
+	install -D --compare $(PROJECT_DIR)/../target/release/examples/resource_plugin $(CURDIR)/plugin-resource
 
 .PHONY: bins
 bins: kbs resource-kbs client
@@ -447,14 +473,85 @@ test-ext-plugin-metrics: start-echo-plugin start-ext-plugin-kbs
 		exit 1; \
 	fi
 
+$(EXT_RESOURCE_SECRET):
+	mkdir -p $(WORK_DIR) && openssl rand 16 > $(EXT_RESOURCE_SECRET)
+
+$(EXT_RESOURCE_POLICY):
+	echo "$$EXT_RESOURCE_PLUGIN_POLICY_REGO" > $(EXT_RESOURCE_POLICY)
+
+# Start resource plugin server on :50053
+.PHONY: start-plugin-resource
+start-plugin-resource: plugin-resource.PID
+
+plugin-resource.PID: plugin-resource
+	@printf "${BOLD}start resource plugin${SGR0}\n"
+	{ \
+		RUST_LOG=resource_plugin=info \
+		"$(CURDIR)/plugin-resource" \
+		& echo $$! > plugin-resource.PID; \
+	} && \
+	sleep 1
+
+# Start KBS with external resource plugin config (port 8088)
+.PHONY: start-ext-resource-kbs
+start-ext-resource-kbs: ext-resource-kbs.PID
+
+ext-resource-kbs.PID: ext-plugin-kbs kbs-keys kbs-certs $(EXT_RESOURCE_POLICY)
+	@printf "${BOLD}start ext-resource-kbs${SGR0}\n"
+	{ \
+		"$(CURDIR)/ext-plugin-kbs" --config-file "$(KBS_CONFIG_PATH)/external-plugin-resource.toml" \
+		& echo $$! > ext-resource-kbs.PID; \
+	} && \
+	sleep 1
+
+.PHONY: stop-plugin-resource
+stop-plugin-resource:
+	@if [ -f plugin-resource.PID ]; then \
+		printf "${BOLD}stop resource plugin${SGR0}\n"; \
+		kill $$(cat plugin-resource.PID) && rm plugin-resource.PID || rm -f plugin-resource.PID; \
+	fi
+
+.PHONY: stop-ext-resource-kbs
+stop-ext-resource-kbs:
+	@if [ -f ext-resource-kbs.PID ]; then \
+		printf "${BOLD}stop ext-resource-kbs${SGR0}\n"; \
+		kill $$(cat ext-resource-kbs.PID) && rm ext-resource-kbs.PID || rm -f ext-resource-kbs.PID; \
+	fi
+
+# External resource plugin roundtrip test:
+# 1. POST a random secret via the admin-gated endpoint (InsecureAllowAll).
+#    The KBS config registers the resource plugin as "resource" so that
+#    kbs-client (which always constructs /kbs/v0/resource/<path>) can reach it.
+# 2. GET it back via kbs-client which performs the full RCAR handshake
+#    (attestation + JWE-decrypt) matching the built-in resource plugin behaviour.
+# 3. Verify the roundtrip matches.
+.PHONY: test-ext-resource-plugin
+test-ext-resource-plugin: start-plugin-resource start-ext-resource-kbs client $(EXT_RESOURCE_SECRET)
+	@printf "${BOLD}running external resource plugin roundtrip test${SGR0}\n"
+	./client --url http://127.0.0.1:8088 \
+		config --auth-private-key "$(KBS_KEY)" \
+		set-resource-policy \
+		--policy-file "$(EXT_RESOURCE_POLICY)" && \
+	./client --url http://127.0.0.1:8088 \
+		config --auth-private-key "$(KBS_KEY)" \
+		set-resource --path "$(EXT_STORE_PATH)" \
+		--resource-file "$(EXT_RESOURCE_SECRET)" && \
+	./client --url http://127.0.0.1:8088 \
+		get-resource --path $(EXT_STORE_PATH) \
+		| base64 -d > "$(EXT_RESOURCE_ROUNDTRIP)" && \
+	diff "$(EXT_RESOURCE_ROUNDTRIP)" "$(EXT_RESOURCE_SECRET)"
+	@printf "${BOLD}external resource plugin roundtrip test passed${SGR0}\n"
+	@printf "  stored   (base64): %s\n" "$$(base64 -w0 "$(EXT_RESOURCE_SECRET)")"
+	@printf "  retrieved (base64): %s\n" "$$(base64 -w0 "$(EXT_RESOURCE_ROUNDTRIP)")"
+
 # Stop all external plugin processes
 .PHONY: stop-ext-plugins
-stop-ext-plugins: stop-echo-plugin stop-echo-plugin-tls stop-ext-plugin-kbs stop-ext-plugin-tls-kbs stop-ext-plugin-attest-kbs
+stop-ext-plugins: stop-echo-plugin stop-echo-plugin-tls stop-ext-plugin-kbs stop-ext-plugin-tls-kbs stop-ext-plugin-attest-kbs stop-plugin-resource stop-ext-resource-kbs
 
 # Run all external plugin tests with cleanup
 .PHONY: e2e-ext-plugin
 e2e-ext-plugin:
-	@$(MAKE) test-ext-plugin test-ext-plugin-metrics test-ext-plugin-tls test-ext-plugin-attest; \
+	@$(MAKE) test-ext-plugin test-ext-plugin-metrics test-ext-plugin-tls test-ext-plugin-attest test-ext-resource-plugin; \
 	status=$$?; \
 	$(MAKE) stop-ext-plugins; \
 	if [ $$status -eq 0 ]; then \
@@ -659,4 +756,5 @@ clean:  clean-tpm
 		vault-kbs \
 		echo-plugin \
 		ext-plugin-kbs \
+		plugin-resource \
 		work/*

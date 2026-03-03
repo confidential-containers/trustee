@@ -24,3 +24,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 [[example]]
 name = "echo"
 path = "examples/echo.rs"
+
+[[example]]
+name = "resource_plugin"
+path = "examples/resource_plugin.rs"
