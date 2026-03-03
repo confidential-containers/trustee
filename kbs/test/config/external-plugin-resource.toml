@@ -1,0 +1,50 @@
+[http_server]
+sockets = ["127.0.0.1:8088"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+# Token verifier: trust the CA that signed the attestation token signer cert.
+# The AS signs tokens with token.key/token-cert-chain.pem (same CA used by kbs.toml).
+[attestation_token]
+trusted_certs_paths = ["./work/ca-cert.pem"]
+
+[attestation_service]
+type = "coco_as_builtin"
+work_dir = "./work/as-external-plugin-resource"
+policy_engine = "opa"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+policy_dir = "./work/as-external-plugin-resource/token/ear/policies"
+
+[attestation_service.attestation_token_broker.signer]
+key_path = "./work/token.key"
+cert_path = "./work/token-cert-chain.pem"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[attestation_service.rvps_config.storage]
+type = "LocalFs"
+file_path = "./work/as-external-plugin-resource/reference_values"
+
+[policy_engine]
+policy_path = "./work/ext-resource-policy.rego"
+
+[[plugins]]
+name = "external"
+# plugin_name is intentionally "resource" — the same name used by the built-in
+# resource plugin — because kbs-client hardcodes /kbs/v0/resource/ in both
+# set-resource (POST) and get-resource (GET via kbs:// URI scheme). Using this
+# name lets the test exercise the full kbs-client roundtrip: admin-gated POST
+# to store a secret, then attested GET with JWE decryption to retrieve it.
+#
+# This is not a conflict with the built-in resource plugin: both cannot be
+# registered simultaneously (KBS enforces unique plugin names at startup), and
+# this config intentionally omits the built-in plugin entry.
+plugin_name = "resource"
+endpoint = "http://127.0.0.1:50053"
+tls_mode = "insecure"
+timeout_ms = 5000
