@@ -5,7 +5,7 @@ FROM docker.io/library/rust@sha256:e51d0265072d2d9d5d320f6a44dde6b9ef13653b03509
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev git sudo
+RUN apt-get update && apt-get install -y pkg-config libssl-dev git sudo cmake
 
 # Build KBS Client
 RUN cd kbs && make cli-static-linux && \
