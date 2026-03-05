@@ -75,7 +75,7 @@ tonic-prost = "0.14"
 tonic-prost-build = "0.14"
 rand = "0.8.5"
 rsa = { version = "0.9.10", features = ["sha2"] }
-time = { version = "0.3.41", features = ["std"] }
+time = { version = "0.3.47", features = ["std"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 uuid = { version = "1.21.0", features = ["v4"] }
