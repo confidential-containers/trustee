@@ -27,6 +27,7 @@ pub struct LocalFs {
 
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// The directory path for the local file system.
     /// Note that this is a common directory path for all instances.

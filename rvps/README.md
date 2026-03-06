@@ -92,22 +92,36 @@ podman run -d -p 50003:50003 --net host rvps
 
 ### Configuration file
 
-RVPS can be launched with a specified configuration file by `-c` flag. A configuration file looks like:
+RVPS can be launched with a specified configuration file by the `-c/--config` flag.
 
-```json
-{
-    "storage": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/opt/confidential-containers/storage/local_fs"
-            }
-        }
-    },
-    "extractors": {
-        "swid_extractor": {}
-    }
-}
+RVPS supports multiple configuration file formats (TOML/YAML/JSON). The parser uses the file extension to pick the format, so prefer using a matching extension such as `.toml`, `.yaml`, or `.json`.
+
+To generate a version-appropriate, commented example configuration:
+
+```bash
+rvps print-example-config > rvps.toml
+```
+
+Then start RVPS with it:
+
+```bash
+rvps --config ./rvps.toml
+```
+
+An example configuration looks like:
+
+```toml
+[storage]
+# Storage type. Common values: "Memory", "LocalFs", "LocalJson", "Postgres".
+storage_type = "LocalFs"
+
+[storage.backends.local_fs]
+# Directory where RVPS stores its data.
+dir_path = "/opt/confidential-containers/storage/local_fs"
+
+[extractors]
+# Optional extractor configuration. If omitted, defaults are used.
+swid_extractor = {}
 ```
 
 #### Storage Backend Configuration
@@ -150,20 +164,15 @@ RVPS supports the following extractors (enabled by default):
 
 **Example Configuration:**
 
-```json
-{
-    "storage": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/opt/confidential-containers/storage/local_fs"
-            }
-        }
-    },
-    "extractors": {
-        "swid_extractor": {}
-    }
-}
+```toml
+[storage]
+storage_type = "LocalFs"
+
+[storage.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage/local_fs"
+
+[extractors]
+swid_extractor = {}
 ```
 
 **Note:** If `extractors` is not specified, RVPS will use default configurations for all extractors. The sample extractor is always enabled, and SWID extractor will use default settings if not explicitly configured.
@@ -172,61 +181,44 @@ RVPS supports the following extractors (enabled by default):
 
 Using LocalFs storage:
 
-```json
-{
-    "storage": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/opt/confidential-containers/storage/local_fs"
-            }
-        }
-    }
-}
+```toml
+[storage]
+storage_type = "LocalFs"
+
+[storage.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage/local_fs"
 ```
 
 Using LocalJson storage:
 
-```json
-{
-    "storage": {
-        "storage_type": "LocalJson",
-        "backends": {
-            "local_json": {
-                "file_dir_path": "/opt/confidential-containers/storage/local_json"
-            }
-        }
-    }
-}
+```toml
+[storage]
+storage_type = "LocalJson"
+
+[storage.backends.local_json]
+file_dir_path = "/opt/confidential-containers/storage/local_json"
 ```
 
 Using PostgreSQL storage:
 
-```json
-{
-    "storage": {
-        "storage_type": "Postgres",
-        "backends": {
-            "postgres": {
-                "host": "localhost",
-                "port": 5432,
-                "db": "rvps",
-                "username": "postgres",
-                "password": "password"
-            }
-        }
-    }
-}
+```toml
+[storage]
+storage_type = "Postgres"
+
+[storage.backends.postgres]
+host = "localhost"
+port = 5432
+db = "rvps"
+username = "postgres"
+# Optional.
+password = "password"
 ```
 
 Using in-memory storage (default):
 
-```json
-{
-    "storage": {
-        "storage_type": "Memory"
-    }
-}
+```toml
+[storage]
+storage_type = "Memory"
 ```
 
 ## Integrate RVPS into the Attestation Service

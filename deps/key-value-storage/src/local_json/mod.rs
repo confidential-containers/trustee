@@ -26,6 +26,7 @@ pub struct LocalJson {
 
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub file_dir_path: String,
 }

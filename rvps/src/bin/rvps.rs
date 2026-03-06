@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use shadow_rs::shadow;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 use reference_value_provider_service::config::Config;
@@ -16,6 +16,9 @@ const DEFAULT_ADDRESS: &str = "127.0.0.1:50003";
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+
     /// Path to the configuration file of RVPS
     ///
     /// `--config /etc/rvps.toml`
@@ -30,8 +33,27 @@ pub struct Cli {
     pub address: String,
 }
 
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Print an example RVPS configuration file to stdout.
+    ///
+    /// The output includes comments explaining what each field does.
+    PrintExampleConfig,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    if let Some(command) = cli.command {
+        match command {
+            Commands::PrintExampleConfig => {
+                print!("{}", Config::example_config_toml());
+                return Ok(());
+            }
+        }
+    }
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("info"),
@@ -47,14 +69,7 @@ async fn main() -> Result<()> {
 
     info!("CoCo RVPS: {version}");
 
-    let cli = Cli::parse();
-    let config = Config::from_file(&cli.config).unwrap_or_else(|e| {
-        warn!(
-            "fail to read config from {}. Error: {e:?}. Using default configuration.",
-            cli.config
-        );
-        Config::default()
-    });
+    let config = Config::from_file(&cli.config)?;
 
     info!("Listen socket: {}", &cli.address);
 

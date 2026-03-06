@@ -20,6 +20,7 @@ https://github.com/confidential-containers/trustee/blob/main/rvps/README.md
 (Tip: for an exact match to this binary, replace `main` with the `commit` hash printed at startup.)";
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
     pub storage: StorageBackendConfig,
@@ -29,6 +30,28 @@ pub struct Config {
 }
 
 impl Config {
+    /// An example RVPS configuration in TOML format with per-field comments.
+    pub fn example_config_toml() -> &'static str {
+        r#"# RVPS example configuration (TOML)
+# This file is meant as a starting point for new deployments and upgrades.
+
+# Storage backend used by RVPS to persist reference values.
+[storage]
+# Storage type. Common values: "Memory", "LocalFs", "LocalJson", "Postgres".
+storage_type = "LocalFs"
+
+[storage.backends.local_fs]
+# Directory path where RVPS stores its data.
+dir_path = "/opt/confidential-containers/rvps/storage"
+
+# Optional: configure provenance extractors.
+# The exact extractor keys depend on which extractors are compiled/enabled.
+#
+# [extractors]
+# swid_extractor = {}
+"#
+    }
+
     pub fn from_file(config_path: &str) -> Result<Self> {
         let c = config::Config::builder()
             .add_source(config::File::with_name(config_path))
