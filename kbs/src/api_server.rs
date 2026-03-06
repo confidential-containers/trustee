@@ -20,7 +20,6 @@ use crate::{
     config::KbsConfig,
     jwe::jwe,
     plugins::PluginManager,
-    policy_engine::PolicyEngine,
     prometheus::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
@@ -45,7 +44,6 @@ pub struct ApiServer {
     #[cfg(feature = "as")]
     attestation_service: crate::attestation::AttestationService,
 
-    policy_engine: PolicyEngine,
     admin: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
@@ -75,7 +73,6 @@ impl ApiServer {
         let plugin_manager = PluginManager::try_from(config.plugins.clone())
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
-        let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
         let admin = Admin::try_from(config.admin.clone())?;
 
         #[cfg(feature = "as")]
@@ -263,15 +260,12 @@ pub(crate) async fn api(
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
             core.admin.check_admin_access(&request)?;
-            core.policy_engine.set_policy(&body).await?;
-
             Ok(HttpResponse::Ok().finish())
         }
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
             core.admin.check_admin_access(&request)?;
-            let policy = core.policy_engine.get_policy().await?;
 
             Ok(HttpResponse::Ok().content_type("text/xml").body(policy))
         }
@@ -312,11 +306,6 @@ pub(crate) async fn api(
 
                 KBS_POLICY_EVALS.inc();
                 // TODO: add policy filter support for other plugins
-                if !core
-                    .policy_engine
-                    .evaluate(&policy_data_str, &claim_str)
-                    .await
-                    .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
                 {
                     KBS_POLICY_VIOLATIONS.inc();
                     return Err(Error::PolicyDeny);
