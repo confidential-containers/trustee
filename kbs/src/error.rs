@@ -79,6 +79,12 @@ pub enum Error {
     #[error("Serialize/Deserialize failed")]
     SerdeError(#[from] serde_json::Error),
 
+    #[error("Storage backend initialization failed: {source}")]
+    StorageBackendInitialization {
+        #[source]
+        source: key_value_storage::KeyValueStorageError,
+    },
+
     #[error("Attestation Token not found")]
     TokenNotFound,
 
