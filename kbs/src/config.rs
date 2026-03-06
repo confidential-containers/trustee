@@ -95,8 +95,19 @@ impl TryFrom<&Path> for KbsConfig {
             .add_source(File::with_name(config_path.to_str().unwrap()))
             .build()?;
 
-        c.try_deserialize()
-            .map_err(|e| anyhow!("invalid config: {}", e))
+        c.try_deserialize().map_err(|e| {
+            anyhow!(
+                "invalid config: {e}\n\n\
+If you are upgrading from an older Trustee/KBS version, the configuration schema has changed and some fields were renamed or removed.\n\n\
+Common removed/changed fields include: [policy_engine], attestation_service.work_dir, attestation_service.policy_engine, \
+attestation_service.attestation_token_broker.policy_dir, attestation_service.rvps_config.storage, and the resource plugin \
+fields `type`/`dir_path` (now use `backend = \"kvstorage\"` plus [storage_backend]).\n\n\
+For more information, use the `--print-example-config` subcommand/flag to print an example configuration for your version, then compare/update your config accordingly.\n\
+You can also refer to the KBS config documentation:\n\n\
+\thttps://github.com/confidential-containers/trustee/blob/main/kbs/docs/config.md\n\n\
+(Tip: for an exact match to this binary, replace `main` with the `commit` hash printed at startup.)"
+            )
+        })
     }
 }
 
