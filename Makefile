@@ -75,7 +75,7 @@ test-kbs-docker-e2e:
 	echo "shhhhh" > test-secret && \
 	./kbs-client --url http://127.0.0.1:8080 config --auth-private-key $$E2E_DIR/kbs/config/private.key set-resource --path "test-org/test-repo/test-secret" --resource-file test-secret && \
 	! ./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret" && \
-	./kbs-client --url http://127.0.0.1:8080 config --auth-private-key $$E2E_DIR/kbs/config/private.key set-resource-policy --policy-file "$(CURDIR)/kbs/test/data/policy_2.rego" && \
+	./kbs-client --url http://127.0.0.1:8080 config --auth-private-key $$E2E_DIR/kbs/config/private.key set-resource-policy --policy-file "$(CURDIR)/deps/policy-engine/test_data/policy_2.rego" && \
 	./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret"
 
 # Attestation service e2e tests

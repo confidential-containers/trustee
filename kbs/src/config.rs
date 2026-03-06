@@ -4,7 +4,6 @@
 
 use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
-use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 use clap::Parser;
@@ -71,11 +70,6 @@ pub struct KbsConfig {
 
     /// Configuration for the KBS admin API
     pub admin: AdminConfig,
-
-    /// Policy engine configuration used for evaluating whether the TCB status has access to
-    /// specific resources.
-    #[serde(default)]
-    pub policy_engine: PolicyEngineConfig,
 
     #[serde(default)]
     pub plugins: Vec<PluginsConfig>,
@@ -172,9 +166,6 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
-        },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
@@ -223,9 +214,6 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig {
-            policy_path: DEFAULT_POLICY_PATH.into(),
-        },
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
@@ -260,9 +248,6 @@ mod tests {
         admin: AdminConfig {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
-        },
-        policy_engine: PolicyEngineConfig {
-            policy_path: PathBuf::from("/etc/kbs-policy.rego"),
         },
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
@@ -305,7 +290,6 @@ mod tests {
             }),
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
@@ -348,7 +332,6 @@ mod tests {
             admin_backend: AdminBackendType::InsecureAllowAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
@@ -384,7 +367,6 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
@@ -410,7 +392,6 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
@@ -442,7 +423,6 @@ mod tests {
             admin_backend: AdminBackendType::DenyAll,
             roles: Vec::new(),
         },
-        policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
@@ -461,7 +441,6 @@ mod tests {
                         rvps_config: RvpsConfig::BuiltIn(RvpsCrateConfig::default()),
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
-                            policy_dir: "/opt/confidential-containers/attestation-service/ear-policies".into(),
                             ..Default::default()
                         },
                         verifier_config: None,
@@ -478,9 +457,6 @@ mod tests {
                 personas: Vec::new(),
             }),
             roles: Vec::new(),
-        },
-        policy_engine: PolicyEngineConfig {
-            policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
         },
         plugins: vec![
         PluginsConfig::ResourceStorage(RepositoryConfig::LocalFs(
