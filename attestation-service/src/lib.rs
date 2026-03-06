@@ -5,7 +5,6 @@
 
 pub mod config;
 pub mod ear_token;
-pub mod policy_engine;
 pub mod rvps;
 use crate::rvps::RvpsClient;
 
