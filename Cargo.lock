@@ -3520,6 +3520,7 @@ dependencies = [
  "openssl",
  "p256",
  "p521",
+ "policy-engine",
  "prometheus",
  "prost 0.14.3",
  "rand 0.8.5",
