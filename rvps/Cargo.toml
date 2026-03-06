@@ -28,6 +28,7 @@ base64.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, optional = true }
 config.workspace = true
+key-value-storage.path = "../deps/key-value-storage"
 path-clean = { version = "1.0.1", optional = true }
 prost.workspace = true
 roxmltree = "0.21.1"
