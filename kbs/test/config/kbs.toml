@@ -9,12 +9,9 @@ trusted_certs_paths = ["./work/ca-cert.pem"]
 
 [attestation_service]
 type = "coco_as_builtin"
-work_dir = "./work/attestation-service"
-policy_engine = "opa"
 
 [attestation_service.attestation_token_broker]
 duration_min = 5
-policy_dir = "./work/attestation-service/token/ear/policies"
 
 [attestation_service.attestation_token_broker.signer]
 key_path = "./work/token.key"
@@ -23,16 +20,12 @@ cert_path = "./work/token-cert-chain.pem"
 [attestation_service.rvps_config]
 type = "BuiltIn"
 
-[attestation_service.rvps_config.storage]
-type = "LocalFs"
-file_path = "./work/attestation-service/reference_values"
-
 [attestation_service.verifier_config.tpm_verifier]
 trusted_ak_keys_dir = "./work/attestation-service/tpm_trusted_keys"
 max_trusted_ak_keys = 100
 
-[policy_engine]
-policy_path = "./work/kbs-policy.rego"
+[storage_backend]
+storage_type = "Memory"
 
 [admin]
 type = "Simple"
@@ -43,5 +36,4 @@ public_key_path = "./work/kbs.pem"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "./work/repository"
+type = "kvstorage"
