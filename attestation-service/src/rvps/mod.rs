@@ -70,7 +70,10 @@ pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<RvpsClient> {
     match config {
         RvpsConfig::BuiltIn(config) => {
             info!("launch a built-in RVPS.");
-            Ok(Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone())?)) as RvpsClient)
+            Ok(
+                Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone()).await?))
+                    as RvpsClient,
+            )
         }
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
