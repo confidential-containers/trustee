@@ -6,26 +6,21 @@ insecure_key = false
 
 [attestation_service]
 type = "coco_as_builtin"
-work_dir = "/opt/confidential-containers/attestation-service"
 timeout = 5
 
 [attestation_service.attestation_token_broker]
 duration_min = 5
-policy_dir = "/opt/confidential-containers/attestation-service/ear-policies"
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
 
-[attestation_service.rvps_config.storage]
-type = "LocalFs"
-
-[policy_engine]
-policy_path = "/opa/confidential-containers/kbs/policy.rego"
+[storage_backend]
+storage_type = "LocalJson"
+backends.local_json.file_dir_path = "/opt/confidential-containers/trustee"
 
 [admin]
 type = "Simple"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+backend = "kvstorage"
