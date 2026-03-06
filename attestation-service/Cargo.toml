@@ -46,6 +46,7 @@ ear.workspace = true
 hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
+key-value-storage.path = "../deps/key-value-storage"
 openssl.workspace = true
 policy-engine.path = "../deps/policy-engine"
 prost = { workspace = true, optional = true }

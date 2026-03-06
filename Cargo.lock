@@ -598,6 +598,7 @@ dependencies = [
  "hex",
  "jsonwebtoken 10.3.0",
  "kbs-types",
+ "key-value-storage",
  "openssl",
  "policy-engine",
  "prost 0.14.3",
