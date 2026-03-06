@@ -57,6 +57,7 @@ educe.workspace = true
 hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
 kbs-types.workspace = true
+key-value-storage.path = "../deps/key-value-storage"
 kms = { workspace = true, default-features = false }
 mobc = { version = "0.9.0", optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
