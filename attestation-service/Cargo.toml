@@ -47,6 +47,7 @@ hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
 openssl.workspace = true
+policy-engine.path = "../deps/policy-engine"
 prost = { workspace = true, optional = true }
 reference-value-provider-service.path = "../rvps"
 regorus.workspace = true
