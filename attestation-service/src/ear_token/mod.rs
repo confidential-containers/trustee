@@ -4,9 +4,6 @@
 //
 
 use serde::Deserialize;
-use shadow_rs::concatcp;
-
-use crate::config::DEFAULT_WORK_DIR;
 
 pub mod broker;
 pub use broker::EarAttestationTokenBroker;
@@ -22,12 +19,6 @@ pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/T
 
 /// default developer name carried in the EAR token
 pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
-
-/// default token work directory
-const DEFAULT_TOKEN_WORK_DIR: &str = concatcp!(DEFAULT_WORK_DIR, "/token");
-
-/// default token policy directory
-const DEFAULT_POLICY_DIR: &str = concatcp!(DEFAULT_TOKEN_WORK_DIR, "/policies");
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct TokenSignerConfig {
@@ -72,13 +63,7 @@ pub struct EarTokenConfiguration {
     /// Configuration for signing the EAR
     /// If this is not specified, the EAR
     /// will be signed with an ephemeral private key.
-    #[serde(default = "Option::default")]
     pub signer: Option<TokenSignerConfig>,
-
-    /// The path to the work directory that contains policies
-    /// to provision the tokens.
-    #[serde(default = "default_policy_dir")]
-    pub policy_dir: String,
 }
 
 #[inline]

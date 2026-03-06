@@ -5,19 +5,11 @@ use verifier::VerifierConfig;
 
 use serde::Deserialize;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use thiserror::Error;
-
-/// Environment macro for Attestation Service work dir.
-const AS_WORK_DIR: &str = "AS_WORK_DIR";
-pub const DEFAULT_WORK_DIR: &str = "/opt/confidential-containers/attestation-service";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Config {
-    /// The location for Attestation Service to store data.
-    #[serde(default = "default_work_dir")]
-    pub work_dir: PathBuf,
-
     /// Configurations for RVPS.
     #[serde(default)]
     pub rvps_config: RvpsConfig,
@@ -29,10 +21,6 @@ pub struct Config {
     /// Optional configuration for verifier modules
     #[serde(default)]
     pub verifier_config: Option<VerifierConfig>,
-}
-
-fn default_work_dir() -> PathBuf {
-    PathBuf::from(std::env::var(AS_WORK_DIR).unwrap_or_else(|_| DEFAULT_WORK_DIR.to_string()))
 }
 
 #[derive(Error, Debug)]
@@ -109,7 +97,6 @@ mod tests {
             duration_min: 5,
             issuer_name: "test".into(),
             signer: None,
-            policy_dir: "/var/lib/attestation-service/policies".into(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
