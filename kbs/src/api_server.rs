@@ -70,14 +70,18 @@ impl ApiServer {
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::try_from(config.plugins.clone())
+        let plugin_manager = PluginManager::new(config.plugins.clone(), &config.storage_backend)
+            .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
         let admin = Admin::try_from(config.admin.clone())?;
 
         #[cfg(feature = "as")]
-        let attestation_service =
-            crate::attestation::AttestationService::new(config.attestation_service.clone()).await?;
+        let attestation_service = crate::attestation::AttestationService::new(
+            config.attestation_service.clone(),
+            &config.storage_backend,
+        )
+        .await?;
 
         BUILD_INFO.inc();
 

@@ -3425,6 +3425,7 @@ dependencies = [
  "josekit",
  "jsonwebtoken 10.3.0",
  "kbs-types 0.15.0",
+ "key-value-storage",
  "kms",
  "mobc",
  "openssl",
