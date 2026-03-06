@@ -53,6 +53,7 @@ pub trait RvpsApi {
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
 pub enum RvpsConfig {
     BuiltIn {
         extractors: Option<ExtractorsConfig>,

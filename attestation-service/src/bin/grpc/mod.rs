@@ -52,7 +52,7 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
 
 #[derive(Error, Debug)]
 pub enum GrpcError {
-    #[error("Failed to read Attestation Service config file: {0}")]
+    #[error("Failed to read Attestation Service config file")]
     Config(#[source] ConfigError),
     #[error("Failed to create AS service: {0}")]
     Service(#[from] ServiceError),
@@ -68,7 +68,10 @@ impl AttestationServer {
     pub async fn new(config_path: Option<String>) -> Result<Self, GrpcError> {
         let config = match config_path {
             Some(path) => Config::try_from(Path::new(&path)).map_err(GrpcError::Config)?,
-            None => Config::default(),
+            None => {
+                info!("No config file provided, using default config.");
+                Config::default()
+            }
         };
 
         debug!("Attestation Service config: {config:#?}");

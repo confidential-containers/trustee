@@ -594,6 +594,7 @@ dependencies = [
  "canon-json",
  "cfg-if",
  "clap",
+ "config",
  "ear 0.4.0 (git+https://github.com/veraison/rust-ear.git?rev=3d5fa46)",
  "hex",
  "jsonwebtoken 10.3.0",

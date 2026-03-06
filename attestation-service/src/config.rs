@@ -1,15 +1,16 @@
 use crate::ear_token::EarTokenConfiguration;
 use crate::rvps::RvpsConfig;
 
+use config::{Config as RawConfig, File as RawFile};
 use key_value_storage::StorageBackendConfig;
 pub use verifier::VerifierConfig;
 
 use serde::Deserialize;
-use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// Configurations for RVPS.
     #[serde(default)]
@@ -31,24 +32,56 @@ pub struct Config {
     pub storage_backend: StorageBackendConfig,
 }
 
+impl Config {
+    /// An example Attestation Service configuration in TOML format with per-field comments.
+    pub fn example_config_toml() -> &'static str {
+        r#"# Attestation Service example configuration (TOML)
+# This file is meant as a starting point for new deployments and upgrades.
+
+# Unified storage backend configuration used by the built-in AS policy store and the built-in RVPS.
+[storage_backend]
+# Storage type. Common values: Memory, LocalFs, LocalJson, Postgres.
+storage_type = "LocalFs"
+[storage_backend.backends.local_fs]
+# Base directory used for persistent data (namespaces are created internally).
+dir_path = "/opt/confidential-containers/storage"
+
+# RVPS integration configuration.
+[rvps_config]
+# Select RVPS mode. Common values: BuiltIn, GrpcRemote.
+type = "BuiltIn"
+# Optional: provenance extractor configuration for BuiltIn RVPS.
+# extractors = {}
+
+# Attestation Result Token Broker configuration (EAR token settings).
+[attestation_token_broker]
+# Token validity duration in minutes.
+duration_min = 5
+# Optional: configure a persistent signing key/certificate chain.
+# [attestation_token_broker.signer]
+# key_path = "/etc/as-token.key"
+# cert_path = "/etc/as-token-cert-chain.pem"
+
+# Optional: verifier-specific configuration (for example TPM verifier limits).
+# [verifier_config.tpm_verifier]
+# trusted_ak_keys_dir = "/etc/tpm/trusted_ak_keys"
+# max_trusted_ak_keys = 100
+"#
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("io error: {0}")]
-    IO(#[from] std::io::Error),
-    #[error("failed to parse AS config file: {0}")]
-    FileParse(#[source] std::io::Error),
     #[error(
-        "failed to parse AS config file: {0}. \
-        If you are upgrading from an older version, the configuration format may have changed. \
-        Fields removed or replaced in this version: work_dir, policy_engine, attestation_token_broker.policy_dir, rvps_config.storage (for BuiltIn). \
-        For more information, use the `--print-example-config` subcommand/flag to print an example configuration for your version, then compare/update your config accordingly. \
-        You can also refer to the Attestation Service config documentation: \
-        https://github.com/confidential-containers/trustee/blob/main/attestation-service/docs/config.md \
-        (Tip: for an exact match to this binary, replace `main` with the `commit` hash printed at startup.)"
+        "invalid AS config: {0}\n\n\
+If you are upgrading from an older version, the configuration format may have changed.\n\
+Fields removed or replaced in this version: work_dir, policy_engine, attestation_token_broker.policy_dir, rvps_config.storage (for BuiltIn).\n\
+For more information, use the `--print-example-config` subcommand/flag to print an example configuration for your version, then compare/update your config accordingly.\n\
+You can also refer to the Attestation Service config documentation:\n\
+https://github.com/confidential-containers/trustee/blob/main/attestation-service/docs/config.md\n\
+(Tip: for an exact match to this binary, replace `main` with the `commit` hash printed at startup.)"
     )]
-    JsonFileParse(#[source] serde_json::Error),
-    #[error("Illegal format of the content of the configuration file: {0}")]
-    SerdeJson(#[from] serde_json::Error),
+    Parse(#[from] config::ConfigError),
 }
 
 impl TryFrom<&Path> for Config {
@@ -78,8 +111,10 @@ impl TryFrom<&Path> for Config {
     ///    }
     type Error = ConfigError;
     fn try_from(config_path: &Path) -> Result<Self, ConfigError> {
-        let file = File::open(config_path)?;
-        serde_json::from_reader::<File, Config>(file).map_err(ConfigError::JsonFileParse)
+        let c = RawConfig::builder()
+            .add_source(RawFile::with_name(config_path.to_str().unwrap()))
+            .build()?;
+        c.try_deserialize().map_err(ConfigError::Parse)
     }
 }
 

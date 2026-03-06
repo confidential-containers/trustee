@@ -50,6 +50,7 @@ pub mod intel_dcap;
 pub mod tpm;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct VerifierConfig {
     #[cfg(feature = "nvidia-verifier")]
     nvidia_verifier: Option<nvidia::NvidiaVerifierConfig>,

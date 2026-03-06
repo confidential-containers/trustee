@@ -23,6 +23,7 @@ const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certifica
 
 #[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[serde(deny_unknown_fields)]
 pub enum TcbUpdateType {
     #[default]
     Early,
@@ -30,6 +31,7 @@ pub enum TcbUpdateType {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct QcnlConfig {
     collateral_service: String,
     #[serde(skip_serializing_if = "Option::is_none")]

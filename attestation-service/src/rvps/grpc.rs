@@ -15,6 +15,7 @@ pub mod rvps_api {
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct RvpsRemoteConfig {
     /// Address of remote RVPS. If this field is given, a remote RVPS will be connected to.
     /// If this field is not given, a built-in RVPS will be used.

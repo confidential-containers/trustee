@@ -42,6 +42,7 @@ base64.workspace = true
 canon-json = "0.2.1"
 cfg-if.workspace = true
 clap = { workspace = true, optional = true }
+config.workspace = true
 ear.workspace = true
 hex.workspace = true
 jsonwebtoken.workspace = true

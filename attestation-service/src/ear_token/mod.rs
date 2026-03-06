@@ -21,6 +21,7 @@ pub const DEFAULT_PROFILE: &str = "tag:github.com,2024:confidential-containers/T
 pub const DEFAULT_DEVELOPER_NAME: &str = "https://confidentialcontainers.org";
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct TokenSignerConfig {
     pub key_path: String,
     #[serde(default = "Option::default")]
@@ -33,6 +34,7 @@ pub struct TokenSignerConfig {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct EarTokenConfiguration {
     /// The Attestation Results Token duration time (in minutes)
     /// Default: 5 minutes

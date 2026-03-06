@@ -1,7 +1,33 @@
 # CoCo AS Configuration File
 
-The Confidential Containers KBS properties can be configured through a
-JSON-formatted configuration file.
+The Confidential Containers **Attestation Service (AS)** properties can be configured through a
+configuration file (recommended: **TOML**).
+
+AS loads the configuration using the `config` crate, and **infers the format from the file
+extension** (for example `.toml`, `.json`, `.yaml`/`.yml`).
+
+AS configuration is **strict**: unknown fields are rejected (`deny_unknown_fields`) to prevent
+silent misconfiguration during upgrades.
+
+## Quick start: generate an example config
+
+Both AS binaries can print an example config (TOML with inline comments) to stdout:
+
+```bash
+# gRPC AS
+grpc-as print-example-config > as.toml
+
+# RESTful AS
+restful-as print-example-config > as.toml
+```
+
+Then start AS with the config file:
+
+```bash
+grpc-as --config-file as.toml
+# or
+restful-as --config-file as.toml
+```
 
 ## Configurable Properties
 
@@ -65,15 +91,11 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
 **Example:**
-```json
-{
-    "rvps_config": {
-        "type": "BuiltIn",
-        "extractors": {
-            "swid_extractor": {}
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "BuiltIn"
+[rvps_config.extractors]
+swid_extractor = {}
 ```
 
 ##### Remote RVPS
@@ -181,257 +203,189 @@ Available when the `tdx-verifier`, `sgx-verifier`, or `az-tdx-vtpm-verifier` fea
 
 Running with a built-in RVPS (using unified storage backend):
 
-```json
-{
-    "storage_backend": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/var/lib/attestation-service/storage"
-            }
-        }
-    },
-    "rvps_config": {
-        "type": "BuiltIn"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    }
-}
+```toml
+[storage_backend]
+storage_type = "LocalFs"
+[storage_backend.backends.local_fs]
+dir_path = "/var/lib/attestation-service/storage"
+
+[rvps_config]
+type = "BuiltIn"
+
+[attestation_token_broker]
+duration_min = 5
 ```
 
 Running with a built-in RVPS with extractor configuration:
 
-```json
-{
-    "storage_backend": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/var/lib/attestation-service/storage"
-            }
-        }
-    },
-    "rvps_config": {
-        "type": "BuiltIn",
-        "extractors": {
-            "swid_extractor": {}
-        }
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    }
-}
+```toml
+[storage_backend]
+storage_type = "LocalFs"
+[storage_backend.backends.local_fs]
+dir_path = "/var/lib/attestation-service/storage"
+
+[rvps_config]
+type = "BuiltIn"
+[rvps_config.extractors]
+swid_extractor = {}
+
+[attestation_token_broker]
+duration_min = 5
 ```
 
 Running with a remote RVPS:
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
 ```
 
 Configurations for token signer
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5,
-        "issuer_name": "some-body",
-        "signer": {
-            "key_path": "/etc/coco-as/signer.key",
-            "cert_url": "https://example.io/coco-as-certchain",
-            "cert_path": "/etc/coco-as/signer.pub"
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+issuer_name = "some-body"
+[attestation_token_broker.signer]
+key_path = "/etc/coco-as/signer.key"
+cert_url = "https://example.io/coco-as-certchain"
+cert_path = "/etc/coco-as/signer.pub"
 ```
 
 Configuration with TPM verifier:
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "tpm_verifier": {
-            "trusted_ak_keys_dir": "/etc/tpm/trusted_ak_keys",
-            "max_trusted_ak_keys": 50
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.tpm_verifier]
+trusted_ak_keys_dir = "/etc/tpm/trusted_ak_keys"
+max_trusted_ak_keys = 50
 ```
 
 Configuration with AMD SEV-SNP verifier using KDS:
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "snp_verifier": {
-            "vcek_sources": [
-                {
-                    "type": "KDS",
-                    "base_url": "https://kdsintf.amd.com"
-                }
-            ]
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.snp_verifier]
+vcek_sources = [
+  { type = "KDS", base_url = "https://kdsintf.amd.com" },
+]
 ```
 
 Running with unified storage backend:
 
-```json
-{
-    "storage_backend": {
-        "storage_type": "LocalFs",
-        "backends": {
-            "local_fs": {
-                "dir_path": "/var/lib/attestation-service/storage"
-            }
-        }
-    },
-    "rvps_config": {
-        "type": "BuiltIn"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    }
-}
+```toml
+[storage_backend]
+storage_type = "LocalFs"
+[storage_backend.backends.local_fs]
+dir_path = "/var/lib/attestation-service/storage"
+
+[rvps_config]
+type = "BuiltIn"
+
+[attestation_token_broker]
+duration_min = 5
 ```
 
 
 
 Running with PostgreSQL storage using unified storage backend:
 
-```json
-{
-    "storage_backend": {
-        "storage_type": "Postgres",
-        "backends": {
-            "postgres": {
-                "host": "localhost",
-                "port": 5432,
-                "db": "coco_as",
-                "username": "postgres",
-                "password": "password"
-            }
-        }
-    },
-    "rvps_config": {
-        "type": "BuiltIn"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    }
-}
+```toml
+[storage_backend]
+storage_type = "Postgres"
+[storage_backend.backends.postgres]
+host = "localhost"
+port = 5432
+db = "coco_as"
+username = "postgres"
+password = "password"
+
+[rvps_config]
+type = "BuiltIn"
+
+[attestation_token_broker]
+duration_min = 5
 ```
 
 Configuration with AMD SEV-SNP verifier using offline store:
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "snp_verifier": {
-            "vcek_sources": [
-                {
-                    "type": "OfflineStore",
-                    "path": "/var/lib/attestation-service/kds-store"
-                }
-            ]
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.snp_verifier]
+vcek_sources = [
+  { type = "OfflineStore", path = "/var/lib/attestation-service/kds-store" },
+]
 ```
 
 Configuration with NVIDIA GPU verifier (local verification):
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "nvidia_verifier": {
-            "type": "Local"
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.nvidia_verifier]
+type = "Local"
 ```
 
 Configuration with NVIDIA GPU verifier (remote verification via NRAS):
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "nvidia_verifier": {
-            "type": "Remote",
-            "verifier_url": "https://nras.attestation.nvidia.com/v4/attest"
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.nvidia_verifier]
+type = "Remote"
+verifier_url = "https://nras.attestation.nvidia.com/v4/attest"
 ```
 
 Configuration with Intel DCAP verifier (TDX/SGX):
 
-```json
-{
-    "rvps_config": {
-        "type": "GrpcRemote",
-        "address": "127.0.0.1:50003"
-    },
-    "attestation_token_broker": {
-        "duration_min": 5
-    },
-    "verifier_config": {
-        "dcap_verifier": {
-            "collateral_service": "https://api.trustedservices.intel.com/sgx/certification/v4/",
-            "use_secure_cert": true,
-            "tcb_update_type": "early"
-        }
-    }
-}
+```toml
+[rvps_config]
+type = "GrpcRemote"
+address = "127.0.0.1:50003"
+
+[attestation_token_broker]
+duration_min = 5
+
+[verifier_config.dcap_verifier]
+collateral_service = "https://api.trustedservices.intel.com/sgx/certification/v4/"
+use_secure_cert = true
+tcb_update_type = "early"
 ```
 ### Storage Backend Configuration
 
