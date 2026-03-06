@@ -9,7 +9,7 @@ use std::path::Path;
 
 use clap::Parser;
 use kbs::{
-    config::{Cli, KbsConfig},
+    config::{example_config_toml, Cli, Commands, KbsConfig},
     ApiServer,
 };
 use shadow_rs::shadow;
@@ -20,6 +20,17 @@ shadow!(build);
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    if let Some(command) = cli.command {
+        match command {
+            Commands::PrintExampleConfig => {
+                print!("{}", example_config_toml());
+                return Ok(());
+            }
+        }
+    }
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("info"),
@@ -48,8 +59,6 @@ loglevel: {env_filter}
 
     Subscriber::builder().with_env_filter(env_filter).init();
     info!("Welcome to Confidential Containers Key Broker Service!\n\n{version}");
-
-    let cli = Cli::parse();
 
     info!("Using config file {}", cli.config_file);
     let kbs_config = KbsConfig::try_from(Path::new(&cli.config_file))?;

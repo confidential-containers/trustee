@@ -6,7 +6,7 @@ use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use config::{Config, File};
 use key_value_storage::StorageBackendConfig;
 use serde::Deserialize;
@@ -19,6 +19,7 @@ const DEFAULT_PAYLOAD_REQUEST_SIZE: u32 = 2;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct HttpServerConfig {
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
     pub sockets: Vec<SocketAddr>,
@@ -56,6 +57,7 @@ impl Default for HttpServerConfig {
 
 /// Contains all configurable KBS properties.
 #[derive(Debug, Clone, Deserialize, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct KbsConfig {
     /// Attestation token result broker config.
     #[serde(default)]
@@ -115,10 +117,110 @@ You can also refer to the KBS config documentation:\n\n\
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+
     /// Path to a KBS config file. Supported formats: TOML, YAML, JSON and possibly other formats
     /// supported by the `config` crate.
     #[arg(short, long, env = "KBS_CONFIG_FILE")]
     pub config_file: String,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Print an example KBS configuration file to stdout.
+    ///
+    /// The output includes comments explaining what each field does.
+    PrintExampleConfig,
+}
+
+/// An example KBS configuration in TOML format with per-field comments.
+pub fn example_config_toml() -> &'static str {
+    r#"# KBS example configuration (TOML)
+# This file is meant as a starting point for new deployments and upgrades.
+#
+# Tip: KBS can run in different modes via features and configuration. If you are upgrading,
+# compare your existing config with this example and the version-matched docs for your binary.
+
+# HTTP server settings for KBS.
+[http_server]
+# One or more sockets to listen on (IP:port).
+sockets = ["0.0.0.0:8080"]
+# Set to true to disable TLS (development only).
+insecure_http = true
+# Optional TLS key/certificate paths.
+# private_key = "/etc/kbs-private.key"
+# certificate = "/etc/kbs-cert.pem"
+# Maximum request payload size (MiB) accepted by KBS.
+payload_request_size = 2
+# Optional: number of HTTP worker threads (defaults to logical CPU cores).
+# worker_count = 8
+
+# Admin API authentication/authorization settings.
+[admin]
+# Admin auth backend. Common values: "DenyAll", "Simple", "InsecureAllowAll".
+type = "Simple"
+
+# Define one or more admin personas (public keys) for the "Simple" backend.
+[[admin.personas]]
+# A human-readable identifier for this admin persona.
+id = "admin"
+# Path to the public key that verifies admin tokens for this persona.
+public_key_path = "/etc/kbs-admin.pub"
+
+# Optional role-based access control rules for admin endpoints.
+# If omitted, admins can access all admin endpoints after authentication.
+# [[admin.roles]]
+# id = "Admin"
+# allowed_endpoints = "^/kbs/v1/.*$"
+
+# Attestation Token verification settings used when serving protected resources.
+[attestation_token]
+# Additional trusted certificate bundle paths (PEM) used to validate JWT signing keys.
+trusted_certs_paths = ["/etc/ca-certificates"]
+# If true, do not validate the trustworthiness of the JWK inside a token (unsafe).
+insecure_key = false
+# Optional: URLs/paths to JWK sets (e.g. OpenID discovery) for token verification.
+# trusted_jwk_sets = ["https://example.com/.well-known/jwks.json"]
+# Optional: extra JSON paths in the JWT body where a TEE public key may be stored.
+# extra_teekey_paths = ["/attester_runtime_data/tee-pubkey"]
+
+# Unified storage backend configuration used across KBS components.
+# Namespaces are created automatically (kbs, repository, attestation-service-policy, reference-value).
+[storage_backend]
+# Storage type. Common values: "Memory", "LocalFs", "LocalJson", "Postgres".
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+# Base directory to store persistent data for all namespaces.
+dir_path = "/opt/confidential-containers/storage"
+
+# Attestation Service configuration used by the RCAR protocol.
+[attestation_service]
+# Select the attestation service implementation.
+# Common values: "coco_as_builtin", "coco_as_grpc", "intel_ta".
+type = "coco_as_builtin"
+
+# When using `coco_as_builtin`, configure the built-in RVPS integration.
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+# Attestation result token configuration (EAR token broker).
+[attestation_service.attestation_token_broker]
+# Token validity duration in minutes.
+duration_min = 5
+# Optional: provide a signer to persist the signing key/cert chain instead of using an ephemeral key.
+# [attestation_service.attestation_token_broker.signer]
+# key_path = "/etc/as-token.key"
+# cert_path = "/etc/as-token-cert-chain.pem"
+
+# Plugin configuration sections.
+[[plugins]]
+# Enable the resource plugin (a.k.a. repository) to serve secrets/resources.
+name = "resource"
+# Use the unified storage backend with namespace `repository`.
+backend = "kvstorage"
+"#
 }
 
 #[cfg(test)]
