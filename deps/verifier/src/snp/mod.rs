@@ -287,6 +287,7 @@ fn default_vcek_sources() -> Vec<VCEKSource> {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SnpVerifierConfig {
     #[serde(default = "default_vcek_sources")]
     pub vcek_sources: Vec<VCEKSource>,
@@ -302,6 +303,7 @@ impl Default for SnpVerifierConfig {
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
 pub enum VCEKSource {
     OfflineStore { path: Option<String> },
     KDS { base_url: Option<String> },

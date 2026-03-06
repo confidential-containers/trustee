@@ -35,6 +35,7 @@ pub const POSTGRES_URL_ENV_VAR: &str = "POSTGRES_URL";
 #[derive(Deserialize, Educe, Clone, PartialEq)]
 #[educe(Debug)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// The name of the PostgreSQL database.
     pub db: String,

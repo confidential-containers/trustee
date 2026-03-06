@@ -33,6 +33,7 @@ pub struct Extractors {
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ExtractorsConfig {
     swid_extractor: Option<swid::SwidExtractorConfig>,
 }

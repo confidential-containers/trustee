@@ -47,6 +47,7 @@ pub struct Nvidia {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct NvidiaVerifierConfig {
     #[serde(flatten)]
     verifier: NvidiaVerifierType,
@@ -54,6 +55,7 @@ pub struct NvidiaVerifierConfig {
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
 pub enum NvidiaVerifierType {
     #[default]
     Local,
@@ -61,6 +63,7 @@ pub enum NvidiaVerifierType {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct NvidiaRemoteVerifierConfig {
     verifier_url: Option<String>,
 }

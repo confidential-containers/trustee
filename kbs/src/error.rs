@@ -64,14 +64,26 @@ pub enum Error {
     #[error("Access denied by policy")]
     PolicyDeny,
 
-    #[error("Policy engine error")]
-    PolicyEngine(#[from] crate::policy_engine::KbsPolicyEngineError),
+    #[error("Failed to parse policy: {source}")]
+    ParsePolicyError {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    #[error("Policy engine error: {0}")]
+    PolicyEngineError(#[from] policy_engine::PolicyError),
 
     #[error("RVPS configuration failed: {message}")]
     RvpsError { message: String },
 
     #[error("Serialize/Deserialize failed")]
     SerdeError(#[from] serde_json::Error),
+
+    #[error("Storage backend initialization failed: {source}")]
+    StorageBackendInitialization {
+        #[source]
+        source: key_value_storage::KeyValueStorageError,
+    },
 
     #[error("Attestation Token not found")]
     TokenNotFound,

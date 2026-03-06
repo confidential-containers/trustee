@@ -4,7 +4,7 @@ use actix_cors::Cors;
 use actix_web::{http::header, web, App, HttpServer};
 use anyhow::Result;
 use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
-use clap::{arg, command, Parser};
+use clap::{Parser, Subcommand};
 use openssl::{
     pkey::PKey,
     ssl::{SslAcceptor, SslMethod},
@@ -26,12 +26,15 @@ shadow!(build);
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+
     /// Path to a CoCo-AS config file.
     #[arg(short, long)]
     pub config_file: Option<String>,
 
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "127.0.0.1:8080")]
     pub socket: SocketAddr,
 
     /// Path to the public key cert for HTTPS. Both public key cert and
@@ -48,6 +51,14 @@ pub struct Cli {
     /// Can be specified multiple times or comma-separated
     #[arg(short = 'r', long = "allowed_origin", value_delimiter = ',', num_args = 1..)]
     pub allowed_origin: Vec<String>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Print an example Attestation Service configuration file to stdout.
+    ///
+    /// The output includes comments explaining what each field does.
+    PrintExampleConfig,
 }
 
 #[derive(EnumString, AsRefStr)]
@@ -67,8 +78,8 @@ enum WebApi {
 pub enum RestfulError {
     #[error("Creating service failed: {0}")]
     Service(#[from] ServiceError),
-    #[error("Failed to read AS config file: {0}")]
-    Config(#[from] ConfigError),
+    #[error("Failed to read AS config file")]
+    Config(#[source] ConfigError),
     #[error("Openssl errorstack: {0}")]
     Openssl(#[from] openssl::error::ErrorStack),
     #[error("failed to read HTTPS private key: {0}")]
@@ -114,7 +125,18 @@ fn configure_cors(allowed_origin: &[String]) -> Cors {
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), RestfulError> {
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    if let Some(command) = cli.command {
+        match command {
+            Commands::PrintExampleConfig => {
+                print!("{}", Config::example_config_toml());
+                return Ok(());
+            }
+        }
+    }
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("warn,attestation_service=info,restful_as=info"),
@@ -144,7 +166,6 @@ loglevel: {env_filter}
     Subscriber::builder().with_env_filter(env_filter).init();
 
     info!("Welcome to Confidential Containers Attestation Service (RESTful version)!\n\n{version}");
-    let cli = Cli::parse();
 
     let config = match cli.config_file {
         Some(path) => {

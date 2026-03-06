@@ -14,6 +14,7 @@ pub struct Config {
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct TpmVerifierConfig {
     #[serde(default = "default_trusted_ak_keys_dir")]
     pub trusted_ak_keys_dir: PathBuf,

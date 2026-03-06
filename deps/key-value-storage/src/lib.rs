@@ -54,6 +54,7 @@ pub trait KeyValueStorage: Send + Sync {
 pub type KeyValueStorageInstance = Arc<dyn KeyValueStorage>;
 
 #[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub enum KeyValueStorageType {
     #[default]
     #[serde(alias = "memory")]
@@ -68,6 +69,7 @@ pub enum KeyValueStorageType {
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct KeyValueStorageStructConfig {
     #[cfg(feature = "postgres")]
     pub postgres: Option<postgres::Config>,
@@ -137,6 +139,7 @@ impl KeyValueStorageStructConfig {
 /// Unified storage backend configuration
 #[derive(Debug, Clone, Deserialize, PartialEq, Default)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct StorageBackendConfig {
     // Note: this field is aiming to serving all the persistent storages in KBS.
     /// Storage backend type
