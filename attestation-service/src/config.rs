@@ -8,7 +8,7 @@ use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct Config {
     /// Configurations for RVPS.
     #[serde(default)]
@@ -33,18 +33,6 @@ pub enum ConfigError {
     JsonFileParse(#[source] serde_json::Error),
     #[error("Illegal format of the content of the configuration file: {0}")]
     SerdeJson(#[from] serde_json::Error),
-}
-
-impl Default for Config {
-    // Construct a default instance of `Config`
-    fn default() -> Config {
-        Config {
-            work_dir: default_work_dir(),
-            rvps_config: RvpsConfig::default(),
-            attestation_token_broker: EarTokenConfiguration::default(),
-            verifier_config: None,
-        }
-    }
 }
 
 impl TryFrom<&Path> for Config {
