@@ -578,6 +578,7 @@ dependencies = [
  "jsonwebtoken 10.3.0",
  "kbs-types 0.15.0",
  "openssl",
+ "policy-engine",
  "prost",
  "reference-value-provider-service",
  "regorus",

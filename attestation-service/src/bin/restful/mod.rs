@@ -264,14 +264,11 @@ pub async fn get_challenge(
 /// GET /policy
 /// GET /policy/{policy_id}
 ///
-/// The returned body would look like
-/// ```json
-/// [
-///     {"policy-id": <id-1>, "policy-hash": <hash-1>},
-///     {"policy-id": <id-2>, "policy-hash": <hash-2>},
-///     ...
-/// ]
-/// ```
+/// - GET /policy: returns a JSON array of policy identifiers:
+///   ```json
+///   [{"policy-id": <id-1>}, {"policy-id": <id-2>}, ...]
+///   ```
+/// - GET /policy/{policy_id}: returns the policy content (Rego source) as response body.
 #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
 pub async fn get_policies(
     request: HttpRequest,
@@ -302,7 +299,7 @@ pub async fn get_policies(
                 .await
                 .context("get policies")?
                 .into_iter()
-                .map(|(id, digest)| json!({"policy-id": id, "policy-hash": digest}))
+                .map(|id| json!({"policy-id": id}))
                 .collect::<Vec<_>>();
 
             let policy_list =
