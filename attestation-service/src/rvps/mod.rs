@@ -5,7 +5,9 @@
 
 use std::sync::Arc;
 
+use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
+use reference_value_provider_service::extractors::ExtractorsConfig;
 use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
@@ -52,28 +54,33 @@ pub trait RvpsApi {
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type")]
 pub enum RvpsConfig {
-    BuiltIn(RvpsCrateConfig),
+    BuiltIn {
+        extractors: Option<ExtractorsConfig>,
+    },
     #[cfg(feature = "rvps-grpc")]
     GrpcRemote(grpc::RvpsRemoteConfig),
 }
 
 impl Default for RvpsConfig {
     fn default() -> Self {
-        Self::BuiltIn(RvpsCrateConfig::default())
+        Self::BuiltIn { extractors: None }
     }
 }
 
 pub type RvpsClient = Arc<Mutex<dyn RvpsApi + Send + Sync>>;
 
 #[instrument(skip_all, name = "Initialize RVPS")]
-pub async fn initialize_rvps_client(config: &RvpsConfig) -> Result<RvpsClient> {
+pub async fn initialize_rvps_client(
+    config: &RvpsConfig,
+    storage_type: KeyValueStorageType,
+    storage_config: &KeyValueStorageStructConfig,
+) -> Result<RvpsClient> {
     match config {
-        RvpsConfig::BuiltIn(config) => {
+        RvpsConfig::BuiltIn { extractors } => {
             info!("launch a built-in RVPS.");
-            Ok(
-                Arc::new(Mutex::new(builtin::BuiltinRvps::new(config.clone()).await?))
-                    as RvpsClient,
-            )
+            Ok(Arc::new(Mutex::new(
+                builtin::BuiltinRvps::new(extractors.clone(), storage_type, storage_config).await?,
+            )) as RvpsClient)
         }
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
