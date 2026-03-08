@@ -67,6 +67,14 @@ impl EarAttestationTokenBroker {
             .set_policy("default_gpu", &default_gpu_policy, false)
             .await?;
 
+        let default_ppcie_policy = include_str!("ear_default_policy_ppcie.rego").to_string();
+        let default_ppcie_policy =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_ppcie_policy);
+
+        policy_engine
+            .set_policy("default_ppcie".to_string(), default_ppcie_policy, false)
+            .await?;
+
         if config.signer.is_none() {
             info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
             return Ok(Self {
