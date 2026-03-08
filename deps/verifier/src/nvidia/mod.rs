@@ -13,10 +13,9 @@ pub mod spdm_response;
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use base64::Engine;
-use nvml_wrapper::enums::device::DeviceArchitecture;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::result::Result::Ok;
 use std::str::FromStr;
 use strum::{Display, EnumString};
@@ -87,9 +86,17 @@ enum Architecture {
 #[derive(Debug, Deserialize, Serialize)]
 struct NvDeviceReportAndCert {
     arch: Architecture,
+    #[serde(default = "default_uuid")]
     uuid: String,
     evidence: String,
     certificate: String,
+}
+
+/// UUID isn't used for attestation and isn't reported by the NVAT
+/// bindings. To maintain backwards comptability, keep UUID in the
+/// struct, but don't require it.
+fn default_uuid() -> String {
+    "unknown".to_string()
 }
 
 #[derive(Default, Debug, Serialize)]
@@ -102,7 +109,7 @@ pub struct NvDeviceReportAndCertClaim {
 
 impl NvDeviceReportAndCertClaim {
     fn new(
-        device_arch: &DeviceArchitecture,
+        device_arch: &Architecture,
         device_uuid: &str,
         attestation_report: &NvidiaAttestationReport,
     ) -> Self {
@@ -121,6 +128,84 @@ impl NvDeviceReportAndCertClaim {
     }
 }
 
+/// Check if a set of device claims constitutes a PPCIE configuration.
+/// If so, return claims describing the PPCIE topology.
+fn validate_ppcie(
+    all_devices_claims: Vec<(TeeEvidenceParsedClaim, TeeClass)>,
+) -> Result<TeeEvidenceParsedClaim> {
+    if all_devices_claims.len() != 12 {
+        bail!("PPCIE requires 12 devices.");
+    }
+
+    let mut gpu_pdis: HashSet<String> = HashSet::new();
+    let mut switch_pdis: HashSet<String> = HashSet::new();
+
+    for (claims, device_class) in all_devices_claims {
+        if device_class == "gpu" {
+            let gpu_switch_pdis = claims
+                .pointer("/x-nvidia-gpu-switch-pdis")
+                .ok_or(anyhow!("gpu must specify switch PDIs"))?
+                .as_array()
+                .ok_or(anyhow!("gpu must specify switch PDIs as array"))?
+                .iter();
+
+            let mut switch_count = 0;
+            for switch_pdi in gpu_switch_pdis {
+                let switch_pdi = switch_pdi
+                    .as_str()
+                    .ok_or(anyhow!("switch PDI must be string"))?;
+                if switch_pdi.contains("0000000000000000") {
+                    continue;
+                }
+
+                switch_pdis.insert(switch_pdi.to_string());
+                switch_count += 1;
+            }
+            if switch_count != 4 {
+                bail!("Each GPU must be connectd to 4 switches");
+            }
+        } else if device_class == "switch" {
+            let switch_pdi = claims
+                .pointer("/x-nvidia-switch-pdi")
+                .ok_or(anyhow!("switch must specify it's own PDI"))?
+                .as_str()
+                .ok_or(anyhow!("switch must specify it's own PDI as string"))?;
+
+            switch_pdis.insert(switch_pdi.to_string());
+
+            let switch_gpu_pdis = claims
+                .pointer("/x-nvidia-switch-gpu-pdis")
+                .ok_or(anyhow!("switch must specify GPU PDIs"))?
+                .as_array()
+                .ok_or(anyhow!("switch must specify it's GPU PDIs as array"))?
+                .iter();
+            if switch_gpu_pdis.len() != 8 {
+                bail!("Each switch must be connectd to 8 GPUs");
+            }
+
+            for gpu_pdi in switch_gpu_pdis {
+                gpu_pdis.insert(
+                    gpu_pdi
+                        .as_str()
+                        .ok_or(anyhow!("GPU PDI must be string"))?
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    if gpu_pdis.len() != 8 {
+        bail!("Topology must contain 8 GPUs");
+    }
+    if switch_pdis.len() != 4 {
+        bail!("Topology must contain 4 switches");
+    }
+
+    let claims = json!({"switch_count":4, "gpu_count":8 });
+
+    Ok(claims)
+}
+
 impl Nvidia {
     pub async fn new(config: Option<NvidiaVerifierConfig>) -> Result<Self> {
         let verifier_type = config
@@ -129,7 +214,7 @@ impl Nvidia {
 
         let nras_jwks = match verifier_type {
             NvidiaVerifierType::Remote(_) => Some(NrasJwks::new().await?),
-            NvidiaVerifierType::Local => None,
+            _ => None,
         };
 
         Ok(Nvidia {
@@ -138,7 +223,8 @@ impl Nvidia {
         })
     }
 
-    async fn evaluate_device_remotely(
+    /// Evaluate an NVIDIA device using NRAS
+    async fn evaluate_device_nras(
         &self,
         device: NvDeviceReportAndCert,
         expected_nonce_vec: Vec<u8>,
@@ -252,11 +338,8 @@ impl Nvidia {
         trace!("{}", &report);
 
         // Build the device claims
-        let device_claims = NvDeviceReportAndCertClaim::new(
-            &DeviceArchitecture::Hopper,
-            device.uuid.as_str(),
-            &report,
-        );
+        let device_claims =
+            NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
         let value = serde_json::to_value(device_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
 
@@ -284,18 +367,21 @@ impl Verifier for Nvidia {
             regularize_data(expected_nonce, SPDM_NONCE_SIZE, "REPORT_DATA", "NVIDIA");
 
         for device in devices.device_evidence_list {
-            // we will need to pass some more stuff in, like the nonce
             let claims = match &self.verifier_type {
                 NvidiaVerifierType::Local => {
                     self.evaluate_device_locally(device, expected_nonce_vec.clone())?
                 }
                 NvidiaVerifierType::Remote(config) => {
-                    self.evaluate_device_remotely(device, expected_nonce_vec.clone(), config)
+                    self.evaluate_device_nras(device, expected_nonce_vec.clone(), config)
                         .await?
                 }
             };
 
             all_devices_claims.push(claims);
+        }
+
+        if let Ok(ppcie_claims) = validate_ppcie(all_devices_claims.clone()) {
+            all_devices_claims.push((ppcie_claims, "ppcie".to_string()));
         }
 
         Ok(all_devices_claims)
@@ -324,7 +410,7 @@ mod tests {
             .try_init()
             .expect("Failed to initialize tracing");
 
-        let device_arch = DeviceArchitecture::Hopper;
+        let device_arch = Architecture::Hopper;
         let device_uuid: &str = "1111-2222-33333-444444-555555";
 
         let expected_nonce: &str =
@@ -359,18 +445,18 @@ mod tests {
     }
 
     #[rstest]
-    #[case::local_verifier(true, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
+    #[case::local_verifier("local", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
     // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
     // Please run these tests if you make any changes to the verifier.
     #[ignore]
-    #[case::remote_verifier(false, "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
+    #[case::remote_verifier("remote", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
     // Use the remote verifier with evidence from a CoCo CI run
     #[ignore]
-    #[case::remote_verifier_coco(false, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
-    #[case::local_verifier_coco(true, "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
+    #[case::remote_verifier_coco("remote", "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
+    #[case::local_verifier_coco("local", "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_evaluation(
-        #[case] local_verifier: bool,
+        #[case] verifier_type: &str,
         // The expected report data (as hex) that was used to create the evidence.
         #[case] expected_report_data: &str,
         // HW evidence as a hex string
@@ -405,9 +491,12 @@ mod tests {
         let report_data = ReportData::Value(&expected_report_data_vec);
         let init_data = InitDataHash::NotProvided;
 
-        let verifier_type = match local_verifier {
-            true => NvidiaVerifierType::Local,
-            false => NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None }),
+        let verifier_type = match verifier_type {
+            "local" => NvidiaVerifierType::Local,
+            "remote" => {
+                NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None })
+            }
+            _ => panic!("Unknown verifier type."),
         };
 
         let verifier_config = Some(NvidiaVerifierConfig {
