@@ -60,7 +60,7 @@ jobs:
           - target_arch: s390x
             target_platform: linux/s390x
             build_platform: linux/s390x
-            instance: s390x
+            instance: ubuntu-24.04-s390x
           - target_arch: aarch64
             target_platform: linux/arm64
             build_platform: linux/arm64
