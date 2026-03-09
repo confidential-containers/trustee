@@ -34,13 +34,24 @@ kbs_cert="${k8s_cnf_dir}/base/kbs.pem"
 }
 
 # Enable the nvidia remote verifier if requested.
-if [[ "${NVIDIA_VERIFIER_MODE}" == "remote" ]]; then
-    cat >> ${k8s_cnf_dir}/base/kbs-config.toml << 'EOF'
+if [[ -n "${NVIDIA_VERIFIER_MODE}" ]]; then
+    config_file="${k8s_cnf_dir}/base/kbs-config.toml"
+    
+    # Check if the section already exists
+    if grep -q '^\[attestation_service\.verifier_config\.nvidia_verifier\]' "${config_file}" 2>/dev/null; then
+        # Update existing type value
+        sed -i '/^\[attestation_service\.verifier_config\.nvidia_verifier\]/,/^\[/ {
+            s/^type = .*/type = "'"${NVIDIA_VERIFIER_MODE}"'"/
+        }' "${config_file}"
+    else
+        # Append new section
+        cat >> "${config_file}" << EOF
 
 [attestation_service.verifier_config.nvidia_verifier]
-type = "Remote"
+type = "${NVIDIA_VERIFIER_MODE}"
 
 EOF
+    fi
 fi
 
 if [[ "${DEPLOYMENT_DIR}" == "nodeport" || "${DEPLOYMENT_DIR}" == "overlays" ]]; then
