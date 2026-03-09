@@ -65,7 +65,7 @@ serde_with = { version = "3.17.0", features = ["base64", "hex"] }
 serial_test = { version = "3.2.0", features = ["async"] }
 sha2 = "0.10"
 shadow-rs = "1.7.0"
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "0.9.10"
