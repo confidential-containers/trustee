@@ -307,16 +307,17 @@ pub async fn set_sample_rv(
     }
 }
 
-pub async fn get_rvs(
+pub async fn get_rv(
     url: String,
     auth_key: String,
     kbs_root_certs_pem: Vec<String>,
+    reference_value_id: String,
 ) -> Result<String> {
     let token = sign_admin_token(&auth_key)?;
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
+    let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value/{reference_value_id}", url);
 
     let res = http_client
         .get(reference_value_url)

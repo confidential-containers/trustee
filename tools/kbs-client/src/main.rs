@@ -151,8 +151,12 @@ enum ConfigCommands {
         resource_file: PathBuf,
     },
 
-    /// List reference values registered with RVPS
-    GetReferenceValues,
+    /// Get reference value from RVPS given reference value ID
+    GetReferenceValue {
+        /// The ID of the reference value.
+        #[clap(long, value_parser)]
+        id: String,
+    },
 
     /// Add a sample reference value to the RVPS.
     /// The request will be proxied through the KBS
@@ -369,9 +373,9 @@ async fn main() -> Result<()> {
                     .await?;
                     println!("Reference Values Updated");
                 }
-                ConfigCommands::GetReferenceValues => {
+                ConfigCommands::GetReferenceValue { id } => {
                     let values =
-                        kbs_client::get_rvs(cli.url, auth_key.clone(), kbs_cert.clone()).await?;
+                        kbs_client::get_rv(cli.url, auth_key.clone(), kbs_cert.clone(), id).await?;
                     println!("{:?}", values);
                 }
             }
