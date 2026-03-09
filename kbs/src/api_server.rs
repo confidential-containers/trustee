@@ -54,7 +54,7 @@ pub struct ApiServer {
     #[cfg(feature = "as")]
     attestation_service: crate::attestation::AttestationService,
 
-    policy_engine: PolicyEngine<Regorus>,
+    pub policy_engine: PolicyEngine<Regorus>,
     admin: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
@@ -97,7 +97,7 @@ impl ApiServer {
         policy_engine
             .set_policy(
                 KBS_POLICY_ID,
-                include_str!("./policy/resource-policy.rego"),
+                include_str!("../sample_policies/deny_all.rego"),
                 false,
             )
             .await?;
