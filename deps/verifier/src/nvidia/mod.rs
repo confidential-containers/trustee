@@ -56,7 +56,9 @@ pub struct NvidiaVerifierConfig {
 #[serde(tag = "type")]
 pub enum NvidiaVerifierType {
     #[default]
+    #[serde(alias = "local")]
     Local,
+    #[serde(alias = "remote")]
     Remote(NvidiaRemoteVerifierConfig),
 }
 
