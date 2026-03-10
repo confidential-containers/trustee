@@ -29,7 +29,7 @@ async-trait = "0.1.88"
 base64 = "0.22.1"
 byteorder = "1.5.0"
 cfg-if = "1.0.4"
-chrono = "0.4.41"
+chrono = "0.4.44"
 clap = { version = "4", features = ["derive"] }
 config = "0.15.19"
 educe = "0.6"
