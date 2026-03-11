@@ -317,7 +317,10 @@ pub async fn get_rv(
 
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
-    let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value/{reference_value_id}", url);
+    let reference_value_url = format!(
+        "{}/{KBS_URL_PREFIX}/reference-value/{reference_value_id}",
+        url
+    );
 
     let res = http_client
         .get(reference_value_url)
