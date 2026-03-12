@@ -1,0 +1,71 @@
+name: Build staged image (single arch)
+description: Build (and optionally push) a single-arch staged image to GHCR.
+
+inputs:
+  ghcr_token:
+    description: Token to login to ghcr.io
+    required: false
+  docker_file:
+    description: Path to Dockerfile
+    required: true
+  tag:
+    description: Image tag under ghcr.io/confidential-containers/staged-images
+    required: true
+  platform:
+    description: Optional build target platform (e.g. linux/amd64)
+    required: false
+    default: ""
+  context:
+    description: Build context directory
+    required: false
+    default: "."
+  build_args:
+    description: Extra build args string (e.g. --build-arg FOO=bar)
+    required: false
+    default: ""
+  push:
+    description: Whether to push the built image to GHCR
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+    - name: Login to GHCR Container Registry
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      if: inputs.push == 'true'
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.ghcr_token }}
+
+    - name: Build image
+      shell: bash
+      run: |
+        set -euo pipefail
+        commit_sha="${GITHUB_SHA}"
+        platform_args=()
+        if [ -n "${{ inputs.platform }}" ]; then
+          platform_args+=(--platform "${{ inputs.platform }}")
+        fi
+
+        # Parse build args into array to avoid shell injection.
+        build_args_array=()
+        if [ -n "${{ inputs.build_args }}" ]; then
+          read -r -a build_args_array <<< "${{ inputs.build_args }}"
+        fi
+        build_option_args=()
+        if [ "${{ inputs.push }}" = "true" ]; then
+          build_option_args+=(--push)
+        fi
+        docker buildx build --provenance false \
+          "${platform_args[@]}" \
+          -f "${{ inputs.docker_file }}" \
+          "${build_option_args[@]}" \
+          "${build_args_array[@]}" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ inputs.tag }}:${commit_sha}-$(uname -m)" \
+          -t "ghcr.io/confidential-containers/staged-images/${{ inputs.tag }}:latest-$(uname -m)" \
+          "${{ inputs.context }}"

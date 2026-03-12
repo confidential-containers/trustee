@@ -1,0 +1,49 @@
+name: Staged Images
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - '**/*.md'
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  build_staged_images_pr:
+    name: Build staged images (all) [PR]
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/workflow-call-build-staged-images.yml
+    with:
+      image_group: all
+      push: false
+
+  build_staged_images_push:
+    name: Build staged images (all) [push]
+    if: github.event_name == 'push'
+    permissions:
+      packages: write
+      contents: read
+    uses: ./.github/workflows/workflow-call-build-staged-images.yml
+    with:
+      image_group: all
+      push: true
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_manifests:
+    name: Publish multi-arch manifests
+    needs: build_staged_images_push
+    if: github.event_name == 'push'
+    permissions:
+      packages: write
+      contents: read
+    uses: ./.github/workflows/workflow-call-publish-staged-manifests.yml
+    with:
+      tags: '["kbs","kbs-grpc-as","coco-as-grpc","coco-as-restful","rvps","kbs-client-image"]'
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

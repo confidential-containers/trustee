@@ -1,0 +1,98 @@
+name: Build and Push CLI artifacts
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  build_and_push:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # kbs-client
+          - component: kbs-client
+            instance: ubuntu-24.04
+            dockerfile: kbs/docker/kbs-client/Dockerfile
+            output_path: kbs-client
+            repo: ghcr.io/confidential-containers/staged-images/kbs-client
+          - component: kbs-client
+            instance: ubuntu-24.04-s390x
+            dockerfile: kbs/docker/kbs-client/Dockerfile
+            output_path: kbs-client
+            repo: ghcr.io/confidential-containers/staged-images/kbs-client
+          - component: kbs-client
+            instance: ubuntu-24.04-arm
+            dockerfile: kbs/docker/kbs-client/Dockerfile
+            output_path: kbs-client
+            repo: ghcr.io/confidential-containers/staged-images/kbs-client
+          # trustee-cli
+          - component: trustee-cli
+            instance: ubuntu-24.04
+            dockerfile: tools/trustee-cli/Dockerfile
+            output_path: ./usr/local/bin/trustee
+            repo: ghcr.io/confidential-containers/staged-images/trustee-cli
+          - component: trustee-cli
+            instance: ubuntu-24.04-s390x
+            dockerfile: tools/trustee-cli/Dockerfile
+            output_path: ./usr/local/bin/trustee
+            repo: ghcr.io/confidential-containers/staged-images/trustee-cli
+          - component: trustee-cli
+            instance: ubuntu-24.04-arm
+            dockerfile: tools/trustee-cli/Dockerfile
+            output_path: ./usr/local/bin/trustee
+            repo: ghcr.io/confidential-containers/staged-images/trustee-cli
+    runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Install ORAS
+      uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
+      with:
+        version: 1.0.0
+
+    - name: Check out code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build ${{ matrix.component }}
+      run: |
+        docker buildx build -f "${{ matrix.dockerfile }}" \
+          --build-arg ARCH="\$(uname -m)" --output ./ .
+
+    - name: Push ${{ matrix.component }} to ghcr.io
+      run: |
+        commit_sha=${{ github.sha }}
+        arch="$(uname -m)"
+        repo='${{ matrix.repo }}'
+        artifact='${{ matrix.output_path }}'
+
+        if [ '${{ matrix.component }}' = 'kbs-client' ]; then
+          oras push \
+            "${repo}:sample_only-${commit_sha}-${arch},latest-${arch}" \
+            "${artifact}"
+        else
+          oras push \
+            "${repo}:${commit_sha}-${arch},latest-${arch}" \
+            "${artifact}"
+        fi
+
+        if [ "${arch}" = "x86_64" ]; then
+          oras push "${repo}:latest" "${artifact}"
+        fi
