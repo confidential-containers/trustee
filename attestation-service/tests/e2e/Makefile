@@ -29,7 +29,8 @@ install-dependencies:
 		clang \
 		libtss2-dev \
 		libsgx-dcap-quote-verify-dev \
-		libsgx-dcap-default-qpl
+		libsgx-dcap-default-qpl && \
+	go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 
 $(RESTFUL_BIN) $(GRPC_BIN):
 	cd $(PROJECT_DIR) && $(MAKE) build && $(MAKE) install

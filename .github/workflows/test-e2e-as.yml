@@ -1,0 +1,51 @@
+name: CoCo-AS e2e
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
+
+permissions:
+  contents: read
+
+# Self-hosted runners do not set -o pipefail otherwise
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  e2e-test:
+    strategy:
+      fail-fast: false
+    name: Attestation Service e2e
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+
+    - name: Install Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+      with:
+        components: rustfmt, clippy
+
+    - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      with:
+        go-version: stable
+
+    - name: Set up rust build cache
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          target/
+        key: rust-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install CoCo-AS e2e dependencies
+      run: make as-e2e-install-deps
+
+    - name: Run CoCo-AS e2e tests
+      run: make as-e2e-run
