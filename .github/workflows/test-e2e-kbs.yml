@@ -1,0 +1,166 @@
+name: KBS e2e Suite
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Common checkout + source archive for all e2e jobs
+  code-checkout:
+    name: KBS - checkout & archive
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Archive source
+        run: git archive -o kbs.tar.gz HEAD
+
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ./kbs.tar.gz
+
+  # Sample TEE e2e (reuses kbs-e2e template)
+  sample-e2e-amd64:
+    name: Sample TEE e2e (amd64)
+    needs: code-checkout
+    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tee: sample
+      tarball: kbs.tar.gz
+
+  sample-e2e-arm64:
+    name: Sample TEE e2e (arm64)
+    needs: code-checkout
+    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tee: sample
+      arch: aarch64
+      runs-on-build: '["ubuntu-22.04-arm"]'
+      runs-on-test: '["ubuntu-22.04-arm"]'
+      tarball: kbs.tar.gz
+      kbs-client-features: "cca-attester"
+
+  # Vault integration e2e
+  vault-e2e-test:
+    name: Vault e2e
+    runs-on: ubuntu-24.04
+    env:
+      OS_VERSION: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+        with:
+          rustflags: ""
+          cache: false
+
+      - name: Set up rust build cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            target/
+          key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+
+      - name: Run KBS Vault integration e2e (no SSL + SSL)
+        run: make test-kbs-vault-e2e
+
+  # Docker Compose cluster e2e
+  docker-e2e-test:
+    name: Docker Compose e2e
+    strategy:
+      matrix:
+        instance:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+        include:
+          - instance: ubuntu-24.04
+            build_platform: linux/amd64
+            target_arch: x86_64
+            verifier: all-verifier
+          - instance: ubuntu-24.04-arm
+            build_platform: linux/arm64
+            target_arch: aarch64
+            verifier: cca-verifier
+    runs-on: ${{ matrix.instance }}
+    env:
+       OS_VERSION: ${{ matrix.instance }}
+    steps:
+      - name: Checkout KBS
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+        with:
+          rustflags: ""
+          cache: false
+
+      - name: Set up rust build cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            target/
+          key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+
+      - name: Run KBS Docker Compose e2e
+        env:
+          BUILD_PLATFORM: ${{ matrix.build_platform }}
+          TARGET_ARCH: ${{ matrix.target_arch }}
+          VERIFIER: ${{ matrix.verifier }}
+        run: make test-kbs-docker-e2e
+
+  # Azure vTPM TEE e2e (manual trigger only)
+  tdx-e2e-test:
+    name: KBS e2e (Azure TDX vTPM)
+    needs: code-checkout
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
+    permissions:
+      packages: write
+      contents: read
+    with:
+      runs-on-test: '["self-hosted","azure-cvm-tdx"]'
+      tee: az-tdx-vtpm
+      tarball: kbs.tar.gz
+      kbs-client-features: az-tdx-vtpm-attester
+
+  snp-e2e-test:
+    name: KBS e2e (Azure SNP vTPM)
+    needs: code-checkout
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
+    permissions:
+      packages: write
+      contents: read
+    with:
+      runs-on-test: '["self-hosted","azure-cvm"]'
+      tee: az-snp-vtpm
+      tarball: kbs.tar.gz
+      kbs-client-features: az-snp-vtpm-attester

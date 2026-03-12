@@ -1,0 +1,139 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  kbs:
+    name: Key Broker Service (KBS)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - instance: ubuntu-24.04
+            test_features: "pkcs11"
+          - instance: ubuntu-24.04-arm
+            test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester,pkcs11"
+          - instance: s390x-large
+            test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,pkcs11"
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+        with:
+          components: rustfmt, clippy
+
+      - name: Building dependencies installation
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+
+      - name: Install TDX dependencies
+        if: ${{ matrix.instance == 'ubuntu-24.04' }}
+        run: |
+          curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          sudo apt-get update
+          sudo apt-get install -y libsgx-dcap-quote-verify-dev
+
+      - name: setup softhsm for pkcs11 tests
+        if: contains(matrix.test_features, 'pkcs11')
+        working-directory: kbs
+        run: |
+          echo "SETUP tools for pkcs11 ${{ matrix.instance }}"
+          sudo apt-get install -y --no-install-recommends softhsm2 opensc
+          mkdir -p "$RUNNER_TEMP/softhsm/tokens"
+          echo "directories.tokendir = $RUNNER_TEMP/softhsm/tokens" > "$RUNNER_TEMP/softhsm/softhsm2.conf"
+          export SOFTHSM2_CONF="$RUNNER_TEMP/softhsm/softhsm2.conf"
+          softhsm2-util --init-token --free --label "Trustee pkcs11 test" --so-pin 12345678 --pin 12345678
+
+      - name: Run KBS lint/format/test
+        env:
+          SOFTHSM2_CONF: '${{ runner.temp }}/softhsm/softhsm2.conf'
+        run: make test-kbs-unit TEST_FEATURES=${{ matrix.test_features }}
+
+  as:
+    name: Attestation Service (AS)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install OPA command line tool
+        uses: open-policy-agent/setup-opa@950f159a49aa91f9323f36f1de81c7f6b5de9576 # v2.2.0 # v2
+        with:
+          version: latest
+
+      - name: Install build dependencies (protoc, TPM, TDX)
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+          curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          sudo apt-get update
+          sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+        with:
+          components: rustfmt, clippy
+
+      - name: OPA policy.rego fmt and check
+        working-directory: attestation-service
+        run: make opa-check
+
+      - name: Run fmt/clippy/test
+        run: make test-as-unit
+
+  trustee-cli:
+    name: Trustee CLI
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - instance: ubuntu-24.04
+          - instance: ubuntu-24.04-arm
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
+        with:
+          components: rustfmt, clippy
+
+      - name: Building dependencies installation
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+
+      - name: Install TDX dependencies
+        if: ${{ matrix.instance == 'ubuntu-24.04' }}
+        run: |
+          curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          sudo apt-get update
+          sudo apt-get install -y libsgx-dcap-quote-verify-dev
+
+      - name: Run trustee CLI lint/format/test
+        run: make test-trustee-cli-unit
+
