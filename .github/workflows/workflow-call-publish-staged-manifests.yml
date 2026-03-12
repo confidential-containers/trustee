@@ -1,0 +1,61 @@
+name: Publish Staged Image Manifests
+
+on:
+  workflow_call:
+    inputs:
+      tags:
+        description: 'JSON array of image tags (without registry) to publish manifests for'
+        type: string
+        required: true
+      arches:
+        description: 'JSON array of architecture suffixes used in per-arch tags'
+        type: string
+        required: false
+        default: '["x86_64","aarch64","s390x"]'
+    secrets:
+      GHCR_TOKEN:
+        description: 'GitHub token for GHCR'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    permissions:
+      packages: write
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJSON(inputs.tags) }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Login to GHCR Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Publish multi-arch manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit_sha="${GITHUB_SHA}"
+          arches='${{ inputs.arches }}'
+
+          manifest_args=()
+          latest_args=()
+          for arch in $(echo "${arches}" | jq -r '.[]'); do
+            manifest_args+=(--amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}-${arch}")
+            latest_args+=(--amend "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest-${arch}")
+          done
+
+          docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}" "${manifest_args[@]}"
+          docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:${commit_sha}"
+
+          docker manifest create "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest" "${latest_args[@]}"
+          docker manifest push "ghcr.io/confidential-containers/staged-images/${{ matrix.tag }}:latest"
