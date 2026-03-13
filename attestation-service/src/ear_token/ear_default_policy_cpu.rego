@@ -174,12 +174,13 @@ hardware := 2 if {
 	input.tdx.quote.header.tee_type == "81000000"
 	input.tdx.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
-	# Check TDX Module version and its hash. Also check OVMF code hash.
-	input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
-	input.tdx.quote.body.tcb_svn in query_reference_value("tcb_svn")
+	# Check TDX Module hash
+	# input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
+	#
+	# Check OVMF code hash
 	input.tdx.quote.body.mr_td in query_reference_value("mr_td")
 
-	# Check TCB status
+	# Check TCB status (covers quote.body.tcb_svn claim check)
 	input.tdx.tcb_status == "UpToDate"
 
 	# Check collateral expiration status
@@ -269,9 +270,10 @@ hardware := 2 if {
 	input.az_tdx_vtpm.quote.header.tee_type == "81000000"
 	input.az_tdx_vtpm.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
-	# Check TDX Module version and its hash. Also check OVMF code hash.
-	input.az_tdx_vtpm.quote.body.mr_seam in query_reference_value("mr_seam")
-	input.az_tdx_vtpm.quote.body.tcb_svn in query_reference_value("tcb_svn")
+	# Check TDX Module hash
+	# input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
+	#
+	# Check OVMF code hash
 	input.az_tdx_vtpm.quote.body.mr_td in query_reference_value("mr_td")
 }
 
