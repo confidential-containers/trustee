@@ -4,6 +4,7 @@
 
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
+use crate::trust_context::TrustContext;
 use actix_web::http::Method;
 use anyhow::{Context, Error, Result};
 use serde::Deserialize;
@@ -32,6 +33,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        trust_context: &TrustContext,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
