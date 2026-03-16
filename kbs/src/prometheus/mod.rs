@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
+
 use prometheus::{
     Counter, CounterVec, Gauge, Histogram, HistogramOpts, Opts, Registry, TextEncoder,
 };
@@ -29,165 +30,213 @@ macro_rules! make_histogram {
     }};
 }
 
-lazy_static! {
-    /// Resource Path Read Metrics
-    pub(crate) static ref RESOURCE_READS_TOTAL: CounterVec = make_counter_vec!{
-        "kbs_resource_reads_total", "KBS resource read count", ["resource_path"]
-    };
+/// Resource Path Read Metrics
+pub(crate) static RESOURCE_READS_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_resource_reads_total",
+        "KBS resource read count",
+        ["resource_path"]
+    )
+});
 
-    /// Resource Path Write Metrics
-    pub(crate) static ref RESOURCE_WRITES_TOTAL: CounterVec = make_counter_vec!{
-        "kbs_resource_writes_total", "KBS resource write count", ["resource_path"]
-    };
+/// Resource Path Write Metrics
+pub(crate) static RESOURCE_WRITES_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_resource_writes_total",
+        "KBS resource write count",
+        ["resource_path"]
+    )
+});
 
-    /// KBS Web Server Requests Metrics
-    pub(crate) static ref REQUEST_TOTAL: Counter = make_counter!{
-        "kbs_http_requests_total",
-        "Total HTTP requests count",
-    };
+/// KBS Web Server Requests Metrics
+pub(crate) static REQUEST_TOTAL: LazyLock<Counter> =
+    LazyLock::new(|| make_counter!("kbs_http_requests_total", "Total HTTP requests count"));
 
-    /// KBS Web Server Requests Metrics
-    pub(crate) static ref REQUEST_DURATION: Histogram = make_histogram!{
+/// KBS Web Server Requests Metrics
+pub(crate) static REQUEST_DURATION: LazyLock<Histogram> = LazyLock::new(|| {
+    make_histogram!(
         "kbs_http_request_duration_seconds",
         "Distribution of request handling duration",
         vec![0.0005, 0.001, 0.005, 0.01, 0.05, 0.5, 1.0],
-    };
+    )
+});
 
-    /// KBS Web Server Request Sizes
-    pub(crate) static ref REQUEST_SIZES: Histogram = make_histogram!{
+/// KBS Web Server Request Sizes
+pub(crate) static REQUEST_SIZES: LazyLock<Histogram> = LazyLock::new(|| {
+    make_histogram!(
         "kbs_http_request_size_bytes",
         "Distribution of request body sizes",
         prometheus::exponential_buckets(32.0, 4.0, 5).unwrap(),
-    };
+    )
+});
 
-    /// KBS Web Server Response Sizes
-    pub(crate) static ref RESPONSE_SIZES: Histogram = make_histogram!{
+/// KBS Web Server Response Sizes
+pub(crate) static RESPONSE_SIZES: LazyLock<Histogram> = LazyLock::new(|| {
+    make_histogram!(
         "kbs_http_response_size_bytes",
         "Distribution of response body sizes",
         prometheus::exponential_buckets(32.0, 4.0, 5).unwrap(),
-    };
+    )
+});
 
-    /// KBS Policy Evaluations Total
-    pub(crate) static ref KBS_POLICY_EVALS: Counter = make_counter!{
+/// KBS Policy Evaluations Total
+pub(crate) static KBS_POLICY_EVALS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_policy_evaluations_total",
-        "Total count of KBS policy evaluations",
-    };
+        "Total count of KBS policy evaluations"
+    )
+});
 
-    /// KBS Policy Approvals Total
-    pub(crate) static ref KBS_POLICY_APPROVALS: Counter = make_counter!{
+/// KBS Policy Approvals Total
+pub(crate) static KBS_POLICY_APPROVALS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_policy_approvals_total",
-        "Total count of requests approved by KBS policy",
-    };
+        "Total count of requests approved by KBS policy"
+    )
+});
 
-    /// KBS Policy Violations Total
-    pub(crate) static ref KBS_POLICY_VIOLATIONS: Counter = make_counter!{
+/// KBS Policy Violations Total
+pub(crate) static KBS_POLICY_VIOLATIONS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_policy_violations_total",
-        "Total count of requests denied by KBS policy",
-    };
+        "Total count of requests denied by KBS policy"
+    )
+});
 
-    /// KBS Policy Errors Total
-    pub(crate) static ref KBS_POLICY_ERRORS: Counter = make_counter!{
+/// KBS Policy Errors Total
+pub(crate) static KBS_POLICY_ERRORS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_policy_errors_total",
-        "Total count of errors during KBS evaluation",
-    };
+        "Total count of errors during KBS evaluation"
+    )
+});
 
-    /// KBS Attestation Requests Total
-    pub(crate) static ref ATTESTATION_REQUESTS: Counter = make_counter!{
+/// KBS Attestation Requests Total
+pub(crate) static ATTESTATION_REQUESTS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_attestation_requests_total",
-        "Total count of attestation requests",
-    };
+        "Total count of attestation requests"
+    )
+});
 
-    /// KBS Attestation Successes Total
-    pub(crate) static ref ATTESTATION_SUCCESSES: CounterVec = make_counter_vec!{
+/// KBS Attestation Successes Total
+pub(crate) static ATTESTATION_SUCCESSES: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
         "kbs_attestation_successes_total",
         "Total count of attestation successes",
         ["tee_type"],
-    };
+    )
+});
 
-    /// KBS Attestation Failures Total
-    pub(crate) static ref ATTESTATION_FAILURES: CounterVec = make_counter_vec!{
+/// KBS Attestation Failures Total
+pub(crate) static ATTESTATION_FAILURES: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
         "kbs_attestation_failures_total",
         "Total count of attestation failures",
         ["tee_type"],
-    };
+    )
+});
 
-    /// KBS Attestation Errors Total
-    pub(crate) static ref ATTESTATION_ERRORS: Counter = make_counter!{
+/// KBS Attestation Errors Total
+pub(crate) static ATTESTATION_ERRORS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_attestation_errors_total",
-        "Total count of errors during attestation processing",
-    };
+        "Total count of errors during attestation processing"
+    )
+});
 
-    /// KBS Auth Requests Total
-    pub(crate) static ref AUTH_REQUESTS: Counter = make_counter!{
-        "kbs_auth_requests_total",
-        "Total count of auth requests",
-    };
+/// KBS Auth Requests Total
+pub(crate) static AUTH_REQUESTS: LazyLock<Counter> =
+    LazyLock::new(|| make_counter!("kbs_auth_requests_total", "Total count of auth requests"));
 
-    /// KBS Auth Successes Total
-    pub(crate) static ref AUTH_SUCCESSES: Counter = make_counter!{
+/// KBS Auth Successes Total
+pub(crate) static AUTH_SUCCESSES: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_auth_successes_total",
-        "Total count of successfully authenticated requests",
-    };
+        "Total count of successfully authenticated requests"
+    )
+});
 
-    /// KBS Auth Errors Total
-    pub(crate) static ref AUTH_ERRORS: Counter = make_counter!{
+/// KBS Auth Errors Total
+pub(crate) static AUTH_ERRORS: LazyLock<Counter> = LazyLock::new(|| {
+    make_counter!(
         "kbs_auth_errors_total",
-        "Total count of errors during auth processing",
-    };
+        "Total count of errors during auth processing"
+    )
+});
 
-    /// KBS Web Server Active Connections
-    pub(crate) static ref ACTIVE_CONNECTIONS: Gauge = {
-        let opts = Opts::new(
-            "kbs_http_active_connections",
-            "Count of HTTP connections being processed at the moment",
-        );
-        Gauge::with_opts(opts).unwrap()
-    };
+/// KBS Web Server Active Connections
+pub(crate) static ACTIVE_CONNECTIONS: LazyLock<Gauge> = LazyLock::new(|| {
+    let opts = Opts::new(
+        "kbs_http_active_connections",
+        "Count of HTTP connections being processed at the moment",
+    );
+    Gauge::with_opts(opts).unwrap()
+});
 
-    /// KBS Build Info
-    pub(crate) static ref BUILD_INFO: Gauge = {
-        let opts = Opts::new(
-                "kbs_build_info",
-                "KBS binary build info",
-            )
-            .const_labels(std::collections::HashMap::from([
-                ("version".to_owned(), env!("CARGO_PKG_VERSION").to_owned()),
-                ("git_hash".to_owned(), env!("KBS_GIT_HASH").to_owned()),
-                ("build_date".to_owned(), env!("KBS_BUILD_DATE").to_owned())
-            ]));
-        Gauge::with_opts(opts).unwrap()
-    };
+/// KBS Build Info
+pub(crate) static BUILD_INFO: LazyLock<Gauge> = LazyLock::new(|| {
+    let opts = Opts::new("kbs_build_info", "KBS binary build info").const_labels(
+        std::collections::HashMap::from([
+            ("version".to_owned(), env!("CARGO_PKG_VERSION").to_owned()),
+            ("git_hash".to_owned(), env!("KBS_GIT_HASH").to_owned()),
+            ("build_date".to_owned(), env!("KBS_BUILD_DATE").to_owned()),
+        ]),
+    );
+    Gauge::with_opts(opts).unwrap()
+});
 
-    /// Prometheus instance to get the metrics
-    static ref INSTANCE: Registry = {
-        let registry = Registry::default();
+/// Prometheus instance to get the metrics
+static INSTANCE: LazyLock<Registry> = LazyLock::new(|| {
+    let registry = Registry::default();
 
-        registry
-            .register(Box::new(RESOURCE_READS_TOTAL.clone()))
-            .unwrap();
+    registry
+        .register(Box::new(RESOURCE_READS_TOTAL.clone()))
+        .unwrap();
 
-        registry.register(Box::new(RESOURCE_WRITES_TOTAL.clone())).unwrap();
-        registry.register(Box::new(REQUEST_TOTAL.clone())).unwrap();
-        registry.register(Box::new(REQUEST_DURATION.clone())).unwrap();
-        registry.register(Box::new(REQUEST_SIZES.clone())).unwrap();
-        registry.register(Box::new(RESPONSE_SIZES.clone())).unwrap();
-        registry.register(Box::new(KBS_POLICY_EVALS.clone())).unwrap();
-        registry.register(Box::new(KBS_POLICY_APPROVALS.clone())).unwrap();
-        registry.register(Box::new(KBS_POLICY_VIOLATIONS.clone())).unwrap();
-        registry.register(Box::new(KBS_POLICY_ERRORS.clone())).unwrap();
-        registry.register(Box::new(ATTESTATION_REQUESTS.clone())).unwrap();
-        registry.register(Box::new(ATTESTATION_SUCCESSES.clone())).unwrap();
-        registry.register(Box::new(ATTESTATION_FAILURES.clone())).unwrap();
-        registry.register(Box::new(ATTESTATION_ERRORS.clone())).unwrap();
-        registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
-        registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
-        registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
-        registry.register(Box::new(ACTIVE_CONNECTIONS.clone())).unwrap();
-        registry.register(Box::new(BUILD_INFO.clone())).unwrap();
+    registry
+        .register(Box::new(RESOURCE_WRITES_TOTAL.clone()))
+        .unwrap();
+    registry.register(Box::new(REQUEST_TOTAL.clone())).unwrap();
+    registry
+        .register(Box::new(REQUEST_DURATION.clone()))
+        .unwrap();
+    registry.register(Box::new(REQUEST_SIZES.clone())).unwrap();
+    registry.register(Box::new(RESPONSE_SIZES.clone())).unwrap();
+    registry
+        .register(Box::new(KBS_POLICY_EVALS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(KBS_POLICY_APPROVALS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(KBS_POLICY_VIOLATIONS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(KBS_POLICY_ERRORS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(ATTESTATION_REQUESTS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(ATTESTATION_SUCCESSES.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(ATTESTATION_FAILURES.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(ATTESTATION_ERRORS.clone()))
+        .unwrap();
+    registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
+    registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
+    registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
+    registry
+        .register(Box::new(ACTIVE_CONNECTIONS.clone()))
+        .unwrap();
+    registry.register(Box::new(BUILD_INFO.clone())).unwrap();
 
-        registry
-    };
-}
+    registry
+});
 
 pub(crate) fn export_metrics() -> Result<String, prometheus::Error> {
     let mut metrics_buffer = String::new();

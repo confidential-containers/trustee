@@ -2,14 +2,13 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use actix_web::{HttpRequest, HttpResponse};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
-use lazy_static::lazy_static;
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
@@ -33,19 +32,17 @@ static KBS_MAJOR_VERSION: u64 = 0;
 static KBS_MINOR_VERSION: u64 = 4;
 static KBS_PATCH_VERSION: u64 = 0;
 
-lazy_static! {
-    static ref VERSION_REQ: VersionReq = {
-        let kbs_version = Version {
-            major: KBS_MAJOR_VERSION,
-            minor: KBS_MINOR_VERSION,
-            patch: KBS_PATCH_VERSION,
-            pre: Prerelease::EMPTY,
-            build: BuildMetadata::EMPTY,
-        };
-
-        VersionReq::parse(&format!("={kbs_version}")).unwrap()
+static VERSION_REQ: LazyLock<VersionReq> = LazyLock::new(|| {
+    let kbs_version = Version {
+        major: KBS_MAJOR_VERSION,
+        minor: KBS_MINOR_VERSION,
+        patch: KBS_PATCH_VERSION,
+        pre: Prerelease::EMPTY,
+        build: BuildMetadata::EMPTY,
     };
-}
+
+    VersionReq::parse(&format!("={kbs_version}")).unwrap()
+});
 
 pub type TeeEvidence = serde_json::Value;
 
