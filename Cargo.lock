@@ -3183,7 +3183,7 @@ dependencies = [
 [[package]]
 name = "intel-tee-quote-verification-rs"
 version = "0.3.0"
-source = "git+https://github.com/intel/confidential-computing.tee.dcap?tag=DCAP_1.24#717f2a91ca732c3309b0c59d21757463133eb440"
+source = "git+https://github.com/intel/confidential-computing.tee.dcap?tag=DCAP_1.25#229ec6b0d5f1a411b6c96436d664b9ecc018559a"
 dependencies = [
  "intel-tee-quote-verification-sys",
 ]
@@ -5528,7 +5528,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
