@@ -2318,7 +2318,6 @@ dependencies = [
  "anyhow",
  "assert-json-diff",
  "base64 0.22.1",
- "byteorder",
  "hex",
  "rstest",
  "scroll",

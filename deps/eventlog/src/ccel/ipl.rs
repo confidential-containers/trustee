@@ -5,7 +5,6 @@
 
 use super::{EventDataParser, EventDetails};
 use anyhow::{bail, Result};
-use byteorder::{ByteOrder, LittleEndian};
 
 pub struct EvIplParser;
 
@@ -30,7 +29,7 @@ impl EventDataParser for EvIplParser {
 
             let utf16_words: Vec<u16> = data[prefix_len..len_minus_stop]
                 .chunks_exact(2)
-                .map(LittleEndian::read_u16)
+                .map(|b| u16::from_le_bytes([b[0], b[1]]))
                 .collect();
             String::from_utf16_lossy(&utf16_words)
         } else {

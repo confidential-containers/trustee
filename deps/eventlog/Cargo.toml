@@ -7,7 +7,6 @@ edition = "2021"
 [dependencies]
 anyhow.workspace = true
 base64.workspace = true
-byteorder.workspace = true
 hex.workspace = true
 tracing.workspace = true
 scroll = { version = "0.13.0", default-features = false, features = ["derive"] }

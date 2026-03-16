@@ -8,7 +8,6 @@ use crate::GUID_SIZE;
 use anyhow::{anyhow, Result};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use byteorder::{ByteOrder, LittleEndian};
 use scroll::{Pread, LE};
 
 pub struct EvEfiVariableParser;
@@ -55,7 +54,7 @@ impl EventDataParser for EvEfiVariableParser {
 
         let utf16_words: Vec<u16> = description_bytes
             .chunks_exact(2)
-            .map(LittleEndian::read_u16)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
             .collect();
 
         let unicode_name = String::from_utf16(&utf16_words)?;
