@@ -26,7 +26,7 @@
 		}
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/go:1": {
+		"ghcr.io/devcontainers/features/go:": {
 			"version": "latest"
 		}
 	}
