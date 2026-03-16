@@ -92,7 +92,7 @@ sev = { version = "7", default-features = false, features = [
 sha2.workspace = true
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
-intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.24", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.25", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/veraison/rust-apiclient", rev = "fe149cd", optional = true }
 ccatoken = { git = "https://github.com/veraison/rust-ccatoken", rev = "6d5b8db", optional = true }

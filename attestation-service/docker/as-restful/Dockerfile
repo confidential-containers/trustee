@@ -16,7 +16,7 @@ COPY . .
 RUN apt-get update && apt-get install -y protobuf-compiler clang libtss2-dev cmake
 
 # Install TDX Build Dependencies
-ARG DCAP_VERSION=1_24_100
+ARG DCAP_VERSION=1_25_100
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
     tee -a /etc/apt/preferences.d/99dcap && \
@@ -50,7 +50,7 @@ RUN apt-get update && apt-get install openssl -y && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
 # Install TDX Runtime Dependencies
-ARG DCAP_VERSION=1_24_100
+ARG DCAP_VERSION=1_25_100
 RUN if [ "${ARCH}" = "x86_64" ] && ( [ "${VERIFIER}" = "all-verifier" ] || [ "${VERIFIER}" = "tdx-verifier" ] ); \
     then apt-get update && apt-get install curl gnupg -y && \
     curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
