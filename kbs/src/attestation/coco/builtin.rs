@@ -9,9 +9,12 @@ use attestation_service::{
     VerificationRequest,
 };
 use kbs_types::{Challenge, Tee};
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::attestation::coco::parse_token_claims;
+use crate::trust_context::{AttestationSummary, TrustContext};
 
 pub struct BuiltInCoCoAs {
     inner: RwLock<AttestationService>,
@@ -54,6 +57,15 @@ impl Attest for BuiltInCoCoAs {
             .await
             .evaluate(verification_requests, policy_ids)
             .await
+    }
+
+    fn claims_to_trust_context(&self, claims: Value) -> Result<TrustContext> {
+        let (tee_pubkey, allowed) = parse_token_claims(claims)?;
+        Ok(TrustContext {
+            attestation_summary: AttestationSummary { allowed },
+            tee_pubkey,
+            custom_claims: Value::default(),
+        })
     }
 
     async fn generate_challenge(

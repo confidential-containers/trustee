@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use tracing::{debug, info};
 
@@ -22,6 +22,8 @@ use crate::prometheus::{
     ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
     AUTH_ERRORS, AUTH_REQUESTS, AUTH_SUCCESSES,
 };
+use crate::token::TokenVerifier;
+use crate::trust_context::TrustContext;
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -96,6 +98,9 @@ pub trait Attest: Send + Sync {
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
     async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String>;
+
+    /// Convert the attestation token claims to a Trust Context
+    fn claims_to_trust_context(&self, _claims: Value) -> anyhow::Result<TrustContext>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -246,8 +251,13 @@ impl AttestationService {
         Ok(response)
     }
 
-    pub async fn attest(&self, attestation: &[u8], request: HttpRequest) -> Result<HttpResponse> {
-        self.__attest(attestation, request)
+    pub async fn attest(
+        &self,
+        attestation: &[u8],
+        request: HttpRequest,
+        token_verifier: Arc<TokenVerifier>,
+    ) -> Result<HttpResponse> {
+        self.__attest(attestation, request, token_verifier)
             .await
             .map_err(|e| Error::RcarAttestFailed { source: e })
     }
@@ -256,6 +266,7 @@ impl AttestationService {
         &self,
         attestation: &[u8],
         request: HttpRequest,
+        token_verifier: Arc<TokenVerifier>,
     ) -> anyhow::Result<HttpResponse> {
         ATTESTATION_REQUESTS.inc();
 
@@ -285,13 +296,15 @@ impl AttestationService {
                 bail!("session expired.");
             }
 
-            if let SessionStatus::Attested { token, .. } = session {
+            if let SessionStatus::Attested { trust_context, .. } = session {
                 debug!(
                     "Session {} is already attested. Skip attestation and return the old token",
                     session.id()
                 );
+                let trust_context_str = serde_json::to_string(&trust_context)
+                    .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
                 let body = serde_json::to_string(&json!({
-                    "token": token,
+                    "token": trust_context_str,
                 }))
                 .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Serialize token failed")?;
@@ -383,17 +396,30 @@ impl AttestationService {
             })
             .context("verify TEE evidence failed")?;
 
+        let token = token_verifier
+            .verify(token)
+            .await
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to verify attestation token from the backend Attestation Service")?;
+
+        let trust_context = self
+            .inner
+            .claims_to_trust_context(token)
+            .context("Failed to convert attestation token claims to trust context")?;
+
         ATTESTATION_SUCCESSES
             .with_label_values(&[&tee_type_label])
             .inc();
 
+        let trust_context_str =
+            serde_json::to_string(&trust_context).inspect_err(|_| ATTESTATION_ERRORS.inc())?;
         let body = serde_json::to_string(&json!({
-            "token": token,
+            "token": trust_context_str,
         }))
         .inspect_err(|_| ATTESTATION_ERRORS.inc())
         .context("Serialize token failed")?;
 
-        session.attest(token);
+        session.attest(trust_context);
 
         Ok(HttpResponse::Ok()
             .cookie(session.cookie())
@@ -401,10 +427,10 @@ impl AttestationService {
             .body(body))
     }
 
-    pub async fn get_attest_token_from_session(
+    pub async fn get_trust_context_from_session(
         &self,
         request: &HttpRequest,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<TrustContext> {
         let cookie = request
             .cookie(KBS_SESSION_ID)
             .context("KBS session cookie not found")?;
@@ -424,11 +450,11 @@ impl AttestationService {
             bail!("The session is expired");
         }
 
-        let SessionStatus::Attested { token, .. } = session else {
+        let SessionStatus::Attested { trust_context, .. } = session else {
             bail!("The session is not authorized");
         };
 
-        Ok(token.to_owned())
+        Ok(trust_context.clone())
     }
 
     pub async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {

@@ -5,16 +5,17 @@
 use crate::{
     attestation::backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
     token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
+    trust_context::{AttestationSummary, TrustContext},
 };
 use anyhow::*;
 use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use educe::Educe;
-use kbs_types::{Challenge, HashAlgorithm, Tee};
+use kbs_types::{Challenge, HashAlgorithm, Tee, TeePubKey};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
+use serde_json::{from_value, json, Value};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::serde_as;
 use sha2::{Digest, Sha512};
@@ -31,6 +32,9 @@ const BASE_AS_ADDR: &str = "/appraisal/v2/attest";
 const AZURE_ADDR_SUFFIX: &str = "/azure";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
+
+pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/tdx/attester_runtime_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/tdx/attester_user_data/tee-pubkey";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DcapTeeEvidence {
@@ -302,6 +306,22 @@ impl Attest for IntelTrustAuthority {
         Ok(resp_data.token.clone())
     }
 
+    fn claims_to_trust_context(&self, claims: Value) -> anyhow::Result<TrustContext> {
+        let tee_pubkey = if let Some(pkey_value) = claims.pointer(TOKEN_TEE_PUBKEY_PATH_ITA) {
+            TeePubKey::deserialize(pkey_value).context("Failed to deserialize tee public key")?
+        } else if let Some(pkey_value) = claims.pointer(TOKEN_TEE_PUBKEY_PATH_ITA_VTPM) {
+            TeePubKey::deserialize(pkey_value).context("Failed to deserialize tee public key")?
+        } else {
+            bail!("No tee public key found in claims");
+        };
+
+        Ok(TrustContext {
+            attestation_summary: AttestationSummary { allowed: true },
+            tee_pubkey,
+            custom_claims: Value::default(),
+        })
+    }
+
     async fn generate_challenge(
         &self,
         tee: Tee,
@@ -385,7 +405,6 @@ impl Attest for IntelTrustAuthority {
 impl IntelTrustAuthority {
     pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
         let token_verifier = JwkAttestationTokenVerifier::new(&AttestationTokenVerifierConfig {
-            extra_teekey_paths: vec![],
             trusted_certs_paths: vec![],
             trusted_jwk_sets: vec![config.certs_file.clone()],
             insecure_key: true,
