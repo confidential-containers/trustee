@@ -6,7 +6,6 @@
 use super::{DevicePathParser, DeviceSubTypeParser};
 use crate::GUID_SIZE;
 use anyhow::{anyhow, bail, Result};
-use byteorder::{ByteOrder, LittleEndian};
 
 /// Parser for Type 4 — Media Device Path.
 /// Defined in section 10.3.5 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#media-device-path>
@@ -120,7 +119,7 @@ impl DeviceSubTypeParser for FilePathParser {
         }
         let utf16_words: Vec<u16> = data[0..data.len() - 2]
             .chunks_exact(2)
-            .map(LittleEndian::read_u16)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
             .collect();
         Ok(format!("File({})", String::from_utf16_lossy(&utf16_words)))
     }
