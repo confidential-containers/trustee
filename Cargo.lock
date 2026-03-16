@@ -3446,7 +3446,6 @@ dependencies = [
  "jsonwebtoken 10.3.0",
  "kbs-types",
  "kms",
- "lazy_static",
  "mobc",
  "openssl",
  "p256",

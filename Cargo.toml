@@ -42,7 +42,6 @@ jsonwebtoken = { version = "10", default-features = false, features = [
     "aws_lc_rs",
     "use_pem",
 ] }
-lazy_static = "1.4.0"
 openssl = "0.10.75"
 p256 = "0.13.2"
 p521 = "0.13.2"
