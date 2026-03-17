@@ -18,6 +18,31 @@ use rsa::{sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
 use serde_json::{json, Map};
 use tracing::warn;
 
+/// OpenSSL-based Concat KDF (NIST SP 800-56A), matching guest-components implementation.
+fn concat_kdf(alg: &str, target_length: usize, z: &[u8]) -> Result<Vec<u8>> {
+    use openssl::hash::{Hasher, MessageDigest};
+
+    let target_length_bytes = ((target_length * 8) as u32).to_be_bytes();
+    let alg_len_bytes = (alg.len() as u32).to_be_bytes();
+
+    let mut output = Vec::new();
+    let md = MessageDigest::sha256();
+    let count = target_length.div_ceil(md.size());
+    for i in 0..count {
+        let mut hasher = Hasher::new(md)?;
+        hasher.update(&((i + 1) as u32).to_be_bytes())?;
+        hasher.update(z)?;
+        hasher.update(&alg_len_bytes)?;
+        hasher.update(alg.as_bytes())?;
+        hasher.update(&0_u32.to_be_bytes())?;
+        hasher.update(&0_u32.to_be_bytes())?;
+        hasher.update(&target_length_bytes)?;
+        output.extend(hasher.finish()?.to_vec());
+    }
+    output.truncate(target_length);
+    Ok(output)
+}
+
 /// RSA PKCS#1 v1.5
 const RSA1_5_ALGORITHM: &str = "RSA1_5";
 
@@ -38,9 +63,6 @@ const P521_CURVE: &str = "P-521";
 
 /// AES 256 GCM
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
-
-/// AES 256 GCM Key length in bits
-const AES_GCM_256_KEY_BITS: u32 = 256;
 
 /// Use RSAv1.5 to encrypt the payload data.
 /// Warning: This algorithm is deprecated per
@@ -168,19 +190,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .diffie_hellman(&public_key)
         .raw_secret_bytes()
         .to_vec();
-    let mut key_derivation_materials = Vec::new();
-    key_derivation_materials.extend_from_slice(&(ECDH_ES_A256KW.len() as u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(ECDH_ES_A256KW.as_bytes());
-    key_derivation_materials.extend_from_slice(&(0_u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(&(0_u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(&AES_GCM_256_KEY_BITS.to_be_bytes());
-    let mut wrapping_key = vec![0; 32];
-    concat_kdf::derive_key_into::<rsa::sha2::Sha256>(
-        &z,
-        &key_derivation_materials,
-        &mut wrapping_key,
-    )
-    .map_err(|e| anyhow!("failed to do concat KDF: {e:?}"))?;
+    let wrapping_key = concat_kdf(ECDH_ES_A256KW, 32, &z)?;
     let wrapping_key: [u8; 32] = wrapping_key
         .try_into()
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;
@@ -269,19 +279,7 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .diffie_hellman(&public_key)
         .raw_secret_bytes()
         .to_vec();
-    let mut key_derivation_materials = Vec::new();
-    key_derivation_materials.extend_from_slice(&(ECDH_ES_A256KW.len() as u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(ECDH_ES_A256KW.as_bytes());
-    key_derivation_materials.extend_from_slice(&(0_u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(&(0_u32).to_be_bytes());
-    key_derivation_materials.extend_from_slice(&AES_GCM_256_KEY_BITS.to_be_bytes());
-    let mut wrapping_key = vec![0; 32];
-    concat_kdf::derive_key_into::<rsa::sha2::Sha256>(
-        &z,
-        &key_derivation_materials,
-        &mut wrapping_key,
-    )
-    .map_err(|e| anyhow!("failed to do concat KDF: {e:?}"))?;
+    let wrapping_key = concat_kdf(ECDH_ES_A256KW, 32, &z)?;
     let wrapping_key: [u8; 32] = wrapping_key
         .try_into()
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;

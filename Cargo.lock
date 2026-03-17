@@ -3436,7 +3436,6 @@ dependencies = [
  "cfg-if",
  "chrono",
  "clap",
- "concat-kdf",
  "config",
  "cryptoki",
  "educe",
