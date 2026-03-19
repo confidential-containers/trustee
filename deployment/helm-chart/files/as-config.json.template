@@ -1,0 +1,15 @@
+{
+    "work_dir": "/opt/confidential-containers/attestation-service",
+    "policy_engine": "opa",
+    "rvps_config": {
+        "type": "GrpcRemote",
+        "address": "http://rvps:{{ .Values.rvps.service.port }}"
+    },
+    "attestation_token_broker": {
+        "duration_min": 5,
+        "signer": {
+            "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
+            "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
+        }
+    }
+}

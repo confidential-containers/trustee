@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rvps-config
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+data:
+  rvps.json: |
+{{ tpl (.Files.Get "files/rvps.json.template") . | nindent 4 }}
