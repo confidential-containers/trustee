@@ -61,6 +61,14 @@ impl EarAttestationTokenBroker {
             .set_policy("default_gpu".to_string(), default_gpu_policy, false)
             .await?;
 
+        let default_switch_policy = include_str!("ear_default_policy_switch.rego").to_string();
+        let default_switch_policy =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_switch_policy);
+
+        policy_engine
+            .set_policy("default_switch".to_string(), default_switch_policy, false)
+            .await?;
+
         let default_ppcie_policy = include_str!("ear_default_policy_ppcie.rego").to_string();
         let default_ppcie_policy =
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_ppcie_policy);
