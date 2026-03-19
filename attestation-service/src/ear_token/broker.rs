@@ -55,24 +55,28 @@ impl EarAttestationTokenBroker {
 
         let policy_engine = PolicyEngine::<Regorus>::new(storage);
 
-        let default_cpu_policy = include_str!("ear_default_policy_cpu.rego").to_string();
+        let default_cpu_policy = include_str!("ear_default_policy_cpu.rego");
 
         policy_engine
-            .set_policy("default_cpu", &default_cpu_policy, false)
+            .set_policy("default_cpu", default_cpu_policy, false)
             .await?;
 
-        let default_gpu_policy = include_str!("ear_default_policy_gpu.rego").to_string();
+        let default_gpu_policy = include_str!("ear_default_policy_gpu.rego");
 
         policy_engine
-            .set_policy("default_gpu", &default_gpu_policy, false)
+            .set_policy("default_gpu", default_gpu_policy, false)
             .await?;
 
-        let default_ppcie_policy = include_str!("ear_default_policy_ppcie.rego").to_string();
-        let default_ppcie_policy =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(default_ppcie_policy);
+        let default_switch_policy = include_str!("ear_default_policy_switch.rego");
 
         policy_engine
-            .set_policy("default_ppcie".to_string(), default_ppcie_policy, false)
+            .set_policy("default_switch", default_switch_policy, false)
+            .await?;
+
+        let default_ppcie_policy = include_str!("ear_default_policy_ppcie.rego");
+
+        policy_engine
+            .set_policy("default_ppcie", default_ppcie_policy, false)
             .await?;
 
         if config.signer.is_none() {
