@@ -16,18 +16,31 @@ Users can use very simple command to:
 
 ## Start-Up
 
-Generate a user auth key pair
-```
-git clone https://github.com/confidential-containers/trustee.git
-cd trustee
-openssl genpkey -algorithm ed25519 > kbs/config/private.key
-openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
-```
-
 Run the cluster
 ```bash
+git clone https://github.com/confidential-containers/trustee.git
+cd trustee
 docker compose up -d
 ```
+
+The `setup` container initializes files under `kbs/config/docker-compose/` automatically:
+
+- `private.key` / `public.pub`: admin JWT signer and verifier keys for KBS admin API.
+- `admin-token`: long-lived admin bearer token for local development.
+- `ca-cert.pem`, `token.key`, `token-cert-chain.pem` and related files:
+  attestation token signing and trust chain material used by AS and KBS.
+
+Use the generated admin token with `kbs-client`:
+
+```bash
+kbs-client config \
+  --url http://127.0.0.1:8080 \
+  --admin-token-file kbs/config/docker-compose/admin-token \
+  set-resource-policy --allow-all
+```
+
+If `--admin-token-file` is omitted, `kbs-client` tries `~/.trustee/admin-token`,
+then falls back to anonymous access (which only succeeds in `InsecureAllowAll` mode).
 
 Note that by default the KBS cluster blocks sample evidence.
 If you are testing with sample evidence you will need to

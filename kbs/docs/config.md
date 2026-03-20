@@ -332,7 +332,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 
@@ -363,7 +363,7 @@ Using a remote CoCo AS:
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_service]
 type = "coco_as_grpc"
@@ -396,11 +396,15 @@ certs_file = "https://portal.trustauthority.intel.com"
 allow_unmatched_policy = true
 
 [admin]
-type = "Simple"
+mode = "Enforce"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/etc/kbs-admin.pub"
+[admin.token_verifier]
+type = "BearerJwt"
+signer_pairs = [{ issuer = "admin", public_key_path = "/etc/kbs-admin.pub" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+roles = [{ subject = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [policy_engine]
 policy_path = "/etc/kbs-policy.rego"
@@ -419,7 +423,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 
@@ -459,11 +463,7 @@ sockets = ["127.0.0.1:50002"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
-
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]

@@ -3,11 +3,15 @@ sockets = ["127.0.0.1:50002"]
 insecure_http = true
 
 [admin]
-type = "Simple"
+mode = "Enforce"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+signer_pairs = [{ issuer = "admin", public_key_path = "./work/kbs.pem" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+roles = [{ subject = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]

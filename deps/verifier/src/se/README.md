@@ -100,11 +100,15 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "Simple"
+mode = "Enforce"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/kbs/kbs.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+signer_pairs = [{ issuer = "admin", public_key_path = "/kbs/kbs.pem" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+roles = [{ subject = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [attestation_token]
 insecure_key = true
@@ -259,5 +263,5 @@ Where the values `se.version`, `se.attestation_phkh`, `se.image_phkh` and `se.ta
 
 #### Set the attestation policy
 ```bash
-kbs-client --url http://127.0.0.1:8080 config --auth-private-key ./kbs/kbs.key set-attestation-policy --policy-file ./ibmse-policy.rego
+kbs-client --url http://127.0.0.1:8080 config --admin-token-file ./kbs/admin-token set-attestation-policy --policy-file ./ibmse-policy.rego
 ```
