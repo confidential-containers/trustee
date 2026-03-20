@@ -15,7 +15,7 @@ sockets = ["127.0.0.1:8080"]
 insecure_http = false
 
 [admin]
-type = "DenyAll"
+mode = "DenyAll"
 
 [policy_engine]
 policy_path = "/opt/confidential-containers/kbs/policy.rego"

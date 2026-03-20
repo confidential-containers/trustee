@@ -14,7 +14,7 @@ certificate = "/etc/kbs-cert.pem"
 insecure_http = false
 
 [admin]
-type = "DenyAll"
+mode = "DenyAll"
 
 [policy_engine]
 policy_path = "/etc/kbs-policy.rego"

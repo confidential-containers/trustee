@@ -65,17 +65,18 @@ test-kbs-docker-e2e:
 	trap "docker compose -f $(CURDIR)/docker-compose.yml --project-directory $$E2E_DIR down -v; sudo rm -rf $$E2E_DIR || true" EXIT && \
 	set -e && \
 	mkdir -p $$E2E_DIR/kbs/config/docker-compose $$E2E_DIR/kbs/data/kbs-storage $$E2E_DIR/kbs/data/nebula-ca $$E2E_DIR/kbs/data/attestation-service $$E2E_DIR/kbs/data/reference-values && \
-	cp $(CURDIR)/kbs/config/as-config.json $(CURDIR)/kbs/config/rvps.json $$E2E_DIR/kbs/config/ && \
-	cp $(CURDIR)/kbs/config/docker-compose/kbs-config.toml $$E2E_DIR/kbs/config/docker-compose/ && \
-	openssl genpkey -algorithm ed25519 > $$E2E_DIR/kbs/config/private.key && \
-	openssl pkey -in $$E2E_DIR/kbs/config/private.key -pubout -out $$E2E_DIR/kbs/config/public.pub && \
+	cp $(CURDIR)/kbs/config/docker-compose/as-config.json \
+		$(CURDIR)/kbs/config/docker-compose/rvps.json \
+		$(CURDIR)/kbs/config/docker-compose/kbs-config.toml \
+		$(CURDIR)/kbs/config/docker-compose/setup.sh \
+		$$E2E_DIR/kbs/config/docker-compose/ && \
 	docker compose -f $(CURDIR)/docker-compose.yml build --build-arg BUILDPLATFORM="$${BUILD_PLATFORM:-linux/amd64}" --build-arg ARCH="$${TARGET_ARCH:-x86_64}" --build-arg VERIFIER="$${VERIFIER:-all-verifier}" && \
 	docker compose -f $(CURDIR)/docker-compose.yml --project-directory $$E2E_DIR up -d && \
 	cd $(CURDIR)/target/release && \
 	echo "shhhhh" > test-secret && \
-	./kbs-client --url http://127.0.0.1:8080 config --auth-private-key $$E2E_DIR/kbs/config/private.key set-resource --path "test-org/test-repo/test-secret" --resource-file test-secret && \
+	./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource --path "test-org/test-repo/test-secret" --resource-file test-secret && \
 	! ./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret" && \
-	./kbs-client --url http://127.0.0.1:8080 config --auth-private-key $$E2E_DIR/kbs/config/private.key set-resource-policy --policy-file "$(CURDIR)/kbs/test/data/policy_2.rego" && \
+	./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource-policy --policy-file "$(CURDIR)/kbs/test/data/policy_2.rego" && \
 	./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret"
 
 # Attestation service e2e tests

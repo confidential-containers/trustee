@@ -22,4 +22,4 @@ type = "LocalFs"
 
 [admin]
 # Do not use in production
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"

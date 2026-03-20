@@ -10,8 +10,18 @@ as_addr = "http://as:50004"
 timeout = 5
 
 [admin]
-type = "Simple"
+mode = "Enforce"
 
-[[admin.personas]]
-id = "admin1"
-public_key_path = "/opt/confidential-containers/trustee/admin1-pubkey.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+signer_pairs = [
+    { issuer = "admin1-issuer", public_key_path = "/opt/confidential-containers/trustee/admin1-pubkey.pem" },
+    { issuer = "admin2-issuer", public_key_path = "/opt/confidential-containers/trustee/admin2-pubkey.pem" },
+]
+
+[admin.authorizer]
+type = "RegexAcl"
+roles = [
+    { subject = "admin1", allowed_endpoints = "^/kbs/v0/resource/.+$" },
+    { subject = "admin2", allowed_endpoints = "^/kbs/v0/config/.+$" },
+]

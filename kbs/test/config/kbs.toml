@@ -35,11 +35,15 @@ max_trusted_ak_keys = 100
 policy_path = "./work/kbs-policy.rego"
 
 [admin]
-type = "Simple"
+mode = "Enforce"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+signer_pairs = [{ issuer = "admin", public_key_path = "./work/kbs.pem" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+roles = [{ subject = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"

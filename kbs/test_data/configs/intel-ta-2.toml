@@ -15,4 +15,4 @@ certs_file = "https://portal.trustauthority.intel.com"
 timeout = 5
 
 [admin]
-type = "DenyAll"
+mode = "DenyAll"
