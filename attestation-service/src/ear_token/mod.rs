@@ -60,6 +60,20 @@ pub struct EarTokenConfiguration {
     /// If this is not specified, the EAR
     /// will be signed with an ephemeral private key.
     pub signer: Option<TokenSignerConfig>,
+
+    /// Whether to include all available information in the attestation token.
+    /// In some cases the token will be very large.
+    /// If verbose is set to false, some fields will be excluded.
+    /// For example, the raw evidence of additional devices will not be in
+    /// the token.
+    /// Default: True
+    #[serde(default = "default_verbose_token")]
+    pub verbose_token: bool,
+}
+
+#[inline]
+fn default_verbose_token() -> bool {
+    true
 }
 
 impl Default for EarTokenConfiguration {
@@ -71,6 +85,7 @@ impl Default for EarTokenConfiguration {
             build_name: format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
             profile_name: DEFAULT_PROFILE.to_string(),
             signer: None,
+            verbose_token: default_verbose_token(),
         }
     }
 }
