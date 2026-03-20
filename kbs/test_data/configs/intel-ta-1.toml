@@ -16,7 +16,7 @@ certificate = "/etc/kbs-cert.pem"
 insecure_http = false
 
 [admin]
-type = "DenyAll"
+mode = "DenyAll"
 
 [storage_backend]
 storage_type = "local_json"

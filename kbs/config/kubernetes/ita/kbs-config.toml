@@ -14,11 +14,15 @@ api_key = "tBfd5kKX2x9ahbodKV1..."
 certs_file = "https://portal.trustauthority.intel.com"
 
 [admin]
-type = "Simple"
+mode = "TokenAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/kbs/kbs.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+idps = [{ issuer = "admin", public_key_uri = "/kbs/kbs.pem" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+acls = [{ audience = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"
