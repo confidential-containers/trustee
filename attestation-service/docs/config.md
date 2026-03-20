@@ -35,6 +35,7 @@ section:
 | `profile_name`  | String                  | The Profile that describes the EAR token         | No       |tag:github.com,2024:confidential-containers/Trustee`|
 | `policy_dir`  | String                  | The path to the work directory that contains policies to provision the tokens.        | No       |`/opt/confidential-containers/attestation-service/token/policies`|
 | `signer`       | [TokenSignerConfig][1]  | Signing material of the attestation result token.    | No       | None       |
+| `verbose_token` | Bool                   | Include detailed information in attestation token    | No       | True       |
 
 [1]: #tokensignerconfig
 

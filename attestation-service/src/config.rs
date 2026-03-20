@@ -112,7 +112,8 @@ mod tests {
             policy_dir: "/var/lib/attestation-service/policies".into(),
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
-            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into()
+            profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
+            verbose_token: true,
         },
         verifier_config: None,
     })]
@@ -129,6 +130,7 @@ mod tests {
             developer_name: "someone".into(),
             build_name: "0.1.0".into(),
             profile_name: "tag:github.com,2024:confidential-containers/Trustee".into(),
+            verbose_token: true,
             signer: Some(TokenSignerConfig {
                 key_path: "/etc/key".into(),
                 cert_url: Some("https://example.io".into()),
