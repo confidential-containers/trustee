@@ -79,6 +79,15 @@ pub struct EarTokenConfiguration {
     /// to provision the tokens.
     #[serde(default = "default_policy_dir")]
     pub policy_dir: String,
+
+    /// Whether to include all available information in the attestation token.
+    /// In some cases the token will be very large.
+    /// If verbose is set to false, some fields will be excluded.
+    /// For example, the raw evidence of additional devices will not be in
+    /// the token.
+    /// Default: True
+    #[serde(default = "default_verbose_token")]
+    pub verbose_token: bool,
 }
 
 #[inline]
@@ -111,6 +120,11 @@ fn default_policy_dir() -> String {
     DEFAULT_POLICY_DIR.to_string()
 }
 
+#[inline]
+fn default_verbose_token() -> bool {
+    true
+}
+
 impl Default for EarTokenConfiguration {
     fn default() -> Self {
         Self {
@@ -121,6 +135,7 @@ impl Default for EarTokenConfiguration {
             profile_name: default_profile(),
             signer: None,
             policy_dir: default_policy_dir(),
+            verbose_token: default_verbose_token(),
         }
     }
 }

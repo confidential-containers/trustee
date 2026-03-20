@@ -11,5 +11,10 @@
             "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
             "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
         }
+    },
+    "verifier_config" : {
+        "nvidia_verifier": {
+            "type": "Remote"
+        }
     }
 }
