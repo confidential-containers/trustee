@@ -18,6 +18,8 @@ dirs = "6.0.0"
 kbs = { path = "../../kbs" }
 nix = { version = "0.31.1", features = ["user"] }
 openssl.workspace = true
+jsonwebtoken.workspace = true
+serde.workspace = true
 reference-value-provider-service = { path = "../../rvps" }
 tokio.workspace = true
 tracing.workspace = true
