@@ -6,6 +6,7 @@ This is a document to guide developer run a KBS with IBM SE verifier locally for
 ## Index
 
 - [Deployment of KBS with IBM SE verifier](#deployment-of-kbs-with-ibm-se-verifier)
+- [Admin authentication](#admin-authentication)
 - [Set attestation policy for IBM SE verifier](#set-attestation-policy)
 
 
@@ -56,18 +57,22 @@ Build `se.img` following [Generate an IBM Secure Execution image](https://www.ib
 
 Refer to [ibm-s390-linux](https://github.com/ibm-s390-linux/s390-tools/blob/v2.33.1/rust/pvattest/tools/pvextract-hdr) to get `pvextract-hdr`.
 
-## Generate KBS key
-Generate keys used by KBS service.
+## Generate admin JWT keys
+
+Generate an Ed25519 key pair used to sign and verify **admin API** bearer JWTs (not HTTPS certificates or attestation tokens).
+
 ```bash
 openssl genpkey -algorithm ed25519 > kbs.key
 openssl pkey -in kbs.key -pubout -out kbs.pem
 ```
 
+See [Admin authentication](#admin-authentication) for the matching `kbs-config.toml` settings and how to create an `admin-token` file.
+
 ## (Option 1) Launch KBS as a program
 
 - Build KBS
 ```bash
-cargo install --locked --debug --path kbs/src/kbs --no-default-features --features coco-as-builtin,resource,opa
+cargo install --locked --debug --path kbs --no-default-features --features coco-as-builtin,resource,opa
 ```
 
 - Prepare the material retrieved above, similar as:
@@ -93,36 +98,48 @@ cargo install --locked --debug --path kbs/src/kbs --no-default-features --featur
 > Note: alternative is to use system variables listed in [ibmse.rs](./ibmse.rs) to overwrite the files.
 
 - Prepare the `kbs-config.toml`, similar as:
-```
+```toml
+[http_server]
 sockets = ["0.0.0.0:8080"]
 # Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:
 # https://cert-manager.io/docs/configuration/acme/
 insecure_http = true
 
-[admin]
-type = "Simple"
-
-[[admin.personas]]
-id = "admin"
-public_key_path = "/kbs/kbs.pem"
-
 [attestation_token]
 insecure_key = true
 
 [attestation_service]
-work_dir = "/opt/confidential-containers/attestation-service"
-policy_engine = "opa"
+type = "coco_as_builtin"
 
 [attestation_service.attestation_token_broker]
-type = "Ear"
 duration_min = 5
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
 
-[attestation_service.rvps_config]
-type = "LocalFs"
+[admin]
+authorization_mode = "AuthenticatedAuthorization"
+
+[admin.authentication.bearer_jwt]
+identity_providers = [
+  { issuer = "ibmse-dev", public_key_uri = "./kbs.pem" },
+]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "admin", allowed_endpoints = "^/kbs/.+$" }]
+
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/kbs"
+
+[[plugins]]
+name = "resource"
+storage_backend_type = "kvstorage"
 ```
+
+> For local debugging only, you may set `authorization_mode = "InsecureAllowAll"` under `[admin]` and skip admin token generation. The examples below use `AuthenticatedAuthorization`.
 
 - Launch the KBS program
 ```bash
@@ -167,7 +184,49 @@ services:
       - ./data/rsa/encrypt_key.pem:/run/confidential-containers/ibmse/rsa/encrypt_key.pem
       - ./data/rsa/encrypt_key.pub:/run/confidential-containers/ibmse/rsa/encrypt_key.pub
 ```
-> Note: `export SE_SKIP_CERTS_VERIFICATION=true` only required for a development machine. Use `export CERTS_OFFLINE_VERIFICATION=true` to verifiy the certificates offline.
+
+- Prepare `kbs-config.toml` for the container (`public_key_uri` must match the `./kbs.pem:/kbs/kbs.pem` volume):
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+insecure_http = true
+
+[attestation_token]
+insecure_key = true
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[admin]
+authorization_mode = "AuthenticatedAuthorization"
+
+[admin.authentication.bearer_jwt]
+identity_providers = [
+  { issuer = "ibmse-dev", public_key_uri = "/kbs/kbs.pem" },
+]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "admin", allowed_endpoints = "^/kbs/.+$" }]
+
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/kbs"
+
+[[plugins]]
+name = "resource"
+storage_backend_type = "kvstorage"
+```
+
+> Note: `SE_SKIP_CERTS_VERIFICATION=true` in the compose file is only required on a development machine. Use `CERTS_OFFLINE_VERIFICATION=true` to verify certificates offline.
 
 - Prepare the material, similar as:
 ```
@@ -194,6 +253,7 @@ services:
 │   └── rsa
 │       ├── encrypt_key.pem
 │       └── encrypt_key.pub
+├── admin-token
 ├── docker-compose.yaml
 ├── kbs-config.toml
 ├── kbs.key
@@ -206,6 +266,36 @@ docker-compose up -d
 docker-compose logs kbs
 docker-compose down
 ```
+
+
+# Admin authentication
+
+KBS admin APIs (for example `set-attestation-policy`) are protected by the `[admin]` configuration. See [KBS Admin Module](../../../../kbs/docs/admin.md) and [Admin API configuration](../../../../kbs/docs/config.md#admin-api-configuration) for details.
+
+This guide uses `AuthenticatedAuthorization`: KBS verifies a bearer JWT and checks a `role` claim against regex ACL rules. Setting only `authorization_mode = "AuthenticatedAuthorization"` is not enough — you must also configure `[admin.authentication.bearer_jwt]` and `[admin.authorization.regex_acl]` as in the `kbs-config.toml` examples above.
+
+## Generate an admin token
+
+After creating `kbs.key` / `kbs.pem`, sign a long-lived admin JWT. The `iss` and `aud` values must match `identity_providers` in `kbs-config.toml`; the JWT **must** include a `role` claim that matches an ACL entry (here `admin`).
+
+```bash
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+header='{"alg":"EdDSA","typ":"JWT"}'
+iat=$(date +%s)
+exp=$((iat + 315360000)) # 10 years
+payload="{\"iss\":\"ibmse-dev\",\"role\":\"admin\",\"aud\":[\"kbs\"],\"iat\":${iat},\"exp\":${exp}}"
+
+h64=$(printf '%s' "$header" | b64url)
+p64=$(printf '%s' "$payload" | b64url)
+signing_input=$(mktemp)
+printf '%s' "${h64}.${p64}" > "${signing_input}"
+sig=$(openssl pkeyutl -sign -inkey kbs.key -rawin -in "${signing_input}" | b64url)
+rm -f "${signing_input}"
+printf '%s.%s.%s\n' "$h64" "$p64" "$sig" > admin-token
+```
+
+Pass this file to `kbs-client` with `--admin-token-file ./admin-token` (or an absolute path). This standalone SE deployment does not use the trustee `docker compose` `setup` service, so the automatic `kbs/config/docker-compose/admin-token` lookup in `kbs-client` will not apply unless you create that path yourself.
 
 
 # Set attestation policy
@@ -259,5 +349,7 @@ Where the values `se.version`, `se.attestation_phkh`, `se.image_phkh` and `se.ta
 
 #### Set the attestation policy
 ```bash
-kbs-client --url http://127.0.0.1:8080 config --auth-private-key ./kbs/kbs.key set-attestation-policy --policy-file ./ibmse-policy.rego
+kbs-client --url http://127.0.0.1:8080 \
+  config --admin-token-file ./admin-token \
+  set-attestation-policy --policy-file ./ibmse-policy.rego
 ```

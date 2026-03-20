@@ -30,10 +30,18 @@ sudo apt-get install -y \
 	protobuf-compiler
 ```
 
-Generate User authentication key pair:
+Generate User authentication key pair and admin token:
 ```shell
 openssl genpkey -algorithm ed25519 > config/private.key
 openssl pkey -in config/private.key -pubout -out config/public.pub
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+header='{"alg":"EdDSA","typ":"JWT"}'
+iat=$(date +%s); exp=$((iat + 315360000))
+payload="{\"issuer\":\"admin\",\"subject\":\"admin\",\"audiences\":[],\"iat\":${iat},\"exp\":${exp}}"
+h64=$(printf '%s' "$header" | b64url)
+p64=$(printf '%s' "$payload" | b64url)
+sig=$(printf '%s' "${h64}.${p64}" | openssl pkeyutl -sign -inkey config/private.key -rawin | b64url)
+printf '%s.%s.%s\n' "$h64" "$p64" "$sig" > config/admin-token
 ```
 
 If you want connect KBS with HTTPS,
@@ -76,7 +84,7 @@ EOF
 Use `kbs-client` to upload resource data to KBS storage:
 
 ```shell
-kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key set-resource --resource-file test/dummy_data --path default/test/dummy
+kbs-client --url http://127.0.0.1:8080 config --admin-token-file config/admin-token set-resource --resource-file test/dummy_data --path default/test/dummy
 ```
 
 Here we assigned a custom path for this resource: `default/test/dummy`.
@@ -94,7 +102,7 @@ To test the KBS with sample evidence, you'll need to update the resource policy
 to something more permissive.
 This can be done with a command such as
 ```shell
-kbs-client --url http://127.0.0.1:8080 config --auth-private-key config/private.key  set-resource-policy --policy-file sample_policies/allow_all.rego
+kbs-client --url http://127.0.0.1:8080 config --admin-token-file config/admin-token set-resource-policy --policy-file sample_policies/allow_all.rego
 ```
 
 ## Passport Mode
@@ -129,7 +137,7 @@ EOF
 Use `kbs-client` to upload resource data to KBS storage:
 
 ```shell
-kbs-client --url http://127.0.0.1:50002 config --auth-private-key config/private.key set-resource --resource-file test/dummy_data --path default/test/dummy
+kbs-client --url http://127.0.0.1:50002 config --admin-token-file config/admin-token set-resource --resource-file test/dummy_data --path default/test/dummy
 ```
 
 Here we assigned a custom path for this resource: `default/test/dummy`.
@@ -160,7 +168,7 @@ kbs-client --url http://127.0.0.1:50002 get-resource --attestation-token test/at
 ### Attestation Policy
 Use `kbs-client` to set a custom attestation policy to KBS in background check mode:
 ```shell
-kbs-client --url http://127.0.0.1:50001 config --auth-private-key config/private.key set-attestation-policy --policy-file /path/to/policy
+kbs-client --url http://127.0.0.1:50001 config --admin-token-file config/admin-token set-attestation-policy --policy-file /path/to/policy
 ```
 
 Where `/path/to/policy` should be replaced by the real path to your policy file.
@@ -190,7 +198,7 @@ Refer to [Attestation-Service](https://github.com/confidential-containers/attest
 ### Resource Policy
 Use `kbs-client` to set custom resource policy to KBS:
 ```shell
-kbs-client --url http://127.0.0.1:50002 config --auth-private-key config/private.key set-attestation-policy --policy-file /path/to/policy
+kbs-client --url http://127.0.0.1:50002 config --admin-token-file config/admin-token set-attestation-policy --policy-file /path/to/policy
 ```
 
 Where `/path/to/policy` should be replaced by the real path to your policy file.
