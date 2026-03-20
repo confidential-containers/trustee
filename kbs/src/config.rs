@@ -111,10 +111,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::{
-        admin::{
-            simple::{SimpleAdminConfig, SimplePersonaConfig},
-            AdminBackendType, AdminConfig,
-        },
+        admin::AdminConfig,
         config::{
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
@@ -140,6 +137,53 @@ mod tests {
     use reference_value_provider_service::storage::{local_fs, ReferenceValueStorageConfig};
 
     use rstest::rstest;
+    use serde_json::json;
+
+    fn make_enforce_admin_config() -> AdminConfig {
+        serde_json::from_value(json!({
+            "mode": "Enforce",
+            "token_verifier": {
+                "type": "BearerJwt",
+                "signer_pairs": [
+                    {
+                        "issuer": "admin1-issuer",
+                        "public_key_path": "/opt/confidential-containers/trustee/admin1-pubkey.pem",
+                    },
+                    {
+                        "issuer": "admin2-issuer",
+                        "public_key_path": "/opt/confidential-containers/trustee/admin2-pubkey.pem",
+                    }
+                ]
+            },
+            "authorizer": {
+                "type": "RegexAcl",
+                "roles": [
+                    {
+                        "subject": "admin1",
+                        "allowed_endpoints": "^/kbs/v0/resource/.+$",
+                    },
+                    {
+                        "subject": "admin2",
+                        "allowed_endpoints": "^/kbs/v0/config/.+$",
+                    }
+                ]
+            }
+        }))
+        .expect("valid enforce admin config")
+    }
+
+    fn make_enforce_admin_config_with_defaults() -> AdminConfig {
+        serde_json::from_value(json!({
+            "mode": "Enforce",
+            "token_verifier": {
+                "type": "BearerJwt"
+            },
+            "authorizer": {
+                "type": "RegexAcl"
+            }
+        }))
+        .expect("valid enforce admin config with defaults")
+    }
 
     #[rstest]
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
@@ -168,10 +212,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
         },
@@ -219,10 +260,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig {
             policy_path: DEFAULT_POLICY_PATH.into(),
         },
@@ -257,10 +295,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig {
             policy_path: PathBuf::from("/etc/kbs-policy.rego"),
         },
@@ -296,15 +331,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: vec![SimplePersonaConfig {
-                    id: "admin1".to_string(),
-                    public_key_path: "/opt/confidential-containers/trustee/admin1-pubkey.pem".into()
-                }],
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_enforce_admin_config(),
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
@@ -344,10 +371,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::InsecureAllowAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::InsecureAllowAll,
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
@@ -380,10 +404,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
@@ -406,10 +427,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
@@ -438,10 +456,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
     })]
@@ -473,12 +488,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: Vec::new(),
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_enforce_admin_config_with_defaults(),
         policy_engine: PolicyEngineConfig {
             policy_path: "/opa/confidential-containers/kbs/policy.rego".into(),
         },

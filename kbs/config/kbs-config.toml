@@ -21,7 +21,7 @@ policy_path = "/opa/confidential-containers/kbs/policy.rego"
 
 [admin]
 # Do not use this in production.
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [[plugins]]
 name = "resource"

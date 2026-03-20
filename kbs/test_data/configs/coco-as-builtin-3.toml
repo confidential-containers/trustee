@@ -23,7 +23,13 @@ type = "LocalFs"
 policy_path = "/opa/confidential-containers/kbs/policy.rego"
 
 [admin]
-type = "Simple"
+mode = "Enforce"
+
+[admin.token_verifier]
+type = "BearerJwt"
+
+[admin.authorizer]
+type = "RegexAcl"
 
 [[plugins]]
 name = "resource"
