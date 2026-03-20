@@ -14,8 +14,7 @@ duration_min = 5
 type = "BuiltIn"
 
 [admin]
-# Do not use this in production.
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 # Unified storage backend configuration
 [storage_backend]

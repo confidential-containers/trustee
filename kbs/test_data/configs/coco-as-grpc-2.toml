@@ -12,11 +12,19 @@ as_addr = "http://as:50004"
 timeout = 5
 
 [admin]
-type = "Simple"
+authorization_mode = "AuthenticatedAuthorization"
 
-[[admin.personas]]
-id = "admin1"
-public_key_path = "/opt/confidential-containers/trustee/admin1-pubkey.pem"
+[admin.authentication.bearer_jwt]
+identity_providers = [
+    { issuer = "admin1-issuer", public_key_uri = "/opt/confidential-containers/trustee/admin1-pubkey.pem" },
+    { issuer = "admin2-issuer", public_key_uri = "/opt/confidential-containers/trustee/admin2-pubkey.pem" },
+]
+
+[admin.authorization.regex_acl]
+acls = [
+    { role = "admin1", allowed_endpoints = "^/kbs/v0/resource/.+$" },
+    { role = "admin2", allowed_endpoints = "^/kbs/v0/config/.+$" },
+]
 
 [storage_backend]
 storage_type = "local_json"

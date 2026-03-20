@@ -22,7 +22,7 @@ type = "BuiltIn"
 
 [admin]
 # Do not use in production
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 [storage_backend]
 storage_type = "Memory"

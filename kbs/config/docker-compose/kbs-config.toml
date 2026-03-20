@@ -10,11 +10,15 @@ type = "coco_as_grpc"
 as_addr = "http://as:50004"
 
 [admin]
-type = "Simple"
+authorization_mode = "AuthenticatedAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
+[admin.authentication.bearer_jwt]
+identity_providers = [
+    { issuer = "TrusteeInDocker", public_key_uri = "/opt/confidential-containers/kbs/user-keys/public.pub" },
+]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"
