@@ -2,10 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use kbs::admin::{
-    simple::{SimpleAdminConfig, SimplePersonaConfig},
-    AdminBackendType, AdminConfig, AdminRole,
-};
+use kbs::admin::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
@@ -30,9 +27,11 @@ use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
     Engine,
 };
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use openssl::pkey::PKey;
 use serde_json::json;
 use std::sync::{Arc, Once};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
@@ -122,6 +121,23 @@ pub struct TestHarness {
 }
 
 impl TestHarness {
+    fn sign_admin_token(&self) -> Result<String> {
+        let encoding_key = EncodingKey::from_ed_pem(self.auth_privkey.as_bytes())?;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| anyhow!("System time error: {e}"))?
+            .as_secs();
+        let claims = json!({
+            "iss": "tester",
+            "sub": "tester",
+            "aud": ["tester"],
+            "iat": now,
+            "exp": now + 7200,
+        });
+        let token = encode(&Header::new(Algorithm::EdDSA), &claims, &encoding_key)?;
+        Ok(token)
+    }
+
     pub async fn new(test_parameters: TestParameters) -> Result<TestHarness> {
         let auth_keypair = PKey::generate_ed25519()?;
         let auth_pubkey = String::from_utf8(auth_keypair.public_key_to_pem()?)?;
@@ -185,32 +201,45 @@ impl TestHarness {
         };
 
         let admin_config = match &test_parameters.admin_type {
-            AdminType::Simple => AdminConfig {
-                admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                    personas: vec![SimplePersonaConfig {
-                        id: "tester".to_string(),
-                        public_key_path: auth_pubkey_path.as_path().to_path_buf(),
-                    }],
-                }),
-                roles: Vec::new(),
-            },
-            AdminType::SimpleRestricted => AdminConfig {
-                admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                    personas: vec![SimplePersonaConfig {
-                        id: "tester".to_string(),
-                        public_key_path: auth_pubkey_path.as_path().to_path_buf(),
-                    }],
-                }),
-                roles: vec![AdminRole {
-                    id: "tester".to_string(),
-                    allowed_endpoints: "^/kbs/v0/reference-value/[a-zA-Z0-9]+$".to_string(),
-                }],
-            },
-
-            AdminType::DenyAll => AdminConfig {
-                admin_backend: AdminBackendType::DenyAll,
-                roles: Vec::new(),
-            },
+            // Keep original "Simple" test semantics:
+            // requests must carry a verifiable admin token and are broadly authorized.
+            AdminType::Simple => serde_json::from_value(json!({
+                "mode": "TokenAuthorization",
+                "authorizer": {
+                    "type": "RegexAcl",
+                    "acls": [{
+                        "audience": "tester",
+                        "allowed_endpoints": "^/kbs/v0/.*$"
+                    }]
+                },
+                "token_verifier": {
+                    "type": "BearerJwt",
+                    "idps": [{
+                        "issuer": "tester",
+                        "public_key_uri": auth_pubkey_path.as_path()
+                    }]
+                }
+            }))?,
+            // Keep restricted mode behavior as "authenticated admin required and then ACL checked".
+            // Build via serde to avoid direct construction of private config fields.
+            AdminType::SimpleRestricted => serde_json::from_value(json!({
+                "mode": "TokenAuthorization",
+                "authorizer": {
+                    "type": "RegexAcl",
+                    "acls": [{
+                        "audience": "tester",
+                        "allowed_endpoints": "^/kbs/v0/reference-value/[a-zA-Z0-9]+$"
+                    }]
+                },
+                "token_verifier": {
+                    "type": "BearerJwt",
+                    "idps": [{
+                        "issuer": "tester",
+                        "public_key_uri": auth_pubkey_path.as_path()
+                    }]
+                }
+            }))?,
+            AdminType::DenyAll => AdminConfig::DenyAll,
         };
 
         let kbs_config = KbsConfig {
@@ -283,26 +312,21 @@ impl TestHarness {
             PolicyType::Custom(p) => p.to_string().into_bytes(),
         };
 
-        kbs_client::set_resource_policy(
-            KBS_URL,
-            self.auth_privkey.clone(),
-            policy_bytes,
-            // Optional HTTPS certs for KBS
-            vec![],
-        )
-        .await?;
+        let token = self.sign_admin_token()?;
+        kbs_client::set_resource_policy(KBS_URL, Some(token), policy_bytes, vec![]).await?;
 
         Ok(())
     }
 
     pub async fn set_attestation_policy(&self, policy: String, policy_id: String) -> Result<()> {
+        let token = self.sign_admin_token()?;
         kbs_client::set_attestation_policy(
             KBS_URL,
-            self.auth_privkey.clone(),
+            Some(token),
             policy.as_bytes().to_vec(),
-            None, // Policy type (default is rego)
+            None,
             Some(policy_id),
-            vec![], // Optional HTTPS certs for KBS
+            vec![],
         )
         .await?;
 
@@ -311,15 +335,8 @@ impl TestHarness {
 
     pub async fn set_secret(&self, secret_path: String, secret_bytes: Vec<u8>) -> Result<()> {
         info!("TEST: Setting Secret");
-        kbs_client::set_resource(
-            KBS_URL,
-            self.auth_privkey.clone(),
-            secret_bytes,
-            &secret_path,
-            // Optional HTTPS certs for KBS
-            vec![],
-        )
-        .await?;
+        let token = self.sign_admin_token()?;
+        kbs_client::set_resource(KBS_URL, Some(token), secret_bytes, &secret_path, vec![]).await?;
 
         Ok(())
     }
