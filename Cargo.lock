@@ -7473,7 +7473,7 @@ dependencies = [
  "cfg-if",
  "codicon",
  "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b67a07e)",
- "ear 0.5.0",
+ "ear 0.4.0",
  "eventlog",
  "hex",
  "http-cache-reqwest",
