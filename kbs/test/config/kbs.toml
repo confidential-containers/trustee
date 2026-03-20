@@ -31,11 +31,15 @@ storage_type = "LocalFs"
 dir_path = "./work/storage"
 
 [admin]
-type = "Simple"
+mode = "TokenAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+[admin.token_verifier]
+type = "BearerJwt"
+idps = [{ issuer = "admin", public_key_uri = "./work/kbs.pem" }]
+
+[admin.authorizer]
+type = "RegexAcl"
+acls = [{ audience = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"

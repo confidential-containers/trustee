@@ -38,10 +38,10 @@ The following properties can be set under the `[attestation_token]` section.
 
 | Property              | Type         | Description                                                                                                                       | Default |
 |-----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|---------|
-| `trusted_jwk_sets`    | String Array | Valid Url (`file://` or `https://`) pointing to trusted JWKSets (local or OpenID) for Attestation Tokens trustworthy verification | Empty   |
+| `trusted_jwk_sets`    | String Array | Trusted JWKS/OpenID sources (`file://` or `https://`) used to verify attestation tokens                                         | Empty   |
 | `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                            | Empty   |
 | `extra_teekey_paths`  | String Array | User defined paths to the tee public key in the JWT body                                                                          | Empty   |
-| `insecure_key`        | Boolean      | Whether to check the trustworthy of the JWK inside JWT. See comments.                                                             | `false` |
+| `insecure_key`        | Boolean      | Whether to skip provenance checks of header-embedded JWK keys. Signature is still verified.                                      | `false` |
 
 Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of
 this Key in the JWT.
@@ -173,48 +173,51 @@ Detailed [documentation](https://docs.trustauthority.intel.com).
 
 ### Admin API Configuration
 
-The admin configuration has two parts.
-The admin backend is used for validating the admin token and extracting a role.
-The admin configuration can also specify which endpoints the role has access to.
+Admin mode is configured under `[admin]` with:
 
+- `mode = "InsecureAllowAll"`
+- `mode = "DenyAll"`
+- `mode = "TokenAuthorization"` (recommended for production)
 
-Multiple Admin backends are available. 
-Today, the available backends are `DenyAll` (rejects all admin tokens, thereby blocking all admin interfaces),
-`InsecureAllowAll` (treats every request as if there is a valid admin token and return the role `Anonymous`)
-and `Simple` (checks the admin token based on a set of public keys).
+For `mode = "TokenAuthorization"`, configure:
 
-By default, the simple backend will be used, but no personas will be enabled.
-Use the `type` field to set the admin backend.
+- `[admin.token_verifier]` with `type = "BearerJwt"`
+- `[admin.authorizer]` with `type = "RegexAcl"`
 
-| Property          | Type    | Description                                                       | Required | Default |
-|-------------------|---------|-------------------------------------------------------------------|----------|---------|
-| `type`            | String  | The backend used to validate admin requests.                      | No       | Simple  |
-| `roles`           |         | Rules for accessing admin endpoints                               | No       | Empty   |
+`BearerJwt` properties:
 
-If the `Simple` backend is used, a list of admin personas can be provided, each with the following properties:
+| Property | Type | Description | Required | Default |
+|----------|------|-------------|----------|---------|
+| `idps` | Array | Trusted issuer entries for JWT verification | No | Empty |
+| `insecure_public_key_from_uri` | Boolean | Allow loading `public_key_uri` via plaintext `http://` | No | `false` |
 
-| Property          | Type    | Description                                                       | Required | Default |
-|-------------------|---------|-------------------------------------------------------------------|----------|---------|
-| `id`              | String  | A string used to identify the admin.                              | Yes      | Simple  |
-| `public_key_path` | String  | The path to the public key corresponding to the admin token.      | Yes      | Simple  |
+Each `idps` item:
 
-The role field can specify rules that govern which endpoints an admin is allowed to visit.
-If no roles are specified, all admin can access all admin endpoints.
-Otherwise, the roles field should be a list of role entries.
-One role entry looks like this.
+| Property | Type | Description | Required |
+|----------|------|-------------|----------|
+| `issuer` | String | Expected JWT `iss` value | Yes |
+| `public_key_uri` | String | PEM public key source (`https://`, `file://`, local path, or `http://` when `insecure_public_key_from_uri=true`) | No* |
+| `jwk_set_uri` | String | JWKS source (`https://`, `file://`, or local path) | No* |
 
-| Property          | Type   | Description                                              | Required |
-|-------------------|--------|----------------------------------------------------------|----------|
-| id                | String | The role that this rule applies to                       | Yes      |
-| allowed_endpoints | String | A regular expression matching endpoints that are allowed | Yes      |
+\* At least one of `public_key_uri` or `jwk_set_uri` is required.
 
-After the admin token is validated, the role extracted from the token will be checked against
-the roles specified in the config file.
-If a matching role is found, the `allowed_endpoints` regular expression is used to determine
-which endpoints the admin can access.
-The regular expression must start with `^/kbs` and end with `$` to avoid ambiguity.
-If no matching role is found (and at least one role is specified), the admin will not be able
-to access any endpoints.
+Security note: keep `insecure_public_key_from_uri=false` whenever possible.
+Using `http://` allows network attackers to tamper with downloaded public keys.
+
+`RegexAcl` properties:
+
+| Property | Type | Description | Required |
+|----------|------|-------------|----------|
+| `acls` | Array | Audience-to-endpoint allow rules | No |
+
+Each ACL entry:
+
+| Property | Type | Description | Required |
+|----------|------|-------------|----------|
+| `audience` | String | JWT `aud` value to match | Yes |
+| `allowed_endpoints` | String | Regex of allowed request paths | Yes |
+
+`allowed_endpoints` must start with `^/kbs` and end with `$`.
 
 ### Storage Backend Configuration
 
@@ -334,7 +337,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 
@@ -376,7 +379,7 @@ type = "kvstorage"
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_service]
 type = "coco_as_grpc"
@@ -414,11 +417,17 @@ certs_file = "https://portal.trustauthority.intel.com"
 allow_unmatched_policy = true
 
 [admin]
-type = "Simple"
+mode = "TokenAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/etc/kbs-admin.pub"
+[admin.token_verifier]
+type = "BearerJwt"
+idps = [
+  { issuer = "admin", public_key_uri = "/etc/kbs-admin.pub" }
+]
+
+[admin.authorizer]
+type = "RegexAcl"
+acls = [{ audience = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [storage_backend]
 storage_type = "LocalFs"
@@ -439,7 +448,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 
@@ -479,11 +488,7 @@ sockets = ["127.0.0.1:50002"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
-
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+mode = "InsecureAllowAll"
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]

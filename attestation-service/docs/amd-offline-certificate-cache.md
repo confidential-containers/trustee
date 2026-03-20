@@ -16,7 +16,7 @@ environments.
 
 Update the attestation configuration file to use a predefined vcek store:
 
-`kbs/config/as-config.json`:
+`kbs/config/docker-compose/as-config.json`:
 
 ```json
 {
@@ -142,7 +142,7 @@ On the air-gapped trustee attestation-service host:
 ```bash
 # Update as-config.json to enable Disk Caching
 cd /path/to/trustee
-vi kbs/config/as-config.json
+vi kbs/config/docker-compose/as-config.json
 # Update the verifier_config section to:
 #     "verifier_config": {
 #        "snp_verifier": {
