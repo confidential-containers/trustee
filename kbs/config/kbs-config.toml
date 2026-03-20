@@ -6,33 +6,33 @@ insecure_key = true
 
 [attestation_service]
 type = "coco_as_builtin"
-work_dir = "/opt/confidential-containers/attestation-service"
-policy_engine = "opa"
 
 [attestation_service.attestation_token_broker]
-type = "Ear"
 duration_min = 5
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
 
-[policy_engine]
-policy_path = "/opa/confidential-containers/kbs/policy.rego"
-
 [admin]
 # Do not use this in production.
 type = "InsecureAllowAll"
 
+# Unified storage backend configuration
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
+
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "/opt/confidential-containers/kbs/repository"
+backend = "kvstorage"
 
 # Example configuration for HashiCorp Vault KV v1 backend
 # Supports both read and write operations with HTTPS support
 # [[plugins]]
 # name = "resource"
-# type = "Vault"
+# backend = "Vault"
 # vault_url = "http://vault.example.com:8200"
 # token = "hvs.your-vault-token-here"
 # mount_path = "secret"  # Optional, defaults to "secret"

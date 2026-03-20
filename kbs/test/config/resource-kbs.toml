@@ -12,10 +12,12 @@ public_key_path = "./work/kbs.pem"
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]
 
-[policy_engine]
-policy_path = "./work/kbs-policy.rego"
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "./work/storage"
 
 [[plugins]]
 name = "resource"
-type = "LocalFs"
-dir_path = "./work/repository"
+backend = "kvstorage"

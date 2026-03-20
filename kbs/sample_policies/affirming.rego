@@ -6,7 +6,6 @@ default allow = false
 allow if {
     not any_not_affirming
     count(input.submods) > 0
-
 }
 
 any_not_affirming if {

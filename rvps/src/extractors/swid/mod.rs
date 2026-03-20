@@ -13,7 +13,7 @@ use crate::ReferenceValue;
 use super::Extractor;
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Default)]
-pub struct SwidExtractorConfig;
+pub struct SwidExtractorConfig {}
 
 #[derive(Default)]
 pub struct SwidExtractor;
