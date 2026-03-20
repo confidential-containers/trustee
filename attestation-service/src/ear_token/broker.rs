@@ -159,6 +159,7 @@ impl EarAttestationTokenBroker {
                 tee_claims.init_data_claims.clone(),
                 tee_claims.runtime_data_claims.clone(),
                 tee_claims.tee,
+                self.config.verbose_token,
             )?;
 
             let tcb_claims_json = serde_json::to_string(&tcb_claims)?;
@@ -442,8 +443,9 @@ fn generate_ec_keys() -> Result<(EcKey<Private>, Vec<u8>, Vec<u8>)> {
 pub fn transform_claims(
     mut input_claims: Value,
     init_data_claims: Value,
-    runtime_data_claims: Value,
+    mut runtime_data_claims: Value,
     tee: Tee,
+    verbose: bool,
 ) -> Result<BTreeMap<String, RawValue>> {
     let mut output_claims = BTreeMap::new();
 
@@ -470,8 +472,20 @@ pub fn transform_claims(
                 "report_data".to_string(),
                 RawValue::String(report_data.as_str().unwrap().to_string()),
             );
+
+            // When attesting environments with lots of devices, the additional evidence
+            // can create a token that is very large. This can overwhelm the header size
+            // limitation of some http servers (including the KBS).
+            // If verbose is false, don't include the additional evidence in the token.
+            if !verbose {
+                runtime_data_claims
+                    .as_object_mut()
+                    .and_then(|map| map.remove("additional-evidence"));
+            }
+
             let transformed_claims: RawValue =
                 serde_json::from_str(&serde_json::to_string(&runtime_data_claims)?)?;
+
             output_claims.insert("runtime_data_claims".to_string(), transformed_claims);
         }
     }
@@ -625,7 +639,7 @@ mod tests {
         let init_data_claims = Value::String("".to_string());
         let runtime_data_claims = Value::String("".to_string());
         let transformed_claims =
-            transform_claims(json, init_data_claims, runtime_data_claims, Tee::Tdx)
+            transform_claims(json, init_data_claims, runtime_data_claims, Tee::Tdx, true)
                 .expect("flatten failed");
 
         let expected_claims = json!({

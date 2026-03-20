@@ -35,6 +35,7 @@ section:
 | `build_name`  | String                  | The build name to be used as part of the Verifier ID in the EAR         | No       | Automatically generated from Cargo package and AS version|
 | `profile_name`  | String                  | The Profile that describes the EAR token         | No       |tag:github.com,2024:confidential-containers/Trustee`|
 | `signer`       | [TokenSignerConfig][2]  | Signing material of the attestation result token.    | No       | None       |
+| `verbose_token` | Bool                   | Include detailed information in attestation token    | No       | True       |
 
 #### TokenSignerConfig
 
