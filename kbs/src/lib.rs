@@ -27,3 +27,4 @@ pub mod http;
 pub mod jwe;
 
 pub mod prometheus;
+pub mod trust_context;

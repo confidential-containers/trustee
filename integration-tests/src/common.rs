@@ -2,16 +2,19 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use kbs::admin::{
-    simple::{SimpleAdminConfig, SimplePersonaConfig},
-    AdminBackendType, AdminConfig, AdminRole,
-};
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::HttpServerConfig;
 use kbs::config::KbsConfig;
 use kbs::policy_engine::PolicyEngineConfig;
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
+use kbs::{
+    admin::{
+        simple::{SimpleAdminConfig, SimplePersonaConfig},
+        AdminBackendType, AdminConfig, AdminRole,
+    },
+    trust_context::TrustContextConfig,
+};
 
 use kbs::plugins::{
     implementations::{resource::local_fs::LocalFsRepoDesc, RepositoryConfig},
@@ -230,7 +233,6 @@ impl TestHarness {
                 trusted_certs_paths: vec![],
                 insecure_key: true,
                 trusted_jwk_sets: vec![],
-                extra_teekey_paths: vec![],
             },
             attestation_service: AttestationConfig {
                 attestation_service: AttestationServiceConfig::CoCoASBuiltIn(Config {
@@ -258,6 +260,7 @@ impl TestHarness {
                     dir_path: resource_dir,
                 },
             ))],
+            trust_context: TrustContextConfig::default(),
         };
         // Spawn the KBS Server
         let api_server = ApiServer::new(kbs_config.clone()).await?;

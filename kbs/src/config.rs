@@ -6,6 +6,7 @@ use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
 use crate::policy_engine::PolicyEngineConfig;
 use crate::token::AttestationTokenVerifierConfig;
+use crate::trust_context::TrustContextConfig;
 use anyhow::anyhow;
 use clap::Parser;
 use config::{Config, File};
@@ -79,6 +80,9 @@ pub struct KbsConfig {
 
     #[serde(default)]
     pub plugins: Vec<PluginsConfig>,
+
+    #[serde(default)]
+    pub trust_context: TrustContextConfig,
 }
 
 impl TryFrom<&Path> for KbsConfig {
@@ -116,7 +120,8 @@ mod tests {
             AdminBackendType, AdminConfig,
         },
         config::{
-            HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
+            HttpServerConfig, TrustContextConfig, DEFAULT_INSECURE_HTTP,
+            DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
             implementations::{
@@ -147,7 +152,6 @@ mod tests {
             trusted_certs_paths: vec!["/etc/ca".into(), "/etc/ca2".into()],
             insecure_key: false,
             trusted_jwk_sets: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "coco-as-grpc")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -183,13 +187,16 @@ mod tests {
                 dir_path: "/tmp/kbs-resource".into(),
             },
         ))],
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
             trusted_jwk_sets: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -227,13 +234,16 @@ mod tests {
             policy_path: DEFAULT_POLICY_PATH.into(),
         },
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["/etc/ca".into(), "/etc/ca2".into()],
             insecure_key: false,
             trusted_certs_paths: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -272,6 +282,10 @@ mod tests {
                 dir_path: "/tmp/kbs-resource".into(),
             },
         ))],
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/coco-as-grpc-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -307,13 +321,16 @@ mod tests {
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
             trusted_jwk_sets: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -350,13 +367,16 @@ mod tests {
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
             insecure_key: false,
             trusted_certs_paths: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -386,6 +406,10 @@ mod tests {
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
@@ -412,13 +436,16 @@ mod tests {
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
             insecure_key: false,
             trusted_certs_paths: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -444,13 +471,16 @@ mod tests {
         },
         policy_engine: PolicyEngineConfig::default(),
         plugins: Vec::new(),
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
             insecure_key: false,
             trusted_jwk_sets: vec![],
-            extra_teekey_paths: vec![],
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -488,6 +518,10 @@ mod tests {
                 dir_path: "/opt/confidential-containers/kbs/repository".into(),
             },
         ))],
+        trust_context: TrustContextConfig {
+            public_keys: Vec::new(),
+            private_key: None,
+        },
     })]
     fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
         let config = KbsConfig::try_from(Path::new(config_path)).unwrap();

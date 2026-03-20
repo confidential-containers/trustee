@@ -9,6 +9,7 @@
 //! * [PKCS_11 Specification v3.0](<https://docs.oasis-open.org/pkcs11/pkcs11-spec/v3.2/pkcs11-spec-v3.2.html>)
 //! * [PKCS_11 Base Specification v3.0](<https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/os/pkcs11-base-v3.0-os.html>)
 use crate::plugins::resource::{ResourceDesc, StorageBackend};
+use crate::trust_context::TrustContext;
 use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
@@ -128,6 +129,7 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        _trust_context: &TrustContext,
     ) -> Result<Vec<u8>> {
         let desc = path.join("/");
 
