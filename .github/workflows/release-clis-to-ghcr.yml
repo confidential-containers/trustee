@@ -74,7 +74,7 @@ jobs:
     - name: Build ${{ matrix.component }}
       run: |
         docker buildx build -f "${{ matrix.dockerfile }}" \
-          --build-arg ARCH="\$(uname -m)" --output ./ .
+          --build-arg ARCH="$(uname -m)" --output ./ .
 
     - name: Push ${{ matrix.component }} to ghcr.io
       run: |
