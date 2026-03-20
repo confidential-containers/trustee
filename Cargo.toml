@@ -32,10 +32,10 @@ chrono = "0.4.44"
 clap = { version = "4", features = ["derive"] }
 config = "0.15.19"
 educe = "0.6"
-ear = { git = "https://github.com/veraison/rust-ear.git", rev = "3d5fa46" }
+ear = "0.5.0"
 hex = "0.4.3"
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "b3f0851", default-features = false }
-kbs-types = "0.14.0"
+kbs-types = "0.15.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "b3f0851", default-features = false }
 jsonwebtoken = { version = "10", default-features = false, features = [
     "aws_lc_rs",
