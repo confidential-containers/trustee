@@ -51,11 +51,11 @@ Get a resource from the KBS (after attesting)
 Add a resource to the KBS
 
 ```shell
-./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-resource --path my_repo/resource_type/123abc --resource-file test_resource
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token set-resource --path my_repo/resource_type/123abc --resource-file test_resource
 ```
 
 Set a resource policy
 ```shell
-./kbs-client --url http://127.0.0.1:8080 config --auth-private-key ../../kbs/config/private.key  set-resource-policy --policy-file allow_all.rego
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token set-resource-policy --policy-file allow_all.rego
 ```
 

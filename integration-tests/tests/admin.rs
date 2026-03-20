@@ -9,7 +9,9 @@ use serial_test::serial;
 use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{
+    init_tracing, KbsConfigType, PolicyType, TestHarness, ADMIN_ROLE,
+};
 
 //
 // Set the kbs policy with the a valid admin private key
@@ -51,7 +53,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -64,7 +66,12 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("DenyAll authorization_mode is enabled") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
@@ -76,9 +83,9 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains(&format!("Role {ADMIN_ROLE} not allowed")) =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -135,7 +142,7 @@ async fn set_attestation_policy(
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -148,21 +155,28 @@ async fn set_attestation_policy(
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("DenyAll authorization_mode is enabled") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
 
     if test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin {
+        use integration_tests::common::ADMIN_ROLE;
+
         match res {
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains(&format!("Role {ADMIN_ROLE} not allowed")) =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -218,7 +232,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -231,21 +245,28 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e)
+                if e.to_string()
+                    .contains("DenyAll authorization_mode is enabled") =>
+            {
+                return Ok(())
+            }
             _ => (),
         }
     }
 
     if test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin {
+        use integration_tests::common::ADMIN_ROLE;
+
         match res {
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains(&format!("Role {ADMIN_ROLE} not allowed")) =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
