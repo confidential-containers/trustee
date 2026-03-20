@@ -19,7 +19,11 @@ storage_type = "LocalJson"
 backends.local_json.file_dir_path = "/opt/confidential-containers/trustee"
 
 [admin]
-type = "Simple"
+authorization_mode = "AuthenticatedAuthorization"
+
+[admin.authentication.bearer_jwt]
+
+[admin.authorization.regex_acl]
 
 [[plugins]]
 name = "resource"

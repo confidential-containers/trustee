@@ -17,11 +17,13 @@ duration_min = 5
 type = "BuiltIn"
 
 [admin]
-type = "Simple"
+authorization_mode = "AuthenticatedAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/kbs/kbs.pem"
+[admin.authentication.bearer_jwt]
+identity_providers = [{ public_key_uri = "/kbs/kbs.pem" }]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"

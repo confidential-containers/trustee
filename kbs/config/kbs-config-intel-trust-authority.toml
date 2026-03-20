@@ -2,8 +2,7 @@
 insecure_http = true
 
 [admin]
-# Do not use this in production.
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 [attestation_token]
 trusted_jwk_sets = ["https://portal.trustauthority.intel.com"]
