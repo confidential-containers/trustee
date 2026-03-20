@@ -7,38 +7,15 @@
 use anyhow::{anyhow, bail, Result};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use kbs_protocol::evidence_provider::NativeEvidenceProvider;
 use kbs_protocol::token_provider::TestTokenProvider;
 use kbs_protocol::KbsClientBuilder;
 use kbs_protocol::KbsClientCapabilities;
 use serde::Serialize;
 use serde_json::json;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::warn;
 
 const KBS_URL_PREFIX: &str = "kbs/v0";
-const ADMIN_TOKEN_EXPIRY_SECS: u64 = 7200;
-
-#[derive(Serialize)]
-struct AdminClaims {
-    exp: u64,
-    iat: u64,
-}
-
-fn sign_admin_token(auth_key: &str) -> Result<String> {
-    let encoding_key = EncodingKey::from_ed_pem(auth_key.as_bytes())?;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| anyhow!("System time error: {e}"))?
-        .as_secs();
-    let claims = AdminClaims {
-        iat: now,
-        exp: now + ADMIN_TOKEN_EXPIRY_SECS,
-    };
-    let token = encode(&Header::new(Algorithm::EdDSA), &claims, &encoding_key)?;
-    Ok(token)
-}
 
 /// Attestation and get a result token signed by attestation service
 /// Input parameters:
@@ -153,21 +130,19 @@ pub struct SetPolicyInput {
 /// Set attestation policy
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: Optional admin bearer token. If None, request is anonymous.
 /// - policy_bytes: Policy file content in `Vec<u8>`.
 /// - [policy_type]: Policy type. Default value is "rego".
 /// - [policy_id]: Policy ID. Default value is "default_cpu".
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_attestation_policy(
     url: &str,
-    auth_key: String,
+    admin_token: Option<String>,
     policy_bytes: Vec<u8>,
     policy_type: Option<String>,
     policy_id: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let token = sign_admin_token(&auth_key)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let set_policy_url = format!("{}/{KBS_URL_PREFIX}/attestation-policy", url);
@@ -184,13 +159,16 @@ pub async fn set_attestation_policy(
         policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
 
-    let res = http_client
+    let mut req = http_client
         .post(set_policy_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
-        .json::<SetPolicyInput>(&post_input)
-        .send()
-        .await?;
+        .json::<SetPolicyInput>(&post_input);
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
 
     match res.status() {
         reqwest::StatusCode::OK => Ok(()),
@@ -208,17 +186,15 @@ struct ResourcePolicyData {
 /// Set resource policy
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: Optional admin bearer token. If None, request is anonymous.
 /// - policy_bytes: Policy file content in `Vec<u8>`.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_resource_policy(
     url: &str,
-    auth_key: String,
+    admin_token: Option<String>,
     policy_bytes: Vec<u8>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let token = sign_admin_token(&auth_key)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let set_policy_url = format!("{}/{KBS_URL_PREFIX}/resource-policy", url);
@@ -226,13 +202,16 @@ pub async fn set_resource_policy(
         policy: URL_SAFE_NO_PAD.encode(policy_bytes.clone()),
     };
 
-    let res = http_client
+    let mut req = http_client
         .post(set_policy_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
-        .json::<ResourcePolicyData>(&post_input)
-        .send()
-        .await?;
+        .json::<ResourcePolicyData>(&post_input);
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
 
     if res.status() != reqwest::StatusCode::OK {
         bail!("Request Failed, Response: {:?}", res.text().await?);
@@ -243,29 +222,30 @@ pub async fn set_resource_policy(
 /// Set secret resource to KBS.
 /// Input parameters:
 /// - url: KBS server root URL.
-/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - admin_token: Optional admin bearer token. If None, request is anonymous.
 /// - resource_bytes: Resource data in `Vec<u8>`
 /// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 pub async fn set_resource(
     url: &str,
-    auth_key: String,
+    admin_token: Option<String>,
     resource_bytes: Vec<u8>,
     path: &str,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let token = sign_admin_token(&auth_key)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", url, path);
-    let res = http_client
+    let mut req = http_client
         .post(resource_url)
         .header("Content-Type", "application/octet-stream")
-        .bearer_auth(token)
-        .body(resource_bytes.clone())
-        .send()
-        .await?;
+        .body(resource_bytes.clone());
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
     match res.status() {
         reqwest::StatusCode::OK => Ok(()),
         _ => {
@@ -281,11 +261,9 @@ pub async fn set_sample_rv(
     url: String,
     key: String,
     value: serde_json::Value,
-    auth_key: String,
+    admin_token: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
-    let token = sign_admin_token(&auth_key)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
@@ -299,13 +277,16 @@ pub async fn set_sample_rv(
         "payload": provenance
     });
 
-    let res = http_client
+    let mut req = http_client
         .post(reference_value_url)
         .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
-        .body(message.to_string())
-        .send()
-        .await?;
+        .body(message.to_string());
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
 
     match res.status() {
         reqwest::StatusCode::OK => Ok(()),
@@ -317,12 +298,10 @@ pub async fn set_sample_rv(
 
 pub async fn get_rv(
     url: String,
-    auth_key: String,
+    admin_token: Option<String>,
     kbs_root_certs_pem: Vec<String>,
     reference_value_id: String,
 ) -> Result<String> {
-    let token = sign_admin_token(&auth_key)?;
-
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!(
@@ -330,12 +309,15 @@ pub async fn get_rv(
         url
     );
 
-    let res = http_client
+    let mut req = http_client
         .get(reference_value_url)
-        .header("Content-Type", "application/json")
-        .bearer_auth(token.clone())
-        .send()
-        .await?;
+        .header("Content-Type", "application/json");
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
 
     match res.status() {
         reqwest::StatusCode::OK => Ok(res.text().await?),

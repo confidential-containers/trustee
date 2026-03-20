@@ -51,7 +51,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -64,7 +64,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e) if e.to_string().contains("DenyAll mode is enabled") => return Ok(()),
             _ => (),
         }
     }
@@ -74,10 +74,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e)
-                if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
-            {
+            Err(e) if e.to_string().contains("Role not allowed") => {
                 return Ok(())
             }
             _ => (),
@@ -135,7 +132,7 @@ async fn set_attestation_policy(
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -148,7 +145,7 @@ async fn set_attestation_policy(
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e) if e.to_string().contains("DenyAll mode is enabled") => return Ok(()),
             _ => (),
         }
     }
@@ -158,10 +155,7 @@ async fn set_attestation_policy(
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e)
-                if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
-            {
+            Err(e) if e.to_string().contains("Role not allowed") => {
                 return Ok(())
             }
             _ => (),
@@ -218,7 +212,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             }
             Err(e)
                 if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
+                    .contains("Cannot verify token with any of the issuers") =>
             {
                 return Ok(())
             }
@@ -231,7 +225,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints disabled, but admin operation was successful")
             }
-            Err(e) if e.to_string().contains("Admin endpoints disabled") => return Ok(()),
+            Err(e) if e.to_string().contains("DenyAll mode is enabled") => return Ok(()),
             _ => (),
         }
     }
@@ -241,10 +235,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
             std::result::Result::Ok(_) => {
                 bail!("Admin endpoints are restricted, but admin operation was successful.")
             }
-            Err(e)
-                if e.to_string()
-                    .contains("Admin Token could not be verified for any admin persona") =>
-            {
+            Err(e) if e.to_string().contains("Role not allowed") => {
                 return Ok(())
             }
             _ => (),
