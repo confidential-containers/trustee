@@ -547,7 +547,7 @@ dependencies = [
  "const_format",
  "crypto",
  "hex",
- "kbs-types",
+ "kbs-types 0.14.0",
  "serde",
  "serde_json",
  "sha2",
@@ -573,10 +573,10 @@ dependencies = [
  "canon-json",
  "cfg-if",
  "clap",
- "ear 0.4.0 (git+https://github.com/veraison/rust-ear.git?rev=3d5fa46)",
+ "ear 0.5.0",
  "hex",
  "jsonwebtoken 10.3.0",
- "kbs-types",
+ "kbs-types 0.15.0",
  "openssl",
  "prost",
  "reference-value-provider-service",
@@ -623,7 +623,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle",
- "kbs-types",
+ "kbs-types 0.14.0",
  "num-traits",
  "nvml-wrapper 0.11.0 (git+https://github.com/rust-nvml/nvml-wrapper?rev=7e0752f331)",
  "occlum_dcap",
@@ -1068,7 +1068,7 @@ dependencies = [
  "ciborium",
  "clap",
  "cose-rust",
- "ear 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ear 0.4.0",
  "hex",
  "hex-literal",
  "jsonwebtoken 9.3.1",
@@ -1530,7 +1530,7 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr",
- "kbs-types",
+ "kbs-types 0.14.0",
  "p256",
  "p521",
  "rand 0.8.5",
@@ -2015,8 +2015,9 @@ dependencies = [
 
 [[package]]
 name = "ear"
-version = "0.4.0"
-source = "git+https://github.com/veraison/rust-ear.git?rev=3d5fa46#3d5fa4680865f363737b346a8722b01470016616"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aec2877d084955915f48086ae07f49f4c89e33e3826d1f7af33b342274f8100"
 dependencies = [
  "base64 0.22.1",
  "ciborium",
@@ -3442,7 +3443,7 @@ dependencies = [
  "hex",
  "josekit",
  "jsonwebtoken 10.3.0",
- "kbs-types",
+ "kbs-types 0.15.0",
  "kms",
  "mobc",
  "openssl",
@@ -3504,7 +3505,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b02b8dec349b64f7bc236309667cd6f8b4a9c7e5d7bc4677c38b0dd5333b46c"
 dependencies = [
  "base64 0.22.1",
- "ear 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ear 0.4.0",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sm3",
+ "strum 0.27.2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "kbs-types"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "010924a5f65328c9609598c895ea506c723e3c72e528aeaba0a9645d8330b718"
+dependencies = [
+ "base64 0.22.1",
+ "ear 0.5.0",
  "serde",
  "serde_json",
  "sha2",
@@ -3525,7 +3542,7 @@ dependencies = [
  "canon-json",
  "crypto",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.14.0",
  "reqwest 0.13.2",
  "resource_uri",
  "serde",
@@ -7388,14 +7405,14 @@ dependencies = [
  "cfg-if",
  "codicon",
  "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b67a07e)",
- "ear 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ear 0.4.0",
  "eventlog",
  "hex",
  "http-cache-reqwest",
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
  "jsonwebtoken 10.3.0",
- "kbs-types",
+ "kbs-types 0.15.0",
  "nvml-wrapper 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl",
  "reqwest 0.13.2",
