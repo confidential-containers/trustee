@@ -30,7 +30,7 @@ base64 = "0.22.1"
 cfg-if = "1.0.4"
 chrono = "0.4.44"
 clap = { version = "4", features = ["derive"] }
-config = "0.15.19"
+config = "0.15.22"
 educe = "0.6"
 ear = "0.5.0"
 hex = "0.4.3"
