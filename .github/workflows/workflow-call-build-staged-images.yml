@@ -18,9 +18,6 @@ on:
         description: 'GitHub token for GHCR'
         required: false 
 
-permissions:
-  contents: read
-
 jobs:
   validate-inputs:
     runs-on: ubuntu-24.04

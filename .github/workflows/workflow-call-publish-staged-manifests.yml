@@ -17,13 +17,8 @@ on:
         description: 'GitHub token for GHCR'
         required: true
 
-permissions:
-  contents: read
-
 jobs:
   publish:
-    permissions:
-      packages: write
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
