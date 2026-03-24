@@ -10,6 +10,8 @@ use kbs_types::{Challenge, Request};
 use tracing::warn;
 use uuid::Uuid;
 
+use crate::trust_context::TrustContext;
+
 pub(crate) static KBS_SESSION_ID: &str = "kbs-session-id";
 
 /// Finite State Machine model for RCAR handshake
@@ -22,7 +24,7 @@ pub(crate) enum SessionStatus {
     },
 
     Attested {
-        token: String,
+        trust_context: TrustContext,
         id: String,
         timeout: OffsetDateTime,
     },
@@ -83,11 +85,11 @@ impl SessionStatus {
         *self.timeout() < OffsetDateTime::now_utc()
     }
 
-    pub fn attest(&mut self, token: String) {
+    pub fn attest(&mut self, trust_context: TrustContext) {
         match self {
             SessionStatus::Authed { id, timeout, .. } => {
                 *self = SessionStatus::Attested {
-                    token,
+                    trust_context,
                     id: id.clone(),
                     timeout: *timeout,
                 };

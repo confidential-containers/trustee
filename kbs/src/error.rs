@@ -73,8 +73,11 @@ pub enum Error {
     #[error("Serialize/Deserialize failed")]
     SerdeError(#[from] serde_json::Error),
 
-    #[error("Attestation Token not found")]
-    TokenNotFound,
+    #[error("Trust Context error: {source}")]
+    TrustContextError {
+        #[source]
+        source: anyhow::Error,
+    },
 
     #[error("Token Verifier error")]
     TokenVerifierError(#[from] crate::token::Error),

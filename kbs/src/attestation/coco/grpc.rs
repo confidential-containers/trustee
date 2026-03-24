@@ -12,11 +12,18 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{Challenge, Tee};
 use mobc::{Manager, Pool};
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use tonic::transport::Channel;
 use tracing::info;
 
-use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::{
+    attestation::{
+        backend::{make_nonce, Attest, IndependentEvidence},
+        coco::parse_token_claims,
+    },
+    trust_context::{AttestationSummary, TrustContext},
+};
 
 use self::attestation::{
     attestation_service_client::AttestationServiceClient,
@@ -140,6 +147,15 @@ impl Attest for GrpcClientPool {
             .attestation_token;
 
         Ok(token)
+    }
+
+    fn claims_to_trust_context(&self, claims: Value) -> Result<TrustContext> {
+        let (tee_pubkey, allowed) = parse_token_claims(claims)?;
+        Ok(TrustContext {
+            attestation_summary: AttestationSummary { allowed },
+            tee_pubkey,
+            custom_claims: Value::default(),
+        })
     }
 
     async fn generate_challenge(

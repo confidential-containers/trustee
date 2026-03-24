@@ -21,6 +21,7 @@ use std::{
 use tempfile::tempdir_in;
 
 use crate::plugins::plugin_manager::ClientPlugin;
+use crate::trust_context::TrustContext;
 
 /// Default Nebula CA name
 const DEFAULT_NEBULA_CA_NAME: &str = "Trustee Nebula CA plugin";
@@ -401,6 +402,7 @@ impl ClientPlugin for NebulaCaPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        _trust_context: &TrustContext,
     ) -> Result<Vec<u8>> {
         if path.len() != 1 {
             bail!("Illegal path. Only one path segment is supported");

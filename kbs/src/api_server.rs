@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{
     http::{header::Header, Method},
@@ -11,7 +11,8 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
+use base64::{prelude::BASE64_URL_SAFE, Engine};
 use serde_json::json;
 use tracing::info;
 
@@ -26,6 +27,7 @@ use crate::{
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
     token::TokenVerifier,
+    trust_context::{SignedTrustContext, TrustContext, TrustContextManager},
     Error, Result,
 };
 
@@ -48,33 +50,45 @@ pub struct ApiServer {
     policy_engine: PolicyEngine,
     admin: Admin,
     config: KbsConfig,
-    token_verifier: TokenVerifier,
+    token_verifier: Arc<TokenVerifier>,
+    trust_context_manager: Arc<TrustContextManager>,
 }
 
 impl ApiServer {
-    async fn get_attestation_token(&self, request: &HttpRequest) -> anyhow::Result<String> {
+    async fn get_trust_context(
+        &self,
+        request: &HttpRequest,
+        trust_context_manager: Arc<TrustContextManager>,
+    ) -> anyhow::Result<TrustContext> {
         #[cfg(feature = "as")]
-        if let Ok(token) = self
+        if let Ok(trust_context) = self
             .attestation_service
-            .get_attest_token_from_session(request)
+            .get_trust_context_from_session(request)
             .await
         {
-            return Ok(token);
+            return Ok(trust_context);
         }
 
         let bearer = Authorization::<Bearer>::parse(request)
             .context("parse Authorization header failed")?
             .into_scheme();
 
-        let token = bearer.token().to_string();
+        let signed_trust_context = BASE64_URL_SAFE.decode(bearer.token())?;
+        let signed_trust_context: SignedTrustContext =
+            serde_json::from_slice(&signed_trust_context)
+                .context("Failed to deserialize trust context")?;
 
-        Ok(token)
+        let trust_context = trust_context_manager
+            .verify(signed_trust_context)
+            .context("Failed to verify trust context in header")?;
+        Ok(trust_context)
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
         let plugin_manager = PluginManager::try_from(config.plugins.clone())
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
-        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
+        let token_verifier =
+            Arc::new(TokenVerifier::from_config(config.attestation_token.clone()).await?);
         let policy_engine = PolicyEngine::new(&config.policy_engine).await?;
         let admin = Admin::try_from(config.admin.clone())?;
 
@@ -82,6 +96,13 @@ impl ApiServer {
         let attestation_service =
             crate::attestation::AttestationService::new(config.attestation_service.clone()).await?;
 
+        let trust_context_manager = Arc::new(
+            TrustContextManager::new(&config.trust_context).map_err(|e| {
+                Error::TrustContextError {
+                    source: anyhow!("Failed to initialize trust context manager: {}", e),
+                }
+            })?,
+        );
         BUILD_INFO.inc();
 
         Ok(Self {
@@ -90,6 +111,7 @@ impl ApiServer {
             policy_engine,
             admin,
             token_verifier,
+            trust_context_manager,
 
             #[cfg(feature = "as")]
             attestation_service,
@@ -212,7 +234,7 @@ pub(crate) async fn api(
         #[cfg(feature = "as")]
         "attest" if request.method() == Method::POST => core
             .attestation_service
-            .attest(&body, request)
+            .attest(&body, request, core.token_verifier.clone())
             .await
             .map_err(From::from),
         #[cfg(feature = "as")]
@@ -285,6 +307,13 @@ pub(crate) async fn api(
                     plugin_name: plugin_name.to_string(),
                 })?;
 
+            let trust_context = core
+                .get_trust_context(&request, core.trust_context_manager.clone())
+                .await
+                .map_err(|e| Error::TrustContextError {
+                    source: anyhow!("Failed to get trust context: {e}"),
+                })?;
+
             let body = body.to_vec();
             if plugin
                 .validate_auth(&body, &query, resource_path, request.method())
@@ -294,27 +323,28 @@ pub(crate) async fn api(
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        &trust_context,
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
-                // Plugin calls need to be authorized by the Token and policy
-                let token = core
-                    .get_attestation_token(&request)
-                    .await
-                    .map_err(|_| Error::TokenNotFound)?;
-
-                let claims = core.token_verifier.verify(token).await?;
-
-                let claim_str = serde_json::to_string(&claims)?;
+                // Build policy input from TrustContext (primary) plus raw claims (for compatibility).
+                let policy_input = json!({
+                    "trust_context": trust_context,
+                });
+                let policy_input_str = policy_input.to_string();
 
                 KBS_POLICY_EVALS.inc();
-                // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
-                    .evaluate(&policy_data_str, &claim_str)
+                    .evaluate(&policy_data_str, &policy_input_str)
                     .await
                     .inspect_err(|_| KBS_POLICY_ERRORS.inc())?
                 {
@@ -324,7 +354,13 @@ pub(crate) async fn api(
                 KBS_POLICY_APPROVALS.inc();
 
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        &trust_context,
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
                 if plugin
@@ -332,7 +368,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
-                    let public_key = core.token_verifier.extract_tee_public_key(claims)?;
+                    let public_key = trust_context.tee_pubkey;
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

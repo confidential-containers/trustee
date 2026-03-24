@@ -10,6 +10,8 @@ use actix_web::http::Method;
 use anyhow::Result;
 use serde::Deserialize;
 
+use crate::trust_context::TrustContext;
+
 use super::super::plugin_manager::ClientPlugin;
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -37,6 +39,7 @@ impl ClientPlugin for Sample {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
+        _trust_context: &TrustContext,
     ) -> Result<Vec<u8>> {
         Ok("sample plugin response".as_bytes().to_vec())
     }
