@@ -66,7 +66,7 @@ strum = { version = "0.28", features = ["derive"] }
 thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "1.0.6"
-tempfile = "3.25.0"
+tempfile = "3.27.0"
 tonic = "0.14"
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
