@@ -101,7 +101,7 @@ impl ApiServer {
                 false,
             )
             .await?;
-        let admin = Admin::try_from(config.admin.clone())?;
+        let admin = Admin::new(config.admin.clone()).await?;
 
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
@@ -365,7 +365,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|_| Error::TokenNotFound)?;
 
-                let claims = core.token_verifier.verify(token).await?;
+                let claims = core.token_verifier.verify(token)?;
 
                 let claim_str = serde_json::to_string(&claims)?;
 
