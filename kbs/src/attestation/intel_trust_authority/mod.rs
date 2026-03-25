@@ -7,7 +7,7 @@ use crate::{
         backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
         SELECTED_HASH_ALGORITHM_JSON_KEY, SUPPORTED_HASH_ALGORITHMS_JSON_KEY,
     },
-    token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
+    crypto::jwt::JwtVerifier,
 };
 use anyhow::*;
 use async_trait::async_trait;
@@ -156,7 +156,7 @@ pub struct IntelTrustAuthorityConfig {
 
 pub struct IntelTrustAuthority {
     config: IntelTrustAuthorityConfig,
-    token_verifier: JwkAttestationTokenVerifier,
+    token_verifier: JwtVerifier,
 }
 
 /// Build the ITA attestation request from a list of independent evidences.
@@ -353,8 +353,7 @@ impl Attest for IntelTrustAuthority {
 
         let _token = self
             .token_verifier
-            .verify(resp_data.token.clone())
-            .await
+            .verify(&resp_data.token)
             .context("Failed to verify attestation token")?;
 
         Ok(resp_data.token.clone())
@@ -442,12 +441,15 @@ impl Attest for IntelTrustAuthority {
 
 impl IntelTrustAuthority {
     pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
-        let token_verifier = JwkAttestationTokenVerifier::new(&AttestationTokenVerifierConfig {
-            extra_teekey_paths: vec![],
-            trusted_certs_paths: vec![],
-            trusted_jwk_sets: vec![config.certs_file.clone()],
-            insecure_key: true,
-        })
+        let trusted_jwk_sets = vec![config.certs_file.clone()];
+        let trusted_certs_paths: Vec<String> = Vec::new();
+        let trusted_pem_public_keys = Vec::new();
+        let token_verifier = JwtVerifier::new(
+            &trusted_jwk_sets,
+            &trusted_certs_paths,
+            &trusted_pem_public_keys,
+            true,
+        )
         .await
         .context("Failed to initialize token verifier")?;
 
