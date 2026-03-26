@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
-use key_value_storage::StorageBackendConfig;
+use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use rand::{thread_rng, Rng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use tracing::{debug, info};
 
-use crate::attestation::session::KBS_SESSION_ID;
+use crate::attestation::session::{SessionMap, KBS_SESSION_ID};
 use crate::prometheus::{
     ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
     AUTH_ERRORS, AUTH_REQUESTS, AUTH_SUCCESSES,
@@ -25,9 +25,11 @@ use crate::prometheus::{
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
-    session::{SessionMap, SessionStatus},
+    session::SessionStatus,
     Error, Result,
 };
+
+const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs-protocol-session";
 
 static KBS_MAJOR_VERSION: u64 = 0;
 static KBS_MINOR_VERSION: u64 = 4;
@@ -128,8 +130,8 @@ pub struct AttestationService {
     /// Attestation Module
     inner: Arc<dyn Attest>,
 
-    /// A concurrent safe map to keep status of RCAR status
-    session_map: Arc<SessionMap>,
+    /// A storage backend to keep session status of RCAR status
+    session_map: SessionMap,
 
     /// Maximum session expiration time.
     timeout: i64,
@@ -144,13 +146,14 @@ pub struct SetPolicyInput {
 impl AttestationService {
     pub async fn new(
         config: AttestationConfig,
-        _storage_backend_config: &StorageBackendConfig,
+        session_storage_backend_type: &KeyValueStorageType,
+        storage_backend_config: &StorageBackendConfig,
     ) -> Result<Self> {
         let inner = match config.attestation_service {
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
             AttestationServiceConfig::CoCoASBuiltIn(cfg) => {
                 let built_in_as =
-                    super::coco::builtin::BuiltInCoCoAs::new(cfg, _storage_backend_config)
+                    super::coco::builtin::BuiltInCoCoAs::new(cfg, storage_backend_config)
                         .await
                         .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
                 Arc::new(built_in_as) as _
@@ -171,20 +174,15 @@ impl AttestationService {
             }
         };
 
-        let session_map = Arc::new(SessionMap::new());
+        let session_storage_backend = storage_backend_config
+            .backends
+            .to_client_with_namespace(*session_storage_backend_type, KBS_SESSION_STORAGE_NAMESPACE)
+            .await
+            .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
-        tokio::spawn({
-            let session_map_clone = session_map.clone();
-            async move {
-                loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                    session_map_clone
-                        .sessions
-                        .retain_async(|_, v| !v.is_expired())
-                        .await;
-                }
-            }
-        });
+        let session_map = SessionMap::new(session_storage_backend);
+
+        // TODO: implement session storage cleanup
         Ok(Self {
             inner,
             timeout: config.timeout,
@@ -243,7 +241,7 @@ impl AttestationService {
             .cookie(session.cookie())
             .json(session.challenge());
 
-        self.session_map.insert(session);
+        self.session_map.insert(session).await?;
 
         Ok(response)
     }
@@ -274,12 +272,12 @@ impl AttestationService {
         let (tee, nonce) = {
             let session = self
                 .session_map
-                .sessions
-                .get_async(session_id)
+                .get(session_id)
                 .await
-                .ok_or(anyhow!("No cookie found"))
+                .inspect_err(|_| ATTESTATION_ERRORS.inc())
+                .context("Failed to get session")?
+                .ok_or(anyhow!("session not found"))
                 .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
-            let session = session.get();
 
             debug!("Session ID {}", session.id());
 
@@ -287,7 +285,7 @@ impl AttestationService {
                 bail!("session expired.");
             }
 
-            if let SessionStatus::Attested { token, .. } = session {
+            if let SessionStatus::Attested { token, .. } = &session {
                 debug!(
                     "Session {} is already attested. Skip attestation and return the old token",
                     session.id()
@@ -360,12 +358,12 @@ impl AttestationService {
 
         let mut session = self
             .session_map
-            .sessions
-            .get_async(session_id)
+            .get(session_id)
             .await
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to get session")?
             .ok_or(anyhow!("session not found"))
             .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
-        let session = session.get_mut();
 
         let tee_type_label = serde_json::to_string(&session.request().tee)?
             // it seems impossible to prevent serde from putting double-quotes
@@ -396,9 +394,11 @@ impl AttestationService {
         .context("Serialize token failed")?;
 
         session.attest(token);
+        let cookie = session.cookie();
+        self.session_map.insert(session).await?;
 
         Ok(HttpResponse::Ok()
-            .cookie(session.cookie())
+            .cookie(cookie)
             .content_type("application/json")
             .body(body))
     }
@@ -413,12 +413,12 @@ impl AttestationService {
 
         let session = self
             .session_map
-            .sessions
-            .get_async(cookie.value())
+            .get(cookie.value())
             .await
-            .context("session not found")?;
-
-        let session = session.get();
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to get session")?
+            .ok_or(anyhow!("session not found"))
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
 
         info!("Cookie {} request to get resource", session.id());
 
