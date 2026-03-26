@@ -18,6 +18,8 @@ on:
         description: 'GitHub token for GHCR'
         required: false 
 
+permissions: {}
+
 jobs:
   validate-inputs:
     runs-on: ubuntu-24.04
@@ -30,8 +32,10 @@ jobs:
             exit 1
           fi
   kbs:
-    if: inputs.image_group == 'kbs' || inputs.image_group == 'all'
+    if: (inputs.image_group == 'kbs' || inputs.image_group == 'all') && !inputs.push
     needs: validate-inputs
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -102,16 +106,101 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ inputs.push && secrets.GHCR_TOKEN || '' }}
+          ghcr_token: ""
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
           build_args: ${{ matrix.build_args }}
-          push: ${{ inputs.push }}
+          push: false
 
-  as:
-    if: inputs.image_group == 'as' || inputs.image_group == 'all'
+  kbs-push:
+    if: (inputs.image_group == 'kbs' || inputs.image_group == 'all') && inputs.push
     needs: validate-inputs
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: built-in AS
+            tag: kbs
+            docker_file: kbs/docker/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - name: built-in AS
+            tag: kbs
+            docker_file: kbs/docker/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
+          - name: built-in AS
+            tag: kbs
+            docker_file: kbs/docker/Dockerfile
+            platform: linux/arm64
+            instance: ubuntu-24.04-arm
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
+
+          - name: gRPC AS
+            tag: kbs-grpc-as
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - name: gRPC AS
+            tag: kbs-grpc-as
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
+          - name: gRPC AS
+            tag: kbs-grpc-as
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
+            platform: linux/arm64
+            instance: ubuntu-24.04-arm
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
+
+          - name: Intel Trust Authority AS
+            tag: kbs-ita-as
+            docker_file: kbs/docker/intel-trust-authority/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - name: Intel Trust Authority AS
+            tag: kbs-ita-as
+            docker_file: kbs/docker/intel-trust-authority/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
+
+          - name: RHEL UBI AS
+            tag: rhel-ubi
+            docker_file: kbs/docker/rhel-ubi/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Build ${{ matrix.tag }}
+        uses: ./.github/actions/build-single-image
+        with:
+          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          docker_file: ${{ matrix.docker_file }}
+          tag: ${{ matrix.tag }}
+          platform: ${{ matrix.platform }}
+          build_args: ${{ matrix.build_args }}
+          push: true
+  
+  as:
+    if: (inputs.image_group == 'as' || inputs.image_group == 'all') && !inputs.push
+    needs: validate-inputs
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -162,16 +251,81 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ inputs.push && secrets.GHCR_TOKEN || '' }}
+          ghcr_token: ""
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
           build_args: ${{ matrix.build_args }}
-          push: ${{ inputs.push }}
-  
-  rvps:
-    if: inputs.image_group == 'rvps' || inputs.image_group == 'all'
+          push: false
+
+  as-push:
+    if: (inputs.image_group == 'as' || inputs.image_group == 'all') && inputs.push
     needs: validate-inputs
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gRPC CoCo-AS
+            tag: coco-as-grpc
+            docker_file: attestation-service/docker/as-grpc/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64 --build-arg VERIFIER=all-verifier
+          - name: gRPC CoCo-AS
+            tag: coco-as-grpc
+            docker_file: attestation-service/docker/as-grpc/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x --build-arg VERIFIER=snp-verifier,nvidia-verifier,se-verifier
+          - name: gRPC CoCo-AS
+            tag: coco-as-grpc
+            docker_file: attestation-service/docker/as-grpc/Dockerfile
+            platform: linux/arm64
+            instance: ubuntu-24.04-arm
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64 --build-arg VERIFIER=cca-verifier
+
+          - name: RESTful CoCo-AS
+            tag: coco-as-restful
+            docker_file: attestation-service/docker/as-restful/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64 --build-arg VERIFIER=all-verifier
+          - name: RESTful CoCo-AS
+            tag: coco-as-restful
+            docker_file: attestation-service/docker/as-restful/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x --build-arg VERIFIER=snp-verifier,nvidia-verifier,se-verifier
+          - name: RESTful CoCo-AS
+            tag: coco-as-restful
+            docker_file: attestation-service/docker/as-restful/Dockerfile
+            platform: linux/arm64
+            instance: ubuntu-24.04-arm
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64 --build-arg VERIFIER=cca-verifier
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Build ${{ matrix.tag }}
+        uses: ./.github/actions/build-single-image
+        with:
+          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          docker_file: ${{ matrix.docker_file }}
+          tag: ${{ matrix.tag }}
+          platform: ${{ matrix.platform }}
+          build_args: ${{ matrix.build_args }}
+          push: true
+
+  rvps:
+    if: (inputs.image_group == 'rvps' || inputs.image_group == 'all') && !inputs.push
+    needs: validate-inputs
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -203,16 +357,62 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ inputs.push && secrets.GHCR_TOKEN || '' }}
+          ghcr_token: ""
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
           build_args: ${{ matrix.build_args }}
-          push: ${{ inputs.push }}
+          push: false
+
+  rvps-push:
+    if: (inputs.image_group == 'rvps' || inputs.image_group == 'all') && inputs.push
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: RVPS
+            tag: rvps
+            docker_file: rvps/docker/Dockerfile
+            platform: linux/amd64
+            instance: ubuntu-24.04
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - name: RVPS
+            tag: rvps
+            docker_file: rvps/docker/Dockerfile
+            platform: linux/s390x
+            instance: ubuntu-24.04-s390x
+            build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
+          - name: RVPS
+            tag: rvps
+            docker_file: rvps/docker/Dockerfile
+            platform: linux/arm64
+            instance: ubuntu-24.04-arm
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Build ${{ matrix.tag }}
+        uses: ./.github/actions/build-single-image
+        with:
+          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          docker_file: ${{ matrix.docker_file }}
+          tag: ${{ matrix.tag }}
+          platform: ${{ matrix.platform }}
+          build_args: ${{ matrix.build_args }}
+          push: true
 
   kbs-client:
-    if: inputs.image_group == 'kbs-client' || inputs.image_group == 'all'
+    if: (inputs.image_group == 'kbs-client' || inputs.image_group == 'all') && !inputs.push
     needs: validate-inputs
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -235,7 +435,40 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ inputs.push && secrets.GHCR_TOKEN || '' }}
+          ghcr_token: ""
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
-          push: ${{ inputs.push }}
+          push: false
+
+  kbs-client-push:
+    if: (inputs.image_group == 'kbs-client' || inputs.image_group == 'all') && inputs.push
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tag: kbs-client-image
+            docker_file: kbs/docker/kbs-client-image/Dockerfile
+            instance: ubuntu-24.04
+          - tag: kbs-client-image
+            docker_file: kbs/docker/kbs-client-image/Dockerfile
+            instance: ubuntu-24.04-s390x
+          - tag: kbs-client-image
+            docker_file: kbs/docker/kbs-client-image/Dockerfile
+            instance: ubuntu-24.04-arm
+    runs-on: ${{ matrix.instance }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Build ${{ matrix.tag }}
+        uses: ./.github/actions/build-single-image
+        with:
+          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          docker_file: ${{ matrix.docker_file }}
+          tag: ${{ matrix.tag }}
+          push: true
