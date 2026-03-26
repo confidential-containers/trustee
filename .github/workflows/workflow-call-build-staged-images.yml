@@ -13,10 +13,11 @@ on:
         type: boolean
         required: false
         default: false
-    secrets:
-      GHCR_TOKEN:
-        description: 'GitHub token for GHCR'
-        required: false 
+      ghcr_token:
+        description: "Token for GHCR push (required when push is true)"
+        type: string
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -24,11 +25,13 @@ jobs:
   validate-inputs:
     runs-on: ubuntu-24.04
     steps:
-      - name: Ensure GHCR_TOKEN is set when push is enabled
+      - name: Ensure ghcr_token is set when push is enabled
         if: ${{ inputs.push }}
+        env:
+          GHCR_TOKEN_INPUT: ${{ inputs.ghcr_token }}
         run: |
-          if [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
-            echo "Error: GHCR_TOKEN secret must be provided when 'push' is true."
+          if [ -z "${GHCR_TOKEN_INPUT}" ]; then
+            echo "Error: ghcr_token input must be provided when 'push' is true."
             exit 1
           fi
   kbs:
@@ -189,7 +192,7 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          ghcr_token: ${{ inputs.ghcr_token }}
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
@@ -314,7 +317,7 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          ghcr_token: ${{ inputs.ghcr_token }}
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
@@ -401,7 +404,7 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          ghcr_token: ${{ inputs.ghcr_token }}
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           platform: ${{ matrix.platform }}
@@ -468,7 +471,7 @@ jobs:
       - name: Build ${{ matrix.tag }}
         uses: ./.github/actions/build-single-image
         with:
-          ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          ghcr_token: ${{ inputs.ghcr_token }}
           docker_file: ${{ matrix.docker_file }}
           tag: ${{ matrix.tag }}
           push: true
