@@ -8,8 +8,7 @@ on:
     paths-ignore:
       - '**/*.md'
 
-permissions:
-  contents: read
+permissions: {}
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,6 +27,8 @@ jobs:
           - instance: s390x-large
             test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,pkcs11"
     runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -70,6 +71,8 @@ jobs:
   as:
     name: Attestation Service (AS)
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -111,6 +114,8 @@ jobs:
           - instance: ubuntu-24.04
           - instance: ubuntu-24.04-arm
     runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
