@@ -1,3 +1,5 @@
+session_storage_type = "memory"
+
 [http_server]
 sockets = ["0.0.0.0:8080"]
 # Ideally we should use some solution like cert-manager to issue let's encrypt based certificate:

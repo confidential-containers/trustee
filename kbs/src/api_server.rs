@@ -86,6 +86,10 @@ impl ApiServer {
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
 
+        info!(
+            "Using storage backend type: {:?}",
+            config.storage_backend.storage_type
+        );
         let policy_storage_backend = config
             .storage_backend
             .backends
@@ -106,6 +110,13 @@ impl ApiServer {
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
             config.attestation_service.clone(),
+            &config.session_storage_type.unwrap_or_else(|| {
+                info!(
+                    "Session storage type not configured, using storage backend type: {:?}",
+                    config.storage_backend.storage_type
+                );
+                config.storage_backend.storage_type
+            }),
             &config.storage_backend,
         )
         .await?;

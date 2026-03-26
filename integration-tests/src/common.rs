@@ -249,6 +249,7 @@ impl TestHarness {
                     postgres: None,
                 },
             },
+            session_storage_type: None,
             plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
         };
         // Spawn the KBS Server
