@@ -7,8 +7,7 @@ on:
       - '**/*.md'
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   # Common checkout + source archive for all e2e jobs
@@ -61,6 +60,8 @@ jobs:
   vault-e2e-test:
     name: Vault e2e
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     env:
       OS_VERSION: ubuntu-24.04
     steps:
@@ -105,6 +106,8 @@ jobs:
             target_arch: aarch64
             verifier: cca-verifier
     runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
     env:
        OS_VERSION: ${{ matrix.instance }}
     steps:

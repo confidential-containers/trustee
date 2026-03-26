@@ -26,8 +26,7 @@ on:
         default: ""
         description: features for kbs-client
 
-permissions:
-  contents: read
+permissions: {}
 
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
@@ -38,6 +37,7 @@ jobs:
   build-binaries:
     runs-on: ${{ fromJSON(inputs.runs-on-build) }}
     permissions:
+      contents: read
       packages: write
     env:
       OS_VERSION: ubuntu-24.04

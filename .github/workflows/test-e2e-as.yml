@@ -6,8 +6,7 @@ on:
     paths-ignore:
       - '**/*.md'
 
-permissions:
-  contents: read
+permissions: {}
 
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
@@ -20,6 +19,8 @@ jobs:
       fail-fast: false
     name: Attestation Service e2e
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
