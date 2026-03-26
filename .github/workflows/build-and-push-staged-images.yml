@@ -17,10 +17,9 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-    uses: ./.github/workflows/workflow-call-build-staged-images.yml
+    uses: ./.github/workflows/workflow-call-build-staged-images-pr.yml
     with:
       image_group: all
-      push: false
 
   build_staged_images_push:
     name: Build staged images (all) [push]
@@ -28,10 +27,9 @@ jobs:
     permissions:
       packages: write
       contents: read
-    uses: ./.github/workflows/workflow-call-build-staged-images.yml
+    uses: ./.github/workflows/workflow-call-build-staged-images-push.yml
     with:
       image_group: all
-      push: true
       ghcr_token: ${{ github.token }}
 
   publish_manifests:
