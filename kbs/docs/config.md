@@ -233,6 +233,7 @@ When using the unified storage backend configuration, KBS creates the following 
 |---------------|-----------|-------------|
 | `kbs` | KBS Policy Engine | Stores the things used by KBS, like KBS Resource Policy |
 | `repository` | Resource Plugin | Stores secret resources managed by the resource plugin |
+| `kbs-session` | KBS Attestation Session | Stores RCAR attestation session state |
 | `attestation-service-policy` | Built-in AS | Stores EAR policies for the built-in Attestation Service |
 | `reference-value` | Built-in AS RVPS | Stores reference values for the built-in RVPS |
 
@@ -242,6 +243,16 @@ For detailed configuration options and examples, see the [Key-Value Storage READ
 
 > [!NOTE]
 > All persistent storage is configured via `[storage_backend]`. If `[storage_backend]` is omitted, the default in-memory storage is used (data is not persisted across restarts).
+
+#### Optional Session Storage Type Override
+
+KBS supports an optional `session_storage_type` field for attestation session state.
+
+When `session_storage_type` is not configured, KBS falls back to `storage_backend.storage_type`.
+
+Backend-specific configuration is always reused from `storage_backend.backends`.
+
+The attestation session storage namespace is always `kbs-session`.
 
 ### Plugins Configuration
 
@@ -342,6 +353,7 @@ type = "InsecureAllowAll"
 # This single configuration will be used for:
 # - KBS policy engine (namespace: "kbs")
 # - Resource plugin storage (namespace: "repository")
+# - KBS attestation session storage (namespace: "kbs-session")
 # - Built-in AS policy storage (namespace: "attestation-service-policy")
 # - Built-in AS RVPS storage (namespace: "reference-value")
 [storage_backend]
