@@ -143,6 +143,25 @@ impl SessionMap {
         }
         Ok(Some(session))
     }
+
+    pub async fn cleanup_expired(&self) -> Result<()> {
+        let keys = self.storage.list().await?;
+        for key in keys {
+            let Some(value) = self.storage.get(&key).await? else {
+                continue;
+            };
+
+            let Ok(session) = serde_json::from_slice::<SessionStatus>(&value) else {
+                continue;
+            };
+
+            if session.is_expired() {
+                let _ = self.storage.delete(&key).await?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

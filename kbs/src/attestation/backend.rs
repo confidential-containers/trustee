@@ -15,7 +15,7 @@ use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::attestation::session::{SessionMap, KBS_SESSION_ID};
 use crate::prometheus::{
@@ -180,9 +180,38 @@ impl AttestationService {
             .await
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
-        let session_map = SessionMap::new(session_storage_backend);
-
-        // TODO: implement session storage cleanup
+        let session_map = SessionMap::new(session_storage_backend.clone());
+        // Start background cleanup of expired session records in the `kbs-session` namespace.
+        {
+            let cleanup_session_map = session_map.clone();
+            // Run periodic cleanup every minute when healthy.
+            let cleanup_interval = ::tokio::time::Duration::from_secs(60);
+            // Use exponential backoff on failures to avoid noisy retry loops during outages.
+            let cleanup_retry_initial_interval = ::tokio::time::Duration::from_secs(5);
+            let cleanup_retry_max_interval = ::tokio::time::Duration::from_secs(300);
+            ::tokio::spawn(async move {
+                let mut retry_interval = cleanup_retry_initial_interval;
+                loop {
+                    match cleanup_session_map.cleanup_expired().await {
+                        Ok(()) => {
+                            retry_interval = cleanup_retry_initial_interval;
+                            ::tokio::time::sleep(cleanup_interval).await;
+                        }
+                        Err(err) => {
+                            warn!(
+                                ?err,
+                                retry_secs = retry_interval.as_secs(),
+                                "failed to clean up expired session records"
+                            );
+                            ::tokio::time::sleep(retry_interval).await;
+                            retry_interval = retry_interval
+                                .saturating_mul(2)
+                                .min(cleanup_retry_max_interval);
+                        }
+                    }
+                }
+            });
+        }
         Ok(Self {
             inner,
             timeout: config.timeout,
@@ -282,6 +311,7 @@ impl AttestationService {
             debug!("Session ID {}", session.id());
 
             if session.is_expired() {
+                let _ = self.session_map.storage.delete(session_id).await?;
                 bail!("session expired.");
             }
 
