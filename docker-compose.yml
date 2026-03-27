@@ -70,30 +70,6 @@ services:
       "0.0.0.0:50003"
     ]
 
-  keyprovider:
-    image: ghcr.io/confidential-containers/coco-keyprovider:latest
-    environment:
-      - RUST_LOG
-    restart: always
-    ports:
-      - "50000:50000"
-    volumes:
-      - ./kbs/config:/opt/confidential-containers/kbs/user-keys
-    command: [
-      "coco_keyprovider",
-      "--socket",
-      "0.0.0.0:50000",
-      "--kbs",
-      "http://kbs:8080",
-      "--auth-private-key",
-      "/opt/confidential-containers/kbs/user-keys/private.key"
-    ]
-    depends_on:
-      kbs:
-        condition: service_started
-      setup:
-        condition: service_completed_successfully
-
   setup:
     image: alpine/openssl
     environment:
