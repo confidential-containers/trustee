@@ -71,7 +71,7 @@ services:
     ]
 
   keyprovider:
-    image: ghcr.io/confidential-containers/coco-keyprovider:latest
+    image: ghcr.io/confidential-containers/staged-images/coco-keyprovider:latest
     environment:
       - RUST_LOG
     restart: always
