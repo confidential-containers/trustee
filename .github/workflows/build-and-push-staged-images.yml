@@ -30,7 +30,8 @@ jobs:
     uses: ./.github/workflows/workflow-call-build-staged-images-push.yml
     with:
       image_group: all
-      ghcr_token: ${{ github.token }}
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
   publish_manifests:
     name: Publish multi-arch manifests
@@ -42,4 +43,5 @@ jobs:
     uses: ./.github/workflows/workflow-call-publish-staged-manifests.yml
     with:
       tags: '["kbs","kbs-grpc-as","coco-as-grpc","coco-as-restful","rvps","kbs-client-image"]'
-      ghcr_token: ${{ github.token }}
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}

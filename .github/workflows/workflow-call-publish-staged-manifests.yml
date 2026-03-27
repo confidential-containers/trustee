@@ -12,9 +12,9 @@ on:
         type: string
         required: false
         default: '["x86_64","aarch64","s390x"]'
+    secrets:
       ghcr_token:
         description: "Token for GHCR push"
-        type: string
         required: true
 
 permissions: {}
@@ -37,7 +37,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ inputs.ghcr_token }}
+          password: ${{ secrets.ghcr_token }}
 
       - name: Publish multi-arch manifest
         shell: bash
