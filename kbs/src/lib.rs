@@ -15,6 +15,8 @@ pub mod token;
 pub mod api_server;
 pub use api_server::ApiServer;
 
+pub(crate) mod crypto;
+
 pub mod error;
 pub mod plugins;
 pub use error::*;

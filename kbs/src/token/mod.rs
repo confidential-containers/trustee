@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use jwk::JwkAttestationTokenVerifier;
 use kbs_types::TeePubKey;
 use serde::Deserialize;
 use serde_json::Value;
 use tracing::debug;
 
+use crate::crypto::jwt::JwtVerifier;
+
 mod error;
-pub(crate) mod jwk;
 pub use error::*;
 
 pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/tdx/attester_runtime_data/tee-pubkey";
@@ -60,22 +60,27 @@ pub struct AttestationTokenVerifierConfig {
 
 #[derive(Clone)]
 pub struct TokenVerifier {
-    verifier: JwkAttestationTokenVerifier,
+    verifier: JwtVerifier,
     extra_teekey_paths: Vec<String>,
 }
 
 impl TokenVerifier {
-    pub async fn verify(&self, token: String) -> Result<Value> {
+    pub fn verify(&self, token: String) -> Result<Value> {
         self.verifier
-            .verify(token)
-            .await
+            .verify(&token)
             .map_err(|e| Error::TokenVerificationFailed { source: e })
     }
 
     pub async fn from_config(config: AttestationTokenVerifierConfig) -> Result<Self> {
-        let verifier = JwkAttestationTokenVerifier::new(&config)
-            .await
-            .map_err(|e| Error::TokenVerifierInitialization { source: e })?;
+        let verifier = JwtVerifier::new(
+            &config.trusted_jwk_sets,
+            &config.trusted_certs_paths,
+            &Vec::new(),
+            config.insecure_key,
+            false,
+        )
+        .await
+        .map_err(|e| Error::TokenVerifierInitialization { source: e })?;
 
         let mut extra_teekey_paths = config.extra_teekey_paths;
         extra_teekey_paths.push(TOKEN_TEE_PUBKEY_PATH_ITA.into());

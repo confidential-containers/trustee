@@ -20,7 +20,7 @@ type = "BuiltIn"
 
 [admin]
 # Do not use in production
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 [storage_backend]
 storage_type = "Memory"

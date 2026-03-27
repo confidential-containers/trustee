@@ -115,10 +115,7 @@ mod tests {
     use std::path::Path;
 
     use crate::{
-        admin::{
-            simple::{SimpleAdminConfig, SimplePersonaConfig},
-            AdminBackendType, AdminConfig,
-        },
+        admin::AdminConfig,
         config::{
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
@@ -142,6 +139,53 @@ mod tests {
     };
 
     use rstest::rstest;
+    use serde_json::json;
+
+    fn make_token_authorization_admin_config() -> AdminConfig {
+        serde_json::from_value(json!({
+            "mode": "TokenAuthorization",
+            "token_verifier": {
+                "type": "BearerJwt",
+                "idps": [
+                    {
+                        "issuer": "admin1-issuer",
+                        "public_key_uri": "/opt/confidential-containers/trustee/admin1-pubkey.pem",
+                    },
+                    {
+                        "issuer": "admin2-issuer",
+                        "public_key_uri": "/opt/confidential-containers/trustee/admin2-pubkey.pem",
+                    }
+                ]
+            },
+            "authorizer": {
+                "type": "RegexAcl",
+                "acls": [
+                    {
+                        "audience": "admin1",
+                        "allowed_endpoints": "^/kbs/v0/resource/.+$",
+                    },
+                    {
+                        "audience": "admin2",
+                        "allowed_endpoints": "^/kbs/v0/config/.+$",
+                    }
+                ]
+            }
+        }))
+        .expect("valid token authorization admin config")
+    }
+
+    fn make_token_authorization_admin_config_with_defaults() -> AdminConfig {
+        serde_json::from_value(json!({
+            "mode": "TokenAuthorization",
+            "token_verifier": {
+                "type": "BearerJwt"
+            },
+            "authorizer": {
+                "type": "RegexAcl"
+            }
+        }))
+        .expect("valid token authorization admin config with defaults")
+    }
 
     #[rstest]
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
@@ -170,10 +214,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -223,10 +264,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -268,10 +306,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -310,15 +345,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: vec![SimplePersonaConfig {
-                    id: "admin1".to_string(),
-                    public_key_path: "/opt/confidential-containers/trustee/admin1-pubkey.pem".into()
-                }],
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_token_authorization_admin_config(),
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -361,10 +388,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::InsecureAllowAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::InsecureAllowAll,
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::Memory,
             backends: KeyValueStorageStructConfig {
@@ -404,10 +428,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
@@ -430,10 +451,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
@@ -462,10 +480,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll,
         storage_backend: StorageBackendConfig::default(),
         plugins: Vec::new(),
     })]
@@ -495,12 +510,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: Vec::new(),
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_token_authorization_admin_config_with_defaults(),
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {

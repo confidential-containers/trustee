@@ -51,11 +51,19 @@ openssl req -x509 -nodes -days 365 \
   -config localhost.conf \
   -passin pass:
 ```
-## Generate resource retrieve key pair
+## Generate resource retrieve key pair and admin token
 
 ```bash
 openssl genpkey -algorithm ed25519 > private.key
 openssl pkey -in private.key -pubout -out public.pub
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+header='{"alg":"EdDSA","typ":"JWT"}'
+iat=$(date +%s); exp=$((iat + 315360000))
+payload="{\"issuer\":\"admin\",\"subject\":\"admin\",\"audiences\":[],\"iat\":${iat},\"exp\":${exp}}"
+h64=$(printf '%s' "$header" | b64url)
+p64=$(printf '%s' "$payload" | b64url)
+sig=$(printf '%s' "${h64}.${p64}" | openssl pkeyutl -sign -inkey private.key -rawin | b64url)
+printf '%s.%s.%s\n' "$h64" "$p64" "$sig" > admin-token
 ```
 
 ## Launch KBS server
@@ -68,9 +76,8 @@ private_key = "/etc/key.pem"
 certificate = "/etc/cert.pem"
 insecure_http = false
 
-[[admin.admin_backend.Simple.personas]]
-id = "admin"
-public_key_path = "/etc/public.pub"
+[admin]
+mode = "InsecureAllowAll"
 
 [attestation_token]
 insecure_key = true
@@ -122,7 +129,7 @@ echo testdata > dummy_data
 kbs-client --cert-file localhost.crt \
   --url https://localhost:8080 \
   config \
-  --auth-private-key private.key \
+  --admin-token-file admin-token \
   set-resource \
   --resource-file dummy_data \
   --path default/test/dummy

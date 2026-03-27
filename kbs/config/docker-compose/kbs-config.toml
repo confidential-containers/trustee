@@ -10,11 +10,17 @@ type = "coco_as_grpc"
 as_addr = "http://as:50004"
 
 [admin]
-type = "Simple"
+mode = "TokenAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "/opt/confidential-containers/kbs/user-keys/public.pub"
+[admin.token_verifier]
+type = "BearerJwt"
+idps = [
+    { issuer = "admin", public_key_uri = "/opt/confidential-containers/kbs/user-keys/public.pub" },
+]
+
+[admin.authorizer]
+type = "RegexAcl"
+acls = [{ audience = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "resource"

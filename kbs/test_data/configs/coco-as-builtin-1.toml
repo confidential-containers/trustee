@@ -15,7 +15,7 @@ sockets = ["127.0.0.1:8080"]
 insecure_http = false
 
 [admin]
-type = "DenyAll"
+mode = "DenyAll"
 
 [storage_backend]
 storage_type = "local_json"

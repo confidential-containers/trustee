@@ -28,6 +28,7 @@ TOKEN_CERT := $(WORK_DIR)/token-cert.pem
 TOKEN_CERT_CHAIN := $(WORK_DIR)/token-cert-chain.pem
 KBS_KEY := $(WORK_DIR)/kbs.key
 KBS_PEM := $(WORK_DIR)/kbs.pem
+ADMIN_TOKEN := $(WORK_DIR)/admin-token
 TEE_KEY := $(WORK_DIR)/tee.key
 HTTPS_KEY := $(WORK_DIR)/https.key
 HTTPS_CERT := $(WORK_DIR)/https.crt
@@ -143,6 +144,23 @@ $(KBS_KEY):
 $(KBS_PEM): $(KBS_KEY)
 	openssl pkey -in "$(KBS_KEY)" -pubout -out "$(KBS_PEM)"
 
+$(ADMIN_TOKEN): $(KBS_KEY)
+	@{ \
+		set -e; \
+		b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }; \
+		header='{"alg":"EdDSA","typ":"JWT"}'; \
+		iat=$$(date +%s); \
+		exp=$$((iat + 315360000)); \
+		payload="{\"iss\":\"admin\",\"sub\":\"admin\",\"aud\":[\"admin\"],\"iat\":$${iat},\"exp\":$${exp}}"; \
+		h64=$$(printf '%s' "$$header" | b64url); \
+		p64=$$(printf '%s' "$$payload" | b64url); \
+		msg_file=$$(mktemp); \
+		printf '%s' "$${h64}.$${p64}" > "$$msg_file"; \
+		sig=$$(openssl pkeyutl -sign -inkey "$(KBS_KEY)" -rawin -in "$$msg_file" | b64url); \
+		rm -f "$$msg_file"; \
+		printf '%s.%s.%s\n' "$$h64" "$$p64" "$$sig" > "$(ADMIN_TOKEN)"; \
+	}
+
 $(TEE_KEY):
 	openssl genrsa -traditional -out "$(TEE_KEY)" 2048
 
@@ -186,12 +204,12 @@ stop-resource-kbs: resource-kbs.PID
 	@printf "${BOLD}stop resource-kbs${SGR0}\n"
 	kill $$(cat $<) && rm $<
 
-test-bgcheck: client start-kbs
+test-bgcheck: client $(ADMIN_TOKEN) start-kbs
 	./client \
 		--url https://127.0.0.1:8080 \
 		--cert-file "$(HTTPS_CERT)" \
 		config \
-		--auth-private-key "$(KBS_KEY)" \
+		--admin-token-file "$(ADMIN_TOKEN)" \
 		set-resource-policy \
 		--policy-file <(echo "$$TEE_POLICY_REGO") && \
 	./client \
@@ -212,9 +230,9 @@ $(ATTESTATION_TOKEN): client $(TEE_KEY) start-kbs
 		--tee-key-file "$(TEE_KEY)" \
 		> "$(ATTESTATION_TOKEN)"
 
-test-passport: client $(ATTESTATION_TOKEN) start-resource-kbs
+test-passport: client $(ADMIN_TOKEN) $(ATTESTATION_TOKEN) start-resource-kbs
 	./client --url http://127.0.0.1:50002 \
-		config --auth-private-key "$(KBS_KEY)" \
+		config --admin-token-file "$(ADMIN_TOKEN)" \
 		set-resource-policy --policy-file <(echo "$$TEE_POLICY_REGO") && \
 	./client --url http://127.0.0.1:50002 get-resource \
 		--attestation-token "$(ATTESTATION_TOKEN)" \

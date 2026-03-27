@@ -15,7 +15,7 @@ type = "BuiltIn"
 
 [admin]
 # Do not use this in production.
-type = "InsecureAllowAll"
+mode = "InsecureAllowAll"
 
 # Unified storage backend configuration
 [storage_backend]
