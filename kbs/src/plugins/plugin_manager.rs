@@ -17,6 +17,9 @@ use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
 
+#[cfg(feature = "pki-vault-plugin")]
+use super::{PKIVaultPlugin, PKIVaultPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -74,6 +77,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
+
+    #[cfg(feature = "pki-vault-plugin")]
+    #[serde(alias = "pki_vault")]
+    PKIVaultPlugin(PKIVaultPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -85,6 +92,8 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
+            #[cfg(feature = "pki-vault-plugin")]
+            PluginsConfig::PKIVaultPlugin(_) => f.write_str("pki_vault"),
         }
     }
 }
@@ -114,6 +123,12 @@ impl PluginsConfig {
                 let nebula_ca = NebulaCaPlugin::try_from(nebula_ca_config)
                     .context("Initialize 'nebula-ca-plugin' failed")?;
                 Arc::new(nebula_ca) as _
+            }
+            #[cfg(feature = "pki-vault-plugin")]
+            PluginsConfig::PKIVaultPlugin(pkivault_config) => {
+                let pkivault_plugin = PKIVaultPlugin::try_from(pkivault_config)
+                    .context("Initialize 'PKI_Vault' plugin failed")?;
+                Arc::new(pkivault_plugin) as _
             }
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(pkcs11_config) => {
