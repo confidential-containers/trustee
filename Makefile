@@ -74,10 +74,10 @@ test-kbs-docker-e2e:
 	docker compose -f $(CURDIR)/docker-compose.yml --project-directory $$E2E_DIR up -d && \
 	cd $(CURDIR)/target/release && \
 	echo "shhhhh" > test-secret && \
-	./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource --path "test-org/test-repo/test-secret" --resource-file test-secret && \
-	! ./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret" && \
-	./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource-policy --policy-file "$(CURDIR)/deps/policy-engine/test_data/policy_2.rego" && \
-	./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret"
+	sudo ./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource --path "test-org/test-repo/test-secret" --resource-file test-secret && \
+	! sudo ./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret" && \
+	sudo ./kbs-client --url http://127.0.0.1:8080 config --admin-token-file $$E2E_DIR/kbs/config/docker-compose/admin-token set-resource-policy --policy-file "$(CURDIR)/deps/policy-engine/test_data/policy_2.rego" && \
+	sudo ./kbs-client --url http://127.0.0.1:8080 get-resource --path "test-org/test-repo/test-secret"
 
 # Attestation service e2e tests
 # Separate targets for installing dependencies and running tests
