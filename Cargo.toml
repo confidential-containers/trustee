@@ -34,9 +34,9 @@ config = "0.15.22"
 educe = "0.6"
 ear = "0.5.0"
 hex = "0.4.3"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "b3f0851", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "235ab8e", default-features = false }
 kbs-types = "0.15.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "b3f0851", default-features = false }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "235ab8e", default-features = false }
 jsonwebtoken = { version = "10", default-features = false, features = [
     "aws_lc_rs",
     "use_pem",
