@@ -60,7 +60,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.149"
 serde_with = { version = "3.17.0", features = ["base64", "hex"] }
 serial_test = { version = "3.4.0", features = ["async"] }
-sha2 = "0.10"
+sha2 = "0.11"
 shadow-rs = "1.7.0"
 strum = { version = "0.28", features = ["derive"] }
 thiserror = "2.0"
