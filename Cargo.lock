@@ -2257,7 +2257,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2 0.11.0",
- "sm3",
+ "sm3 0.5.0",
  "tokio",
  "tracing",
 ]
@@ -3547,7 +3547,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "sm3",
+ "sm3 0.4.2",
  "strum 0.27.2",
  "thiserror 2.0.18",
 ]
@@ -3563,7 +3563,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "sm3",
+ "sm3 0.4.2",
  "strum 0.27.2",
  "thiserror 2.0.18",
 ]
@@ -6243,6 +6243,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebb9a3b702d0a7e33bc4d85a14456633d2b165c2ad839c5fd9a8417c1ab15860"
 dependencies = [
  "digest 0.10.7",
+]
+
+[[package]]
+name = "sm3"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da6a89ba31723d185fd7413b98c576a575f356d9b84729d8ecb6ead60000a5b6"
+dependencies = [
+ "digest 0.11.2",
 ]
 
 [[package]]
