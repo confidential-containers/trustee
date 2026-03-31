@@ -48,6 +48,15 @@ pub(crate) static RESOURCE_WRITES_TOTAL: LazyLock<CounterVec> = LazyLock::new(||
     )
 });
 
+/// Resource Path Delete Metrics
+pub(crate) static RESOURCE_DELETES_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_resource_deletes_total",
+        "KBS resource delete count",
+        ["resource_path"]
+    )
+});
+
 /// KBS Web Server Requests Metrics
 pub(crate) static REQUEST_TOTAL: LazyLock<Counter> =
     LazyLock::new(|| make_counter!("kbs_http_requests_total", "Total HTTP requests count"));
@@ -196,6 +205,10 @@ static INSTANCE: LazyLock<Registry> = LazyLock::new(|| {
 
     registry
         .register(Box::new(RESOURCE_WRITES_TOTAL.clone()))
+        .unwrap();
+
+    registry
+        .register(Box::new(RESOURCE_DELETES_TOTAL.clone()))
         .unwrap();
     registry.register(Box::new(REQUEST_TOTAL.clone())).unwrap();
     registry

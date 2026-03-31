@@ -120,6 +120,20 @@ impl StorageBackend for VaultKvBackend {
 
         Ok(())
     }
+    async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()> {
+        let vault_path = format!(
+            "{}/{}/{}",
+            resource_desc.repository_name, resource_desc.resource_type, resource_desc.resource_tag
+        );
+
+        info!("Deleting secret from Vault path: {}", vault_path);
+
+        kv1::delete(&self.client, &self.mount_path, &vault_path)
+            .await
+            .context("Failed to delete secret from Vault")?;
+
+        Ok(())
+    }
 }
 
 impl VaultKvBackend {

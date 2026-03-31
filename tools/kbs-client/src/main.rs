@@ -151,6 +151,14 @@ enum ConfigCommands {
         resource_file: PathBuf,
     },
 
+    /// Delete confidential resource
+    DeleteResource {
+        /// KBS Resource path, e.g my_repo/resource_type/123abc
+        /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
+        #[clap(long, value_parser)]
+        path: String,
+    },
+
     /// Get reference value from RVPS given reference value ID
     GetReferenceValue {
         /// The ID of the reference value.
@@ -341,6 +349,16 @@ async fn main() -> Result<()> {
                         "Set resource success \n resource: {}",
                         STANDARD.encode(resource_bytes)
                     );
+                }
+                ConfigCommands::DeleteResource { path } => {
+                    kbs_client::delete_resource(
+                        &cli.url,
+                        auth_key.clone(),
+                        &path,
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!("Delete resource success");
                 }
                 ConfigCommands::SetSampleReferenceValue {
                     name,

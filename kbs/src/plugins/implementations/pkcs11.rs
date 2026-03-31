@@ -152,7 +152,7 @@ impl ClientPlugin for Pkcs11Backend {
     ) -> Result<bool> {
         match *method {
             Method::GET => Ok(false),
-            Method::POST => Ok(true),
+            Method::POST | Method::DELETE => Ok(true),
             _ => bail!("invalid method"),
         }
     }
@@ -217,6 +217,23 @@ impl StorageBackend for Pkcs11Backend {
 
         Ok(())
     }
+
+    async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()> {
+        let session = self.session.lock().await;
+
+        let attributes = vec![Attribute::Label(Vec::from(resource_desc.to_string()))];
+        let objects = session.find_objects(&attributes)?;
+
+        if objects.is_empty() {
+            bail!("Could not find object with label {}", resource_desc);
+        }
+
+        session
+            .destroy_object(objects[0])
+            .context("unable to destroy object")?;
+
+        Ok(())
+    }
 }
 
 impl Pkcs11Backend {
@@ -229,7 +246,11 @@ impl Pkcs11Backend {
                 self.write_secret_resource(tag, body).await?;
                 Ok(vec![])
             }
-            _ => bail!("Illegal HTTP method. Only supports `GET` and `POST`"),
+            Method::DELETE => {
+                self.delete_secret_resource(tag).await?;
+                Ok(vec![])
+            }
+            _ => bail!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`"),
         }
     }
 
