@@ -97,7 +97,7 @@ impl ApiServer {
         policy_engine
             .set_policy(
                 KBS_POLICY_ID,
-                include_str!("../sample_policies/deny_all.rego"),
+                include_str!("../sample_policies/default.rego"),
                 false,
             )
             .await?;
