@@ -177,7 +177,7 @@ loglevel: {env_filter}
 
     let server = match (cli.https_prikey, cli.https_pubkey_cert) {
         (Some(prikey), Some(pubkey_cert)) => {
-            let mut builder = SslAcceptor::mozilla_modern(SslMethod::tls())?;
+            let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
 
             let prikey = tokio::fs::read(prikey)
                 .await
