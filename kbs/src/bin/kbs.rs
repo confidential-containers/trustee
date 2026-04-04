@@ -20,6 +20,13 @@ shadow!(build);
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    // rustls 0.23 requires an explicit crypto provider when compiled with
+    // both ring and aws-lc-rs features. Install ring as the default.
+    #[cfg(feature = "external-plugin")]
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("info"),

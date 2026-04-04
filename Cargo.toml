@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "kbs",
+    "rust-sdk",
     "attestation-service",
     "rvps",
     "tools/kbs-client",
@@ -67,7 +68,7 @@ thiserror = "2.0"
 tokio = { version = "1", features = ["full"], default-features = false }
 toml = "1.0.6"
 tempfile = "3.27.0"
-tonic = "0.14"
+tonic = { version = "0.14", features = ["tls-webpki-roots"] }
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
 rand = "0.8.5"

@@ -6,7 +6,7 @@
 use std::sync::LazyLock;
 
 use prometheus::{
-    Counter, CounterVec, Gauge, Histogram, HistogramOpts, Opts, Registry, TextEncoder,
+    Counter, CounterVec, Gauge, Histogram, HistogramOpts, HistogramVec, Opts, Registry, TextEncoder,
 };
 
 macro_rules! make_counter {
@@ -165,6 +165,34 @@ pub(crate) static AUTH_ERRORS: LazyLock<Counter> = LazyLock::new(|| {
     )
 });
 
+/// External Plugin Requests Total
+pub(crate) static PLUGIN_REQUESTS_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_plugin_requests_total",
+        "Total requests to external plugins",
+        ["plugin_name"]
+    )
+});
+
+/// External Plugin Request Duration
+pub(crate) static PLUGIN_REQUEST_DURATION_SECONDS: LazyLock<HistogramVec> = LazyLock::new(|| {
+    let opts = HistogramOpts::new(
+        "kbs_plugin_request_duration_seconds",
+        "External plugin request duration in seconds",
+    )
+    .buckets(vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]);
+    HistogramVec::new(opts, &["plugin_name"]).unwrap()
+});
+
+/// External Plugin Errors Total
+pub(crate) static PLUGIN_ERRORS_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_plugin_errors_total",
+        "Total errors from external plugins",
+        ["plugin_name"]
+    )
+});
+
 /// KBS Web Server Active Connections
 pub(crate) static ACTIVE_CONNECTIONS: LazyLock<Gauge> = LazyLock::new(|| {
     let opts = Opts::new(
@@ -230,6 +258,15 @@ static INSTANCE: LazyLock<Registry> = LazyLock::new(|| {
     registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
     registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
     registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
+    registry
+        .register(Box::new(PLUGIN_REQUESTS_TOTAL.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(PLUGIN_REQUEST_DURATION_SECONDS.clone()))
+        .unwrap();
+    registry
+        .register(Box::new(PLUGIN_ERRORS_TOTAL.clone()))
+        .unwrap();
     registry
         .register(Box::new(ACTIVE_CONNECTIONS.clone()))
         .unwrap();

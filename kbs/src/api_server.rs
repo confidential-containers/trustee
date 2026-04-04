@@ -40,6 +40,9 @@ pub const KBS_POLICY_RULE: &str = "data.policy.allow";
 /// The name of the policy identifier for the KBS Resource Policy
 pub const KBS_POLICY_ID: &str = "resource-policy";
 
+/// Default HTTP status code used when a plugin does not specify one.
+const DEFAULT_PLUGIN_STATUS_CODE: u16 = 200;
+
 macro_rules! kbs_path {
     ($path:expr) => {
         format!("{}/{}", KBS_PREFIX, $path)
@@ -160,7 +163,9 @@ impl ApiServer {
                     .service(
                         web::resource([kbs_path!("{path:.*}")])
                             .route(web::get().to(api))
-                            .route(web::post().to(api)),
+                            .route(web::post().to(api))
+                            .route(web::put().to(api))
+                            .route(web::delete().to(api)),
                     )
                     .service(
                         web::resource("/metrics")
@@ -344,20 +349,61 @@ pub(crate) async fn api(
                     plugin_name: plugin_name.to_string(),
                 })?;
 
+            // Build plugin context from session/attestation state.
+            // When the attestation service is available, extract session_id,
+            // tee_type, and is_attested from the session map. Otherwise,
+            // fall back to default (no context).
+            #[cfg(feature = "as")]
+            let plugin_context = core.attestation_service.get_plugin_context(&request).await;
+            #[cfg(not(feature = "as"))]
+            let plugin_context = crate::plugins::PluginContext::default();
+
             let body = body.to_vec();
             if plugin
                 .validate_auth(&body, &query, resource_path, request.method())
                 .await
-                .map_err(|e| Error::PluginInternalError { source: e })?
+                .map_err(|e| {
+                    if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                        Error::PluginError {
+                            http_status: call_err.http_status,
+                            message: call_err.message.clone(),
+                        }
+                    } else {
+                        Error::PluginInternalError { source: e }
+                    }
+                })?
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
-                let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                let output = plugin
+                    .dispatch(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        &plugin_context,
+                    )
                     .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .map_err(|e| {
+                        if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                            Error::PluginError {
+                                http_status: call_err.http_status,
+                                message: call_err.message.clone(),
+                            }
+                        } else {
+                            Error::PluginInternalError { source: e }
+                        }
+                    })?;
 
-                Ok(HttpResponse::Ok().content_type("text/xml").body(response))
+                let status = output.status_code.unwrap_or(DEFAULT_PLUGIN_STATUS_CODE);
+                let content_type = output
+                    .content_type
+                    .unwrap_or_else(|| "text/xml".to_string());
+                let http_status = actix_web::http::StatusCode::from_u16(status)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(http_status)
+                    .content_type(content_type)
+                    .body(output.body))
             } else {
                 // Plugin calls need to be authorized by the Token and policy
                 let token = core
@@ -403,25 +449,57 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                let output = plugin
+                    .dispatch(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        &plugin_context,
+                    )
                     .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .map_err(|e| {
+                        if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                            Error::PluginError {
+                                http_status: call_err.http_status,
+                                message: call_err.message.clone(),
+                            }
+                        } else {
+                            Error::PluginInternalError { source: e }
+                        }
+                    })?;
                 if plugin
                     .encrypted(&body, &query, resource_path, request.method())
                     .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?
+                    .map_err(|e| {
+                        if let Some(call_err) = e.downcast_ref::<crate::error::PluginCallError>() {
+                            Error::PluginError {
+                                http_status: call_err.http_status,
+                                message: call_err.message.clone(),
+                            }
+                        } else {
+                            Error::PluginInternalError { source: e }
+                        }
+                    })?
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
                     let jwe =
-                        jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
+                        jwe(public_key, output.body).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;
                     return Ok(HttpResponse::Ok()
                         .content_type("application/json")
                         .body(res));
                 }
 
-                Ok(HttpResponse::Ok().content_type("text/xml").body(response))
+                let status = output.status_code.unwrap_or(DEFAULT_PLUGIN_STATUS_CODE);
+                let content_type = output
+                    .content_type
+                    .unwrap_or_else(|| "text/xml".to_string());
+                let http_status = actix_web::http::StatusCode::from_u16(status)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(http_status)
+                    .content_type(content_type)
+                    .body(output.body))
             }
         }
     }
