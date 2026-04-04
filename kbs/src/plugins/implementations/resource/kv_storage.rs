@@ -38,6 +38,19 @@ impl StorageBackend for KvStorage {
 
         Ok(())
     }
+    async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()> {
+        let ref_resource_path = format!(
+            "{}/{}/{}",
+            resource_desc.repository_name, resource_desc.resource_type, resource_desc.resource_tag
+        );
+
+        let deleted = self.storage.delete(&ref_resource_path).await?;
+        if deleted.is_none() {
+            bail!("resource not found: {}", ref_resource_path);
+        }
+
+        Ok(())
+    }
 }
 
 impl KvStorage {

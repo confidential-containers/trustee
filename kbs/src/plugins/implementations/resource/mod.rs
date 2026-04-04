@@ -42,7 +42,12 @@ impl ClientPlugin for ResourceStorage {
 
                 Ok(resource)
             }
-            _ => bail!("Illegal HTTP method. Only supports `GET` and `POST`"),
+            "DELETE" => {
+                let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
+                self.delete_secret_resource(resource_description).await?;
+                Ok(vec![])
+            }
+            _ => bail!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`"),
         }
     }
 
@@ -53,7 +58,7 @@ impl ClientPlugin for ResourceStorage {
         _path: &[&str],
         method: &Method,
     ) -> Result<bool> {
-        if method.as_str() == "POST" {
+        if method.as_str() == "POST" || method.as_str() == "DELETE" {
             return Ok(true);
         }
 

@@ -160,7 +160,8 @@ impl ApiServer {
                     .service(
                         web::resource([kbs_path!("{path:.*}")])
                             .route(web::get().to(api))
-                            .route(web::post().to(api)),
+                            .route(web::post().to(api))
+                            .route(web::delete().to(api)),
                     )
                     .service(
                         web::resource("/metrics")

@@ -12,7 +12,7 @@ use std::fmt;
 
 use crate::{
     plugins::resource::kv_storage,
-    prometheus::{RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
+    prometheus::{RESOURCE_DELETES_TOTAL, RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
 };
 
 #[cfg(feature = "vault")]
@@ -30,6 +30,9 @@ pub trait StorageBackend: Send + Sync {
 
     /// Write secret resource into repository
     async fn write_secret_resource(&self, resource_desc: ResourceDesc, data: &[u8]) -> Result<()>;
+
+    /// Delete secret resource from repository
+    async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -143,6 +146,13 @@ impl ResourceStorage {
         self.backend
             .write_secret_resource(resource_desc, data)
             .await
+    }
+
+    pub(crate) async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()> {
+        RESOURCE_DELETES_TOTAL
+            .with_label_values(&[&format!("{}", resource_desc)])
+            .inc();
+        self.backend.delete_secret_resource(resource_desc).await
     }
 
     pub(crate) async fn get_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {

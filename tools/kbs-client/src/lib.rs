@@ -274,6 +274,36 @@ pub async fn set_resource(
     }
 }
 
+/// Delete a secret resource from KBS.
+/// Input parameters:
+/// - url: KBS server root URL.
+/// - auth_key: KBS owner's authenticate private key (PEM string).
+/// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
+/// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
+pub async fn delete_resource(
+    url: &str,
+    auth_key: String,
+    path: &str,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<()> {
+    let token = sign_admin_token(&auth_key)?;
+
+    let http_client = build_http_client(kbs_root_certs_pem)?;
+
+    let resource_url = format!("{}/{KBS_URL_PREFIX}/resource/{}", url, path);
+    let res = http_client
+        .delete(resource_url)
+        .bearer_auth(token)
+        .send()
+        .await?;
+    match res.status() {
+        reqwest::StatusCode::OK => Ok(()),
+        _ => {
+            bail!("Request Failed, Response: {:?}", res.text().await?)
+        }
+    }
+}
+
 /// Set a reference value in the RVPS at <url>
 /// RVPS must be configured with the non-secure sample extractor
 /// The RVPS-tool should be used in production environments

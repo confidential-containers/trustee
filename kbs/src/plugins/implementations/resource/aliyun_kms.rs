@@ -47,6 +47,10 @@ impl StorageBackend for AliyunKmsBackend {
     ) -> Result<()> {
         todo!("Does not support!")
     }
+
+    async fn delete_secret_resource(&self, _resource_desc: ResourceDesc) -> Result<()> {
+        todo!("Does not support!")
+    }
 }
 
 impl AliyunKmsBackend {
