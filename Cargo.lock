@@ -3397,7 +3397,6 @@ dependencies = [
  "reqwest 0.13.2",
  "rsa",
  "rstest",
- "scc",
  "semver",
  "serde",
  "serde_json",

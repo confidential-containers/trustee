@@ -24,6 +24,13 @@ storage_type = "LocalFs"
 [storage_backend.backends.local_fs]
 dir_path = "/opt/confidential-containers/storage"
 
+# Optional session storage type override.
+# If omitted, KBS falls back to [storage_backend].storage_type.
+# Backend-specific config is always reused from [storage_backend.backends].
+# Session state is stored under namespace: "kbs-session".
+#
+# session_storage_type = "Memory"
+
 [[plugins]]
 name = "resource"
 type = "kvstorage"
