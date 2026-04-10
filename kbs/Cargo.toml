@@ -70,7 +70,7 @@ regex = "1.12.3"
 regorus.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 rsa.workspace = true
-semver = "1.0.16"
+semver = "1.0.28"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_with.workspace = true
