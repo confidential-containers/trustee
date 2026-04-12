@@ -1,0 +1,129 @@
+{{- if not .Values.secrets.useEphemeralGeneratedKeys }}
+{{- $_ := required "secrets.existingSecretName must be set when secrets.useEphemeralGeneratedKeys is false" (trim (default "" .Values.secrets.existingSecretName)) }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coco-trustee.names.kbs" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 1 .Values.kbs.replicaCount }}
+  selector:
+    matchLabels:
+      app: kbs
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.kbs.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: kbs
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+{{- include "coco-trustee.podHostAliases" . | nindent 6 }}
+      {{- with .Values.kbs.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- with .Values.kbs.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-as
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              until nc -z -w 2 {{ include "coco-trustee.names.as" . }} {{ include "coco-trustee.port.as" . }}; do
+                echo "waiting for AS at {{ include "coco-trustee.names.as" . }}:{{ include "coco-trustee.port.as" . }}";
+                sleep 2;
+              done
+      containers:
+        - name: kbs
+          {{- $st := include "coco-trustee.storage.type" . | trim }}
+          {{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+          {{- $needLocalFs := or (eq $st "LocalFs") (eq $st "local_fs") (eq $sst "LocalFs") (eq $sst "local_fs") }}
+          {{- $needLocalJson := or (eq $st "LocalJson") (eq $st "local_json") (eq $sst "LocalJson") (eq $sst "local_json") }}
+          {{- $needDataVolume := or $needLocalFs $needLocalJson }}
+          securityContext:
+            {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.kbs.image.repository }}:{{ .Values.kbs.image.tag }}"
+          imagePullPolicy: {{ .Values.kbs.image.pullPolicy }}
+          command:
+            - "/usr/local/bin/kbs"
+            - "--config-file"
+            - "/etc/kbs/kbs-config.toml"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+          ports:
+            - name: http
+              containerPort: {{ include "coco-trustee.port.kbs" . }}
+              protocol: TCP
+          {{- with .Values.kbs.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kbs
+            - name: user-keys
+              mountPath: /opt/confidential-containers/kbs/user-keys
+            {{- if $needLocalFs }}
+            - name: data
+              mountPath: {{ include "coco-trustee.storage.kbsLocalDir" . }}
+            {{- end }}
+            {{- if $needLocalJson }}
+            - name: data
+              mountPath: {{ include "coco-trustee.storage.localJsonDir" . }}
+            {{- end }}
+            - name: nebula-ca
+              mountPath: /opt/confidential-containers/kbs/nebula-ca
+            {{- range .Values.kbs.resourceRepository }}
+            - name: "{{ .repoName }}-{{ .type }}"
+              mountPath: "/opt/confidential-containers/kbs/repository/{{ .repoName }}/{{ .type }}"
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "coco-trustee.names.kbsConfig" . }}
+        - name: user-keys
+          secret:
+            secretName: {{ include "coco-trustee.userKeysSecretNameResolved" . | trim }}
+{{- include "coco-trustee.userKeysSecretVolumeItems" . | nindent 12 }}
+        {{- if $needDataVolume }}
+        {{- $kbsClaim := include "coco-trustee.persistence.kbsDataClaimName" . | trim }}
+        - name: data
+        {{- if $kbsClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $kbsClaim }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+        {{- end }}
+        - name: nebula-ca
+          emptyDir: {}
+        {{- range .Values.kbs.resourceRepository }}
+        - name: "{{ .repoName }}-{{ .type }}"
+          secret:
+            secretName: {{ .secretName }}
+        {{- end }}
+      {{- with .Values.kbs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kbs.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kbs.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

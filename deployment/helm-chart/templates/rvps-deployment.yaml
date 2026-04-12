@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coco-trustee.names.rvps" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 1 .Values.rvps.replicaCount }}
+  selector:
+    matchLabels:
+      app: reference-value-provider-service
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.rvps.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: reference-value-provider-service
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+{{- include "coco-trustee.podHostAliases" . | nindent 6 }}
+      {{- with .Values.rvps.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- with .Values.rvps.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: rvps
+          securityContext:
+            {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.rvps.image.repository }}:{{ .Values.rvps.image.tag }}"
+          imagePullPolicy: {{ .Values.rvps.image.pullPolicy }}
+          command:
+            - "rvps"
+            - "--config"
+            - "/etc/rvps.json"
+            - "--address"
+            - "0.0.0.0:{{ include "coco-trustee.port.rvps" . }}"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+          ports:
+            - name: tcp
+              containerPort: {{ include "coco-trustee.port.rvps" . }}
+              protocol: TCP
+          {{- with .Values.rvps.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/rvps.json
+              subPath: rvps.json
+            - name: reference-values
+              mountPath: /opt/confidential-containers/attestation-service/reference_values
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "coco-trustee.names.rvpsConfig" . }}
+        {{- $rvClaim := include "coco-trustee.persistence.rvpsRefClaimName" . | trim }}
+        - name: reference-values
+        {{- if $rvClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $rvClaim }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.rvps.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

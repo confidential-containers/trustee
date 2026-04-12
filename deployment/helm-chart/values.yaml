@@ -1,0 +1,115 @@
+# Default values for CoCo Trustee (Helm).
+# Intentionally small: fixed paths and many operational defaults live in templates (`_helpers.tpl`, workload YAML).
+# Override via `-f` / `--set` or add keys not listed here (Helm merges arbitrary values).
+
+nameOverride: ""
+fullnameOverride: ""
+
+log_level: info
+dnsHostAliasWorkaround: false
+
+# KBS protocol session store: Memory | LocalJson | LocalFs (empty = same as `storageBackend.type`).
+sessionStorageType: "Memory"
+
+# Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
+storageBackend:
+  type: LocalFs
+  localFs:
+    persistence:
+      kbs: ""
+      as: ""
+      rvps: ""
+  localJson:
+    persistence:
+      kbs: ""
+      as: ""
+      rvps: ""
+
+kbs:
+  config:
+    admin:
+      # JWT claims for bootstrap-generated admin token; must match [admin.authentication.bearer_jwt] and regex_acl role.
+      issuer: TrusteeInHelm
+      audience: KBS
+      role: admin
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    # Internal KBS Service remains ClusterIP. Set this to true to create an extra external LoadBalancer Service.
+    exposeLoadBalancer: false
+    port: 8080
+    loadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  resourceRepository: []
+
+as:
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 50004
+    loadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+rvps:
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/rvps
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 50003
+    loadBalancerType: internal
+    loadBalancerAnnotations: {}
+    publicLoadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# If `secrets.useEphemeralGeneratedKeys` is true, a Helm hook Job generates ephemeral demo keys into a release-scoped Secret.
+# The keygen image is used to generate the demo keys, and the kubectl image is used to create the release-scoped Secret.
+bootstrapUserKeysJob:
+  keygenImage:
+    repository: alpine/openssl
+    tag: "3.5.6"
+    pullPolicy: IfNotPresent
+  kubectlImage:
+    repository: quay.io/kata-containers/kubectl
+    tag: "20260112"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+secrets:
+  # When true, a Helm hook Job generates ephemeral demo keys into a release-scoped Secret.
+  # When false, you must pre-create a Secret (see README) and set existingSecretName.
+  useEphemeralGeneratedKeys: true
+  # Required when useEphemeralGeneratedKeys is false. Secret must contain keys:
+  # KBS_ADMIN_PRIVATE_KEY, KBS_ADMIN_PUBKEY, KBS_ADMIN_TOKEN (optional if you generate tokens locally),
+  # AS_TOKEN_SIGNING_PRIVATE_KEY, AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN
+  existingSecretName: ""
