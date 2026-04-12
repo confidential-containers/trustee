@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::extractors::ExtractorsConfig;
 
-pub const REFERENCE_VALUE_STORAGE_NAMESPACE: &str = "reference-value";
+pub const REFERENCE_VALUE_STORAGE_NAMESPACE: &str = "reference_value";
 
 /// Default version of Message
 static MESSAGE_VERSION: &str = "0.1.0";

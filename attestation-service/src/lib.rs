@@ -25,7 +25,7 @@ use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
 
-pub const AS_POLICY_STORAGE_NAMESPACE: &str = "attestation-service-policy";
+pub const AS_POLICY_STORAGE_NAMESPACE: &str = "attestation_service_policy";
 
 fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
     let mut buf = Vec::new();

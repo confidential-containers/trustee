@@ -128,7 +128,7 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 |----------|------|-------------|----------|---------|
 | `extractors` | Object | Optional configuration for provenance extractors | No | None |
 
-**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference-value` namespace from the unified storage backend.
+**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference_value` namespace from the unified storage backend.
 
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
@@ -233,9 +233,9 @@ When using the unified storage backend configuration, KBS creates the following 
 |---------------|-----------|-------------|
 | `kbs` | KBS Policy Engine | Stores the things used by KBS, like KBS Resource Policy |
 | `repository` | Resource Plugin | Stores secret resources managed by the resource plugin |
-| `kbs-session` | KBS Attestation Session | Stores RCAR attestation session state |
-| `attestation-service-policy` | Built-in AS | Stores EAR policies for the built-in Attestation Service |
-| `reference-value` | Built-in AS RVPS | Stores reference values for the built-in RVPS |
+| `kbs_protocol_session` | KBS Attestation Session | Stores RCAR attestation session state |
+| `attestation_service_policy` | Built-in AS | Stores EAR policies for the built-in Attestation Service |
+| `reference_value` | Built-in AS RVPS | Stores reference values for the built-in RVPS |
 
 The KBS Resource Policy will be stored inside `kbs` namespace with key `resource-policy`.
 
@@ -252,7 +252,7 @@ When `session_storage_type` is not configured, KBS falls back to `storage_backen
 
 Backend-specific configuration is always reused from `storage_backend.backends`.
 
-The attestation session storage namespace is always `kbs-session`.
+The attestation session storage namespace is always `kbs_protocol_session`.
 
 ### Plugins Configuration
 
@@ -353,9 +353,9 @@ type = "InsecureAllowAll"
 # This single configuration will be used for:
 # - KBS policy engine (namespace: "kbs")
 # - Resource plugin storage (namespace: "repository")
-# - KBS attestation session storage (namespace: "kbs-session")
-# - Built-in AS policy storage (namespace: "attestation-service-policy")
-# - Built-in AS RVPS storage (namespace: "reference-value")
+# - KBS attestation session storage (namespace: "kbs_protocol_session")
+# - Built-in AS policy storage (namespace: "attestation_service_policy")
+# - Built-in AS RVPS storage (namespace: "reference_value")
 [storage_backend]
 storage_type = "LocalFs"
 

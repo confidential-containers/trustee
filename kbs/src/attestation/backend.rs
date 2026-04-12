@@ -29,7 +29,7 @@ use super::{
     Error, Result,
 };
 
-const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs-protocol-session";
+const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
 
 static KBS_MAJOR_VERSION: u64 = 0;
 static KBS_MINOR_VERSION: u64 = 4;
@@ -181,7 +181,7 @@ impl AttestationService {
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
         let session_map = SessionMap::new(session_storage_backend.clone());
-        // Start background cleanup of expired session records in the `kbs-session` namespace.
+        // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
         {
             let cleanup_session_map = session_map.clone();
             // Run periodic cleanup every minute when healthy.

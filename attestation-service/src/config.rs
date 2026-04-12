@@ -25,8 +25,8 @@ pub struct Config {
 
     /// Unified storage backend configuration for all storage needs in CoCo AS.
     /// When provided, this will be used to create storage instances for:
-    /// - Built-in AS policy storage (instance: "attestation-service-policy")
-    /// - Built-in AS RVPS storage (instance: "reference-value")
+    /// - Built-in AS policy storage (instance: "attestation_service_policy")
+    /// - Built-in AS RVPS storage (instance: "reference_value")
     #[serde(default)]
     pub storage_backend: StorageBackendConfig,
 }

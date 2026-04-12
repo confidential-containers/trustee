@@ -122,7 +122,7 @@ When RVPS runs as a standalone service, it uses a single storage namespace:
 
 | Namespace Name | Component | Description |
 |----------------|-----------|-------------|
-| `reference-value` | RVPS | Stores reference values for software supply chain verification |
+| `reference_value` | RVPS | Stores reference values for software supply chain verification |
 
 For detailed configuration options and examples, see the [Key-Value Storage README](../deps/key-value-storage/README.md#unified-storage-backend-configuration).
 

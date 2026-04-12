@@ -61,7 +61,7 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 |----------|------|-------------|----------|---------|
 | `extractors` | Object | Optional configuration for provenance extractors | No | None |
 
-**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference-value` namespace from the unified storage backend.
+**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference_value` namespace from the unified storage backend.
 
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
@@ -448,8 +448,8 @@ When using the unified storage backend configuration, CoCo AS creates the follow
 
 | Namespace Name | Component | Description |
 |----------------|-----------|-------------|
-| `attestation-service-policy` | Attestation Token Broker | Stores EAR (Entity Attestation Report) policies |
-| `reference-value` | Built-in RVPS | Stores reference values for software supply chain verification |
+| `attestation_service_policy` | Attestation Token Broker | Stores EAR (Entity Attestation Report) policies |
+| `reference_value` | Built-in RVPS | Stores reference values for software supply chain verification |
 
 The unified storage backend configuration is optional. If not provided, CoCo AS uses the default storage backend (in-memory). For production, configure a persistent backend (e.g. LocalFs or Postgres) in the configuration file.
 

@@ -76,7 +76,7 @@ pub struct KbsConfig {
     /// When provided, this will be used to create storage instances for:
     /// - KBS itself (instance: "kbs")
     /// - Resource plugin storage (instance: [`plugins::RESOURCE_STORAGE_NAMESPACE`])
-    /// - Built-in AS policy storage (instance: [`attestation_service::CONFIG_POLICY_STORAGE_NAMESPACE`])
+    /// - Built-in AS policy storage (instance: [`attestation_service::AS_POLICY_STORAGE_NAMESPACE`])
     /// - Built-in AS RVPS storage (instance: [`rvps::REFERENCE_VALUE_STORAGE_NAMESPACE`])
     #[serde(default)]
     pub storage_backend: StorageBackendConfig,
