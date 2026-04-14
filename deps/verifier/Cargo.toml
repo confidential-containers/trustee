@@ -68,7 +68,7 @@ jsonwebkey = "0.4.0"
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 openssl = { version = "0.10.77", optional = true }
-pv = { version = "0.10.0", package = "s390_pv", optional = true }
+pv = { version = "0.12.0", package = "s390_pv", optional = true }
 scroll = { version = "0.13.0", default-features = false, features = [
     "derive",
 ], optional = true }

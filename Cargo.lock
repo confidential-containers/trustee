@@ -633,7 +633,7 @@ dependencies = [
  "picky-asn1 0.10.1",
  "picky-asn1-der 0.5.4",
  "picky-asn1-x509 0.15.2",
- "s390_pv",
+ "s390_pv 0.10.0",
  "scroll",
  "serde",
  "serde_json",
@@ -1948,7 +1948,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users 0.5.2",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2125,6 +2125,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum_dispatch"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "enumflags2"
 version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2168,7 +2180,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3937,7 +3949,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5462,7 +5474,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5529,7 +5541,7 @@ dependencies = [
  "security-framework 3.5.1",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5574,10 +5586,29 @@ dependencies = [
  "log",
  "openssl",
  "openssl-sys",
- "s390_pv_core",
+ "s390_pv_core 0.10.0",
  "serde",
  "thiserror 1.0.69",
  "zerocopy 0.7.35",
+]
+
+[[package]]
+name = "s390_pv"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73b3164010c1c8f2555721d3c2297158fc957e751d383b4e617610b40bf40ac6"
+dependencies = [
+ "byteorder",
+ "curl",
+ "enum_dispatch",
+ "foreign-types",
+ "log",
+ "openssl",
+ "openssl-sys",
+ "s390_pv_core 0.12.0",
+ "serde",
+ "thiserror 2.0.18",
+ "zerocopy 0.8.31",
 ]
 
 [[package]]
@@ -5592,6 +5623,21 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "zerocopy 0.7.35",
+]
+
+[[package]]
+name = "s390_pv_core"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba83bc04ef65f9a404af077f4e6b84d59569ae2ce6c473a923105059df79ec54"
+dependencies = [
+ "byteorder",
+ "libc",
+ "log",
+ "regex",
+ "serde",
+ "thiserror 2.0.18",
+ "zerocopy 0.8.31",
 ]
 
 [[package]]
@@ -6528,7 +6574,7 @@ dependencies = [
  "getrandom 0.4.1",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7301,7 +7347,7 @@ dependencies = [
  "reqwest 0.13.2",
  "reqwest-middleware",
  "rstest",
- "s390_pv",
+ "s390_pv 0.12.0",
  "scroll",
  "serde",
  "serde_json",
@@ -7578,7 +7624,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

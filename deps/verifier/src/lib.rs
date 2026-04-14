@@ -208,6 +208,20 @@ pub enum InitDataHash<'a> {
     NotProvided,
 }
 
+/// Trait for converting types to hex strings
+pub trait ToHex {
+    fn to_hex(&self) -> String;
+}
+
+impl ToHex for ReportData<'_> {
+    fn to_hex(&self) -> String {
+        match self {
+            ReportData::Value(bytes) => hex::encode(bytes),
+            ReportData::NotProvided => String::new(),
+        }
+    }
+}
+
 #[async_trait]
 pub trait Verifier {
     /// Verify the hardware signature.
