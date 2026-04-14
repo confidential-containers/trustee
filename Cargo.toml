@@ -41,7 +41,7 @@ jsonwebtoken = { version = "10", default-features = false, features = [
     "aws_lc_rs",
     "use_pem",
 ] }
-openssl = "0.10.75"
+openssl = "0.10.77"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
