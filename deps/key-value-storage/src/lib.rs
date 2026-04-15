@@ -30,6 +30,7 @@ pub struct SetParameters {
     pub overwrite: bool,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum SetResult {
     Inserted,
     AlreadyExists,

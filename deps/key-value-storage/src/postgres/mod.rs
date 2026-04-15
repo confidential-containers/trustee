@@ -177,16 +177,16 @@ impl KeyValueStorage for PostgresClient {
         );
         let value = query(&sql)
             .bind(key)
-            .fetch_one(&*self.pool)
+            .fetch_optional(&*self.pool)
             .await
             .map_err(|e| KeyValueStorageError::GetKeyFailed {
                 source: e.into(),
                 key: key.to_string(),
             })?;
 
-        if value.is_empty() {
+        let Some(value) = value else {
             return Ok(None);
-        }
+        };
 
         let value: Vec<u8> = value
             .try_get(VALUE_COLUMN)
@@ -246,11 +246,14 @@ mod tests {
         let res = client
             .set("test", b"test2", SetParameters { overwrite: false })
             .await;
-        assert!(res.is_err());
+        let res = res.unwrap();
+        assert_eq!(res, SetResult::AlreadyExists);
         let value = client.delete("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
         let keys = client.list().await.unwrap();
         assert!(keys.is_empty());
+        let value = client.get("test").await.unwrap();
+        assert_eq!(value, None);
     }
 
     #[test]
