@@ -4,7 +4,7 @@
 
 use crate::token::AttestationTokenVerifierConfig;
 use anyhow::{anyhow, bail, Context};
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve, Jwk};
 use jsonwebtoken::{decode, decode_header, jwk, Algorithm, DecodingKey, Header, Validation};
@@ -102,8 +102,15 @@ impl JwkAttestationTokenVerifier {
             let cert_content = fs::read(path).await.map_err(|_| {
                 JwksGetError::AccessFailed(format!("failed to read certificate {path}"))
             })?;
-            let cert = X509::from_pem(&cert_content)?;
-            trusted_certs.push(cert);
+            let stack = X509::stack_from_pem(&cert_content).map_err(|e| {
+                JwksGetError::AccessFailed(format!("failed to parse PEM stack in {path}: {e}"))
+            })?;
+            if stack.is_empty() {
+                bail!("no certificates found in {path}");
+            }
+            for cert in stack.iter() {
+                trusted_certs.push(cert.to_owned());
+            }
         }
 
         Ok(Self {
@@ -156,7 +163,10 @@ impl JwkAttestationTokenVerifier {
         }
 
         let pem = x5c[0].split('\n').collect::<String>();
-        let der = URL_SAFE_NO_PAD.decode(pem).context("Illegal x5c cert")?;
+        let der = STANDARD
+            .decode(pem.trim())
+            .or_else(|_| URL_SAFE_NO_PAD.decode(pem.trim()))
+            .context("Illegal x5c cert")?;
 
         let leaf_cert = X509::from_der(&der).context("Invalid x509 in x5c")?;
         // verify the public key matches the leaf cert
@@ -167,7 +177,10 @@ impl JwkAttestationTokenVerifier {
         let mut cert_chain = Stack::new()?;
         for cert in &x5c[1..] {
             let pem = cert.split('\n').collect::<String>();
-            let der = URL_SAFE_NO_PAD.decode(&pem).context("Illegal x5c cert")?;
+            let der = STANDARD
+                .decode(pem.trim())
+                .or_else(|_| URL_SAFE_NO_PAD.decode(pem.trim()))
+                .context("Illegal x5c cert")?;
 
             let cert = X509::from_der(&der).context("Invalid x509 in x5c")?;
             cert_chain.push(cert)?;
@@ -269,11 +282,75 @@ mod tests {
         let tmp_dir = tempfile::tempdir().expect("to get tmpdir");
         let jwks_file = tmp_dir.path().join("test.jwks");
 
-        let _ = std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
+        std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
         let jwtks = get_jwks_from_file_or_url(&p).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
+    }
+
+    #[rstest]
+    #[case::x5c_leaf_ok_self_signed_root(
+        "test_data/jwk/scenario01-trust.pem",
+        "test_data/jwk/scenario01-jwk.json",
+        true
+    )]
+    #[case::x5c_leaf_pubkey_mismatch_jwk(
+        "test_data/jwk/scenario02-trust.pem",
+        "test_data/jwk/scenario02-jwk.json",
+        false
+    )]
+    #[case::no_x5c(
+        "test_data/jwk/scenario03-trust.pem",
+        "test_data/jwk/scenario03-jwk.json",
+        false
+    )]
+    #[case::wrong_trust_anchor(
+        "test_data/jwk/scenario04-trust.pem",
+        "test_data/jwk/scenario04-jwk.json",
+        false
+    )]
+    #[case::x5c_leaf_intermediate_trusted_root(
+        "test_data/jwk/scenario05-trust.pem",
+        "test_data/jwk/scenario05-jwk.json",
+        true
+    )]
+    #[case::x5c_intermediates_permuted_trust_pem_shuffled(
+        "test_data/jwk/scenario06-trust.pem",
+        "test_data/jwk/scenario06-jwk.json",
+        true
+    )]
+    #[case::x5c_intermediates_include_part_trust_pem(
+        "test_data/jwk/scenario07-trust.pem",
+        "test_data/jwk/scenario07-jwk.json",
+        true
+    )]
+    #[tokio::test]
+    async fn test_verify_jwk_endorsement_scenarios(
+        #[case] trusted_pem_path: &str,
+        #[case] jwk_json_path: &str,
+        #[case] expect_ok: bool,
+    ) {
+        use crate::token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig};
+        use jsonwebtoken::jwk::Jwk;
+
+        let config = AttestationTokenVerifierConfig {
+            trusted_jwk_sets: vec![],
+            trusted_certs_paths: vec![trusted_pem_path.to_string()],
+            insecure_key: false,
+            extra_teekey_paths: vec![],
+        };
+        let verifier = JwkAttestationTokenVerifier::new(&config)
+            .await
+            .expect("verifier init");
+        let jwk_json = std::fs::read_to_string(jwk_json_path).expect("read jwk json");
+        let jwk: Jwk = serde_json::from_str(&jwk_json).expect("parse jwk");
+        let got = verifier.verify_jwk_endorsement(&jwk);
+        assert_eq!(
+            got.is_ok(),
+            expect_ok,
+            "unexpected outcome: {got:?} (trusted={trusted_pem_path}, jwk={jwk_json_path})"
+        );
     }
 }
