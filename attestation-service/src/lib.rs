@@ -9,7 +9,6 @@ pub mod rvps;
 use crate::rvps::RvpsClient;
 
 use base64::Engine;
-use canon_json::CanonicalFormatter;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 use key_value_storage::KeyValueStorageError;
 pub use serde_json::Value;
@@ -28,10 +27,7 @@ use crate::ear_token::EarAttestationTokenBroker;
 pub const AS_POLICY_STORAGE_NAMESPACE: &str = "attestation_service_policy";
 
 fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
-    let mut buf = Vec::new();
-    let mut ser = serde_json::Serializer::with_formatter(&mut buf, CanonicalFormatter::new());
-    value.serialize(&mut ser)?;
-    Ok(buf)
+    Ok(serde_json_canonicalizer::to_vec(&value)?)
 }
 
 pub type TeeEvidence = serde_json::Value;

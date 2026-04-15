@@ -591,7 +591,6 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "base64 0.22.1",
- "canon-json",
  "cfg-if",
  "clap",
  "ear",
@@ -609,6 +608,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "serde_json_canonicalizer",
  "serde_variant",
  "serial_test",
  "sha2 0.11.0",
@@ -5753,6 +5753,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
+name = "ryu-js"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd29631678d6fb0903b69223673e122c32e9ae559d0960a38d574695ebc0ea15"
+
+[[package]]
 name = "s390_pv"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6039,6 +6045,17 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_json_canonicalizer"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe52319a927259afbfa5180c5157cd8167edfd3e8c254f9558c7fef44c5649f2"
+dependencies = [
+ "ryu-js",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
