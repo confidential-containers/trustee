@@ -318,8 +318,23 @@ configuration := 0 if {
 	input.tpm
 }
 
-##### SE TODO
+##### IBM Secure Execution for Linux (SEL)
+# Only field existence is checked. No value check is necessary.
+# The SE verifier performs cryptographic verification including
+# measurements, signatures, and user_data binding.
+# If the field exists, it means the verifaction is successful.
+# This is a 'trust-the-verifier' approach.
+executables := 3 if {
+	input.se
+}
 
+hardware := 2 if {
+	input.se
+}
+
+configuration := 2 if {
+	input.se
+}
 
 #################################
 # EXTENSIONS
