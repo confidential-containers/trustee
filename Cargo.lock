@@ -2958,7 +2958,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -4833,7 +4833,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -4871,9 +4871,9 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5089,9 +5089,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "regorus"
-version = "0.5.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee058fce2fefa4eb9364b0a514296c70235f0f29bb92ec2c0d24766b837f08aa"
+checksum = "656c9768f1d2113590ebc05e2e342a9f76baa97a445f2928f24eec9ae1fb14ac"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5099,11 +5099,13 @@ dependencies = [
  "data-encoding",
  "lazy_static",
  "msvc_spectre_libs",
+ "num-bigint",
+ "num-traits",
  "rand 0.9.2",
  "regex",
- "scientific",
  "serde",
  "serde_json",
+ "spin",
  "thiserror 2.0.18",
 ]
 
@@ -5641,26 +5643,6 @@ dependencies = [
  "ref-cast",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "scientific"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38a4b339a8de779ecb098a772ecbba2ace74e23ed959a5b4f30631d8bf1799a8"
-dependencies = [
- "scientific-macro",
-]
-
-[[package]]
-name = "scientific-macro"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2ee4885492bb655bfa05d039cd9163eb8fe9f79ddebf00ca23a1637510c2fd2"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.111",
 ]
 
 [[package]]
