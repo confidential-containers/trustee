@@ -18,7 +18,7 @@ se-verifier = ["verifier/se-verifier"]
 nvidia-verifier = ["verifier/nvidia-verifier"]
 tpm-verifier = ["verifier/tpm-verifier"]
 
-rvps-grpc = ["prost", "tonic"]
+rvps-grpc = ["prost", "tonic", "mobc"]
 
 # For building gRPC CoCo-AS binary
 grpc-bin = ["clap", "prost", "tonic", "tonic-prost"]
@@ -47,6 +47,7 @@ hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
 key-value-storage.path = "../deps/key-value-storage"
+mobc = { workspace = true, optional = true }
 openssl.workspace = true
 policy-engine.path = "../deps/policy-engine"
 prost = { workspace = true, optional = true }

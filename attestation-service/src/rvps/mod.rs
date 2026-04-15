@@ -32,6 +32,10 @@ pub enum RvpsError {
     #[error("tonic transport error: {0}")]
     TonicTransport(#[from] tonic::transport::Error),
 
+    #[cfg(feature = "rvps-grpc")]
+    #[error("gRPC pool error: {0}")]
+    GrpcPool(#[from] mobc::Error<anyhow::Error>),
+
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
 }

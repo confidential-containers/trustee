@@ -1,7 +1,8 @@
+use mobc::{Manager, Pool};
 use serde::Deserialize;
 use serde_json::Value;
-use thiserror::Error;
-use tokio::sync::Mutex;
+use tonic::transport::Channel;
+use tracing::{debug, info};
 
 use self::rvps_api::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
@@ -26,26 +27,35 @@ fn default_address() -> String {
     "127.0.0.1:50003".into()
 }
 
-#[derive(Error, Debug)]
-pub enum GrpcRvpsError {
-    #[error("Returned status: {0}")]
-    Status(#[from] tonic::Status),
-
-    #[error("tonic transport error: {0}")]
-    TonicTransport(#[from] tonic::transport::Error),
-}
+/// The default pool size for the RVPS client.
+const DEFAULT_RVPS_POOL_SIZE: u64 = 10;
 
 pub struct Agent {
-    client: Mutex<ReferenceValueProviderServiceClient<tonic::transport::Channel>>,
+    pool: Pool<GrpcManager>,
 }
 
 impl Agent {
     pub async fn new(addr: &str) -> Result<Self> {
-        Ok(Self {
-            client: Mutex::new(
-                ReferenceValueProviderServiceClient::connect(addr.to_string()).await?,
-            ),
-        })
+        info!(
+            "connect to remote RVPS [{}] with pool size {}",
+            addr, DEFAULT_RVPS_POOL_SIZE
+        );
+
+        let mut address = addr.to_string();
+        if !address.starts_with("http://") && !address.starts_with("https://") {
+            debug!("add http:// prefix to the rvps grpc address [{}]", address);
+            address = format!("http://{}", address);
+        }
+
+        let manager = GrpcManager { address };
+        let pool = Pool::builder()
+            .max_open(DEFAULT_RVPS_POOL_SIZE)
+            .build(manager);
+
+        // the mobc Pool builder does not establish an actual connection,
+        // so we need to test the connection and validate the parameters at launch time
+        let _client = pool.get().await?;
+        Ok(Self { pool })
     }
 }
 #[async_trait::async_trait]
@@ -54,12 +64,8 @@ impl RvpsApi for Agent {
         let req = tonic::Request::new(ReferenceValueRegisterRequest {
             message: message.to_string(),
         });
-        let _ = self
-            .client
-            .lock()
-            .await
-            .register_reference_value(req)
-            .await?;
+        let mut client = self.pool.get().await?;
+        let _ = client.register_reference_value(req).await?;
         Ok(())
     }
 
@@ -67,10 +73,8 @@ impl RvpsApi for Agent {
         let req = tonic::Request::new(ReferenceValueQueryRequest {
             reference_value_id: reference_value_id.to_string(),
         });
-        let res = self
-            .client
-            .lock()
-            .await
+        let mut client = self.pool.get().await?;
+        let res = client
             .query_reference_value(req)
             .await?
             .into_inner()
@@ -83,5 +87,29 @@ impl RvpsApi for Agent {
             }
             None => Ok(None),
         }
+    }
+}
+
+pub struct GrpcManager {
+    address: String,
+}
+
+#[async_trait::async_trait]
+impl Manager for GrpcManager {
+    type Connection = ReferenceValueProviderServiceClient<Channel>;
+    type Error = anyhow::Error;
+
+    async fn connect(&self) -> std::result::Result<Self::Connection, Self::Error> {
+        let channel = Channel::from_shared(self.address.clone())?
+            .connect()
+            .await?;
+        Ok(ReferenceValueProviderServiceClient::new(channel))
+    }
+
+    async fn check(
+        &self,
+        conn: Self::Connection,
+    ) -> std::result::Result<Self::Connection, Self::Error> {
+        Ok(conn)
     }
 }

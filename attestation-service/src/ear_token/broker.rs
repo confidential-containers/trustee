@@ -22,7 +22,6 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
-use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -168,7 +167,7 @@ impl EarAttestationTokenBroker {
             // The cpu tee class is loaded as the default.
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
             let mut extensions = vec![];
-            if let Some(rvps_client) = &rvps_client {
+            if let Some(ref rvps_client) = rvps_client {
                 let rvps_client = rvps_client.clone();
                 let extension = RegorusExtension {
                     name: "query_reference_value".to_string(),
@@ -182,8 +181,6 @@ impl EarAttestationTokenBroker {
                             .context("query_reference_value extension parameter must be a string")?
                             .to_string();
                         debug!("query reference value from RVPS: {id}");
-                        let (tx, rx) = mpsc::channel::<Result<Option<serde_json::Value>>>();
-
                         let fut = async |rvps_client: RvpsClient,
                                          reference_value_id: String|
                                -> Result<_> {
@@ -197,30 +194,37 @@ impl EarAttestationTokenBroker {
 
                         let rvps_client = rvps_client.clone();
                         let reference_value_id = params[0].as_string()?.to_string();
-                        let _ = thread::spawn(move || {
+                        let handle = thread::spawn(move || {
                             let rt = tokio::runtime::Builder::new_current_thread()
                                 .enable_all()
                                 .build()
                                 .expect("failed to build runtime");
 
-                            let res = rt.block_on(fut(rvps_client, reference_value_id));
-
-                            tx.send(res)
+                            rt.block_on(async move {
+                                tokio::time::timeout(
+                                    Duration::from_secs(10),
+                                    fut(rvps_client, reference_value_id),
+                                )
+                                .await
+                                .map_err(|e| {
+                                    anyhow!("Get Reference Value from RVPS timeout: {e:?}")
+                                })?
+                            })
                         });
 
-                        // We wait for 10 seconds at most.
-                        match rx.recv_timeout(Duration::from_secs(10)) {
-                            Ok(Ok(Some(v))) => {
+                        match handle.join().map_err(|e| {
+                            anyhow!("RVPS query reference value thread join failed: {e:?}")
+                        })? {
+                            Ok(Some(v)) => {
                                 let json_value = serde_json::to_value(v)?;
                                 let value: regorus::Value = serde_json::from_value(json_value)?;
                                 Ok(value)
                             }
-                            Ok(Ok(None)) => {
+                            Ok(None) => {
                                 warn!("No reference value found for the given id: {id}, use NULL as the returned value");
                                 Ok(regorus::Value::Null)
                             }
-                            Ok(Err(e)) => bail!("Get Reference Value from RVPS failed: {e:?}"),
-                            Err(e) => bail!("Get Reference Value from RVPS timeout: {e:?}"),
+                            Err(e) => bail!("Get Reference Value from RVPS failed: {e:?}"),
                         }
                     }),
                 };
