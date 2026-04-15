@@ -12,6 +12,7 @@ use tracing::warn;
 
 use super::{Message, ReferenceValue};
 
+pub mod corim;
 pub mod sample;
 pub mod swid;
 
@@ -52,6 +53,8 @@ impl Extractors {
             "swid".to_string(),
             Box::new(swid::SwidExtractor::new(swid_config)?),
         );
+
+        extractor_map.insert("corim".to_string(), Box::new(corim::CorimExtractor));
 
         #[cfg(feature = "in-toto")]
         extractor_map.insert(

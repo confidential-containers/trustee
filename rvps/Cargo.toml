@@ -25,6 +25,7 @@ required-features = ["bin"]
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
+hex.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, optional = true }
 config.workspace = true
@@ -32,6 +33,8 @@ key-value-storage.path = "../deps/key-value-storage"
 path-clean = { version = "1.0.1", optional = true }
 prost.workspace = true
 roxmltree = "0.21.1"
+ciborium = "0.2"
+corim-rs = { git = "https://github.com/veraison/corim-rs", rev = "8d297d090521e1a8ee40c6a8bda97ff708e7302c" }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { workspace = true, optional = true }
@@ -44,6 +47,7 @@ tonic.workspace = true
 tonic-prost.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
+uuid.workspace = true
 
 [build-dependencies]
 shadow-rs.workspace = true

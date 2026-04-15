@@ -1501,6 +1501,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
+name = "corim-rs"
+version = "0.1.0"
+source = "git+https://github.com/veraison/corim-rs?rev=8d297d090521e1a8ee40c6a8bda97ff708e7302c#8d297d090521e1a8ee40c6a8bda97ff708e7302c"
+dependencies = [
+ "base64 0.22.1",
+ "ciborium",
+ "coset",
+ "derive_more",
+ "oid",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "cose-rust"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1509,6 +1524,16 @@ dependencies = [
  "cbor-codec",
  "openssl",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "coset"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c8cc80f631f8307b887faca24dcc3abc427cd0367f6eb6188f6e8f5b7ad8fb"
+dependencies = [
+ "ciborium",
+ "ciborium-io",
 ]
 
 [[package]]
@@ -5188,8 +5213,11 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "ciborium",
  "clap",
  "config",
+ "corim-rs",
+ "hex",
  "key-value-storage",
  "path-clean",
  "prost",
@@ -5209,6 +5237,7 @@ dependencies = [
  "tonic-prost-build",
  "tracing",
  "tracing-subscriber",
+ "uuid",
  "walkdir",
 ]
 
