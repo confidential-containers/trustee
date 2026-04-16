@@ -139,6 +139,57 @@ jobs:
           VERIFIER: ${{ matrix.verifier }}
         run: make test-kbs-docker-e2e
 
+  # External plugin e2e
+  ext-plugin-e2e-test:
+    name: External Plugin e2e
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      OS_VERSION: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+
+    - name: Install Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+      with:
+        rustflags: ""
+        cache: false
+
+    - name: Set up rust build cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          target/
+        key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+
+    - name: Install TDX build dependencies
+      run: |
+        curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+        sudo apt-get update
+        sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
+
+    - name: Run external plugin unit tests
+      working-directory: kbs
+      run: make check TEST_FEATURES="external-plugin"
+
+    - name: Install e2e test dependencies
+      working-directory: kbs/test
+      run: make install-dev-dependencies
+
+    - name: Run external plugin e2e tests
+      working-directory: kbs/test
+      run: make e2e-ext-plugin
+
   # Azure vTPM TEE e2e (manual trigger only)
   tdx-e2e-test:
     name: KBS e2e (Azure TDX vTPM)
