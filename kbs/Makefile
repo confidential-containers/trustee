@@ -2,6 +2,7 @@ AS_TYPE ?= coco-as
 ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= false
+EXTERNAL_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -58,6 +59,10 @@ endif
 
 ifeq ($(VAULT), true)
   FEATURES := $(FEATURES),vault
+endif
+
+ifeq ($(EXTERNAL_PLUGIN), true)
+  FEATURES := $(FEATURES),external-plugin
 endif
 
 ifeq ($(CLI_FEATURES),sample_only)

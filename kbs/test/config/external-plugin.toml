@@ -1,0 +1,18 @@
+[http_server]
+sockets = ["127.0.0.1:8085"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[[plugins]]
+name = "external"
+backends = [
+  { name = "echo-test", endpoint = "http://127.0.0.1:50051", tls_mode = "insecure", timeout_ms = 5000 },
+]

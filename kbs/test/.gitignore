@@ -1,0 +1,9 @@
+# Build artifacts
+echo-plugin
+plugin-resource
+ext-plugin-kbs
+client
+
+# Runtime state
+work/
+*.PID

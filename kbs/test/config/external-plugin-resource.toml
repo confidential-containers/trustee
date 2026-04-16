@@ -1,0 +1,28 @@
+[http_server]
+sockets = ["127.0.0.1:8088"]
+insecure_http = true
+
+[attestation_token]
+trusted_certs_paths = ["./work/ca-cert.pem"]
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+
+[attestation_service.attestation_token_broker.signer]
+key_path = "./work/token.key"
+cert_path = "./work/token-cert-chain.pem"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[[plugins]]
+name = "external"
+backends = [
+  { name = "resource", endpoint = "http://127.0.0.1:50053", tls_mode = "insecure", timeout_ms = 5000 },
+]
