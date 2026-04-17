@@ -333,6 +333,33 @@ with the `[plugins.self_signed_ca]` properties.
 
 Detailed [documentation](#kbs/docs/plugins/nebula_ca.md).
 
+#### External Plugin Configuration
+
+External plugins extend KBS with custom gRPC-backed endpoints. A single `[[plugins]]` entry
+with `name = "external"` owns all backends via a `backends` inline array:
+
+```toml
+[[plugins]]
+name = "external"
+backends = [
+  { name = "my-plugin", endpoint = "https://localhost:50051", tls_mode = "tls", ca_cert_path = "/etc/kbs/plugin-ca.pem" },
+]
+```
+
+Each backend is reachable at `/kbs/v0/external/<name>/...`.
+
+**Per-backend fields:**
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `name` | string | Yes | — | Sub-plugin name used in URL routing |
+| `endpoint` | string | Yes | — | gRPC endpoint (`http://` for insecure, `https://` for TLS) |
+| `tls_mode` | string | No | `"tls"` | `"insecure"` or `"tls"` |
+| `ca_cert_path` | string | No | — | CA certificate path (required for `tls`) |
+| `timeout_ms` | integer | No | — | Per-request timeout in milliseconds |
+
+See [`ext_plugin.md`](ext_plugin.md) for deployment details and the gRPC protocol.
+
 ## Configuration Examples
 
 ### Using Storage Backend

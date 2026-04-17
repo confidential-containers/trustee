@@ -20,6 +20,15 @@ shadow!(build);
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    // tonic (pulled in by the external-plugin feature) brings aws-lc-rs into
+    // the dependency tree alongside ring. When rustls finds multiple crypto
+    // backends compiled in it requires an explicit default; install ring.
+    // install_default() returns Err if already set — .ok() makes this idempotent.
+    #[cfg(feature = "external-plugin")]
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("info"),

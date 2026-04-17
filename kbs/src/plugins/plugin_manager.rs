@@ -17,6 +17,9 @@ use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]
 use super::{Pkcs11Backend, Pkcs11Config};
 
+#[cfg(feature = "external-plugin")]
+use super::{ExternalPlugin, ExternalPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -74,6 +77,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
+
+    #[cfg(feature = "external-plugin")]
+    #[serde(alias = "external")]
+    ExternalPlugin(ExternalPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -85,6 +92,8 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
+            #[cfg(feature = "external-plugin")]
+            PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
         }
     }
 }
@@ -120,6 +129,13 @@ impl PluginsConfig {
                 let pkcs11 = Pkcs11Backend::try_from(pkcs11_config)
                     .context("Initialize 'pkcs11' plugin failed")?;
                 Arc::new(pkcs11) as _
+            }
+            #[cfg(feature = "external-plugin")]
+            PluginsConfig::ExternalPlugin(ext_config) => {
+                let external_plugin = ExternalPlugin::new(ext_config)
+                    .await
+                    .context("Initialize 'external' plugin failed")?;
+                Arc::new(external_plugin) as _
             }
         };
 

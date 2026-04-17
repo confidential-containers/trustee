@@ -5,6 +5,8 @@
 
 use std::sync::LazyLock;
 
+#[cfg(feature = "external-plugin")]
+use prometheus::HistogramVec;
 use prometheus::{
     Counter, CounterVec, Gauge, Histogram, HistogramOpts, Opts, Registry, TextEncoder,
 };
@@ -27,6 +29,14 @@ macro_rules! make_histogram {
     ($name:literal, $help:literal, $buckets:expr $(,)?) => {{
         let opts = HistogramOpts::new($name, $help).buckets($buckets);
         Histogram::with_opts(opts).unwrap()
+    }};
+}
+
+#[cfg(feature = "external-plugin")]
+macro_rules! make_histogram_vec {
+    ($name:literal, $help:literal, $buckets:expr, $labels:expr $(,)?) => {{
+        let opts = HistogramOpts::new($name, $help).buckets($buckets);
+        HistogramVec::new(opts, &$labels).unwrap()
     }};
 }
 
@@ -174,6 +184,37 @@ pub(crate) static AUTH_ERRORS: LazyLock<Counter> = LazyLock::new(|| {
     )
 });
 
+/// External Plugin Requests Total (Handle RPC calls, labeled by backend name)
+#[cfg(feature = "external-plugin")]
+pub(crate) static PLUGIN_REQUESTS_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_plugin_requests_total",
+        "Total Handle RPC calls to external plugin backends",
+        ["plugin_name"]
+    )
+});
+
+/// External Plugin Request Duration (Handle RPC latency, labeled by backend name)
+#[cfg(feature = "external-plugin")]
+pub(crate) static PLUGIN_REQUEST_DURATION_SECONDS: LazyLock<HistogramVec> = LazyLock::new(|| {
+    make_histogram_vec!(
+        "kbs_plugin_request_duration_seconds",
+        "External plugin Handle RPC latency in seconds",
+        vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0],
+        ["plugin_name"]
+    )
+});
+
+/// External Plugin Errors Total (all RPC errors, labeled by backend name)
+#[cfg(feature = "external-plugin")]
+pub(crate) static PLUGIN_ERRORS_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
+    make_counter_vec!(
+        "kbs_plugin_errors_total",
+        "Total gRPC errors from external plugin backends",
+        ["plugin_name"]
+    )
+});
+
 /// KBS Web Server Active Connections
 pub(crate) static ACTIVE_CONNECTIONS: LazyLock<Gauge> = LazyLock::new(|| {
     let opts = Opts::new(
@@ -243,6 +284,18 @@ static INSTANCE: LazyLock<Registry> = LazyLock::new(|| {
     registry.register(Box::new(AUTH_REQUESTS.clone())).unwrap();
     registry.register(Box::new(AUTH_SUCCESSES.clone())).unwrap();
     registry.register(Box::new(AUTH_ERRORS.clone())).unwrap();
+    #[cfg(feature = "external-plugin")]
+    registry
+        .register(Box::new(PLUGIN_REQUESTS_TOTAL.clone()))
+        .unwrap();
+    #[cfg(feature = "external-plugin")]
+    registry
+        .register(Box::new(PLUGIN_REQUEST_DURATION_SECONDS.clone()))
+        .unwrap();
+    #[cfg(feature = "external-plugin")]
+    registry
+        .register(Box::new(PLUGIN_ERRORS_TOTAL.clone()))
+        .unwrap();
     registry
         .register(Box::new(ACTIVE_CONNECTIONS.clone()))
         .unwrap();

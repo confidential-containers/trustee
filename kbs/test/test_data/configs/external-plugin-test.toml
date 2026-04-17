@@ -1,0 +1,26 @@
+# KBS configuration for external plugin integration testing
+
+[http_server]
+sockets = ["127.0.0.1:8080"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+# Built-in sample plugin
+[[plugins]]
+name = "sample"
+item = "test-value"
+
+# External gRPC backends registered under the single "external" gateway plugin
+[[plugins]]
+name = "external"
+backends = [
+  { name = "echo-plugin", endpoint = "http://127.0.0.1:50051", tls_mode = "insecure", timeout_ms = 5000 },
+]

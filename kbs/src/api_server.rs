@@ -172,6 +172,7 @@ impl ApiServer {
                         web::resource([kbs_path!("{path:.*}")])
                             .route(web::get().to(api))
                             .route(web::post().to(api))
+                            .route(web::put().to(api))
                             .route(web::delete().to(api)),
                     )
                     .service(
@@ -419,6 +420,7 @@ pub(crate) async fn api(
                     .handle(&body, &query, resource_path, request.method())
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
+
                 if plugin
                     .encrypted(&body, &query, resource_path, request.method())
                     .await
