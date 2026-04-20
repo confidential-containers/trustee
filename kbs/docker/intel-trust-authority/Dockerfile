@@ -2,6 +2,8 @@
 FROM docker.io/library/rust@sha256:e227f20ec42af3ea9a3c9c1dd1b2012aa15f12279b5e9d5fb890ca1c2bb5726c \
     AS builder
 ARG ALIYUN=false
+ARG VAULT=false
+ARG EXTERNAL_PLUGIN=false
 
 WORKDIR /usr/src/kbs
 COPY . .
@@ -9,7 +11,7 @@ COPY . .
 RUN apt-get update && apt install -y git cmake
 
 # Build and Install KBS
-RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} && \
+RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} VAULT=${VAULT} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
     make install-kbs
 
 # ubuntu:24.04
