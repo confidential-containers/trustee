@@ -4,7 +4,7 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} \
     AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
-ARG VAULT=false
+ARG VAULT=true
 ARG EXTERNAL_PLUGIN=false
 
 ENV DEBIAN_FRONTEND=noninteractive

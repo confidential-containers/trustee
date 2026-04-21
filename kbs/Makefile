@@ -1,7 +1,7 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
-VAULT ?= false
+VAULT ?= true
 EXTERNAL_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)

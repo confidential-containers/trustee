@@ -28,16 +28,13 @@ encryption at rest.
 
 ### 1. Enable the Vault Feature
 
-Build the KBS with the `vault` cargo feature enabled:
+The `vault` backend is enabled by default.
+
+To disable it:
 
 ```bash
 cd kbs
-
-# Using the Makefile
-make VAULT=true
-
-# Or directly with cargo
-cargo build --features vault
+make VAULT=false
 ```
 
 ### 2. Configure Vault or OpenBao Access
