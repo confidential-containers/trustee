@@ -48,7 +48,7 @@ actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
 aes-gcm = "0.10.1"
-aes-kw = "0.2.1"
+aes-kw = "0.3.0"
 anyhow.workspace = true
 async-trait.workspace = true
 backon = { version = "1.6", optional = true }
