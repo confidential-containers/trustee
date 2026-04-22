@@ -8,7 +8,7 @@ use aes_gcm::{
     aead::{generic_array::GenericArray, AeadMutInPlace},
     Aes256Gcm, KeyInit, Nonce,
 };
-use aes_kw::{Kek, KekAes256};
+use aes_kw::{KeyInit as AesKwKeyInit, KwAes256};
 use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
@@ -194,12 +194,12 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     let wrapping_key: [u8; 32] = wrapping_key
         .try_into()
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;
-    let wrapping_key: KekAes256 = Kek::new(&GenericArray::from(wrapping_key));
+    let wrapping_key = KwAes256::new(&wrapping_key.into());
     let mut encrypted_key = vec![0; 40];
     encrypted_key.resize(40, 0);
     let cek = cek.to_vec();
     wrapping_key
-        .wrap(&cek, &mut encrypted_key)
+        .wrap_key(&cek, &mut encrypted_key)
         .map_err(|e| anyhow!("failed to do AES wrapping: {e:?}"))?;
 
     let point = p256::EncodedPoint::from(encrypter_secret.public_key());
@@ -283,12 +283,12 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     let wrapping_key: [u8; 32] = wrapping_key
         .try_into()
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;
-    let wrapping_key: KekAes256 = Kek::new(&GenericArray::from(wrapping_key));
+    let wrapping_key = KwAes256::new(&wrapping_key.into());
     let mut encrypted_key = vec![0; 40];
     encrypted_key.resize(40, 0);
     let cek = cek.to_vec();
     wrapping_key
-        .wrap(&cek, &mut encrypted_key)
+        .wrap_key(&cek, &mut encrypted_key)
         .map_err(|e| anyhow!("failed to do AES wrapping: {e:?}"))?;
 
     let point = p521::EncodedPoint::from(encrypter_secret.public_key());
