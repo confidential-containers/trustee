@@ -420,7 +420,7 @@ mod tests {
     /// Also, you need to configure DCAP to work with alibaba cloud's PCCS.
     /// create `/tmp/sgx_test_qcnl.conf` with content
     /// ```json
-    /// {"pccs_url" :"https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/"}
+    /// {"collateral_service" :"https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/"}
     /// ```
     /// Test can be run using exported environment variable:
     /// ```QCNL_CONF_PATH=/tmp/sgx_test_qcnl.conf```
