@@ -98,7 +98,7 @@ http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, feat
     "manager-moka",
     "url-standard",
 ] }
-bitflags = { version = "2.11.0", features = ["serde"] }
+bitflags = { version = "2.11.1", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
 
