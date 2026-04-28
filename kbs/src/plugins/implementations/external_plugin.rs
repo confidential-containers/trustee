@@ -10,7 +10,7 @@
 //! the backend name and forwarding `path[1..]` to the matching backend.
 
 use actix_web::http::Method;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use backon::{ExponentialBuilder, Retryable};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -34,65 +34,69 @@ use plugin_api::{
 };
 
 /// TLS mode for the gRPC connection from KBS to the external plugin.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum TlsMode {
     /// Server-only TLS: client verifies server cert, no client cert.
-    Tls,
+    Tls { ca_cert_path: PathBuf },
     /// Plaintext: no encryption (development only, requires explicit opt-in).
+    #[default]
     Insecure,
 }
 
-impl Default for TlsMode {
-    fn default() -> Self {
-        // Secure-by-default: omitting tls_mode requires a CA cert.
-        TlsMode::Tls
+#[derive(Deserialize)]
+struct BackendConfigRaw {
+    name: String,
+    endpoint: String,
+    #[serde(default)]
+    timeout_ms: Option<u64>,
+    #[serde(default)]
+    ca_cert_path: Option<PathBuf>,
+}
+
+impl TryFrom<BackendConfigRaw> for BackendConfig {
+    type Error = anyhow::Error;
+
+    fn try_from(raw: BackendConfigRaw) -> Result<Self, Self::Error> {
+        let tls_mode = if raw.endpoint.starts_with("https://") {
+            let ca_cert_path = raw.ca_cert_path.ok_or(anyhow!(
+                "`https://` endpoint requires `ca_cert_path` (PEM file for server certificate verification)"
+            ))?;
+            TlsMode::Tls { ca_cert_path }
+        } else if raw.endpoint.starts_with("http://") {
+            TlsMode::Insecure
+        } else {
+            bail!("endpoint must start with `http://` or `https://`");
+        };
+
+        Ok(BackendConfig {
+            name: raw.name,
+            endpoint: raw.endpoint,
+            tls_mode,
+            timeout_ms: raw.timeout_ms,
+        })
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for BackendConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        BackendConfigRaw::deserialize(deserializer)
+            .and_then(|raw| raw.try_into().map_err(serde::de::Error::custom))
     }
 }
 
 /// Configuration for a single external gRPC backend.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BackendConfig {
     /// Sub-plugin name used in URL routing: `/kbs/v0/external/<name>/...`
     pub name: String,
     /// gRPC endpoint URL, e.g. `https://127.0.0.1:50051` or `http://127.0.0.1:50051`
     pub endpoint: String,
-    #[serde(default)]
     pub tls_mode: TlsMode,
-    #[serde(default)]
-    pub ca_cert_path: Option<PathBuf>,
     /// Request timeout in milliseconds. None means no timeout.
-    #[serde(default)]
     pub timeout_ms: Option<u64>,
-}
-
-impl BackendConfig {
-    fn validate(&self) -> Result<()> {
-        let is_https = self.endpoint.starts_with("https://");
-        let is_http = self.endpoint.starts_with("http://");
-
-        match (&self.tls_mode, is_https, is_http) {
-            (TlsMode::Insecure, false, true) => Ok(()),
-            (TlsMode::Insecure, true, false) => anyhow::bail!(
-                "Backend '{}': insecure mode requires http:// endpoint, got https://",
-                self.name
-            ),
-            (TlsMode::Tls, true, false) => {
-                if self.ca_cert_path.is_none() {
-                    anyhow::bail!("Backend '{}': tls mode requires ca_cert_path", self.name);
-                }
-                Ok(())
-            }
-            (TlsMode::Tls, false, true) => anyhow::bail!(
-                "Backend '{}': TLS mode requires https:// endpoint, got http://",
-                self.name
-            ),
-            _ => anyhow::bail!(
-                "Backend '{}': endpoint must be http:// or https://",
-                self.name
-            ),
-        }
-    }
 }
 
 /// Top-level config for the `external` built-in plugin.
@@ -102,9 +106,14 @@ impl BackendConfig {
 /// [[plugins]]
 /// name = "external"
 /// backends = [
-///   { name = "my-plugin", endpoint = "http://127.0.0.1:50051", tls_mode = "insecure" },
+///   { name = "my-plugin", endpoint = "http://127.0.0.1:50051", timeout_ms = 5000 },
+///   { name = "secure-plugin", endpoint = "https://127.0.0.1:50052", ca_cert_path = "/etc/kbs/plugin-ca.pem", timeout_ms = 5000 },
 /// ]
 /// ```
+///
+/// For each backend, if `tls_mode` is omitted, TLS is implied by an `https://` endpoint
+/// (and `ca_cert_path` is then required) and plaintext by `http://`. The explicit
+/// `tls_mode` + `ca_cert_path` form remains supported.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct ExternalPluginConfig {
     pub backends: Vec<BackendConfig>,
@@ -118,12 +127,12 @@ impl ExternalPluginConfig {
     /// by [`BackendConfig::validate`].
     fn validate(&self) -> Result<()> {
         if self.backends.is_empty() {
-            anyhow::bail!("External plugin configured with no backends");
+            bail!("External plugin configured with no backends");
         }
         let mut seen = std::collections::HashSet::new();
         for backend in &self.backends {
             if !seen.insert(backend.name.clone()) {
-                anyhow::bail!(
+                bail!(
                     "Duplicate backend name '{}' in external plugin config",
                     backend.name
                 );
@@ -141,66 +150,43 @@ const RETRY_MAX_INTERVAL: Duration = Duration::from_secs(5);
 const RETRY_MAX_ELAPSED: Duration = Duration::from_secs(30);
 
 async fn connect_with_retry(config: &BackendConfig) -> Result<Channel> {
-    let tls_config = build_tls_config(&config.tls_mode, &config.ca_cert_path).await?;
-
     // Validate the URI and apply TLS config once — these are deterministic
     // and do not need to be retried.
     let mut endpoint =
         Channel::from_shared(config.endpoint.clone()).context("Invalid plugin endpoint URI")?;
-    if let Some(tls) = tls_config {
-        endpoint = endpoint.tls_config(tls).context("Invalid TLS config")?;
-    }
-
-    (|| async {
-        endpoint
-            .clone()
-            .connect()
-            .await
-            .map_err(anyhow::Error::from)
-    })
-    .retry(
-        ExponentialBuilder::default()
-            .with_min_delay(RETRY_INITIAL_INTERVAL)
-            .with_max_delay(RETRY_MAX_INTERVAL)
-            .with_total_delay(Some(RETRY_MAX_ELAPSED))
-            .without_max_times()
-            .with_jitter(),
-    )
-    .notify(|err, dur| {
-        debug!("Plugin connection attempt failed: {err}, retrying in {dur:?}...");
-    })
-    .await
-    .context("Failed to connect to plugin after retry window")
-}
-
-async fn build_tls_config(
-    tls_mode: &TlsMode,
-    ca_cert_path: &Option<PathBuf>,
-) -> Result<Option<ClientTlsConfig>> {
-    match tls_mode {
-        TlsMode::Tls => {
-            let ca_cert = tokio::fs::read(
-                ca_cert_path
-                    .as_ref()
-                    .context("ca_cert_path required for TLS")?,
-            )
+    if let TlsMode::Tls { ca_cert_path } = &config.tls_mode {
+        let ca_cert = tokio::fs::read(ca_cert_path)
             .await
             .context("Read CA certificate")?;
-            Ok(Some(
-                ClientTlsConfig::new().ca_certificate(Certificate::from_pem(&ca_cert)),
-            ))
-        }
-        TlsMode::Insecure => Ok(None),
+        let ca_cert = Certificate::from_pem(&ca_cert);
+        endpoint = endpoint
+            .tls_config(ClientTlsConfig::new().ca_certificate(ca_cert))
+            .context("Invalid TLS config")?;
     }
+
+    (|| async { endpoint.clone().connect().await.map_err(Error::from) })
+        .retry(
+            ExponentialBuilder::default()
+                .with_min_delay(RETRY_INITIAL_INTERVAL)
+                .with_max_delay(RETRY_MAX_INTERVAL)
+                .with_total_delay(Some(RETRY_MAX_ELAPSED))
+                .without_max_times()
+                .with_jitter(),
+        )
+        .notify(|err, dur| {
+            debug!("Plugin connection attempt failed: {err}, retrying in {dur:?}...");
+        })
+        .await
+        .context("Failed to connect to plugin after retry window")
 }
 
-fn map_grpc_error(status: tonic::Status) -> anyhow::Error {
+fn map_grpc_error(status: tonic::Status) -> Error {
     debug!(
         "Plugin gRPC error: code={:?}, message={}",
         status.code(),
         status.message()
     );
-    anyhow::anyhow!("gRPC error from plugin: {:?}", status.code())
+    anyhow!("gRPC error from plugin: {:?}", status.code())
 }
 
 /// Per-backend gRPC connection and dispatch logic.
@@ -276,7 +262,7 @@ impl GrpcBackend {
         match response.status_code {
             0 | 200..=299 => Ok(response.body),
             code => {
-                anyhow::bail!(
+                bail!(
                     "plugin '{}' returned HTTP status {}: {}",
                     self.name,
                     code,
@@ -363,10 +349,6 @@ impl ExternalPlugin {
 
         let mut backends = HashMap::new();
         for backend_cfg in config.backends {
-            backend_cfg
-                .validate()
-                .context("Invalid backend configuration")?;
-
             if backend_cfg.tls_mode == TlsMode::Insecure {
                 warn!(
                     "External plugin backend '{}' configured with insecure mode (plaintext). \
@@ -388,11 +370,11 @@ impl ExternalPlugin {
     fn backend_for<'a>(&self, path: &'a [&str]) -> Result<(&Arc<GrpcBackend>, &'a [&'a str])> {
         let sub_name = path
             .first()
-            .ok_or_else(|| anyhow::anyhow!("external plugin name missing from request path"))?;
+            .ok_or_else(|| anyhow!("external plugin name missing from request path"))?;
         let backend = self
             .backends
             .get(*sub_name)
-            .ok_or_else(|| anyhow::anyhow!("external plugin '{}' not registered", sub_name))?;
+            .ok_or_else(|| anyhow!("external plugin '{}' not registered", sub_name))?;
         Ok((backend, &path[1..]))
     }
 }
@@ -437,58 +419,14 @@ impl ClientPlugin for ExternalPlugin {
 mod tests {
     use super::*;
 
-    fn make_backend(name: &str, tls_mode: TlsMode, endpoint: &str, ca: bool) -> BackendConfig {
+    fn make_backend(name: &str, tls_mode: TlsMode, endpoint: &str) -> BackendConfig {
         BackendConfig {
             name: name.to_string(),
             endpoint: endpoint.to_string(),
             tls_mode,
-            ca_cert_path: if ca { Some("/tmp/ca.pem".into()) } else { None },
             timeout_ms: None,
         }
     }
-
-    #[test]
-    fn insecure_http_ok() {
-        let cfg = make_backend("test", TlsMode::Insecure, "http://localhost:50051", false);
-        assert!(cfg.validate().is_ok());
-    }
-
-    #[test]
-    fn insecure_https_err() {
-        let cfg = make_backend("test", TlsMode::Insecure, "https://localhost:50051", false);
-        assert!(cfg
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("insecure mode requires http://"));
-    }
-
-    #[test]
-    fn tls_https_with_ca_ok() {
-        let cfg = make_backend("test", TlsMode::Tls, "https://localhost:50051", true);
-        assert!(cfg.validate().is_ok());
-    }
-
-    #[test]
-    fn tls_https_missing_ca_err() {
-        let cfg = make_backend("test", TlsMode::Tls, "https://localhost:50051", false);
-        assert!(cfg
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("ca_cert_path"));
-    }
-
-    #[test]
-    fn tls_http_err() {
-        let cfg = make_backend("test", TlsMode::Tls, "http://localhost:50051", true);
-        assert!(cfg
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("TLS mode requires https://"));
-    }
-
     // --- ExternalPluginConfig validation ---
 
     #[test]
@@ -500,12 +438,94 @@ mod tests {
 
     #[test]
     fn duplicate_backend_name_rejected() {
-        let backend = make_backend("alpha", TlsMode::Insecure, "http://127.0.0.1:1", false);
+        let backend = make_backend("alpha", TlsMode::Insecure, "http://127.0.0.1:1");
         let cfg = ExternalPluginConfig {
             backends: vec![backend.clone(), backend],
         };
         let err = cfg.validate().unwrap_err();
         assert!(err.to_string().contains("Duplicate"), "unexpected: {err}");
+    }
+
+    #[test]
+    fn backend_config_parses_tls_mode_with_parallel_ca_cert_path() {
+        let input = r#"
+name = "test"
+endpoint = "https://127.0.0.1:50052"
+tls_mode = "tls"
+ca_cert_path = "/tmp/ca.pem"
+timeout_ms = 5000
+"#;
+
+        let cfg: BackendConfig = toml::from_str(input).expect("failed to parse BackendConfig");
+        assert_eq!(cfg.name, "test");
+        assert_eq!(cfg.endpoint, "https://127.0.0.1:50052");
+        assert_eq!(
+            cfg.tls_mode,
+            TlsMode::Tls {
+                ca_cert_path: "/tmp/ca.pem".into()
+            }
+        );
+        assert_eq!(cfg.timeout_ms, Some(5000));
+    }
+
+    #[test]
+    fn backend_config_https_infers_tls_from_endpoint() {
+        let input = r#"
+name = "test"
+endpoint = "https://127.0.0.1:50052"
+ca_cert_path = "/tmp/ca.pem"
+timeout_ms = 10
+"#;
+
+        let cfg: BackendConfig = toml::from_str(input).expect("failed to parse BackendConfig");
+        assert_eq!(
+            cfg.tls_mode,
+            TlsMode::Tls {
+                ca_cert_path: "/tmp/ca.pem".into()
+            }
+        );
+        assert_eq!(cfg.timeout_ms, Some(10));
+    }
+
+    #[test]
+    fn backend_config_parses_insecure_mode_without_ca_cert_path() {
+        let input = r#"
+name = "test"
+endpoint = "http://127.0.0.1:50051"
+tls_mode = "insecure"
+timeout_ms = 5000
+"#;
+
+        let cfg: BackendConfig = toml::from_str(input).expect("failed to parse BackendConfig");
+        assert_eq!(cfg.tls_mode, TlsMode::Insecure);
+        assert_eq!(cfg.timeout_ms, Some(5000));
+    }
+
+    #[test]
+    fn backend_config_http_infers_insecure_without_tls_mode() {
+        let input = r#"
+name = "test"
+endpoint = "http://127.0.0.1:50051"
+timeout_ms = 5000
+"#;
+
+        let cfg: BackendConfig = toml::from_str(input).expect("failed to parse BackendConfig");
+        assert_eq!(cfg.tls_mode, TlsMode::Insecure);
+    }
+
+    #[test]
+    fn backend_config_https_without_ca_cert_path_is_rejected() {
+        let input = r#"
+name = "test"
+endpoint = "https://127.0.0.1:50051"
+timeout_ms = 5000
+"#;
+
+        let err = toml::from_str::<BackendConfig>(input).unwrap_err();
+        assert!(
+            err.to_string().contains("ca_cert_path"),
+            "unexpected: {err}"
+        );
     }
 
     // --- ExternalPlugin::backend_for routing ---

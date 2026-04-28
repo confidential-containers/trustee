@@ -354,8 +354,7 @@ Each backend is reachable at `/kbs/v0/external/<name>/...`.
 |---|---|---|---|---|
 | `name` | string | Yes | — | Sub-plugin name used in URL routing |
 | `endpoint` | string | Yes | — | gRPC endpoint (`http://` for insecure, `https://` for TLS) |
-| `tls_mode` | string | No | `"tls"` | `"insecure"` or `"tls"` |
-| `ca_cert_path` | string | No | — | CA certificate path (required for `tls`) |
+| `ca_cert_path` | string | No | — | CA certificate path (required when `endpoint` is a TLS endpoint`) |
 | `timeout_ms` | integer | No | — | Per-request timeout in milliseconds |
 
 See [`ext_plugin.md`](ext_plugin.md) for deployment details and the gRPC protocol.
