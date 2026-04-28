@@ -5,7 +5,7 @@
 use core::{clone::Clone, convert::TryInto};
 
 use aes_gcm::{
-    aead::{generic_array::GenericArray, AeadMutInPlace},
+    aead::{generic_array::GenericArray, AeadMutInPlace, OsRng},
     Aes256Gcm, KeyInit, Nonce,
 };
 use aes_kw::{KeyInit as AesKwKeyInit, KwAes256};
@@ -13,8 +13,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
 use p256::elliptic_curve::sec1::FromEncodedPoint;
-use rand::{rngs::OsRng, Rng};
-use rsa::{sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
+use rsa::{rand_core::RngCore, sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
 use serde_json::{json, Map};
 use tracing::warn;
 
@@ -70,11 +69,10 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 #[deprecated(note = "This algorithm is no longer recommended.")]
 fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
     warn!("Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues.");
-    let mut rng = rand::thread_rng();
-
     let aes_sym_key = Aes256Gcm::generate_key(&mut OsRng);
     let mut cipher = Aes256Gcm::new(&aes_sym_key);
-    let iv = rng.gen::<[u8; 12]>();
+    let mut iv = [0u8; 12];
+    OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
     let protected = ProtectedHeader {
         alg: RSA1_5_ALGORITHM.to_string(),
@@ -100,7 +98,7 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
     let rsa_pub_key =
         RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut rng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
+        .encrypt(&mut OsRng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {
@@ -115,11 +113,10 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
 
 /// Use RSA-OAEP SHA-256 to encrypt the payload data.
 fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let mut rng = rand::thread_rng();
-
     let aes_sym_key = Aes256Gcm::generate_key(&mut OsRng);
     let mut cipher = Aes256Gcm::new(&aes_sym_key);
-    let iv = rng.gen::<[u8; 12]>();
+    let mut iv = [0u8; 12];
+    OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
     let protected = ProtectedHeader {
         alg: RSA_OAEP256_ALGORITHM.to_string(),
@@ -146,7 +143,7 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
         RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
     let padding = Oaep::new::<Sha256>();
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut rng, padding, aes_sym_key.as_slice())
+        .encrypt(&mut OsRng, padding, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {
@@ -161,10 +158,8 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
 
 /// Use ECDH-ES-A256KW to encrypt the payload data. The EC curve is P256.
 fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let mut rng = rand::thread_rng();
-
     // 1. Generate a random CEK
-    let cek = Aes256Gcm::generate_key(&mut rng);
+    let cek = Aes256Gcm::generate_key(&mut OsRng);
 
     // 2. Wrap the CEK and generate ProtectedHeader
     let x: [u8; 32] = URL_SAFE_NO_PAD
@@ -185,7 +180,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     let public_key = p256::PublicKey::from_encoded_point(&client_point)
         .into_option()
         .ok_or(anyhow!("invalid TEE public key"))?;
-    let encrypter_secret = p256::ecdh::EphemeralSecret::random(&mut rng);
+    let encrypter_secret = p256::ecdh::EphemeralSecret::random(&mut OsRng);
     let z = encrypter_secret
         .diffie_hellman(&public_key)
         .raw_secret_bytes()
@@ -230,7 +225,8 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     // 3. Encrypt content with CEK
     let mut cek_cipher = Aes256Gcm::new(GenericArray::from_slice(&cek));
 
-    let iv = rand::thread_rng().gen::<[u8; 12]>();
+    let mut iv = [0u8; 12];
+    OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
@@ -250,10 +246,8 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
 
 /// Use ECDH-ES-A256KW to encrypt the payload data. The EC curve is P521.
 fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let mut rng = rand::thread_rng();
-
     // 1. Generate a random CEK
-    let cek = Aes256Gcm::generate_key(&mut rng);
+    let cek = Aes256Gcm::generate_key(&mut OsRng);
 
     // 2. Wrap the CEK and generate ProtectedHeader
     let x: [u8; 66] = URL_SAFE_NO_PAD
@@ -274,7 +268,7 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     let public_key = p521::PublicKey::from_encoded_point(&client_point)
         .into_option()
         .ok_or(anyhow!("invalid TEE public key"))?;
-    let encrypter_secret = p521::ecdh::EphemeralSecret::random(&mut rng);
+    let encrypter_secret = p521::ecdh::EphemeralSecret::random(&mut OsRng);
     let z = encrypter_secret
         .diffie_hellman(&public_key)
         .raw_secret_bytes()
@@ -319,7 +313,8 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     // 3. Encrypt content with CEK
     let mut cek_cipher = Aes256Gcm::new(GenericArray::from_slice(&cek));
 
-    let iv = rand::thread_rng().gen::<[u8; 12]>();
+    let mut iv = [0u8; 12];
+    OsRng.fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
@@ -357,6 +352,7 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
 mod tests {
     use core::assert_eq;
 
+    use aes_gcm::aead::OsRng;
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use josekit::jwe::{
         alg::{ecdh_es::EcdhEsJweAlgorithm::EcdhEsA256kw, rsaes::RsaesJweAlgorithm::RsaOaep256},
@@ -461,8 +457,7 @@ mod tests {
         let test_data = b"this is a test data";
 
         // Generate a EC key pair
-        let mut rng = rand::thread_rng();
-        let private_key = p256::SecretKey::random(&mut rng);
+        let private_key = p256::SecretKey::random(&mut OsRng);
         let point = p256::EncodedPoint::from(private_key.public_key());
         let x = point.x().unwrap();
         let y = point.y().unwrap();
@@ -502,8 +497,7 @@ mod tests {
         let test_data = b"this is a test data";
 
         // Generate a EC key pair
-        let mut rng = rand::thread_rng();
-        let private_key = p521::SecretKey::random(&mut rng);
+        let private_key = p521::SecretKey::random(&mut OsRng);
         let point = p521::EncodedPoint::from(private_key.public_key());
         let x = point.x().unwrap();
         let y = point.y().unwrap();

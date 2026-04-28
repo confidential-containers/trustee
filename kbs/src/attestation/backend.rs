@@ -5,12 +5,13 @@
 use std::sync::{Arc, LazyLock};
 
 use actix_web::{HttpRequest, HttpResponse};
+use aes_gcm::aead::OsRng;
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
-use rand::{thread_rng, Rng};
+use rsa::rand_core::RngCore;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
@@ -64,9 +65,7 @@ const NONCE_SIZE_BYTES: usize = 32;
 pub async fn make_nonce() -> anyhow::Result<String> {
     let mut nonce: Vec<u8> = vec![0; NONCE_SIZE_BYTES];
 
-    thread_rng()
-        .try_fill(&mut nonce[..])
-        .map_err(anyhow::Error::from)?;
+    OsRng.fill_bytes(&mut nonce[..]);
 
     Ok(STANDARD.encode(&nonce))
 }

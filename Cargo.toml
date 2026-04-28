@@ -71,7 +71,6 @@ tempfile = "3.27.0"
 tonic = { version = "0.14", features = ["tls-webpki-roots"] }
 tonic-prost = "0.14"
 tonic-prost-build = "0.14"
-rand = "0.8.5"
 rsa = { version = "0.9.10", features = ["sha2"] }
 time = { version = "0.3.47", features = ["std"] }
 tracing = "0.1.44"
