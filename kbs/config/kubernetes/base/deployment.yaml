@@ -30,6 +30,8 @@ spec:
           mountPath: /kbs/
         - name: kbs-config
           mountPath: /etc/kbs/
+        - name: policy-volume
+          mountPath: /opt/confidential-containers/kbs/
         - name: dcap-qcnl-config
           mountPath: /run/dcap/
       volumes:
@@ -42,3 +44,5 @@ spec:
       - name: kbs-config
         configMap:
           name: kbs-config
+      - name: policy-volume
+        emptyDir: {}
