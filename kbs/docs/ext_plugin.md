@@ -236,12 +236,15 @@ running and the endpoint in `kbs-config.toml` matches its bind address.
 **TLS errors at startup**
 
 ```
+missing field `tls_mode`
 Backend 'x': TLS mode requires https:// endpoint, got http://
-Backend 'x': tls mode requires ca_cert_path
+missing field `ca_cert_path`
 ```
 
-Endpoint scheme must match `tls_mode` (`http://` for insecure, `https://` for
-tls). Verify cert paths exist and are readable.
+Each backend must set `tls_mode` explicitly. Endpoint scheme must match
+`tls_mode` (`http://` for insecure, `https://` for tls). In TLS mode,
+`ca_cert_path` must be present in the same backend table as `tls_mode`. Verify
+cert paths exist and are readable.
 
 **401 on requests**
 
