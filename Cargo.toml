@@ -47,6 +47,7 @@ openssl = "0.10.80"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
+rand = "0.8"
 regorus = { version = "0.10.1", default-features = false, features = [
     "regex",
     "base64",
@@ -74,7 +75,7 @@ rsa = { version = "0.9.10", features = ["sha2"] }
 time = { version = "0.3.47", features = ["std"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-uuid = { version = "1.23.3", features = ["v4"] }
+uuid = { version = "1.23.3", features = ["v4", "v5"] }
 zeroize = "1"
 
 [patch.crates-io]
