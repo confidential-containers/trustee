@@ -6,6 +6,7 @@
 pub mod nebula_ca;
 #[cfg(feature = "pkcs11")]
 pub mod pkcs11;
+pub mod provisioner;
 pub mod resource;
 pub mod sample;
 
@@ -13,5 +14,6 @@ pub mod sample;
 pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]
 pub use pkcs11::{Pkcs11Backend, Pkcs11Config};
+pub use provisioner::{Provisioner, ProvisionerConfig};
 pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};

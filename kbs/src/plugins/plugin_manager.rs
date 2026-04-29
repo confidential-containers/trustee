@@ -11,6 +11,8 @@ use serde::Deserialize;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
 
+use super::{Provisioner, ProvisionerConfig};
+
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
 
@@ -74,6 +76,9 @@ pub enum PluginsConfig {
     #[cfg(feature = "pkcs11")]
     #[serde(alias = "pkcs11")]
     Pkcs11(Pkcs11Config),
+
+    #[serde(alias = "provisioner")]
+    Provisioner(ProvisionerConfig),
 }
 
 impl Display for PluginsConfig {
@@ -85,6 +90,7 @@ impl Display for PluginsConfig {
             PluginsConfig::NebulaCaPlugin(_) => f.write_str("nebula-ca"),
             #[cfg(feature = "pkcs11")]
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
+            PluginsConfig::Provisioner(_) => f.write_str("provisioner"),
         }
     }
 }
@@ -120,6 +126,12 @@ impl PluginsConfig {
                 let pkcs11 = Pkcs11Backend::try_from(pkcs11_config)
                     .context("Initialize 'pkcs11' plugin failed")?;
                 Arc::new(pkcs11) as _
+            }
+            PluginsConfig::Provisioner(cfg) => {
+                let prov = Provisioner::new(cfg, storage_backend_config)
+                    .await
+                    .context("Initialize 'Provisioner' plugin failed")?;
+                Arc::new(prov) as _
             }
         };
 
