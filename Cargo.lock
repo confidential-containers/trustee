@@ -4080,6 +4080,7 @@ dependencies = [
  "polyval",
  "prometheus",
  "prost",
+ "rand 0.8.6",
  "reference-value-provider-service",
  "regex",
  "regorus",
