@@ -50,19 +50,19 @@ else ifneq ($(AS_TYPE), )
 endif
 
 ifeq ($(ALIYUN), true)
-  FEATURES := $(FEATURES),aliyun
+  override FEATURES := $(FEATURES),aliyun
 endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
-  FEATURES := $(FEATURES),nebula-ca-plugin
+  override FEATURES := $(FEATURES),nebula-ca-plugin
 endif
 
 ifeq ($(VAULT), true)
-  FEATURES := $(FEATURES),vault
+  override FEATURES := $(FEATURES),vault
 endif
 
 ifeq ($(EXTERNAL_PLUGIN), true)
-  FEATURES := $(FEATURES),external-plugin
+  override FEATURES := $(FEATURES),external-plugin
 endif
 
 ifeq ($(CLI_FEATURES),sample_only)
