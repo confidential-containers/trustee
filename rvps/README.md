@@ -237,6 +237,54 @@ In this mode, the RVPS will work as a crate inside the Attestation Service binar
 
 ![](./diagrams/rvps-native.svg)
 
+> [!NOTE]
+> **Storage Configuration:** By default, RVPS in native mode uses the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)) with the `reference_value` namespace. However, you can optionally provide a `storage` field to configure RVPS-specific storage that differs from other components.
+> This allows you to use different storage backends for different components (e.g., LocalFs for KBS resources, but LocalJson for RVPS reference values).
+
+**Example with shared storage (default behavior):**
+
+```json
+{
+    "storage_backend": {
+        "storage_type": "LocalFs",
+        "backends": {
+            "local_fs": {
+                "dir_path": "/var/lib/attestation-service/storage"
+            }
+        }
+    },
+    "rvps_config": {
+        "type": "BuiltIn"
+    }
+}
+```
+
+**Example with RVPS-specific storage override:**
+
+```json
+{
+    "storage_backend": {
+        "storage_type": "LocalFs",
+        "backends": {
+            "local_fs": {
+                "dir_path": "/var/lib/attestation-service/storage"
+            }
+        }
+    },
+    "rvps_config": {
+        "type": "BuiltIn",
+        "storage": {
+            "storage_type": "LocalJson",
+            "backends": {
+                "local_json": {
+                    "file_dir_path": "/var/lib/rvps/references"
+                }
+            }
+        }
+    }
+}
+```
+
 ### gRPC Mode
 
 In this mode, the Attestation Service will connect to a remote RVPS. This requires the Attestation Service to be built with feature `rvps-grpc`.

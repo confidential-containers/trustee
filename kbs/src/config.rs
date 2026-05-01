@@ -354,7 +354,7 @@ mod tests {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     crate::attestation::coco::builtin::Config {
-                        rvps_config: RvpsConfig::BuiltIn { extractors: None },
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()
@@ -496,7 +496,7 @@ mod tests {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     crate::attestation::coco::builtin::Config {
-                        rvps_config: RvpsConfig::BuiltIn { extractors: None },
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()
