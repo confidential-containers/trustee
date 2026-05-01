@@ -27,7 +27,7 @@ jobs:
         persist-credentials: false
 
     - name: Install Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+      uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1.16.0
       with:
         components: rustfmt, clippy
 
@@ -36,7 +36,7 @@ jobs:
         go-version: stable
 
     - name: Set up rust build cache
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       continue-on-error: false
       with:
         path: |
