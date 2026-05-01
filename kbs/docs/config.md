@@ -127,8 +127,11 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
 | `extractors` | Object | Optional configuration for provenance extractors | No | None |
+| `storage` | Object | Optional RVPS-specific storage configuration (same format as `storage_backend`). If provided, overrides the unified `storage_backend` for RVPS only. If omitted, falls back to the unified `storage_backend`. | No | None |
 
-**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference_value` namespace from the unified storage backend.
+> [!NOTE]
+> **Storage Configuration:** By default, BuiltIn RVPS uses the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)) with the `reference_value` namespace. However, you can optionally provide a `storage` field to configure RVPS-specific storage that differs from other components.
+> This allows you to use different storage backends for different components (e.g., LocalFs for KBS resources, but LocalJson for RVPS reference values).
 
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
@@ -397,7 +400,6 @@ duration_min = 5
 
 [attestation_service.rvps_config]
 type = "BuiltIn"
-# Note: storage will be overridden by storage_backend if provided
 # Optional: configure extractors
 # [attestation_service.rvps_config.extractors]
 # swid_extractor = {}
@@ -405,7 +407,52 @@ type = "BuiltIn"
 [[plugins]]
 name = "resource"
 type = "kvstorage"
-# Note: When using kvstorage, storage will be overridden by storage_backend if provided
+```
+
+### Using RVPS-Specific Storage Configuration
+
+You can configure RVPS to use a different storage backend than the rest of KBS:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+insecure_http = true
+
+[admin]
+type = "InsecureAllowAll"
+
+[attestation_token]
+
+# Unified storage backend for most components (LocalFs)
+[storage_backend]
+storage_type = "LocalFs"
+
+[storage_backend.backends.local_fs]
+dir_path = "/opt/confidential-containers/storage"
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+# RVPS-specific storage override (LocalJson)
+[attestation_service.rvps_config.storage]
+storage_type = "LocalJson"
+
+[attestation_service.rvps_config.storage.backends.local_json]
+file_dir_path = "/var/lib/rvps/references"
+
+# Optional: configure extractors
+[attestation_service.rvps_config.extractors]
+swid_extractor = {}
+
+[[plugins]]
+name = "resource"
+type = "kvstorage"
 ```
 
 ### Using a remote CoCo AS

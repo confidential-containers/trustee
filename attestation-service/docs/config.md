@@ -60,8 +60,11 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
 | `extractors` | Object | Optional configuration for provenance extractors | No | None |
+| `storage` | [StorageBackendConfig][4] | Optional RVPS-specific storage configuration. If provided, overrides the unified `storage_backend` for RVPS only. If omitted, falls back to the unified `storage_backend`. | No | None |
 
-**Note:** Storage configuration for BuiltIn RVPS is now managed through the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)). The BuiltIn RVPS will use the `reference_value` namespace from the unified storage backend.
+> [!NOTE]
+> **Storage Configuration:** By default, BuiltIn RVPS uses the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)) with the `reference_value` namespace. However, you can optionally provide a `storage` field to configure RVPS-specific storage that differs from other components.
+> This allows you to use different storage backends for different components (e.g., LocalFs for KBS and AS policies, but LocalJson for RVPS reference values).
 
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
 
@@ -217,6 +220,35 @@ Running with a built-in RVPS with extractor configuration:
         "type": "BuiltIn",
         "extractors": {
             "swid_extractor": {}
+        }
+    },
+    "attestation_token_broker": {
+        "duration_min": 5
+    }
+}
+```
+
+Running with a built-in RVPS with RVPS-specific storage configuration:
+
+```json
+{
+    "storage_backend": {
+        "storage_type": "LocalFs",
+        "backends": {
+            "local_fs": {
+                "dir_path": "/var/lib/attestation-service/storage"
+            }
+        }
+    },
+    "rvps_config": {
+        "type": "BuiltIn",
+        "storage": {
+            "storage_type": "LocalJson",
+            "backends": {
+                "local_json": {
+                    "file_dir_path": "/var/lib/rvps/references"
+                }
+            }
         }
     },
     "attestation_token_broker": {
