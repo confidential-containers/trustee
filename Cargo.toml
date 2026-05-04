@@ -42,7 +42,7 @@ jsonwebtoken = { version = "10", default-features = false, features = [
     "use_pem",
 ] }
 mobc = "0.9.0"
-openssl = "0.10.77"
+openssl = "0.10.79"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
