@@ -104,6 +104,22 @@ struct NvDeviceReportAndCert {
     arch: String,
 }
 
+/// ITA Nvidia GPU attestation request body.
+///
+/// ITA accepts `evidence_list` for both single and multi-GPU attestation.
+#[derive(Serialize, Debug)]
+struct NvGpuRequest {
+    gpu_nonce: String,
+    arch: String,
+    evidence_list: Vec<NvGpuEvidenceItem>,
+}
+
+#[derive(Serialize, Debug)]
+struct NvGpuEvidenceItem {
+    evidence: String,
+    certificate: String,
+}
+
 #[derive(Serialize, Debug)]
 struct AttestReqData {
     policy_ids: Vec<String>,
@@ -113,7 +129,7 @@ struct AttestReqData {
     #[serde(skip_serializing_if = "Option::is_none")]
     sgx: Option<DcapTeeEvidence>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    nvgpu: Option<NvDeviceReportAndCert>,
+    nvgpu: Option<NvGpuRequest>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -221,12 +237,34 @@ fn build_attest_request(
                     continue;
                 }
 
-                // only one GPU supported at the moment
-                let mut nvgpu = evidence.device_evidence_list[0].clone();
+                // Filter out unsupported archs (e.g. LS10 NVSwitch) — ITA only accepts
+                // HOPPER and BLACKWELL GPUs.
+                let devices: Vec<_> = evidence
+                    .device_evidence_list
+                    .into_iter()
+                    .filter(|d| {
+                        let ok = d.arch == "HOPPER" || d.arch == "BLACKWELL";
+                        if !ok {
+                            warn!(
+                                "ITA: unsupported Nvidia device arch {:?}, skipping it",
+                                d.arch
+                            );
+                        }
+                        ok
+                    })
+                    .collect();
+
+                if devices.is_empty() {
+                    warn!(
+                        "ITA: no supported Nvidia GPU devices after filtering, dropping evidence"
+                    );
+                    continue;
+                }
 
                 let runtime_data_hash =
                     Sha512::digest(independent_evidence.runtime_data.to_string()).to_vec();
-                nvgpu.gpu_nonce = hex::encode(&runtime_data_hash[0..32]);
+                let gpu_nonce = hex::encode(&runtime_data_hash[0..32]);
+                let arch = devices[0].arch.clone();
 
                 request_data.nvgpu = Some(NvGpuRequest {
                     gpu_nonce,
