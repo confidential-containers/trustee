@@ -12,19 +12,6 @@ spec:
       labels:
         app: kbs
     spec:
-      initContainers:
-      - command:
-        - sh
-        - -c
-        - cp -r /config/$(dirname $(readlink /config/policy.rego))/* /opt/confidential-containers/kbs/
-        image: quay.io/prometheus/busybox:latest
-        imagePullPolicy: Always
-        name: copy-config
-        volumeMounts:
-        - mountPath: /config
-          name: config-volume
-        - mountPath: /opt/confidential-containers/kbs
-          name: policy-volume
       containers:
       - name: kbs
         image: kbs-container-image
@@ -59,6 +46,3 @@ spec:
           name: kbs-config
       - name: policy-volume
         emptyDir: {}
-      - name: config-volume
-        configMap:
-          name: policy-config

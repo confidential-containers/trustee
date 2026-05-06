@@ -14,7 +14,3 @@ configMapGenerator:
   behavior: replace
   files:
   - kbs-config.toml
-- name: policy-config
-  behavior: replace
-  files:
-  - policy.rego
