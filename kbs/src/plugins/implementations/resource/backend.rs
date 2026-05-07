@@ -77,7 +77,7 @@ impl fmt::Display for ResourceDesc {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
-#[serde(tag = "type")]
+#[serde(tag = "storage_backend_type")]
 pub enum RepositoryConfig {
     #[serde(alias = "kvstorage")]
     #[default]

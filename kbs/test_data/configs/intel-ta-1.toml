@@ -28,4 +28,4 @@ item = "value1"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"

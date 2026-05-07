@@ -275,9 +275,9 @@ This is also called "Repository" in old versions. The properties to be configure
 |----------|--------|---------------------------------------------------------------|----------|------------|
 | `type`| String | Storage type for resources: `kvstorage`, `Aliyun`, `Vault` | No       | `kvstorage`|
 
-When `type = "kvstorage"` (default), the resource plugin uses the unified [storage backend](#storage-backend-configuration) with namespace `repository`. Configure storage in the `[storage_backend]` section only.
+When `storage_backend_type = "kvstorage"` (default), the resource plugin uses the unified [storage backend](#storage-backend-configuration) with namespace `repository`. Configure storage in the `[storage_backend]` section only.
 
-When `type = "Aliyun"`:
+When `storage_backend_type = "Aliyun"`:
 
 | Property          | Type   | Description                       | Required | Example                                             |
 |-------------------|--------|-----------------------------------|----------|-----------------------------------------------------|
@@ -286,7 +286,7 @@ When `type = "Aliyun"`:
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
 
-When `type = "Vault"`:
+When `storage_backend_type = "Vault"`:
 
 | Property     | Type          | Required | Description                                 | Default    |
 |--------------|---------------|----------|---------------------------------------------|------------|
@@ -406,7 +406,7 @@ type = "BuiltIn"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 ```
 
 ### Using RVPS-Specific Storage Configuration
@@ -452,7 +452,7 @@ swid_extractor = {}
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 ```
 
 ### Using a remote CoCo AS
@@ -476,7 +476,7 @@ dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 ```
 
 Running with Intel Trust Authority attestation service:
@@ -514,7 +514,7 @@ dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 ```
 
 Using Nebula CA plugin:
@@ -546,7 +546,7 @@ dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 
 [[plugins]]
 name = "nebula-ca"
@@ -583,5 +583,5 @@ dir_path = "./work/storage"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 ```

@@ -23,4 +23,4 @@ type = "Simple"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
