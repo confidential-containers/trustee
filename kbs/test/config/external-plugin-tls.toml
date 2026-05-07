@@ -14,5 +14,5 @@ type = "BuiltIn"
 [[plugins]]
 name = "external"
 backends = [
-  { name = "echo-test", endpoint = "https://127.0.0.1:50052", tls_mode = "tls", ca_cert_path = "./work/echo-plugin-ca.pem", timeout_ms = 5000 },
+  { name = "echo-test", endpoint = "https://127.0.0.1:50052", ca_cert_path = "./work/echo-plugin-ca.pem", timeout_ms = 5000 },
 ]
