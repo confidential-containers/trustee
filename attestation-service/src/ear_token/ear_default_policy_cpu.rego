@@ -312,6 +312,8 @@ executables := 3 if {
 	input.tpm
 
 	input.tpm.pcr11 in query_reference_value("tpm_pcr11")
+
+	input.tpm.ak_public in query_reference_value("trusted_aks")
 }
 
 configuration := 0 if {
