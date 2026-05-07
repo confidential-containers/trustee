@@ -22,7 +22,7 @@ public_key_path = "/kbs/kbs.pem"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
 
 [storage_backend]
 storage_type = "LocalFs"

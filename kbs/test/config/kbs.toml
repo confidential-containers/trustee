@@ -39,4 +39,4 @@ public_key_path = "./work/kbs.pem"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"

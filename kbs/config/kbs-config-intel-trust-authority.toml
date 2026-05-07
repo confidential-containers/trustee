@@ -22,4 +22,4 @@ dir_path = "/opt/confidential-containers/storage"
 
 [[plugins]]
 name = "resource"
-type = "kvstorage"
+storage_backend_type = "kvstorage"
