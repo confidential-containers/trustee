@@ -55,7 +55,7 @@ pub struct VerifierConfig {
     nvidia_verifier: Option<nvidia::NvidiaVerifierConfig>,
 
     #[cfg(feature = "tpm-verifier")]
-    tpm_verifier: Option<tpm::config::TpmVerifierConfig>,
+    tpm_verifier: Option<tpm::TpmVerifierConfig>,
 
     #[cfg(feature = "snp-verifier")]
     snp_verifier: Option<snp::SnpVerifierConfig>,
@@ -184,8 +184,7 @@ pub async fn to_verifier(
         Tee::Tpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "tpm-verifier")] {
-                    let tpm_config = _config.map(|c| c.tpm_verifier).unwrap_or(None);
-                    Ok(Box::new(tpm::TpmVerifier::new(tpm_config)?) as Box<dyn Verifier + Send + Sync>)
+                    Ok(Box::<tpm::TpmVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `tpm-verifier` is not enabled for `verifier` crate.")
                 }

@@ -11,19 +11,13 @@ use hex;
 use openssl::pkey::PKey;
 use serde::Deserialize;
 use serde_json::{self, json};
-use sha2::{Digest, Sha256};
-use std::collections::HashSet;
-use std::fs;
 use std::result::Result::Ok;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument};
 use tss_esapi::structures::Signature;
 use tss_esapi::traits::UnMarshall;
 
 use super::*;
-pub mod config;
 
-const MAX_TRUSTED_AK_KEYS: usize = 100;
-const DEFAULT_TRUSTED_AK_KEYS_DIR: &str = "/etc/tpm/trusted_ak_keys";
 const INITDATA_PCR: usize = 8;
 const TPM_REPORT_DATA_SIZE: usize = 32;
 
@@ -33,6 +27,9 @@ pub struct Evidence {
     pub ak_public: String,
     pub tpm_quote: Quote,
 }
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct TpmVerifierConfig {}
 
 // The TPM quote with string-encoded fields for JSON serialization
 #[derive(Deserialize, Debug)]
@@ -104,81 +101,8 @@ impl Quote {
     }
 }
 
-#[derive(Debug)]
-pub struct TpmVerifier {
-    trusted_ak_hashes: HashSet<Vec<u8>>,
-}
-
-impl Default for TpmVerifier {
-    fn default() -> Self {
-        let config = config::TpmVerifierConfig::default();
-        Self::new(Some(config)).unwrap_or_else(|_| Self {
-            trusted_ak_hashes: HashSet::new(),
-        })
-    }
-}
-
-impl TpmVerifier {
-    /// Load a public key from a file and return its SHA256 hash
-    fn load_and_hash_key(path: &std::path::Path) -> Result<Vec<u8>> {
-        let key_content = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read key file: {:?}", path))?;
-        let pkey = PKey::public_key_from_pem(key_content.as_bytes())
-            .with_context(|| format!("Failed to parse PEM public key from: {:?}", path))?;
-        let key_bytes = pkey
-            .public_key_to_der()
-            .with_context(|| format!("Failed to convert PEM to DER for: {:?}", path))?;
-        let hash = Sha256::digest(&key_bytes).to_vec();
-        Ok(hash)
-    }
-
-    pub fn new(config: Option<config::TpmVerifierConfig>) -> Result<Self> {
-        let config = config.unwrap_or_default();
-        let mut trusted_ak_hashes = HashSet::new();
-
-        let keys_dir = config.trusted_ak_keys_dir;
-
-        info!("TPM verifier trusted keys dir {:?}", keys_dir);
-
-        // Build a lazy iterator to filter and take valid .pub files
-        // without collecting them into a vector first
-
-        let dir_entries = fs::read_dir(&keys_dir)
-            .with_context(|| format!("Failed to read trusted AK keys directory {:?}", keys_dir))?;
-
-        let trusted_keys = dir_entries
-            .filter_map(|entry_result| entry_result.ok())
-            .filter(|entry| {
-                let path = entry.path();
-                path.is_file() && path.extension() == Some("pub".as_ref())
-                // This implicitly filters out '.' and '..'
-            })
-            // The directory will not be read beyond this number of valid files
-            .take(config.max_trusted_ak_keys);
-
-        for entry in trusted_keys {
-            let path = entry.path();
-
-            // Try to read and parse the key, but continue on error instead of failing
-            match Self::load_and_hash_key(&path) {
-                Ok(hash) => {
-                    debug!("Successfully loaded trusted AK key from {:?}", path);
-                    trusted_ak_hashes.insert(hash);
-                }
-                Err(e) => {
-                    warn!("Failed to load trusted AK key from {:?}: {}", path, e);
-                    continue;
-                }
-            }
-        }
-
-        info!(
-            "TPM verifier loaded {} trusted AK key(s)",
-            trusted_ak_hashes.len()
-        );
-        Ok(Self { trusted_ak_hashes })
-    }
-}
+#[derive(Debug, Default)]
+pub struct TpmVerifier {}
 
 fn verify_signature(quote: &VtpmQuote, ak_public: &str) -> Result<()> {
     let pub_bytes = general_purpose::STANDARD
@@ -290,41 +214,34 @@ impl Verifier for TpmVerifier {
 
         let ak_public = guest_ev.ak_public;
 
-        // 1. Check if the provided AK public key is trusted
-        let ak_public_bytes = general_purpose::STANDARD.decode(&ak_public)?;
-        let ak_public_hash = Sha256::digest(&ak_public_bytes).to_vec();
-
-        if !self.trusted_ak_hashes.contains(&ak_public_hash) {
-            bail!("The provided AK public key is not in the list of trusted keys");
-        }
-
-        // 2. Verify the quote signature using the (now trusted) AK pubkey
+        // 1. Verify the quote signature using the (now trusted) AK pubkey
         verify_signature(&quote, &ak_public)?;
 
-        // 3. Verify PCRs
+        // 2. Verify PCRs
         verify_pcrs(&quote)?;
 
-        // 4. Verify nonce/report data
+        // 3. Verify nonce/report data
         if let ReportData::Value(report_data) = expected_report_data {
             verify_nonce(&quote, report_data)?;
         }
 
-        // 5. Verify init data hash
+        // 4. Verify init data hash
         verify_init_data(expected_init_data_hash, &quote)?;
 
-        // 6. Parse claims
-        let mut claims = parse_tee_evidence(&quote);
+        // 5. Parse claims
+        let mut claims = parse_tee_evidence(&quote, &ak_public);
         extend_claim(&mut claims, &quote)?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }
 }
 
-pub fn parse_tee_evidence(quote: &VtpmQuote) -> TeeEvidenceParsedClaim {
+pub fn parse_tee_evidence(quote: &VtpmQuote, ak_public: &str) -> TeeEvidenceParsedClaim {
     let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
     let claims_map = json!({
         "init_data": hex::encode(pcrs[INITDATA_PCR]),
         "report_data": hex::encode(quote.nonce().unwrap_or_default()),
+        "ak_public": ak_public,
     });
     claims_map as TeeEvidenceParsedClaim
 }
@@ -332,50 +249,8 @@ pub fn parse_tee_evidence(quote: &VtpmQuote) -> TeeEvidenceParsedClaim {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     const TPM_EVIDENCE: &[u8] = include_bytes!("../../test_data/tpm_evidence.json");
-
-    #[test]
-    fn test_tpm_verifier_nonexistent_keys_dir() {
-        // When trusted_ak_keys_dir points to a nonexistent directory, verifier initialization should fail
-        let config = config::TpmVerifierConfig {
-            trusted_ak_keys_dir: PathBuf::from("/nonexistent/directory/for/testing"),
-            max_trusted_ak_keys: MAX_TRUSTED_AK_KEYS,
-        };
-        let result = TpmVerifier::new(Some(config));
-        assert!(
-            result.is_err(),
-            "Verifier should fail to initialize with nonexistent trusted_ak_keys_dir"
-        );
-        let error_msg = result.unwrap_err().to_string();
-        assert!(
-            error_msg.contains("Failed to read trusted AK keys directory"),
-            "Error message should mention the directory read failure, got: {}",
-            error_msg
-        );
-    }
-
-    #[test]
-    fn test_tpm_verifier_default_config() {
-        let config = config::TpmVerifierConfig::default();
-        assert_eq!(config.max_trusted_ak_keys, MAX_TRUSTED_AK_KEYS);
-        assert_eq!(
-            config.trusted_ak_keys_dir.to_str().unwrap(),
-            DEFAULT_TRUSTED_AK_KEYS_DIR,
-            "Default config should have trusted_ak_keys_dir set to default path"
-        );
-    }
-
-    #[test]
-    fn test_tpm_verifier_custom_config() {
-        let config = config::TpmVerifierConfig {
-            trusted_ak_keys_dir: PathBuf::from("/custom/path"),
-            max_trusted_ak_keys: 50,
-        };
-        assert_eq!(config.max_trusted_ak_keys, 50);
-        assert_eq!(config.trusted_ak_keys_dir.to_str().unwrap(), "/custom/path");
-    }
 
     #[test]
     fn test_deserialize_tpm_evidence_fixture() {
@@ -415,13 +290,13 @@ mod tests {
         // Test the parse_tee_evidence function with a real quote
         let tpm_evidence = serde_json::from_slice::<Evidence>(TPM_EVIDENCE)
             .expect("Failed to deserialize TPM Evidence");
-
         let quote = tpm_evidence
             .tpm_quote
             .to_quote()
-            .expect("Should be able to convert quote to internal format");
+            .context("Failed to convert quote from string format")
+            .unwrap();
 
-        let claims = parse_tee_evidence(&quote);
+        let claims = parse_tee_evidence(&quote, &tpm_evidence.ak_public);
 
         // Verify claims contain expected fields
         assert!(
@@ -431,6 +306,10 @@ mod tests {
         assert!(
             claims.get("report_data").is_some(),
             "Claims should contain report_data"
+        );
+        assert!(
+            claims.get("ak_public").is_some(),
+            "Claims should contain ak_public"
         );
 
         // Verify the values are hex-encoded strings

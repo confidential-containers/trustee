@@ -252,6 +252,7 @@ Generally, policies should be evaluated against the reported TCB.
 - `tpm.init_data`: SHA256 PCR[08] value (hex)
 - `tpm.report_data`: nonce from quote (hex)
 - `tpm.pcr00` ... `tpm.pcr23`: SHA256 PCR values (hex; index count depends on quote)
+- `tpm.ak_public`: AK (Attestation Key) public key in PEM format (base64-encoded DER)
 
 ## Hygon DCU
 
