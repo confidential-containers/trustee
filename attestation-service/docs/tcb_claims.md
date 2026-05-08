@@ -6,12 +6,53 @@ corresponding verifier.
 These claims are exposed to the Attestation Service policy and included
 in the attestation token.
 
+## Claims Data Format
+
+Policy input is a JSON object composed from verifier output. In most cases, it follows this shape:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
+| `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
+| `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
+| `init_data_claims` | object | Parsed init-data claims (present when init-data is provided and verified) |
+| `runtime_data_claims` | object | Parsed runtime-data claims (present when report-data is provided and verified) |
+
+`<tee-name>` matches the serialized [`Tee`](https://docs.rs/kbs-types/latest/kbs_types/enum.Tee.html) variant string (for example `az-tdx-vtpm`, not `az_tdx_vtpm`). In Rego, hyphenated keys must use bracket syntax, e.g. `input["az-tdx-vtpm"]`.
+
+Minimal example:
+
+```json
+{
+  "tdx": {
+    "quote": {
+      "body": {
+        "mr_td": "<hex>"
+      }
+    }
+  },
+  "report_data": "<hex>",
+  "init_data": "<hex>",
+  "init_data_claims": {},
+  "runtime_data_claims": {}
+}
+```
+
 ## Sample
 
 **This is only a test verifier**.
 - `sample.svn`: version of the quote.
 - `sample.report_data`: report data when generating the evidence.
 - `sample.init_data`: init data hash.
+- `sample.launch_digest`: dummy launch digest used for policy testing.
+- `sample.platform_version.major`: sample platform major version.
+- `sample.platform_version.minor`: sample platform minor version.
+- `sample.debug`: sample debug flag (always false in sample verifier).
+
+## Sample Device
+
+**This is only a test verifier for device-class attestation**.
+- `sampledevice.svn`: version of the quote-like sample evidence.
 
 ## Intel TDX
 
@@ -120,17 +161,17 @@ The following fields always exist.
 
 ## Azure TDX Confidential VM (az-tdx-vtpm)
 
-The claim inherit the fields from the TDX claim with and additional `tpm` hierarchy in which the TEE's PCR values are stored:
+Under the top-level key `az-tdx-vtpm`, claims inherit the fields from the TDX layout with an additional `tpm` hierarchy in which the TEE's PCR values are stored:
 
-- `tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
+- `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
 ## Azure SEV-SNP Confidential VM (az-snp-vtpm)
 
-The claim inherit the fields from the SEV-SNP claim with and additional `tpm` hierarchy in which the TEE's PCR values are stored:
+Under the top-level key `az-snp-vtpm`, claims inherit the fields from the SEV-SNP layout with an additional `tpm` hierarchy in which the TEE's PCR values are stored:
 
-- `tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
+- `["az-snp-vtpm"].tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
@@ -141,6 +182,20 @@ Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kern
 - `se.image_phkh`: SE image public host key hash
 - `se.attestation_phkh`: SE attestation public host key hash
 - `se.user_data`: Optional custom attestation owner data collected on guest (e.g., `runtime_data_digest`)
+
+## Arm CCA
+
+CCA claims are grouped into `cca.realm` and `cca.platform`:
+
+- `cca.realm.cca_realm_personalization_value`: Per Realm defined personalized value.
+- `cca.realm.cca_realm_initial_measurement`: The initial measurement of the Realm.
+- `cca.realm.cca_realm_extensible_measurements`: The extensible measurements of the Realm.
+- `cca.realm.cca_realm_hash_algo_id`: RMI hash algorithm.
+- `cca.realm.cca_realm_challenge`: The challenge to do the attestation.
+- `cca.platform.cca_platform_instance_id`: Hardware platform instance ID.
+- `cca.platform.cca_platform_implementation_id`: Hardware implementation ID.
+- `cca.report_data`: report data derived from realm challenge
+- `cca.init_data`: init data derived from realm personalization value
 
 ## NVIDIA
 
@@ -191,6 +246,25 @@ behind the true firmware version. This is done to minimize churn of policies
 and certificates while the provider updates to provisional firmware.
 The actual firmware must always be newer than or equal to the reported TCB.
 Generally, policies should be evaluated against the reported TCB.
+
+## TPM
+
+- `tpm.init_data`: SHA256 PCR[08] value (hex)
+- `tpm.report_data`: nonce from quote (hex)
+- `tpm.pcr00` ... `tpm.pcr23`: SHA256 PCR values (hex; index count depends on quote)
+
+## Hygon DCU
+
+Claims are reported per attestation report entry using numeric keys under the top-level `hygondcu` object:
+
+- `hygondcu.<index>.body.version`: Firmware version.
+- `hygondcu.<index>.body.chip_id`: DCU chip ID.
+- `hygondcu.<index>.body.user_data`: The challenge data for the attestation.
+- `hygondcu.<index>.body.measure`: measurement of the firmware.
+- `hygondcu.<index>.body.reserved`: Reserved field.
+- `hygondcu.<index>.body.sig_usage`: The usage of the signature.
+- `hygondcu.<index>.body.sig_algo`: The algorithm of the signature.
+- `hygondcu.<index>.report_data` (same value as `body.user_data`)
 
 ## Hygon CSV
 

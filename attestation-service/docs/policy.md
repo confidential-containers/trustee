@@ -5,22 +5,24 @@ CoCo AS provides a flexible policy support based on Rego to facilitate the custo
 The policy will be enforced to generate an attestation token, i.e. EAR token.
 
 EAR tokens support an expressive policy result.
-A valid policy must evaluate at least one of the following claims as an integer between 127 and -127.
-* `instance_identity`
+A policy should expose `data.policy.trust_claims`, and set at least one AR4SI trust claim as an integer between `-127` and `127`.
+
+The supported trust claim keys are:
+* `instance-identity`
 * `configuration`
 * `executables`
-* `file_system`
+* `file-system`
 * `hardware`
-* `runtime_opaque`
-* `storage_opaque`
-* `sourced_data`
+* `runtime-opaque`
+* `storage-opaque`
+* `sourced-data`
 
 These dimensions can be used to return a detailed, but generic description of the TCB of the attester.
 More information about these trust claims, including what the numerical values of the claims represent,
 can be found [here](https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/).
 
-A policy can also optionally define a claim called `extensions`.
-Any extensions that are specified via this claim will be added to the attestation token.
+A policy can also optionally define a claim called `data.policy.extensions`.
+Any extensions specified via this claim will be added to the attestation token.
 The extensions claim should contain an array of extension objects.
 An extension object should look like this:
 ```json
@@ -67,10 +69,17 @@ See the [default policy](../src/ear_token/ear_default_policy_cpu.rego) for an ex
 > }
 > ```
 
-When using EAR tokens, the policy used to evaluate CPU evidence should end in `_cpu`.
-If you upload your own policy, be sure to use this suffix.
-When attesting multiple devices, a policy is required for each device class.
-If you have devices of class `gpu` upload a policy with an id ending in `_gpu` i.e. `default_gpu`.
+For EAR token issuance, policy lookup is done by appending the device class to the policy id.
+For a request with `policy_ids: ["default"]`, AS evaluates:
+
+- `default_cpu` for CPU-class evidence
+- `default_gpu` for GPU-class evidence
+- `default_switch` for switch-class evidence
+- `default_ppcie` for ppcie-class evidence
+
+AS ships these default policies: `default_cpu`, `default_gpu`, `default_switch`, and `default_ppcie`.
+
+If multiple `policy_ids` are provided, only the first one is used for EAR token generation.
 
 ## How to Use Policy
 
