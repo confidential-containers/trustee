@@ -60,10 +60,10 @@ If `type` is set to `BuiltIn`, the following extra properties can be set:
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
 | `extractors` | Object | Optional configuration for provenance extractors | No | None |
-| `storage` | [StorageBackendConfig][4] | Optional RVPS-specific storage configuration. If provided, overrides the unified `storage_backend` for RVPS only. If omitted, falls back to the unified `storage_backend`. | No | None |
+| `storage_type` | String | Optional RVPS-specific storage type override. If provided, overrides `storage_backend.storage_type` for RVPS only. Backend-specific parameters are still reused from `storage_backend.backends`. | No | None |
 
 > [!NOTE]
-> **Storage Configuration:** By default, BuiltIn RVPS uses the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)) with the `reference_value` namespace. However, you can optionally provide a `storage` field to configure RVPS-specific storage that differs from other components.
+> **Storage Configuration:** By default, BuiltIn RVPS uses the unified `storage_backend` configuration (see [Storage Backend Configuration](#storage-backend-configuration)) with the `reference_value` namespace. However, you can optionally provide a `storage_type` field to override only the storage type used by RVPS.
 > This allows you to use different storage backends for different components (e.g., LocalFs for KBS and AS policies, but LocalJson for RVPS reference values).
 
 For detailed information about extractors configuration, including available extractors and their options, see the [RVPS README](../../rvps/README.md#extractors-configuration).
@@ -228,7 +228,7 @@ Running with a built-in RVPS with extractor configuration:
 }
 ```
 
-Running with a built-in RVPS with RVPS-specific storage configuration:
+Running with a built-in RVPS with RVPS-specific storage type override:
 
 ```json
 {
@@ -237,19 +237,15 @@ Running with a built-in RVPS with RVPS-specific storage configuration:
         "backends": {
             "local_fs": {
                 "dir_path": "/var/lib/attestation-service/storage"
+            },
+            "local_json": {
+                "file_dir_path": "/var/lib/rvps/references"
             }
         }
     },
     "rvps_config": {
         "type": "BuiltIn",
-        "storage": {
-            "storage_type": "LocalJson",
-            "backends": {
-                "local_json": {
-                    "file_dir_path": "/var/lib/rvps/references"
-                }
-            }
-        }
+        "storage_type": "LocalJson"
     },
     "attestation_token_broker": {
         "duration_min": 5

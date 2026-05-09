@@ -209,6 +209,7 @@ mod tests {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     crate::attestation::coco::builtin::Config {
+                        storage_type: None,
                         rvps_config: RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                             address: "http://127.0.0.1:50003".into(),
                         }),
@@ -354,7 +355,8 @@ mod tests {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     crate::attestation::coco::builtin::Config {
-                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
+                        storage_type: None,
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage_type: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()
@@ -496,7 +498,8 @@ mod tests {
             attestation_service:
                 crate::attestation::config::AttestationServiceConfig::CoCoASBuiltIn(
                     crate::attestation::coco::builtin::Config {
-                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
+                        storage_type: None,
+                        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage_type: None },
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: 5,
                             ..Default::default()

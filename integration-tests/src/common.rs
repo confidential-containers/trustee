@@ -150,7 +150,7 @@ impl TestHarness {
         let rvps_config = match &test_parameters.rvps_type {
             RvpsType::Builtin => RvpsConfig::BuiltIn {
                 extractors: None,
-                storage: None,
+                storage_type: None,
             },
             RvpsType::Remote => {
                 info!("Starting Remote RVPS");
@@ -229,6 +229,7 @@ impl TestHarness {
                         rvps_config,
                         attestation_token_broker: attestation_token_config,
                         verifier_config: None,
+                        storage_type: None,
                     },
                 ),
                 timeout: 5,

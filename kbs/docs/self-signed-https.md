@@ -90,8 +90,7 @@ policy_engine = "opa"
     [attestation_service.rvps_config]
     type = "BuiltIn"
 
-    [attestation_service.rvps_config.storage]
-    type = "LocalFs"
+    storage_type = "LocalFs"
 
 [[plugins]]
 name = "resource"

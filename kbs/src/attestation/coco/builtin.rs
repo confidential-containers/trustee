@@ -9,7 +9,7 @@ use attestation_service::{
     HashAlgorithm, InitDataInput, RuntimeData, VerificationRequest,
 };
 use kbs_types::{Challenge, Tee};
-use key_value_storage::StorageBackendConfig;
+use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
@@ -28,6 +28,12 @@ pub struct Config {
     /// Optional configuration for verifier modules
     #[serde(default)]
     pub verifier_config: Option<VerifierConfig>,
+
+    /// Optional storage backend configuration for CoCo AS.
+    /// If provided, overrides the unified storage_backend for CoCo AS storage.
+    /// If None, falls back to the unified storage_backend.
+    #[serde(default)]
+    pub storage_type: Option<KeyValueStorageType>,
 }
 
 impl Config {
@@ -35,11 +41,15 @@ impl Config {
         &self,
         storage_backend_config: &StorageBackendConfig,
     ) -> attestation_service::config::Config {
+        let mut storage_backend = storage_backend_config.clone();
+        if let Some(storage_type) = self.storage_type {
+            storage_backend.storage_type = storage_type;
+        }
         attestation_service::config::Config {
             rvps_config: self.rvps_config.clone(),
             attestation_token_broker: self.attestation_token_broker.clone(),
             verifier_config: self.verifier_config.clone(),
-            storage_backend: storage_backend_config.clone(),
+            storage_backend,
         }
     }
 }
