@@ -88,7 +88,7 @@ mod tests {
 
     #[rstest]
     #[case("./tests/configs/example1.json", Config {
-        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
+        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage_type: None },
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
@@ -111,7 +111,7 @@ mod tests {
         },
     })]
     #[case("./tests/configs/example2.json", Config {
-        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage: None },
+        rvps_config: RvpsConfig::BuiltIn { extractors: None, storage_type: None },
         attestation_token_broker: EarTokenConfiguration {
             duration_min: 5,
             issuer_name: "test".into(),
