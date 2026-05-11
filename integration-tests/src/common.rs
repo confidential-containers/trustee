@@ -183,6 +183,7 @@ impl TestHarness {
                             }),
                             local_fs: None,
                             postgres: None,
+                            redis: None,
                         },
                     },
                 })
@@ -287,6 +288,7 @@ impl TestHarness {
                     }),
                     local_json: None,
                     postgres: None,
+                    redis: None,
                 },
             },
             session_storage_type: None,
