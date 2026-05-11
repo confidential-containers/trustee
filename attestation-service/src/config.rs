@@ -107,6 +107,7 @@ mod tests {
                 }),
                 local_json: None,
                 postgres: None,
+                redis: None,
             },
         },
     })]

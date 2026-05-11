@@ -20,6 +20,9 @@ pub mod memory;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 
+#[cfg(feature = "redis")]
+pub mod redis;
+
 pub mod local_json;
 
 pub mod local_fs;
@@ -65,6 +68,8 @@ pub enum KeyValueStorageType {
     LocalFs,
     #[serde(alias = "postgres")]
     Postgres,
+    #[serde(alias = "redis")]
+    Redis,
 }
 
 #[derive(Deserialize, Debug, Default, Clone, PartialEq)]
@@ -72,6 +77,8 @@ pub enum KeyValueStorageType {
 pub struct KeyValueStorageStructConfig {
     #[cfg(feature = "postgres")]
     pub postgres: Option<postgres::Config>,
+    #[cfg(feature = "redis")]
+    pub redis: Option<redis::Config>,
     pub local_json: Option<local_json::Config>,
     pub local_fs: Option<local_fs::Config>,
 }
@@ -96,6 +103,16 @@ impl KeyValueStorageStructConfig {
                             message: "PostgreSQL configuration is required".to_string(),
                         })?;
                 Ok(Arc::new(postgres::PostgresClient::new(config.clone(), namespace).await?) as _)
+            }
+            #[cfg(feature = "redis")]
+            KeyValueStorageType::Redis => {
+                let config =
+                    self.redis
+                        .as_ref()
+                        .ok_or(KeyValueStorageError::InvalidConfiguration {
+                            message: "Redis configuration is required".to_string(),
+                        })?;
+                Ok(Arc::new(redis::RedisClient::new(config.clone(), namespace).await?) as _)
             }
             KeyValueStorageType::LocalJson => {
                 let config =
@@ -185,6 +202,9 @@ password = "test"
 port = 5432
 host = "localhost"
 
+[redis]
+url = "redis://127.0.0.1:6379"
+
 [local_json]
 file_dir_path = "/opt/confidential-containers/storage/local_json"
 
@@ -192,7 +212,10 @@ file_dir_path = "/opt/confidential-containers/storage/local_json"
 dir_path = "/opt/confidential-containers/storage/local_fs"
         "#;
         let config: KeyValueStorageStructConfig = toml::from_str(config).unwrap();
+        #[cfg(feature = "postgres")]
         assert_eq!(config.postgres.as_ref().unwrap().db, "test");
+        #[cfg(feature = "redis")]
+        assert_eq!(config.redis.as_ref().unwrap().url, "redis://127.0.0.1:6379");
         assert_eq!(
             config.local_json.as_ref().unwrap().file_dir_path,
             "/opt/confidential-containers/storage/local_json"
