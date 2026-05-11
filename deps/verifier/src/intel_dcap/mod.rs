@@ -25,14 +25,14 @@ const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certifica
 
 #[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum TcbUpdateType {
+pub(crate) enum TcbUpdateType {
     #[default]
     Early,
     Standard,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
-pub struct QcnlConfig {
+pub(crate) struct QcnlConfig {
     collateral_service: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     use_secure_cert: Option<bool>,
@@ -50,7 +50,7 @@ impl Default for QcnlConfig {
     }
 }
 
-pub fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Error> {
+pub(crate) fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Error> {
     env::var("QCNL_CONF_PATH")
         .map_err(std::io::Error::other)
         .and_then(File::create_new)
@@ -77,7 +77,7 @@ pub fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Error> {
         .inspect(|_| debug!("DCAP QCNL configuration was written to $QCNL_CONF_PATH."))
 }
 
-pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
+pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
     let mut supp_data_desc = tee_supp_data_descriptor_t {
         major_version: 0,
@@ -183,7 +183,7 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String
     }
 }
 
-pub fn extend_using_custom_claims(
+pub(crate) fn extend_using_custom_claims(
     claim: &mut TeeEvidenceParsedClaim,
     custom: Map<String, Value>,
 ) -> anyhow::Result<()> {

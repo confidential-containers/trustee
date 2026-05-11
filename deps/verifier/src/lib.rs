@@ -44,7 +44,7 @@ pub mod nvidia;
     feature = "tdx-verifier",
     feature = "sgx-verifier"
 ))]
-pub mod intel_dcap;
+pub(crate) mod intel_dcap;
 
 #[cfg(feature = "tpm-verifier")]
 pub mod tpm;
