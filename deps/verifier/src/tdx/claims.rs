@@ -12,11 +12,7 @@ use bitflags::{bitflags, Flags};
 use serde_json::{Map, Value};
 
 use super::quote::Quote;
-use crate::{
-    intel_dcap::pck::{parse_pck_pem_certs, platform_instance_id_from_pck_leaf_cert},
-    tdx::quote::QuoteV5Body,
-    TeeEvidenceParsedClaim,
-};
+use crate::{intel_dcap::pck::PlatformInfo, tdx::quote::QuoteV5Body, TeeEvidenceParsedClaim};
 use eventlog::CcEventLog;
 
 macro_rules! parse_claim {
@@ -34,7 +30,7 @@ macro_rules! parse_claim {
 pub fn generate_parsed_claim(
     quote: Quote,
     cc_eventlog: Option<CcEventLog>,
-    pck_certs: Option<&[u8]>,
+    platform_info: &PlatformInfo,
 ) -> Result<TeeEvidenceParsedClaim> {
     let mut quote_map = Map::new();
     let mut quote_body = Map::new();
@@ -145,12 +141,8 @@ pub fn generate_parsed_claim(
     parse_claim!(claims, "report_data", quote.report_data());
     parse_claim!(claims, "init_data", quote.mr_config_id());
 
-    if let Some(certs) = pck_certs {
-        let pems = parse_pck_pem_certs(certs)?;
-        let leaf = pems[0].parse_x509()?;
-        if let Some(piid) = platform_instance_id_from_pck_leaf_cert(&leaf)? {
-            parse_claim!(claims, "platform_instance_id", &piid[..]);
-        }
+    if let Some(piid) = platform_info.platform_instance_id {
+        parse_claim!(claims, "platform_instance_id", &piid[..]);
     }
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
@@ -260,7 +252,11 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use serde_json::Value;
 
-    use crate::tdx::{claims::PlatformConfigInfoError, quote::parse_tdx_quote};
+    use crate::intel_dcap::pck::parse_platform_info;
+    use crate::tdx::{
+        claims::PlatformConfigInfoError,
+        quote::{parse_tdx_quote, parse_tdx_quote_certification},
+    };
 
     use super::{generate_parsed_claim, TdShimPlatformConfigInfo};
 
@@ -273,7 +269,13 @@ mod tests {
         let ccel_bin = std::fs::read("./test_data/CCEL_data").expect("read ccel failed");
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
-        let claims = generate_parsed_claim(quote, Some(ccel), None).expect("parse claim failed");
+        let pck_certs = parse_tdx_quote_certification(&quote_bin, &quote)
+            .expect("parse cert data")
+            .qe_certification_data
+            .certificates;
+        let platform_info = parse_platform_info(&pck_certs).expect("parse platform info");
+        let claims =
+            generate_parsed_claim(quote, Some(ccel), &platform_info).expect("parse claim failed");
         let expected_json_str =
             std::fs::read_to_string("./test_data/parse_tdx_claims_expected.json")
                 .expect("read expected json output failed");

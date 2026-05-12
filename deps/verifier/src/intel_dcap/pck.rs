@@ -8,11 +8,13 @@
 //! and are present in both TDX and SGX PCK certificate chains.
 //! See "Intel® SGX PCK Certificate and Certificate Revocation List Profile Specification".
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use asn1_rs::{oid, DerSequence, Enumerated, FromDer, Oid};
 use x509_parser::prelude::*;
 
 const DCAP_SGX_EXTENSIONS: Oid<'static> = oid!(1.2.840 .113741 .1 .13 .1);
+const PCK_PLATFORM_CA_CN: &str = "Intel SGX PCK Platform CA";
+const PCK_PROCESSOR_CA_CN: &str = "Intel SGX PCK Processor CA";
 
 #[derive(Debug, PartialEq, DerSequence)]
 struct OidAndString<'a> {
@@ -92,68 +94,221 @@ struct SgxExtension<'a> {
     pceid: OidAndString<'a>,
     fmspc: OidAndString<'a>,
     sgxtype: OidAndEnum<'a>,
-    platform_instance: OidAndString<'a>,
-    configuration: ConfigSequence<'a>,
+    /// Absent in Processor CA-signed certs.
+    platform_instance: Option<OidAndString<'a>>,
+    /// Absent in Processor CA-signed certs.
+    configuration: Option<ConfigSequence<'a>>,
+}
+
+/// Owned platform information extracted from the SGX extensions of a PCK certificate chain.
+///
+/// SGX extensions are DER-encoded under OID 1.2.840.113741.1.13.1 and present in
+/// both TDX and SGX PCK certificate chains.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct PlatformInfo {
+    /// FMSPC (Family-Model-Stepping-Platform-CustomSKU) identifier.
+    pub fmspc: [u8; 6],
+    /// PCE (Provisioning Certification Enclave) identifier.
+    pub pceid: [u8; 2],
+    /// 16 SGX TCB SVN components.
+    pub tcb_components: [u8; 16],
+    /// PCE security version number.
+    pub pcesvn: u16,
+    /// CPU security version number.
+    pub cpusvn: [u8; 16],
+    /// SGX type: 0 = Standard, 1 = Scalable, 2 = ScalableWithIntegrity.
+    pub sgx_type: u8,
+    /// `true` for Platform CA-signed certs, `false` for Processor CA-signed certs.
+    pub is_platform_ca: bool,
+    /// Present only in Platform CA-signed certs; `None` for Processor CA-signed certs.
+    pub platform_instance_id: Option<[u8; 16]>,
+    /// Present only in Platform CA-signed certs; `None` for Processor CA-signed certs.
+    pub dynamic_platform: Option<bool>,
+    pub cached_keys: Option<bool>,
+    pub smt_enabled: Option<bool>,
+}
+
+/// A parsed PCK certificate chain with named positions.
+/// The Intel cert chain ordering is leaf (index 0), intermediate CA, root CA.
+struct PckCertificateChain {
+    leaf: Pem,
+    intermediate: Pem,
+    _root: Pem,
 }
 
 /// Parse all PEM-encoded certificates from a PCK certificate chain.
-/// The Intel cert chain ordering is leaf (index 0), intermediate CA, root CA.
-pub(crate) fn parse_pck_pem_certs(pem_certs: &[u8]) -> Result<Vec<Pem>> {
-    Pem::iter_from_buffer(pem_certs)
+fn parse_pck_pem_certs(pem_certs: &[u8]) -> Result<PckCertificateChain> {
+    let [leaf, intermediate, root] = Pem::iter_from_buffer(pem_certs)
         .collect::<Result<Vec<Pem>, _>>()
         .context("failed to parse PCK PEM certificate chain")
+        .and_then(|pems| {
+            pems.try_into().map_err(|v: Vec<Pem>| {
+                anyhow!(
+                    "PCK cert chain must contain exactly 3 certificates (leaf, intermediate CA, root CA), got {}",
+                    v.len()
+                )
+            })
+        })?;
+
+    Ok(PckCertificateChain {
+        leaf,
+        intermediate,
+        _root: root,
+    })
 }
 
-/// Extract the `platform_instance_id` from an already-parsed PCK leaf certificate.
-/// Returns `Ok(None)` if the SGX extensions OID is absent (Processor CA-signed certs).
-/// The `platform_instance` field is only present in Platform CA-signed PCK certs.
-pub(crate) fn platform_instance_id_from_pck_leaf_cert(
-    cert: &X509Certificate,
-) -> Result<Option<[u8; 16]>> {
-    let ext = cert
+/// Parse the SGX extensions from a PCK certificate chain and return owned platform information.
+///
+/// The CA type is derived from the intermediate cert subject CN, which also determines
+/// which SGX extension fields are present. Absent SGX extensions is an error — PCK
+/// leaf certificates are always expected to carry them.
+pub(crate) fn parse_platform_info(pem_certs: &[u8]) -> Result<PlatformInfo> {
+    let chain = parse_pck_pem_certs(pem_certs)?;
+
+    let intermediate = chain
+        .intermediate
+        .parse_x509()
+        .context("failed to parse PCK intermediate CA cert")?;
+
+    let is_platform_ca = intermediate
+        .subject()
+        .iter_common_name()
+        .next()
+        .context("PCK intermediate CA cert has no Common Name")?
+        .as_str()
+        .context("PCK intermediate CA CN is not valid UTF-8")
+        .and_then(|cn| match cn {
+            PCK_PLATFORM_CA_CN => Ok(true),
+            PCK_PROCESSOR_CA_CN => Ok(false),
+            other => bail!("unexpected PCK intermediate CA CN: {other}"),
+        })?;
+
+    let leaf = chain
+        .leaf
+        .parse_x509()
+        .context("failed to parse PCK leaf cert")?;
+
+    let ext = leaf
         .tbs_certificate
         .get_extension_unique(&DCAP_SGX_EXTENSIONS)
-        .context("failed to look up SGX extensions OID")?;
+        .context("failed to look up SGX extensions OID")?
+        .context("SGX extensions OID not found in PCK leaf cert")?;
 
-    let ext_value = match ext {
-        Some(e) => e.value,
-        None => return Ok(None),
+    let (rem, sgx) =
+        SgxExtension::from_der(ext.value).context("failed to parse SGX extension DER")?;
+
+    if !rem.is_empty() {
+        bail!("SGX extension has {} unexpected trailing bytes", rem.len());
+    }
+
+    let tcb = &sgx.tcb.tcbs;
+
+    let fmspc: [u8; 6] = sgx.fmspc.s.try_into().context("fmspc is not 6 bytes")?;
+    let pceid: [u8; 2] = sgx.pceid.s.try_into().context("pceid is not 2 bytes")?;
+
+    let tcb_components = [
+        tcb.comp1.val,
+        tcb.comp2.val,
+        tcb.comp3.val,
+        tcb.comp4.val,
+        tcb.comp5.val,
+        tcb.comp6.val,
+        tcb.comp7.val,
+        tcb.comp8.val,
+        tcb.comp9.val,
+        tcb.comp10.val,
+        tcb.comp11.val,
+        tcb.comp12.val,
+        tcb.comp13.val,
+        tcb.comp14.val,
+        tcb.comp15.val,
+        tcb.comp16.val,
+    ];
+
+    let cpusvn: [u8; 16] = tcb.cpusvn.s.try_into().context("cpusvn is not 16 bytes")?;
+    let sgx_type = sgx.sgxtype.e.0 as u8;
+
+    // Cross-check: the CA type from the intermediate cert must agree with the presence
+    // of platform_instance and configuration in the leaf cert's SGX extensions.
+    let (platform_instance_id, dynamic_platform, cached_keys, smt_enabled) = match is_platform_ca {
+        true => {
+            let pi = sgx
+                .platform_instance
+                .as_ref()
+                .context("Platform PCK cert is missing platform_instance")?;
+
+            let cfg_seq = sgx
+                .configuration
+                .as_ref()
+                .context("Platform PCK cert is missing configuration")?;
+
+            let cfg = &cfg_seq.configs;
+
+            let bytes: [u8; 16] =
+                pi.s.try_into()
+                    .context("platform_instance is not 16 bytes")?;
+
+            // The GUID is stored little-endian in the OCTET STRING; convert to big-endian.
+            let piid = u128::from_le_bytes(bytes).to_be_bytes();
+
+            (
+                Some(piid),
+                Some(cfg.dynamic_platform.b),
+                Some(cfg.cached_keys.b),
+                Some(cfg.smt_enabled.b),
+            )
+        }
+        false => {
+            if sgx.platform_instance.is_some() || sgx.configuration.is_some() {
+                bail!("Processor CA cert unexpectedly contains platform_instance or configuration");
+            }
+            (None, None, None, None)
+        }
     };
 
-    let (_, parsed) =
-        SgxExtension::from_der(ext_value).context("failed to parse SGX extension DER")?;
-
-    let bytes: [u8; 16] = parsed
-        .platform_instance
-        .s
-        .try_into()
-        .context("platform_instance is not 16 bytes")?;
-
-    // The GUID is stored little-endian in the OCTET STRING; convert to big-endian.
-    Ok(Some(u128::from_le_bytes(bytes).to_be_bytes()))
+    Ok(PlatformInfo {
+        fmspc,
+        pceid,
+        tcb_components,
+        pcesvn: tcb.pcesvn.val,
+        cpusvn,
+        sgx_type,
+        is_platform_ca,
+        platform_instance_id,
+        dynamic_platform,
+        cached_keys,
+        smt_enabled,
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_pck_pem_certs, platform_instance_id_from_pck_leaf_cert};
+    use super::parse_platform_info;
     use crate::tdx::quote::{parse_tdx_quote, parse_tdx_quote_certification};
 
     #[test]
-    fn parse_platform_instance_id() {
+    fn parse_platform_info_platform_ca() {
         let quote_bin = std::fs::read("./test_data/tdx_quote_4.dat").expect("read quote failed");
         let quote = parse_tdx_quote(&quote_bin).expect("parse quote");
-        let pck_certs_pem = parse_tdx_quote_certification(&quote_bin, &quote)
+        let certs = parse_tdx_quote_certification(&quote_bin, &quote)
             .expect("parse cert chain")
             .qe_certification_data
             .certificates;
 
-        let certs = parse_pck_pem_certs(&pck_certs_pem).expect("parse PEM certs");
-        let leaf = certs[0].parse_x509().expect("parse leaf cert");
+        let info = parse_platform_info(&certs).expect("parse platform info");
 
-        let piid = platform_instance_id_from_pck_leaf_cert(&leaf)
-            .expect("extract platform_instance_id")
-            .expect("platform_instance_id not present");
-
-        assert_eq!(hex::encode(piid), "82548d228d94d5e204a95b354dc61a02");
+        assert!(info.is_platform_ca);
+        assert_eq!(
+            hex::encode(
+                info.platform_instance_id
+                    .expect("platform_instance_id not present")
+            ),
+            "82548d228d94d5e204a95b354dc61a02"
+        );
+        assert_eq!(info.fmspc.len(), 6);
+        assert_eq!(info.pceid.len(), 2);
+        assert!(info.dynamic_platform.is_some());
+        assert!(info.cached_keys.is_some());
+        assert!(info.smt_enabled.is_some());
     }
 }
