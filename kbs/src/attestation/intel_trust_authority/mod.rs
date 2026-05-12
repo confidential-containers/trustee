@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    attestation::backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
+    attestation::{
+        backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
+        SELECTED_HASH_ALGORITHM_JSON_KEY, SUPPORTED_HASH_ALGORITHMS_JSON_KEY,
+    },
     token::{jwk::JwkAttestationTokenVerifier, AttestationTokenVerifierConfig},
 };
 use anyhow::*;
@@ -20,9 +23,6 @@ use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
 use tracing::{debug, info, warn};
-
-const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
-const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
 const ERR_INVALID_TEE: &str = "ITA: Unknown TEE specified";
