@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex};
+use crate::{regularize_data, ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex};
 use anyhow::{anyhow, Context, Result};
 use core::result::Result::Ok;
 use openssl::encrypt::{Decrypter, Encrypter};
@@ -23,6 +23,9 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 
 const DEFAULT_CERTS_OFFLINE_VERIFICATION: &str = "false";
+
+/// Size of report data in IBM SE attestation (64 bytes)
+const SE_REPORT_DATA_SIZE: usize = 64;
 
 const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/ibmse/hkds";
 
@@ -230,13 +233,19 @@ impl SeVerifierImpl {
 
         // Validate runtime_data_digest if provided
         if let ReportData::Value(expected_report_data) = expected_report_data {
+            let expected_report_data = regularize_data(
+                expected_report_data,
+                SE_REPORT_DATA_SIZE,
+                "USER_DATA",
+                "IBM SE",
+            );
             let report_data = se_response
                 .user_data
-                .get(..48)
+                .get(..expected_report_data.len())
                 .context("Failed to get report_data section from USER_DATA")?;
-            if report_data != *expected_report_data {
+            if report_data != expected_report_data {
                 return Err(SeError::UserDataMismatch {
-                    expected: expected_report_data.to_vec(),
+                    expected: expected_report_data,
                     actual: report_data.to_vec(),
                 }
                 .into());
@@ -438,8 +447,8 @@ mod tests {
     fn test_user_data_validation_success() {
         let verifier = create_test_verifier();
 
-        // Create test data - SHA-384 is 48 bytes
-        let report_data = vec![0x05; 48];
+        // Create test data - SHA-512 is 64 bytes
+        let report_data = vec![0x05; SE_REPORT_DATA_SIZE];
 
         // Build user_data: first 48 bytes are report_data, rest can be anything
         let mut user_data = report_data.clone();
@@ -486,11 +495,11 @@ mod tests {
     fn test_user_data_validation_mismatch() {
         let verifier = create_test_verifier();
 
-        // Create test data - SHA-384 is 48 bytes
-        let report_data = vec![0x05; 48];
+        // Create test data - SE report data is 64 bytes
+        let report_data = vec![0x05; SE_REPORT_DATA_SIZE];
 
-        // Build user_data with WRONG report_data in first 48 bytes
-        let mut user_data = vec![0xFF; 48]; // Wrong report data
+        // Build user_data with WRONG report_data
+        let mut user_data = vec![0xFF; SE_REPORT_DATA_SIZE]; // Wrong report data
         user_data.extend_from_slice(&[0xAA; 16]); // Add some extra data
 
         let nonce = vec![0x09; 16];
@@ -534,7 +543,7 @@ mod tests {
         let verifier = create_test_verifier();
 
         // Build user_data with some report_data
-        let report_data = vec![0x05; 48];
+        let report_data = vec![0x05; SE_REPORT_DATA_SIZE];
         let mut user_data = report_data.clone();
         user_data.extend_from_slice(&[0xBB; 16]);
 
