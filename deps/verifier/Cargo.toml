@@ -28,11 +28,11 @@ az-snp-vtpm-verifier = [
     "tss-esapi",
 ]
 az-tdx-vtpm-verifier = [
+    "az-snp-vtpm-verifier",
     "az-tdx-vtpm",
     "openssl",
     "serde_with",
     "tdx-verifier",
-    "tss-esapi",
 ]
 snp-verifier = ["asn1-rs", "openssl", "sev", "x509-parser"]
 csv-verifier = ["codicon", "csv-rs", "eventlog", "openssl", "tokio/fs"]
