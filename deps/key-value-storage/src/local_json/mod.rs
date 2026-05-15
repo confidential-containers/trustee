@@ -81,7 +81,7 @@ impl KeyValueStorage for LocalJson {
         let mut items: HashMap<String, String> = serde_json::from_slice(&file)
             .map_err(|e| KeyValueStorageError::MalformedValue { source: e.into() })?;
         let value_b64 = URL_SAFE.encode(value);
-        if parameters.overwrite && items.contains_key(key) {
+        if !parameters.overwrite && items.contains_key(key) {
             return Ok(SetResult::AlreadyExists);
         }
 
@@ -200,5 +200,45 @@ mod tests {
         assert_eq!(value, b"test");
         let keys = storage.list().await.unwrap();
         assert_eq!(keys, Vec::<String>::new());
+    }
+
+    #[tokio::test]
+    async fn test_overwrite_true_replaces_existing() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            file_dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        let storage = LocalJson::new(config, "key_value.json").unwrap();
+        storage
+            .set("key", b"original", SetParameters { overwrite: true })
+            .await
+            .unwrap();
+        let res = storage
+            .set("key", b"updated", SetParameters { overwrite: true })
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::Inserted);
+        let value = storage.get("key").await.unwrap().unwrap();
+        assert_eq!(value, b"updated");
+    }
+
+    #[tokio::test]
+    async fn test_overwrite_false_preserves_existing() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            file_dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        let storage = LocalJson::new(config, "key_value.json").unwrap();
+        storage
+            .set("key", b"original", SetParameters { overwrite: false })
+            .await
+            .unwrap();
+        let res = storage
+            .set("key", b"updated", SetParameters { overwrite: false })
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::AlreadyExists);
+        let value = storage.get("key").await.unwrap().unwrap();
+        assert_eq!(value, b"original");
     }
 }
