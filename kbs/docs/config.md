@@ -27,6 +27,78 @@ The following properties can be set under the `[http_server]` section.
 | `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                     |
 | `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                        |
 | `worker_count`         | Integer      | Number of HTTP actix worker threads              | No       | Num of logical CPU cores |
+| `tls_profile`          | String       | TLS security profile (see [TLS Configuration](#tls-configuration)) | No | `intermediate` |
+| `tls_min_version`      | String       | Minimum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
+| `tls_max_version`      | String       | Maximum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
+| `tls_ciphers`          | String       | TLS cipher suites (colon-separated OpenSSL list) | No       | Profile-dependent        |
+| `tls_groups`           | String       | TLS key exchange groups (colon-separated list)   | No       | Auto-detected with PQC   |
+
+#### TLS Configuration
+
+KBS supports flexible TLS configuration through predefined security profiles and custom settings. The TLS profiles are based on [Mozilla's TLS recommendations](https://wiki.mozilla.org/Security/Server_Side_TLS).
+
+##### TLS Security Profiles
+
+Four security profiles are available via the `tls_profile` setting:
+
+| Profile         | TLS Versions | Description                                              | Use Case                          |
+|-----------------|--------------|----------------------------------------------------------|-----------------------------------|
+| `old`           | 1.2, 1.3     | Legacy compatibility with older clients                  | Maximum client compatibility      |
+| `intermediate`  | 1.2, 1.3     | Balanced security and compatibility (recommended)        | Most production deployments       |
+| `modern`        | 1.3 only     | Maximum security, TLS 1.3 only                           | High-security environments        |
+| `custom`        | Configurable | Full control over TLS parameters                         | Specialized security requirements |
+
+**Recommended:** Use `intermediate` (the default) for most deployments unless you have specific security or compatibility requirements.
+
+##### Custom TLS Configuration
+
+When using `tls_profile = "custom"`, you can explicitly configure:
+
+- **`tls_min_version`**: Minimum TLS protocol version (`"1.2"` or `"1.3"`)
+- **`tls_max_version`**: Maximum TLS protocol version (`"1.2"` or `"1.3"`)
+- **`tls_ciphers`**: Colon-separated OpenSSL cipher suite list
+  - For TLS 1.3 only (Modern profile or min=1.3): Use TLS 1.3 cipher names
+    - Example: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+    - TLS 1.3 cipher suites only specify encryption and hashing
+  - For TLS 1.2 only (max=1.2): Use TLS 1.2 cipher names
+    - Example: `ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384`
+    - TLS 1.2 cipher suites include key exchange, authentication, encryption, and hashing
+  - For both TLS 1.2 and 1.3 (Old/Intermediate): You can mix both formats in one string, separated by colons
+- **`tls_groups`**: Colon-separated list of supported groups for key exchange (applies to both TLS 1.2 and 1.3)
+  - For TLS 1.2: Configures elliptic curves for ECDHE cipher suites
+  - For TLS 1.3: Configures all key exchange (the only mechanism since cipher suites don't include it)
+  - Common classical groups: `X25519`, `X448`, `secp256r1` (P-256), `secp384r1` (P-384), `secp521r1` (P-521)
+  - PQC hybrid groups (OpenSSL 3.5+): `X25519MLKEM768`, `SecP256r1MLKEM768`, `X448MLKEM1024`, `SecP384r1MLKEM1024`
+  - Example: `X25519:secp256r1:secp384r1` (classical only)
+  - Example: `X25519MLKEM768:X25519:secp256r1` (post-quantum with classical fallback)
+  - See [OpenSSL groups documentation](https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set1_groups_list.html) for complete list
+
+> [!NOTE]
+> Custom TLS fields can be used with any profile to override specific settings. If you set custom fields with a non-custom profile, a warning will be logged, but the custom settings will take precedence.
+
+##### Post-Quantum Cryptography (PQC) Support
+
+KBS automatically detects and enables post-quantum key exchange algorithms when supported by your OpenSSL installation (3.5+). If `tls_groups` is not explicitly configured, KBS will:
+
+1. Detect the best available PQC algorithm (ML-KEM hybrid groups)
+2. Fall back to classical algorithms if PQC is unavailable
+3. Use the following priority order:
+   - `X25519MLKEM768` (preferred)
+   - `SecP256r1MLKEM768` (FIPS-compliant)
+   - `X448MLKEM1024` (high security)
+   - `SecP384r1MLKEM1024` (FIPS + high security)
+
+To explicitly configure PQC, use the `custom` profile with `tls_groups`:
+
+```toml
+[http_server]
+tls_profile = "custom"
+tls_min_version = "1.3"
+tls_max_version = "1.3"
+tls_groups = "X25519MLKEM768:X25519:secp256r1"
+```
+
+See the [TLS Configuration Examples](#tls-configuration-examples) section for complete examples.
 
 ### Attestation Token Configuration
 
@@ -590,3 +662,108 @@ dir_path = "./work/storage"
 name = "resource"
 storage_backend_type = "kvstorage"
 ```
+
+### TLS Configuration Examples
+
+#### Using the Modern Profile (TLS 1.3 Only)
+
+For high-security environments that only support modern clients:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "modern"
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
+```
+
+#### Using the Intermediate Profile (Default, Recommended)
+
+Balances security and compatibility with TLS 1.2 and 1.3 support:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "intermediate"  # Can be omitted (it's the default)
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
+```
+
+#### Using Custom TLS Configuration
+
+Full control over TLS parameters:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "custom"
+tls_min_version = "1.2"
+tls_max_version = "1.3"
+# TLS 1.3 cipher suites (only encryption+hash; key exchange configured via tls_groups)
+tls_ciphers = "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+# Classical key exchange groups
+tls_groups = "X25519:secp256r1:secp384r1"
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
+```
+
+#### Using Post-Quantum Cryptography (PQC)
+
+Configure TLS 1.3 with post-quantum key exchange:
+
+```toml
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "custom"
+tls_min_version = "1.3"
+tls_max_version = "1.3"
+# TLS 1.3 cipher suites (only encryption+hash; key exchange configured via tls_groups)
+tls_ciphers = "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+# Post-quantum key exchange groups with classical fallbacks
+tls_groups = "X25519MLKEM768:X25519:secp256r1"
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
+```
+
+> [!NOTE]
+> Post-quantum algorithms require OpenSSL 3.5 or later. If PQC algorithms are not available, KBS will log a warning and fall back to classical algorithms.

@@ -1,0 +1,15 @@
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "modern"
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
