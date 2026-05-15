@@ -1,0 +1,19 @@
+# TLS Old profile
+# - Supports TLS 1.2 and TLS 1.3
+# - For legacy client compatibility
+# - Less restrictive cipher suite requirements
+[http_server]
+sockets = ["0.0.0.0:8080"]
+private_key = "/etc/kbs-private.key"
+certificate = "/etc/kbs-cert.pem"
+tls_profile = "old"
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+type = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"
