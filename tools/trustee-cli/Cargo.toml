@@ -16,7 +16,7 @@ attestation-service = { path = "../../attestation-service" }
 clap = { workspace = true, features = ["string"] }
 dirs = "6.0.0"
 kbs = { path = "../../kbs" }
-nix = { version = "0.31.1", features = ["user"] }
+nix = { version = "0.31.3", features = ["user"] }
 openssl.workspace = true
 reference-value-provider-service = { path = "../../rvps" }
 tokio.workspace = true
