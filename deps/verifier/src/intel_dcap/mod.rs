@@ -78,13 +78,6 @@ pub(crate) fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Erro
 }
 
 pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
-    let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
-    let mut supp_data_desc = tee_supp_data_descriptor_t {
-        major_version: 0,
-        data_size: 0,
-        p_data: &mut supp_data as *mut sgx_ql_qv_supplemental_t as *mut u8,
-    };
-
     // Call DCAP quote verify library to set QvE loading policy to multi-thread
     // We only need to set the policy once; otherwise, it will return the error code 0xe00c (SGX_QL_UNSUPPORTED_LOADING_POLICY)
     static INIT: std::sync::Once = std::sync::Once::new();
@@ -102,26 +95,26 @@ pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map
         }
     });
 
-    match tee_get_supplemental_data_version_and_size(quote) {
-        Ok((supp_ver, supp_size)) => {
-            if supp_size == mem::size_of::<sgx_ql_qv_supplemental_t>() as u32 {
-                debug!("tee_get_quote_supplemental_data_version_and_size successfully returned.");
-                debug!(
-                    "Info: latest supplemental data major version: {}, minor version: {}, size: {}",
-                    u16::from_be_bytes(supp_ver.to_be_bytes()[..2].try_into()?),
-                    u16::from_be_bytes(supp_ver.to_be_bytes()[2..].try_into()?),
-                    supp_size,
-                );
-                supp_data_desc.data_size = supp_size;
-            } else {
-                warn!("Quote supplemental data size is different between DCAP QVL and QvE, please make sure you installed DCAP QVL and QvE from same release.")
-            }
-        }
-        Err(e) => bail!(
-            "tee_get_quote_supplemental_data_size failed: {}",
+    let (_, supp_size) = tee_get_supplemental_data_version_and_size(quote).map_err(|e| {
+        anyhow!(
+            "tee_get_supplemental_data_version_and_size failed: {}",
             describe_error(e)
-        ),
+        )
+    })?;
+
+    let expected_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
+    if supp_size != expected_size {
+        bail!(
+            "Supplemental data size mismatch: QVL returned {supp_size}, expected {expected_size}"
+        );
     }
+
+    let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
+    let mut supp_data_desc = tee_supp_data_descriptor_t {
+        major_version: 0,
+        data_size: supp_size,
+        p_data: std::ptr::from_mut(&mut supp_data).cast(),
+    };
 
     // get collateral
     let collateral = match tee_qv_get_collateral(quote) {
@@ -141,18 +134,13 @@ pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map
         .unwrap_or(Duration::ZERO)
         .as_secs() as i64;
 
-    let p_supplemental_data = match supp_data_desc.data_size {
-        0 => None,
-        _ => Some(&mut supp_data_desc),
-    };
-
     // call DCAP quote verify library for quote verification
     let (collateral_expiration_status, quote_verification_result) = tee_verify_quote(
         quote,
         collateral.as_ref(),
         current_time,
         None,
-        p_supplemental_data,
+        Some(&mut supp_data_desc),
     )
     .map_err(|e| anyhow!("tee_verify_quote failed: {}", describe_error(e)))?;
 
