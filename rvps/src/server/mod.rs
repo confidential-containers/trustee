@@ -92,9 +92,7 @@ pub async fn start(
 
     let mut builder = Server::builder();
     if let Some(tls_config) = tls {
-        builder = builder
-            .tls_config(tls_config)
-            .context("RVPS TLS config")?;
+        builder = builder.tls_config(tls_config).context("RVPS TLS config")?;
         info!("RVPS: TLS enabled");
     } else {
         warn!("RVPS: TLS not configured — running in plaintext mode");

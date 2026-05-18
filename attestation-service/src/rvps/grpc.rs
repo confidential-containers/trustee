@@ -3,9 +3,9 @@ use mobc::{Manager, Pool};
 use serde::Deserialize;
 use serde_json::Value;
 use std::path::PathBuf;
+use tls_config::grpc::GrpcTlsMode;
 use tonic::transport::{Channel, ClientTlsConfig};
 use tracing::{debug, info};
-use tls_config::grpc::GrpcTlsMode;
 
 use self::rvps_api::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
@@ -80,15 +80,21 @@ impl Agent {
         }
 
         // Auto-prepend the correct scheme if none was given.
-        let address = if !config.address.starts_with("http://")
-            && !config.address.starts_with("https://")
-        {
-            let scheme = if config.tls_mode == GrpcTlsMode::Tls { "https" } else { "http" };
-            debug!("add {scheme}:// prefix to the rvps grpc address [{}]", config.address);
-            format!("{scheme}://{}", config.address)
-        } else {
-            config.address.clone()
-        };
+        let address =
+            if !config.address.starts_with("http://") && !config.address.starts_with("https://") {
+                let scheme = if config.tls_mode == GrpcTlsMode::Tls {
+                    "https"
+                } else {
+                    "http"
+                };
+                debug!(
+                    "add {scheme}:// prefix to the rvps grpc address [{}]",
+                    config.address
+                );
+                format!("{scheme}://{}", config.address)
+            } else {
+                config.address.clone()
+            };
 
         let tls_config = tls_config::grpc::build_grpc_client_tls_config(
             &config.tls_mode,

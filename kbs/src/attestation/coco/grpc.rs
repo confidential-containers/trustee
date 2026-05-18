@@ -14,9 +14,9 @@ use mobc::{Manager, Pool};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tls_config::grpc::GrpcTlsMode;
 use tonic::transport::{Channel, ClientTlsConfig};
 use tracing::info;
-use tls_config::grpc::GrpcTlsMode;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
 

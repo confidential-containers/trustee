@@ -1,4 +1,8 @@
-use std::{net::SocketAddr, path::{Path, PathBuf}, sync::Arc};
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use actix_cors::Cors;
 use actix_web::{http::header, web, App, HttpServer};
@@ -207,9 +211,8 @@ loglevel: {env_filter}
                 .set_certificate_chain_file(&tls_cert)
                 .map_err(RestfulError::SetHttpsCert)?;
 
-            let pqc_result =
-                tls_config::configure_pqc_groups(&mut builder, cli.require_pqc)
-                    .map_err(|e| RestfulError::Anyhow(e.into()))?;
+            let pqc_result = tls_config::configure_pqc_groups(&mut builder, cli.require_pqc)
+                .map_err(|e| RestfulError::Anyhow(e.into()))?;
             info!("AS REST TLS groups: {}", pqc_result.groups_list);
 
             info!("starting HTTPS server at https://{}", cli.socket);
