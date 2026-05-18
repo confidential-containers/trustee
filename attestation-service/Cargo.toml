@@ -18,10 +18,10 @@ se-verifier = ["verifier/se-verifier"]
 nvidia-verifier = ["verifier/nvidia-verifier"]
 tpm-verifier = ["verifier/tpm-verifier"]
 
-rvps-grpc = ["prost", "tonic", "mobc"]
+rvps-grpc = ["prost", "tonic", "mobc", "tls-config/grpc", "rustls"]
 
 # For building gRPC CoCo-AS binary
-grpc-bin = ["clap", "prost", "tonic", "tonic-prost"]
+grpc-bin = ["clap", "prost", "tonic", "tonic-prost", "rustls", "tls-config/grpc"]
 
 # For restful CoCo-AS binary
 restful-bin = ["actix-cors", "actix-web/openssl", "clap"]
@@ -49,6 +49,7 @@ kbs-types.workspace = true
 key-value-storage.path = "../deps/key-value-storage"
 mobc = { workspace = true, optional = true }
 openssl.workspace = true
+tls-config.path = "../deps/tls-config"
 policy-engine.path = "../deps/policy-engine"
 prost = { workspace = true, optional = true }
 reference-value-provider-service.path = "../rvps"
@@ -67,6 +68,10 @@ tokio.workspace = true
 toml.workspace = true
 tonic = { workspace = true, optional = true }
 tonic-prost = { workspace = true, optional = true }
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+    "prefer-post-quantum",
+], optional = true }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true

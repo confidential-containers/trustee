@@ -106,7 +106,7 @@ pub async fn initialize_rvps_client(
         #[cfg(feature = "rvps-grpc")]
         RvpsConfig::GrpcRemote(config) => {
             info!("connect to remote RVPS: {}", config.address);
-            Ok(Arc::new(Mutex::new(grpc::Agent::new(&config.address).await?)) as RvpsClient)
+            Ok(Arc::new(Mutex::new(grpc::Agent::new(config).await?)) as RvpsClient)
         }
     }
 }

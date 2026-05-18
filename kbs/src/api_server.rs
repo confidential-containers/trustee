@@ -187,6 +187,14 @@ impl ApiServer {
             http_server = http_server.workers(worker_count);
         }
 
+        if http_config.require_pqc && http_config.insecure_http {
+            return Err(Error::HTTPSFailed {
+                source: anyhow::anyhow!(
+                    "require_pqc = true is incompatible with insecure_http = true"
+                ),
+            });
+        }
+
         if !http_config.insecure_http {
             let tls_server = http_server
                 .bind_openssl(

@@ -183,6 +183,7 @@ impl TestHarness {
 
                 RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                     address: RVPS_URL.to_string(),
+                    ..Default::default()
                 })
             }
         };
@@ -241,6 +242,7 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
+                require_pqc: false,
             },
             admin: admin_config,
             storage_backend: StorageBackendConfig {

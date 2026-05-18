@@ -20,12 +20,12 @@ shadow!(build);
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    // tonic (pulled in by the external-plugin feature) brings aws-lc-rs into
-    // the dependency tree alongside ring. When rustls finds multiple crypto
-    // backends compiled in it requires an explicit default; install ring.
-    // install_default() returns Err if already set — .ok() makes this idempotent.
-    #[cfg(feature = "external-plugin")]
-    rustls::crypto::ring::default_provider()
+    // Install aws-lc-rs as the rustls crypto provider so PQC hybrid groups
+    // (X25519MLKEM768 etc.) are available for any TLS connection in this
+    // process.  install_default() is idempotent via .ok().
+    // Only needed when rustls is in the dependency tree.
+    #[cfg(any(feature = "coco-as-grpc", feature = "external-plugin"))]
+    rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .ok();
 

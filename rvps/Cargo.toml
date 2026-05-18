@@ -45,6 +45,11 @@ tempfile.workspace = true
 tokio.workspace = true
 tonic.workspace = true
 tonic-prost.workspace = true
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+    "prefer-post-quantum",
+] }
+tls-config = { path = "../deps/tls-config", features = ["grpc"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
 uuid.workspace = true

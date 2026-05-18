@@ -604,6 +604,7 @@ dependencies = [
  "regorus",
  "rsa",
  "rstest",
+ "rustls",
  "serde",
  "serde_json",
  "serde_json_canonicalizer",
@@ -616,6 +617,7 @@ dependencies = [
  "testing_logger",
  "thiserror 2.0.18",
  "time",
+ "tls-config",
  "tokio",
  "toml",
  "tonic",
@@ -3649,6 +3651,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "time",
+ "tls-config",
  "tokio",
  "toml",
  "tonic",
@@ -5302,6 +5305,7 @@ dependencies = [
  "prost",
  "roxmltree",
  "rstest",
+ "rustls",
  "serde",
  "serde_json",
  "serial_test",
@@ -5310,6 +5314,7 @@ dependencies = [
  "sled",
  "strum 0.28.0",
  "tempfile",
+ "tls-config",
  "tokio",
  "tonic",
  "tonic-prost",
@@ -7064,6 +7069,20 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tls-config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "openssl",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tonic",
+ "tracing",
+]
 
 [[package]]
 name = "tokio"
