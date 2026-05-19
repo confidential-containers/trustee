@@ -297,6 +297,7 @@ dependencies = [
  "cfg-if",
  "cipher 0.4.4",
  "cpufeatures 0.2.17",
+ "zeroize",
 ]
 
 [[package]]
@@ -322,6 +323,7 @@ dependencies = [
  "ctr",
  "ghash",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -3637,6 +3639,7 @@ dependencies = [
  "actix",
  "actix-web",
  "actix-web-httpauth",
+ "aes 0.8.4",
  "aes-gcm",
  "aes-kw 0.3.0",
  "anyhow",
@@ -3662,6 +3665,7 @@ dependencies = [
  "p256",
  "p521",
  "policy-engine",
+ "polyval",
  "prometheus",
  "prost",
  "reference-value-provider-service",
@@ -3691,6 +3695,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "vaultrs",
+ "zeroize",
 ]
 
 [[package]]
@@ -4852,6 +4857,7 @@ dependencies = [
  "cpufeatures 0.2.17",
  "opaque-debug",
  "universal-hash",
+ "zeroize",
 ]
 
 [[package]]

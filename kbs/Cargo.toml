@@ -47,7 +47,11 @@ vault = ["vaultrs"]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
-aes-gcm = "0.10.1"
+aes-gcm = { version = "0.10.1", features = ["zeroize"] }
+# Direct deps to activate their `zeroize` feature: `aes-gcm`'s own `zeroize`
+# feature does not propagate down to `aes` or `polyval`. Do not remove.
+aes = { version = "0.8", features = ["zeroize"] }
+polyval = { version = "0.6", features = ["zeroize"] }
 aes-kw = "0.3.0"
 anyhow.workspace = true
 async-trait.workspace = true
@@ -66,6 +70,7 @@ kms = { workspace = true, default-features = false }
 mobc = { workspace = true, optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
 p521 = { workspace = true, features = ["ecdh"] }
+zeroize.workspace = true
 policy-engine.path = "../deps/policy-engine"
 prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
