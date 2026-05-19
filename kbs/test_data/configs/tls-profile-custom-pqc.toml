@@ -15,7 +15,7 @@ type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50001"
 
 [admin]
-type = "DenyAll"
+authorization_mode = "DenyAll"
 
 [storage_backend]
 storage_type = "memory"

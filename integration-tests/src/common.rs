@@ -4,7 +4,7 @@
 
 use kbs::admin::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
-use kbs::config::{HttpServerConfig, TlsProfile};
+use kbs::config::{HttpServerConfig, TlsConfig};
 use kbs::config::KbsConfig;
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
@@ -273,16 +273,10 @@ impl TestHarness {
             },
             http_server: HttpServerConfig {
                 sockets: vec!["127.0.0.1:8081".parse()?],
-                private_key: None,
-                certificate: None,
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
-                tls_profile: TlsProfile::default(),
-                tls_min_version: None,
-                tls_max_version: None,
-                tls_ciphers: None,
-                tls_groups: None,
+                tls: TlsConfig::default(),
             },
             admin: admin_config,
             storage_backend: StorageBackendConfig {

@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use anyhow::{anyhow, Result};
 use tracing::{debug, info, warn};
 
-use crate::config::{HttpServerConfig, TlsProfile, TlsVersion};
+use crate::config::{HttpServerConfig, TlsConfig, TlsProfile, TlsVersion};
 use openssl::ssl::SslVersion;
 
 /// PQC algorithm candidates in priority order
@@ -90,9 +90,9 @@ fn apply_mozilla_profile(
 /// Apply custom TLS configuration from explicit fields
 fn apply_custom_tls_config(
     builder: &mut openssl::ssl::SslAcceptorBuilder,
-    config: &HttpServerConfig,
+    config: &TlsConfig,
 ) -> Result<()> {
-    if let Some(min_version) = &config.tls_min_version {
+    if let Some(min_version) = &config.min_version {
         let ssl_version = match min_version {
             TlsVersion::Tls12 => SslVersion::TLS1_2,
             TlsVersion::Tls13 => SslVersion::TLS1_3,
@@ -101,7 +101,7 @@ fn apply_custom_tls_config(
         debug!("TLS minimum version: {:?}", min_version);
     }
 
-    if let Some(max_version) = &config.tls_max_version {
+    if let Some(max_version) = &config.max_version {
         let ssl_version = match max_version {
             TlsVersion::Tls12 => SslVersion::TLS1_2,
             TlsVersion::Tls13 => SslVersion::TLS1_3,
@@ -110,14 +110,14 @@ fn apply_custom_tls_config(
         debug!("TLS maximum version: {:?}", max_version);
     }
 
-    if let Some(ciphers) = &config.tls_ciphers {
+    if let Some(ciphers) = &config.ciphers {
         // set_cipher_list() configures TLS 1.2 ciphers
         // set_ciphersuites() configures TLS 1.3 ciphers
         // TLS 1.2 is disabled if: min_version is 1.3 OR profile is Modern
         // TLS 1.3 is disabled if: max_version is 1.2
-        let tls12_disabled = config.tls_min_version == Some(TlsVersion::Tls13)
-            || config.tls_profile == TlsProfile::Modern;
-        let tls13_disabled = config.tls_max_version == Some(TlsVersion::Tls12);
+        let tls12_disabled =
+            config.min_version == Some(TlsVersion::Tls13) || config.profile == TlsProfile::Modern;
+        let tls13_disabled = config.max_version == Some(TlsVersion::Tls12);
 
         if !tls12_disabled {
             builder.set_cipher_list(ciphers)?;
@@ -132,8 +132,8 @@ fn apply_custom_tls_config(
 }
 
 /// Determine effective TLS groups configuration
-fn get_effective_groups(config: &HttpServerConfig) -> String {
-    if let Some(groups) = &config.tls_groups {
+fn get_effective_groups(config: &TlsConfig) -> String {
+    if let Some(groups) = &config.groups {
         return groups.clone();
     }
 
@@ -148,11 +148,13 @@ pub fn tls_config(config: &HttpServerConfig) -> Result<openssl::ssl::SslAcceptor
     use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
     let cert_file = config
+        .tls
         .certificate
         .as_ref()
         .ok_or_else(|| anyhow!("Missing certificate"))?;
 
     let key_file = config
+        .tls
         .private_key
         .as_ref()
         .ok_or_else(|| anyhow!("Missing private key"))?;
@@ -165,22 +167,22 @@ pub fn tls_config(config: &HttpServerConfig) -> Result<openssl::ssl::SslAcceptor
     builder.set_certificate_chain_file(cert_file)?;
 
     // Apply profile-specific configuration
-    apply_mozilla_profile(&mut builder, &config.tls_profile)?;
+    apply_mozilla_profile(&mut builder, &config.tls.profile)?;
 
     // Apply custom overrides (these take precedence)
-    if config.tls_profile == TlsProfile::Custom
-        || config.tls_min_version.is_some()
-        || config.tls_max_version.is_some()
-        || config.tls_ciphers.is_some()
+    if config.tls.profile == TlsProfile::Custom
+        || config.tls.min_version.is_some()
+        || config.tls.max_version.is_some()
+        || config.tls.ciphers.is_some()
     {
-        apply_custom_tls_config(&mut builder, config)?;
+        apply_custom_tls_config(&mut builder, &config.tls)?;
     }
 
     // Configure TLS groups (with PQC auto-detection)
-    let groups = get_effective_groups(config);
+    let groups = get_effective_groups(&config.tls);
     builder.set_groups_list(&groups)?;
 
-    if config.tls_groups.is_some() {
+    if config.tls.groups.is_some() {
         info!("TLS groups (explicit): {}", groups);
     } else if groups.contains("MLKEM") {
         info!("TLS groups (auto-detected PQC): {}", groups);
