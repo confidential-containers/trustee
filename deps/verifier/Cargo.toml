@@ -45,7 +45,7 @@ tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
 [dependencies]
 anyhow.workspace = true
 thiserror.workspace = true
-asn1-rs = { version = "0.7.1", optional = true }
+asn1-rs = { version = "0.7.2", optional = true }
 async-trait.workspace = true
 az-snp-vtpm = { version = "0.8.1", default-features = false, features = [
     "verifier",
