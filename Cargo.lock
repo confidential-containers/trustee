@@ -3654,6 +3654,7 @@ dependencies = [
  "chrono",
  "clap",
  "config",
+ "const_format",
  "cryptoki",
  "educe",
  "hex",
