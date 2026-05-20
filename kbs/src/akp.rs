@@ -41,18 +41,22 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 /// ML-KEM-768 encapsulation-key length in bytes (FIPS 203).
 const ML_KEM_768_ENCAP_KEY_LEN: usize = 1184;
 
-/// AKP public key as received from a TEE client.
+/// AKP public key as received from a TEE client, per the JWK
+/// representation in draft-ietf-jose-pqc-kem-05 §10.
 ///
 /// Defined locally rather than as a new `kbs_types::TeePubKey` variant
 /// while the wire format stabilises. When the prototype proves out, this
 /// should be upstreamed to the `kbs-types` crate.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AkpPubKey {
+    /// JWK key type — MUST be `"AKP"`.
+    pub kty: String,
     /// Algorithm identifier, e.g. `"ML-KEM-768+A192KW"`.
     pub alg: String,
     /// Base64url-encoded ML-KEM encapsulation key.
     /// For ML-KEM-768 this decodes to 1184 bytes.
-    pub pub_key: String,
+    #[serde(rename = "pub")]
+    pub public_key: String,
 }
 
 
@@ -216,5 +220,18 @@ mod tests {
         let bad = URL_SAFE_NO_PAD.encode([0u8; 100]);
         let err = ml_kem_768_a192kw(&bad, b"x".to_vec()).expect_err("should reject");
         assert!(err.to_string().contains("wrong length"));
+    }
+
+    #[test]
+    fn akp_pub_key_deserializes_from_jwk() {
+        let json = serde_json::json!({
+            "kty": "AKP",
+            "alg": "ML-KEM-768+A192KW",
+            "pub": "AAAAAAAAAAAAAAAAAA",
+        });
+        let key: AkpPubKey = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(key.kty, AKP_KTY);
+        assert_eq!(key.alg, ML_KEM_768_A192KW_ALGORITHM);
+        assert_eq!(key.public_key, "AAAAAAAAAAAAAAAAAA");
     }
 }
