@@ -18,8 +18,15 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, AsRefStr, Debug)]
 pub enum Error {
-    #[error("Admin auth error: {0}")]
-    AdminAuth(#[from] crate::admin::Error),
+    #[error("failed to initialize [admin] configuration: {0}")]
+    AdminAuthInitialization(#[from] crate::admin::Error),
+
+    #[error("admin access denied for endpoint {endpoint}: {source}")]
+    AdminAuthAccess {
+        #[source]
+        source: crate::admin::Error,
+        endpoint: String,
+    },
 
     #[cfg(feature = "as")]
     #[error("Attestation error: {0}")]
