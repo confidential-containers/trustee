@@ -141,6 +141,16 @@ The KBS can use different backend storage. `LocalFs` will always be builtin.
 are `true` or `false` (by defult). Please refer to [the document](docs/config.md#repository-configuration)
 for more details.
 
+## Experimental Features
+
+PQC algorithm support for the KBS protocol as a replacement for classic cryptographic methods is provided here as an experimental compile-time feature. These can be enabled by building with the additional [PQC_EXPERIMENTAL=?] parameter set as required, e.g.
+
+```shell
+PQC_EXPERIMENTAL=true make
+```
+
+**Please note, enabling this feature extends support for the designated PQC algorithm, but will still support classic algorithms. However enabling this feature in guest components will require the feature to be enabled here to support resource requests with the new TeePubKey::AKP type.**
+
 ## References
 
 ### Attestation Protocol
