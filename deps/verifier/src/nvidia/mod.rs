@@ -390,6 +390,7 @@ impl Verifier for Nvidia {
 
 #[cfg(test)]
 mod tests {
+    use assert_json_diff::assert_json_eq;
     use rstest::rstest;
     use tracing_subscriber::{fmt, EnvFilter};
 
@@ -436,12 +437,13 @@ mod tests {
 
         let value = serde_json::to_value(device_claims).unwrap();
         debug!("Nvidia device claims:\n{:#?}", &value);
-        let json = serde_json::to_string(&value).unwrap();
 
-        let expected_claim =
-            include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt");
+        let expected_claim: serde_json::Value = serde_json::from_str(
+            include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt").trim(),
+        )
+        .expect("hopperAttestationReport-claims.txt must be valid JSON");
 
-        assert_eq!(expected_claim.to_string(), json);
+        assert_json_eq!(expected_claim, value);
     }
 
     #[rstest]
