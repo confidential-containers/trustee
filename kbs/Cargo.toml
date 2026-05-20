@@ -43,6 +43,12 @@ nebula-ca-plugin = []
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
+# Experimental Post-Quantum Cryptography support for the resource-response
+# JWE path. Implements draft-ietf-jose-pqc-kem-05 (ML-KEM-768+A192KW). The
+# IETF draft is not finalized and the wire format may change; do not enable
+# in production.
+pqc-experimental = ["dep:ml-kem", "dep:sha3-kmac"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
@@ -95,6 +101,8 @@ uuid = { workspace = true, features = ["serde"] }
 openssl.workspace = true
 az-cvm-vtpm = { version = "0.8.0", default-features = false, optional = true }
 vaultrs = { version = "0.8.0", optional = true }
+ml-kem = { version = "0.3.2", features = ["getrandom"], optional = true }
+sha3-kmac = { version = "0.3.0", optional = true }
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
