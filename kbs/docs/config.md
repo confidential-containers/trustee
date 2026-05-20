@@ -192,6 +192,7 @@ For `authorization_mode = "AuthenticatedAuthorization"`, configure:
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
 | `identity_providers` | Array | Trusted issuer entries for JWT verification | No | Empty |
+| `insecure_public_key_from_uri` | Boolean | Allow loading `public_key_uri` and `jwk_set_uri` via plaintext `http://` | No | `false` |
 
 Each `identity_providers` item:
 
@@ -199,10 +200,15 @@ Each `identity_providers` item:
 |----------|------|-------------|----------|
 | `issuer` | String | Expected JWT `iss` value (leave empty to skip issuer check) | No |
 | `audience` | String | Expected JWT `aud` value (leave empty to skip audience check) | No |
-| `public_key_uri` | String | PEM public key source (`https://`, `file://`, local path) | No* |
-| `jwk_set_uri` | String | JWKS source (`https://`, `file://`, or local path) | No* |
+| `public_key_uri` | String | PEM public key source (`https://`, `file://`, local path, or `http://` when `insecure_public_key_from_uri=true`) | No* |
+| `jwk_set_uri` | String | JWKS source (`https://`, `file://`, local path, or `http://` when `insecure_public_key_from_uri=true`) | No* |
 
 \* At least one of `public_key_uri` or `jwk_set_uri` is required.
+
+> [!NOTE]
+> When `insecure_public_key_from_uri=true`, KBS may fetch admin verification keys over
+> plaintext HTTP. Enable this only in controlled network environments or for development,
+> as HTTP is vulnerable to tampering.
 
 JWTs used for admin access **MUST** include a `role` claim.
 

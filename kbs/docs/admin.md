@@ -79,6 +79,7 @@ This lets you keep identity issuance external while keeping KBS-side authorizati
 `[admin.authentication.bearer_jwt]` accepts:
 
 - `identity_providers` (array): list of trusted identity providers
+- `insecure_public_key_from_uri` (optional bool, default `false`): allow fetching`public_key_uri` and `jwk_set_uri` over `http://`
 
 Each `identity_providers` entry:
 
@@ -92,5 +93,6 @@ Each entry must provide at least one of `public_key_uri` or `jwk_set_uri`.
 Supported source formats:
 
 - `https://...` (remote fetch)
+- `http://...` (remote fetch, only when `insecure_public_key_from_uri=true`)
 - `file://...` (local file URI)
 - local path without scheme (for example `./keys/admin.pem`)
