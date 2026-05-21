@@ -13,7 +13,9 @@ use super::az_snp_vtpm::{
 use super::tdx::claims::generate_parsed_claim;
 use super::tdx::quote::{parse_tdx_quote, parse_tdx_quote_certification, Quote as TdQuote};
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
-use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
+use crate::intel_dcap::{
+    ecdsa_quote_verification, extend_using_custom_claims, pck::parse_platform_info,
+};
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -66,8 +68,9 @@ impl Verifier for AzTdxVtpm {
         let pck_certs = parse_tdx_quote_certification(evidence.td_quote(), &td_quote)?
             .qe_certification_data
             .certificates;
+        let platform_info = parse_platform_info(&pck_certs)?;
 
-        let mut claim = generate_parsed_claim(td_quote, None, Some(&pck_certs))?;
+        let mut claim = generate_parsed_claim(td_quote, None, &platform_info)?;
         extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
