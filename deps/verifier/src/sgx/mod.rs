@@ -6,20 +6,17 @@
 use anyhow::*;
 use async_trait::async_trait;
 use base64::Engine;
-use scroll::Pread;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
-use self::types::sgx_quote3_t;
+use super::intel_dcap::{
+    ecdsa_quote_verification, extend_using_custom_claims,
+    quote::{parse_quote, Quote},
+};
+use super::{regularize_data, InitDataHash, ReportData};
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
-use crate::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
-use crate::{regularize_data, InitDataHash, ReportData};
-
-#[allow(non_camel_case_types)]
-mod types;
 
 mod claims;
-pub const QUOTE_SIZE: usize = 436;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SgxEvidence {
@@ -52,13 +49,6 @@ impl Verifier for SgxVerifier {
     }
 }
 
-pub fn parse_sgx_quote(quote: &[u8]) -> Result<sgx_quote3_t> {
-    let quote_body = &quote[..QUOTE_SIZE];
-    quote_body
-        .pread::<sgx_quote3_t>(0)
-        .map_err(|e| anyhow!("Parse SGX quote failed: {:?}", e))
-}
-
 async fn verify_evidence(
     expected_report_data: &ReportData<'_>,
     expected_init_data_hash: &InitDataHash<'_>,
@@ -74,11 +64,15 @@ async fn verify_evidence(
         .await
         .context("Evidence's identity verification error.")?;
 
-    let quote = parse_sgx_quote(&quote_bin)?;
+    let quote = parse_quote(&quote_bin)?;
+    let (report_data, config_id) = match &quote {
+        Quote::V3 { body, .. } => (body.report_data, body.config_id),
+        _ => bail!("expected SGX quote (v3), got non-SGX quote"),
+    };
     if let ReportData::Value(expected_report_data) = expected_report_data {
         debug!("Check the binding of REPORT_DATA.");
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "SGX");
-        if expected_report_data != quote.report_body.report_data {
+        if expected_report_data != report_data {
             bail!("REPORT_DATA is different from that in SGX Quote");
         }
     }
@@ -87,12 +81,12 @@ async fn verify_evidence(
         debug!("Check the binding of CONFIGID.");
         let expected_init_data_hash =
             regularize_data(expected_init_data_hash, 64, "CONFIGID", "SGX");
-        if expected_init_data_hash != quote.report_body.config_id {
+        if expected_init_data_hash != config_id {
             bail!("CONFIGID is different from that in SGX Quote");
         }
     }
 
-    let mut claim = claims::generate_parsed_claims(quote)?;
+    let mut claim = claims::generate_parsed_claims(&quote)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)
@@ -109,7 +103,7 @@ mod tests {
     #[case("./test_data/occlum_quote.dat")]
     fn test_parse_sgx_quote(#[case] quote_dir: &str) {
         let quote_bin = fs::read(quote_dir).expect("read quote");
-        let quote = parse_sgx_quote(&quote_bin);
+        let quote = parse_quote(&quote_bin);
 
         assert!(quote.is_ok());
         let parsed_quote = format!("{}", quote.unwrap());
