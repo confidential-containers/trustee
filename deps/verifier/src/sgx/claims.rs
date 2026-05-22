@@ -41,6 +41,7 @@
 use anyhow::*;
 use serde_json::{Map, Value};
 
+use crate::intel_dcap::pck::PlatformInfo;
 use crate::intel_dcap::quote::Quote;
 use crate::TeeEvidenceParsedClaim;
 
@@ -56,7 +57,10 @@ macro_rules! parse_claim {
     };
 }
 
-pub fn generate_parsed_claims(quote: &Quote) -> Result<TeeEvidenceParsedClaim> {
+pub fn generate_parsed_claims(
+    quote: &Quote,
+    platform_info: &PlatformInfo,
+) -> Result<TeeEvidenceParsedClaim> {
     let Quote::V3 { header, body, .. } = quote else {
         bail!("expected SGX v3 quote");
     };
@@ -98,6 +102,9 @@ pub fn generate_parsed_claims(quote: &Quote) -> Result<TeeEvidenceParsedClaim> {
     parse_claim!(claims, "report_data", body.report_data);
     parse_claim!(claims, "init_data", body.config_id);
 
+    if let Some(piid) = platform_info.platform_instance_id {
+        parse_claim!(claims, "platform_instance_id", &piid[..]);
+    }
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
 }
@@ -108,6 +115,7 @@ mod tests {
     use serde_json::json;
 
     use super::generate_parsed_claims;
+    use crate::intel_dcap::pck::parse_platform_info;
 
     #[test]
     fn parse_sgx_claims() {
@@ -148,7 +156,8 @@ mod tests {
                 "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
             },
             "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+            "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "platform_instance_id": "7a3a6941065cd5060bd93d3db2cfc0c8"
         });
 
         assert_json_eq!(expected, claims);
