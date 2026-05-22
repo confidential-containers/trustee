@@ -41,9 +41,8 @@
 use anyhow::*;
 use serde_json::{Map, Value};
 
+use crate::intel_dcap::quote::Quote;
 use crate::TeeEvidenceParsedClaim;
-
-use super::types::*;
 
 macro_rules! parse_claim {
     ($map_name: ident, $key_name: literal, $field: ident) => {
@@ -57,54 +56,48 @@ macro_rules! parse_claim {
     };
 }
 
-pub fn generate_parsed_claims(quote: sgx_quote3_t) -> Result<TeeEvidenceParsedClaim> {
+pub fn generate_parsed_claims(quote: &Quote) -> Result<TeeEvidenceParsedClaim> {
+    let Quote::V3 { header, body, .. } = quote else {
+        bail!("expected SGX v3 quote");
+    };
     let mut quote_body = Map::new();
     let mut quote_header = Map::new();
 
     // Claims from SGX Quote Header.
-    parse_claim!(quote_header, "version", quote.header.version);
-    parse_claim!(quote_header, "att_key_type", quote.header.att_key_type);
-    parse_claim!(quote_header, "att_key_data_0", quote.header.att_key_data_0);
-    parse_claim!(quote_header, "qe_svn", quote.header.qe_svn);
-    parse_claim!(quote_header, "pce_svn", quote.header.pce_svn);
-    parse_claim!(quote_header, "vendor_id", quote.header.vendor_id);
-    parse_claim!(quote_header, "user_data", quote.header.user_data);
+    // tee_type encodes the same bytes as att_key_data_0 in the SGX v3 wire format.
+    // reserved[0..2] and reserved[2..4] encode qe_svn and pce_svn respectively.
+    parse_claim!(quote_header, "version", header.version);
+    parse_claim!(quote_header, "att_key_type", header.att_key_type);
+    parse_claim!(quote_header, "att_key_data_0", header.tee_type);
+    parse_claim!(quote_header, "qe_svn", &header.reserved[..2]);
+    parse_claim!(quote_header, "pce_svn", &header.reserved[2..]);
+    parse_claim!(quote_header, "vendor_id", header.vendor_id);
+    parse_claim!(quote_header, "user_data", header.user_data);
 
-    parse_claim!(quote_body, "cpu_svn", quote.report_body.cpu_svn);
-    parse_claim!(quote_body, "misc_select", quote.report_body.misc_select);
-    parse_claim!(quote_body, "reserved1", quote.report_body.reserved1);
-    parse_claim!(
-        quote_body,
-        "isv_ext_prod_id",
-        quote.report_body.isv_ext_prod_id
-    );
-    parse_claim!(
-        quote_body,
-        "attributes.flags",
-        quote.report_body.attributes.flags
-    );
-    parse_claim!(
-        quote_body,
-        "attributes.xfrm",
-        quote.report_body.attributes.xfrm
-    );
-    parse_claim!(quote_body, "mr_enclave", quote.report_body.mr_enclave);
-    parse_claim!(quote_body, "reserved2", quote.report_body.reserved2);
-    parse_claim!(quote_body, "mr_signer", quote.report_body.mr_signer);
-    parse_claim!(quote_body, "reserved3", quote.report_body.reserved3);
-    parse_claim!(quote_body, "config_id", quote.report_body.config_id);
-    parse_claim!(quote_body, "isv_prod_id", quote.report_body.isv_prod_id);
-    parse_claim!(quote_body, "isv_svn", quote.report_body.isv_svn);
-    parse_claim!(quote_body, "config_svn", quote.report_body.config_svn);
-    parse_claim!(quote_body, "reserved4", quote.report_body.reserved4);
-    parse_claim!(quote_body, "isv_family_id", quote.report_body.isv_family_id);
-    parse_claim!(quote_body, "report_data", quote.report_body.report_data);
+    parse_claim!(quote_body, "cpu_svn", body.cpu_svn);
+    parse_claim!(quote_body, "misc_select", body.misc_select);
+    parse_claim!(quote_body, "reserved1", body.reserved1);
+    parse_claim!(quote_body, "isv_ext_prod_id", body.isv_ext_prod_id);
+    parse_claim!(quote_body, "attributes.flags", body.attributes_flags);
+    parse_claim!(quote_body, "attributes.xfrm", body.attributes_xfrm);
+    parse_claim!(quote_body, "mr_enclave", body.mr_enclave);
+    parse_claim!(quote_body, "reserved2", body.reserved2);
+    parse_claim!(quote_body, "mr_signer", body.mr_signer);
+    parse_claim!(quote_body, "reserved3", body.reserved3);
+    parse_claim!(quote_body, "config_id", body.config_id);
+    parse_claim!(quote_body, "isv_prod_id", body.isv_prod_id);
+    parse_claim!(quote_body, "isv_svn", body.isv_svn);
+    parse_claim!(quote_body, "config_svn", body.config_svn);
+    parse_claim!(quote_body, "reserved4", body.reserved4);
+    parse_claim!(quote_body, "isv_family_id", body.isv_family_id);
+    parse_claim!(quote_body, "report_data", body.report_data);
 
     let mut claims = Map::new();
     parse_claim!(claims, "header", quote_header);
     parse_claim!(claims, "body", quote_body);
-    parse_claim!(claims, "report_data", quote.report_body.report_data);
-    parse_claim!(claims, "init_data", quote.report_body.config_id);
+    parse_claim!(claims, "report_data", body.report_data);
+    parse_claim!(claims, "init_data", body.config_id);
+
 
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
 }
@@ -114,15 +107,17 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use serde_json::json;
 
-    use crate::sgx::parse_sgx_quote;
-
     use super::generate_parsed_claims;
 
     #[test]
     fn parse_sgx_claims() {
         let quote_bin = include_bytes!("../../test_data/occlum_quote.dat");
-        let quote = parse_sgx_quote(quote_bin.as_slice()).expect("parse quote");
-        let claims = generate_parsed_claims(quote).expect("parse claim failed");
+        let quote =
+            crate::intel_dcap::quote::parse_quote(quote_bin.as_slice()).expect("parse quote");
+        let platform_info =
+            parse_platform_info(&quote.cert_data().qe_certification_data.certificates)
+                .expect("parse platform info");
+        let claims = generate_parsed_claims(&quote, &platform_info).expect("parse claim failed");
         let expected = json!({
             "header":{
                 "version": "0300",
