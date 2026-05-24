@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use shadow_rs::shadow;
+use std::path::PathBuf;
 use tracing::{info, warn};
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
@@ -28,6 +29,16 @@ pub struct Cli {
     /// `--address 127.0.0.1:55554`
     #[arg(short = 'a', long, default_value = DEFAULT_ADDRESS)]
     pub address: String,
+
+    /// Path to the TLS certificate file (PEM) for the gRPC listener.
+    /// When provided, --tls-key must also be given.
+    /// If omitted, the server starts without TLS (default behavior).
+    #[arg(long)]
+    pub tls_cert: Option<PathBuf>,
+
+    /// Path to the TLS private key file (PEM) for the gRPC listener.
+    #[arg(long)]
+    pub tls_key: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -58,7 +69,14 @@ async fn main() -> Result<()> {
 
     info!("Listen socket: {}", &cli.address);
 
+    // Install aws-lc-rs as the rustls crypto provider so PQC hybrid groups
+    // (X25519MLKEM768 etc.) are available for any TLS connection in this process.
+    // install_default() is idempotent via .ok().
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
+
     let socket = cli.address.parse().context("parse socket addr failed")?;
 
-    server::start(socket, config).await
+    server::start(socket, config, cli.tls_cert, cli.tls_key).await
 }

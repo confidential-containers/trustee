@@ -66,6 +66,13 @@ rvps
 
 By default RVPS listens on `localhost:50003` waiting for requests.
 
+To enable TLS on the gRPC listener, provide a certificate and private key (both PEM format):
+```shell
+rvps --address 0.0.0.0:50003 --tls-cert /etc/rvps/server.crt --tls-key /etc/rvps/server.key
+```
+
+Both `--tls-cert` and `--tls-key` must be provided together. If neither is given the server starts without TLS (default behavior).
+
 ### Container Image
 
 We can build an RVPS docker image

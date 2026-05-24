@@ -27,6 +27,23 @@ The following properties can be set under the `[http_server]` section.
 | `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                     |
 | `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                        |
 | `worker_count`         | Integer      | Number of HTTP actix worker threads              | No       | Num of logical CPU cores |
+| `require_pqc`          | Boolean      | Require post-quantum cryptography for TLS key exchange. See [PQC TLS](#pqc-tls-configuration) below. | No | `false` |
+
+#### PQC TLS Configuration
+
+The `require_pqc` option controls post-quantum cryptography (PQC) enforcement
+for TLS key exchange, providing protection against
+[Harvest Now, Decrypt Later (HNDL)](https://en.wikipedia.org/wiki/Harvest_now,_decrypt_later) attacks.
+This option only takes effect when TLS is enabled (`insecure_http = false` with
+`private_key` and `certificate` configured).
+
+At startup, KBS probes the linked OpenSSL library for supported PQC hybrid key
+exchange groups. The following candidates are tested (OpenSSL 3.5+):
+
+- `X25519MLKEM768` — X25519 + ML-KEM-768
+- `SecP256r1MLKEM768` — NIST P-256 + ML-KEM-768 (FIPS-compatible)
+- `SecP384r1MLKEM1024` — NIST P-384 + ML-KEM-1024 (FIPS-compatible)
+
 
 ### Attestation Token Configuration
 
@@ -139,9 +156,11 @@ For detailed information about extractors configuration, including available ext
 
 If `type` is set to `GrpcRemote`, the following extra properties can be set
 
-| Property  | Type   | Description                       | Required | Default           |
-|-----------|--------|-----------------------------------|----------|-------------------|
-| `address` | String | Remote address of the RVPS server | No       | `127.0.0.1:50003` |
+| Property       | Type   | Description                                                                 | Required | Default           |
+|----------------|--------|-----------------------------------------------------------------------------|----------|-------------------|
+| `address`      | String | Remote address of the RVPS server                                           | No       | `127.0.0.1:50003` |
+| `tls_mode`     | String | gRPC channel security: `"insecure"` (plaintext) or `"tls"`                 | No       | `"insecure"`      |
+| `ca_cert_path` | String | Path to PEM CA certificate used to verify the RVPS server. Required when `tls_mode = "tls"` | No | — |
 
 #### gRPC CoCo AS
 
@@ -152,9 +171,11 @@ The following properties can be set.
 
 | Property    | Type    | Description                                                                                                                   | Default                  |
 |-------------|---------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `timeout`   | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests                                           | 5                        |
-| `as_addr`   | String  | The URL of the remote CoCoAS                                                                                                  | `http://127.0.0.1:50004` |
-| `pool_size` | Integer | The connections between KBS and CoCoAS are maintained in a conenction pool. This property determines the max size of the pool | `100`                    |
+| `timeout`      | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests                                           | 5                        |
+| `as_addr`      | String  | The URL of the remote CoCoAS                                                                                                  | `http://127.0.0.1:50004` |
+| `pool_size`    | Integer | The connections between KBS and CoCoAS are maintained in a connection pool. This property determines the max size of the pool | `100`                    |
+| `tls_mode`     | String  | gRPC channel security: `"insecure"` (plaintext) or `"tls"`                                                                   | `"insecure"`             |
+| `ca_cert_path` | String  | Path to PEM CA certificate used to verify the AS server. Required when `tls_mode = "tls"`                                    | —                        |
 
 #### Intel&reg; TA
 

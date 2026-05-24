@@ -84,9 +84,11 @@ For detailed information about extractors configuration, including available ext
 
 If `type` is set to `GrpcRemote`, the following extra properties can be set
 
-| Property       | Type                    | Description                             | Required | Default          |
-|----------------|-------------------------|-----------------------------------------|----------|------------------|
-| `address`      | String                  | Remote address of the RVPS server       | No       | `127.0.0.1:50003`|
+| Property       | Type   | Description                                                                                  | Required | Default           |
+|----------------|--------|----------------------------------------------------------------------------------------------|----------|-------------------|
+| `address`      | String | Remote address of the RVPS server                                                            | No       | `127.0.0.1:50003` |
+| `tls_mode`     | String | gRPC channel security: `"insecure"` (plaintext) or `"tls"`                                  | No       | `"insecure"`      |
+| `ca_cert_path` | String | Path to PEM CA certificate used to verify the RVPS server. Required when `tls_mode = "tls"` | No       | —                 |
 
 #### Verifier Configuration
 

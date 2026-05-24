@@ -1,4 +1,8 @@
-use std::{net::SocketAddr, path::Path, sync::Arc};
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use actix_cors::Cors;
 use actix_web::{http::header, web, App, HttpServer};
@@ -34,20 +38,27 @@ pub struct Cli {
     #[arg(short, long)]
     pub socket: SocketAddr,
 
-    /// Path to the public key cert for HTTPS. Both public key cert and
-    /// private key are provided then HTTPS will be enabled.
-    #[arg(short = 't', long)]
-    pub https_pubkey_cert: Option<String>,
+    /// Path to the TLS certificate file (PEM). Both certificate and private
+    /// key must be provided to enable HTTPS.
+    #[arg(short = 't', long = "tls-cert", alias = "https-pubkey-cert")]
+    pub tls_cert: Option<PathBuf>,
 
-    /// Path to the private key for HTTPS. Both public key cert and
-    /// private key are provided then HTTPS will be enabled.
-    #[arg(short = 'k', long)]
-    pub https_prikey: Option<String>,
+    /// Path to the TLS private key file (PEM). Both certificate and private
+    /// key must be provided to enable HTTPS.
+    #[arg(short = 'k', long = "tls-key", alias = "https-prikey")]
+    pub tls_key: Option<PathBuf>,
 
     /// Allowed origin for CORS access (e.g., "http://localhost:3000")
     /// Can be specified multiple times or comma-separated
     #[arg(short = 'r', long = "allowed_origin", value_delimiter = ',', num_args = 1..)]
     pub allowed_origin: Vec<String>,
+
+    /// Require post-quantum cryptography for TLS.
+    /// When true, the server refuses to start if no PQC hybrid groups
+    /// are supported by the OpenSSL build, and only PQC hybrid groups
+    /// are offered — clients without PQC support cannot connect.
+    #[arg(long)]
+    pub require_pqc: bool,
 }
 
 #[derive(EnumString, AsRefStr)]
@@ -146,6 +157,14 @@ loglevel: {env_filter}
     info!("Welcome to Confidential Containers Attestation Service (RESTful version)!\n\n{version}");
     let cli = Cli::parse();
 
+    // Install aws-lc-rs as the rustls crypto provider so PQC hybrid groups
+    // are available for any TLS connection in this process.
+    // install_default() is idempotent via .ok().
+    #[cfg(feature = "rvps-grpc")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
+
     let config = match cli.config_file {
         Some(path) => {
             info!("Using config file {path}");
@@ -175,11 +194,11 @@ loglevel: {env_filter}
             .app_data(web::Data::clone(&attestation_service))
     });
 
-    let server = match (cli.https_prikey, cli.https_pubkey_cert) {
-        (Some(prikey), Some(pubkey_cert)) => {
+    let server = match (cli.tls_key, cli.tls_cert) {
+        (Some(tls_key), Some(tls_cert)) => {
             let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
 
-            let prikey = tokio::fs::read(prikey)
+            let prikey = tokio::fs::read(&tls_key)
                 .await
                 .map_err(RestfulError::ReadHttpsKey)?;
             let prikey =
@@ -189,16 +208,31 @@ loglevel: {env_filter}
                 .set_private_key(&prikey)
                 .map_err(RestfulError::SetPrivateKey)?;
             builder
-                .set_certificate_chain_file(pubkey_cert)
+                .set_certificate_chain_file(&tls_cert)
                 .map_err(RestfulError::SetHttpsCert)?;
+
+            let pqc_result = tls_config::configure_pqc_groups(&mut builder, cli.require_pqc)
+                .map_err(|e| RestfulError::Anyhow(e.into()))?;
+            info!("AS REST TLS groups: {}", pqc_result.groups_list);
+
             info!("starting HTTPS server at https://{}", cli.socket);
             server.bind_openssl(cli.socket, builder)?.run()
         }
-        _ => {
+        (None, None) => {
+            if cli.require_pqc {
+                return Err(RestfulError::Anyhow(anyhow::anyhow!(
+                    "--require-pqc requires TLS: provide both --tls-cert and --tls-key"
+                )));
+            }
             info!("starting HTTP server at http://{}", cli.socket);
             server
                 .bind((cli.socket.ip().to_string(), cli.socket.port()))?
                 .run()
+        }
+        _ => {
+            return Err(RestfulError::Anyhow(anyhow::anyhow!(
+                "--tls-cert and --tls-key must be provided together"
+            )));
         }
     };
 

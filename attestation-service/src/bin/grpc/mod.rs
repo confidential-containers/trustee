@@ -7,13 +7,13 @@ use attestation_service::{
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use std::net::SocketAddr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-use tracing::{debug, info, instrument, Span};
+use tracing::{debug, info, instrument, warn, Span};
 use uuid::Uuid;
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
@@ -57,6 +57,8 @@ pub enum GrpcError {
     Service(#[from] ServiceError),
     #[error("tonic transport error: {0}")]
     TonicTransport(#[from] tonic::transport::Error),
+    #[error("TLS configuration error: {0}")]
+    TlsConfig(#[source] anyhow::Error),
 }
 
 pub struct AttestationServer {
@@ -309,7 +311,12 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
+pub async fn start(
+    socket: SocketAddr,
+    config_path: Option<String>,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+) -> Result<(), GrpcError> {
     info!(
         "Starting gRPC Attestation Service. Listening on socket: {}",
         &socket
@@ -317,10 +324,26 @@ pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
 
-    Server::builder()
+    let tls =
+        tls_config::grpc::build_grpc_server_tls_config(tls_cert.as_deref(), tls_key.as_deref())
+            .await
+            .map_err(GrpcError::TlsConfig)?;
+
+    let mut builder = Server::builder();
+    if let Some(tls_config) = tls {
+        builder = builder
+            .tls_config(tls_config)
+            .map_err(GrpcError::TonicTransport)?;
+        info!("gRPC AS: TLS enabled");
+    } else {
+        warn!("gRPC AS: TLS not configured — running in plaintext mode");
+    }
+
+    builder
         .add_service(AttestationServiceServer::new(attestation_server.clone()))
         .add_service(ReferenceValueProviderServiceServer::new(attestation_server))
         .serve(socket)
         .await?;
+
     Ok(())
 }

@@ -22,7 +22,7 @@ coco-as-builtin = ["coco-as", "attestation-service/default"]
 coco-as-builtin-no-verifier = ["coco-as"]
 
 # Use remote gRPC CoCo-AS as backend attestation service
-coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost"]
+coco-as-grpc = ["coco-as", "mobc", "tonic", "tonic-prost", "prost", "rustls", "tls-config/grpc"]
 
 # Use Intel TA as backend attestation service
 intel-trust-authority-as = ["as", "az-cvm-vtpm"]
@@ -67,6 +67,7 @@ hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
 kbs-types.workspace = true
 key-value-storage.path = "../deps/key-value-storage"
+tls-config.path = "../deps/tls-config"
 kms = { workspace = true, default-features = false }
 mobc = { workspace = true, optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
@@ -80,7 +81,8 @@ regorus.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 rsa.workspace = true
 rustls = { version = "0.23", default-features = false, features = [
-    "ring",
+    "aws-lc-rs",
+    "prefer-post-quantum",
 ], optional = true }
 semver = "1.0.28"
 serde = { workspace = true, features = ["derive"] }

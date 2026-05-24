@@ -13,7 +13,9 @@ use kbs_types::{Challenge, HashAlgorithm, Tee};
 use mobc::{Manager, Pool};
 use serde::Deserialize;
 use std::collections::HashMap;
-use tonic::transport::Channel;
+use std::path::PathBuf;
+use tls_config::grpc::GrpcTlsMode;
+use tonic::transport::{Channel, ClientTlsConfig};
 use tracing::info;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
@@ -38,6 +40,13 @@ pub struct GrpcConfig {
     pub as_addr: String,
     #[serde(default = "default_pool_size")]
     pub pool_size: u64,
+    /// TLS mode for the gRPC channel. Default: `insecure` (plaintext).
+    #[serde(default)]
+    pub tls_mode: GrpcTlsMode,
+    /// Path to a PEM CA certificate used to verify the AS server certificate.
+    /// Required when `tls_mode = "tls"`.
+    #[serde(default)]
+    pub ca_cert_path: Option<PathBuf>,
 }
 
 fn default_as_addr() -> String {
@@ -53,6 +62,8 @@ impl Default for GrpcConfig {
         Self {
             as_addr: DEFAULT_AS_ADDR.to_string(),
             pool_size: DEFAULT_POOL_SIZE,
+            tls_mode: GrpcTlsMode::Insecure,
+            ca_cert_path: None,
         }
     }
 }
@@ -67,8 +78,36 @@ impl GrpcClientPool {
             "connect to remote AS [{}] with pool size {}",
             config.as_addr, config.pool_size
         );
+
+        if !config.as_addr.starts_with("http://") && !config.as_addr.starts_with("https://") {
+            bail!(
+                "AS gRPC: as_addr must start with http:// or https://, got \"{}\"",
+                config.as_addr
+            );
+        }
+        if config.as_addr.starts_with("http://") && config.tls_mode == GrpcTlsMode::Tls {
+            bail!(
+                "AS gRPC: tls_mode=\"tls\" requires https:// in as_addr, got \"{}\"",
+                config.as_addr
+            );
+        }
+        if config.as_addr.starts_with("https://") && config.tls_mode != GrpcTlsMode::Tls {
+            bail!(
+                "AS gRPC: tls_mode=\"insecure\" requires http:// in as_addr, got \"{}\"",
+                config.as_addr
+            );
+        }
+
+        let tls_config = tls_config::grpc::build_grpc_client_tls_config(
+            &config.tls_mode,
+            config.ca_cert_path.as_deref(),
+        )
+        .await
+        .context("AS gRPC client TLS")?;
+
         let manager = GrpcManager {
             as_addr: config.as_addr,
+            tls_config,
         };
         let pool = Pool::builder().max_open(config.pool_size).build(manager);
 
@@ -225,6 +264,7 @@ impl Attest for GrpcClientPool {
 
 pub struct GrpcManager {
     as_addr: String,
+    tls_config: Option<ClientTlsConfig>,
 }
 
 pub struct AsConnection {
@@ -238,9 +278,11 @@ impl Manager for GrpcManager {
     type Error = Error;
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        let connection = Channel::from_shared(self.as_addr.clone())?
-            .connect()
-            .await?;
+        let mut endpoint = Channel::from_shared(self.as_addr.clone())?;
+        if let Some(tls) = &self.tls_config {
+            endpoint = endpoint.tls_config(tls.clone())?;
+        }
+        let connection = endpoint.connect().await?;
         let as_rpc = AttestationServiceClient::new(connection.clone());
         let rvps_rpc = ReferenceValueProviderServiceClient::new(connection);
         Ok(AsConnection { as_rpc, rvps_rpc })

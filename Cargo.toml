@@ -10,6 +10,7 @@ members = [
     "tools/trustee-cli",
     "deps/key-value-storage",
     "deps/policy-engine",
+    "deps/tls-config",
 ]
 resolver = "2"
 

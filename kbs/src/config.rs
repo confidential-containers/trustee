@@ -40,6 +40,12 @@ pub struct HttpServerConfig {
     /// Number of worker threads for the actix-web server.
     /// If not specified, defaults to the number of logical CPU cores.
     pub worker_count: Option<usize>,
+
+    /// Require post-quantum cryptography for TLS.
+    /// When true, the server refuses to start if no PQC hybrid groups
+    /// are supported by the OpenSSL build, and only PQC hybrid groups
+    /// are offered — clients without PQC support cannot connect.
+    pub require_pqc: bool,
 }
 
 impl Default for HttpServerConfig {
@@ -51,6 +57,7 @@ impl Default for HttpServerConfig {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         }
     }
 }
@@ -262,6 +269,7 @@ mod tests {
                     crate::attestation::coco::grpc::GrpcConfig {
                         as_addr: "http://127.0.0.1:50001".into(),
                         pool_size: 100,
+                        ..Default::default()
                     },
                 ),
             timeout: 600,
@@ -273,6 +281,7 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -306,6 +315,7 @@ mod tests {
                         storage_type: None,
                         rvps_config: RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                             address: "http://127.0.0.1:50003".into(),
+                            ..Default::default()
                         }),
                         attestation_token_broker: EarTokenConfiguration {
                             duration_min: DEFAULT_TOKEN_DURATION,
@@ -325,6 +335,7 @@ mod tests {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -368,6 +379,7 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -397,6 +409,7 @@ mod tests {
                     crate::attestation::coco::grpc::GrpcConfig {
                         as_addr: "http://as:50004".into(),
                         pool_size: crate::attestation::coco::grpc::DEFAULT_POOL_SIZE,
+                        ..Default::default()
                     },
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,
@@ -408,6 +421,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: make_token_authorization_admin_config(),
         storage_backend: StorageBackendConfig {
@@ -453,6 +467,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: AdminConfig::InsecureAllowAll {},
         storage_backend: StorageBackendConfig {
@@ -494,6 +509,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_pqc: false,
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
@@ -511,6 +527,7 @@ mod tests {
                     crate::attestation::coco::grpc::GrpcConfig {
                         as_addr: "http://127.0.0.1:50004".into(),
                         pool_size: 100,
+                        ..Default::default()
                     },
                 ),
             timeout: crate::attestation::config::DEFAULT_TIMEOUT,

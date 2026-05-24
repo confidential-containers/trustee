@@ -90,6 +90,13 @@ Start Attestation Service and specify the listen port of its gRPC service:
 grpc-as --socket 127.0.0.1:50004
 ```
 
+To enable TLS on the gRPC listener, provide a certificate and private key (both PEM format):
+```shell
+grpc-as --socket 0.0.0.0:50004 --tls-cert /etc/as/server.crt --tls-key /etc/as/server.key
+```
+
+Both `--tls-cert` and `--tls-key` must be provided together. If neither is given the server starts without TLS (default behavior). When TLS is enabled the server negotiates PQC hybrid key exchange (e.g., X25519MLKEM768) automatically with compatible clients via the aws-lc-rs rustls provider.
+
 If you want to see the runtime log, run:
 ```shell
 RUST_LOG=debug grpc-as --socket 127.0.0.1:50004

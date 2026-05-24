@@ -1,7 +1,10 @@
+use anyhow::Context;
 use mobc::{Manager, Pool};
 use serde::Deserialize;
 use serde_json::Value;
-use tonic::transport::Channel;
+use std::path::PathBuf;
+use tls_config::grpc::GrpcTlsMode;
+use tonic::transport::{Channel, ClientTlsConfig};
 use tracing::{debug, info};
 
 use self::rvps_api::{
@@ -21,10 +24,27 @@ pub struct RvpsRemoteConfig {
     /// If this field is not given, a built-in RVPS will be used.
     #[serde(default = "default_address")]
     pub address: String,
+    /// TLS mode for the gRPC channel. Default: `insecure` (plaintext).
+    #[serde(default)]
+    pub tls_mode: GrpcTlsMode,
+    /// Path to a PEM CA certificate used to verify the RVPS server certificate.
+    /// Required when `tls_mode = "tls"`.
+    #[serde(default)]
+    pub ca_cert_path: Option<PathBuf>,
 }
 
 fn default_address() -> String {
     "127.0.0.1:50003".into()
+}
+
+impl Default for RvpsRemoteConfig {
+    fn default() -> Self {
+        Self {
+            address: default_address(),
+            tls_mode: GrpcTlsMode::Insecure,
+            ca_cert_path: None,
+        }
+    }
 }
 
 /// The default pool size for the RVPS client.
@@ -35,19 +55,58 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub async fn new(addr: &str) -> Result<Self> {
+    pub async fn new(config: &RvpsRemoteConfig) -> Result<Self> {
         info!(
             "connect to remote RVPS [{}] with pool size {}",
-            addr, DEFAULT_RVPS_POOL_SIZE
+            config.address, DEFAULT_RVPS_POOL_SIZE
         );
 
-        let mut address = addr.to_string();
-        if !address.starts_with("http://") && !address.starts_with("https://") {
-            debug!("add http:// prefix to the rvps grpc address [{}]", address);
-            address = format!("http://{}", address);
+        // Tonic uses the URI scheme (not the TLS config object) to decide whether
+        // to activate TLS, so an explicit http:// with tls_mode="tls" would
+        // silently connect in plaintext. Reject contradictions up front.
+        if config.address.starts_with("https://") && config.tls_mode != GrpcTlsMode::Tls {
+            return Err(anyhow::anyhow!(
+                "RVPS gRPC: tls_mode=\"insecure\" requires an http:// address, got \"{}\"",
+                config.address
+            )
+            .into());
+        }
+        if config.address.starts_with("http://") && config.tls_mode == GrpcTlsMode::Tls {
+            return Err(anyhow::anyhow!(
+                "RVPS gRPC: tls_mode=\"tls\" requires an https:// address, got \"{}\"",
+                config.address
+            )
+            .into());
         }
 
-        let manager = GrpcManager { address };
+        // Auto-prepend the correct scheme if none was given.
+        let address =
+            if !config.address.starts_with("http://") && !config.address.starts_with("https://") {
+                let scheme = if config.tls_mode == GrpcTlsMode::Tls {
+                    "https"
+                } else {
+                    "http"
+                };
+                debug!(
+                    "add {scheme}:// prefix to the rvps grpc address [{}]",
+                    config.address
+                );
+                format!("{scheme}://{}", config.address)
+            } else {
+                config.address.clone()
+            };
+
+        let tls_config = tls_config::grpc::build_grpc_client_tls_config(
+            &config.tls_mode,
+            config.ca_cert_path.as_deref(),
+        )
+        .await
+        .context("RVPS gRPC client TLS")?;
+
+        let manager = GrpcManager {
+            address,
+            tls_config,
+        };
         let pool = Pool::builder()
             .max_open(DEFAULT_RVPS_POOL_SIZE)
             .build(manager);
@@ -92,6 +151,7 @@ impl RvpsApi for Agent {
 
 pub struct GrpcManager {
     address: String,
+    tls_config: Option<ClientTlsConfig>,
 }
 
 #[async_trait::async_trait]
@@ -100,9 +160,11 @@ impl Manager for GrpcManager {
     type Error = anyhow::Error;
 
     async fn connect(&self) -> std::result::Result<Self::Connection, Self::Error> {
-        let channel = Channel::from_shared(self.address.clone())?
-            .connect()
-            .await?;
+        let mut endpoint = Channel::from_shared(self.address.clone())?;
+        if let Some(tls) = &self.tls_config {
+            endpoint = endpoint.tls_config(tls.clone())?;
+        }
+        let channel = endpoint.connect().await?;
         Ok(ReferenceValueProviderServiceClient::new(channel))
     }
 

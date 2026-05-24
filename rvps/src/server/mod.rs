@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::{Config, Rvps};
 
@@ -75,12 +76,29 @@ impl ReferenceValueProviderService for RvpsServer {
     }
 }
 
-pub async fn start(socket: SocketAddr, config: Config) -> Result<()> {
+pub async fn start(
+    socket: SocketAddr,
+    config: Config,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+) -> Result<()> {
     let service = Rvps::new(config).await?;
     let inner = Arc::new(RwLock::new(service));
     let rvps_server = RvpsServer::new(inner.clone());
 
-    Server::builder()
+    let tls =
+        tls_config::grpc::build_grpc_server_tls_config(tls_cert.as_deref(), tls_key.as_deref())
+            .await?;
+
+    let mut builder = Server::builder();
+    if let Some(tls_config) = tls {
+        builder = builder.tls_config(tls_config).context("RVPS TLS config")?;
+        info!("RVPS: TLS enabled");
+    } else {
+        warn!("RVPS: TLS not configured — running in plaintext mode");
+    }
+
+    builder
         .add_service(ReferenceValueProviderServiceServer::new(rvps_server))
         .serve(socket)
         .await
