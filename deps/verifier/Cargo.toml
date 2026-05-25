@@ -24,12 +24,16 @@ tdx-verifier = [
     "intel-tee-quote-verification-rs",
     "asn1-rs",
     "x509-parser",
+    "tokio/fs",
+    "tokio/sync",
 ]
 sgx-verifier = [
     "scroll",
     "intel-tee-quote-verification-rs",
     "asn1-rs",
     "x509-parser",
+    "tokio/fs",
+    "tokio/sync",
 ]
 az-snp-vtpm-verifier = [
     "az-snp-vtpm",
@@ -110,6 +114,8 @@ http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, feat
     "url-standard",
 ] }
 chrono = { workspace = true, features = ["serde"] }
+urlencoding = "2.1.3"
+url = "2.5.7"
 bitflags = { version = "2.12.1", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
@@ -118,6 +124,7 @@ tss-esapi = { version = "7.5", optional = true }
 
 [dev-dependencies]
 assert-json-diff.workspace = true
+openssl.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
 tokio.workspace = true

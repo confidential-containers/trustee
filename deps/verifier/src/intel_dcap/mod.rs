@@ -21,6 +21,7 @@ mod claims;
 pub(crate) mod collateral_service;
 mod error;
 pub(crate) mod pck;
+pub(crate) mod pcs;
 pub(crate) mod quote;
 
 const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certification/v4/";
