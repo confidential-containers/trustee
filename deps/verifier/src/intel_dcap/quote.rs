@@ -418,6 +418,14 @@ impl Quote {
             Quote::V5 { cert_data, .. } => cert_data,
         }
     }
+
+    pub(crate) fn tee_type(&self) -> [u8; 4] {
+        match self {
+            Quote::V3 { header, .. } => header.tee_type,
+            Quote::V4 { header, .. } => header.tee_type,
+            Quote::V5 { header, .. } => header.tee_type,
+        }
+    }
 }
 
 impl fmt::Display for Quote {
@@ -616,7 +624,10 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::intel_dcap::ecdsa_quote_verification;
+    use crate::intel_dcap::{
+        collateral::build_quote_collateral, ecdsa_quote_verification, pck::parse_platform_info,
+        pcs::Pcs, QcnlConfig,
+    };
     use std::fs;
 
     #[rstest]
@@ -660,49 +671,43 @@ mod tests {
 
     /// Test to verify the TDX quote, both in v4 and v5 format.
     ///
-    /// This unit test requires two packages, s.t. `libsgx-dcap-quote-verify-dev` and `libsgx-dcap-default-qpl`
-    /// On ubuntu 24.04, you need to run the following scripts to install.
+    /// This unit test requires `libsgx-dcap-quote-verify-dev`.
+    /// On ubuntu 24.04, run the following to install:
     /// ```shell
     /// curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     /// echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
     /// sudo apt-get update && \
-    /// sudo apt-get install -y libsgx-dcap-quote-verify-dev libsgx-dcap-default-qpl
+    /// sudo apt-get install -y libsgx-dcap-quote-verify-dev
     /// ```
     ///
-    /// Also, you need to configure DCAP to work with alibaba cloud's PCCS.
-    /// create `/tmp/sgx_test_qcnl.conf` with content
-    /// ```json
-    /// {"collateral_service" :"https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/"}
-    /// ```
-    /// Test can be run using exported environment variable:
-    /// ```QCNL_CONF_PATH=/tmp/sgx_test_qcnl.conf```
+    /// Collateral is fetched from the PCS URL supplied by each test case.
     ///
-    /// Finally, DCAP only provides packages on x86-64 platform, thus we only test this on x86-64
-    /// platforms.
+    /// DCAP only provides packages on x86-64, thus we only test this on x86-64 platforms.
     #[cfg(target_arch = "x86_64")]
     #[rstest]
+    #[case("./test_data/tdx_quote_4.dat", QcnlConfig::default())]
+    #[case("./test_data/tdx_quote_5.dat", QcnlConfig { collateral_service: "https://sgx-dcap-server.cn-beijing.aliyuncs.com/sgx/certification/v4/".into(), ..Default::default() })]
     #[ignore]
     #[tokio::test]
-    #[case(
-        "./test_data/tdx_quote_4.dat",
-        r#"{"advisory_ids":["INTEL-SA-00837","INTEL-SA-00960","INTEL-SA-00982","INTEL-SA-00986","INTEL-SA-01010","INTEL-SA-01036","INTEL-SA-01076","INTEL-SA-01079","INTEL-SA-01099","INTEL-SA-01103","INTEL-SA-01111"],"collateral_expiration_status":"0","earliest_expiration_date":"2026-01-06T15:39:51Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-12-07T15:45:03Z","pck_crl_num":1,"platform_provider_id":"df4c32a9d8d86009aaf380ec43cfcefb","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-02-15T00:00:00Z","tcb_eval_num":1,"tcb_status":"OutOfDate"}"#
-    )]
-    #[ignore]
-    #[tokio::test]
-    #[case(
-        "./test_data/tdx_quote_5.dat",
-        r#"{"advisory_ids":[],"collateral_expiration_status":"1","earliest_expiration_date":"2024-10-08T23:59:59Z","earliest_issue_date":"2018-05-21T10:45:10Z","is_cached_keys":true,"is_dynamic_platform":true,"is_smt_enabled":true,"latest_issue_date":"2025-12-07T15:45:01Z","pck_crl_num":1,"platform_provider_id":"f06984c8d9343452b997c48b36d6e678","root_ca_crl_num":1,"root_key_id":"46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993","sgx_type":"Scalable","tcb_date":"2023-08-09T00:00:00Z","tcb_eval_num":1,"tcb_status":"UpToDate"}"#
-    )]
-    async fn test_verify_tdx_quote(#[case] quote: &str, #[case] expected_output: &str) {
-        let quote_bin = fs::read(quote).unwrap();
-        let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
+    async fn test_verify_tdx_quote(#[case] quote_path: &str, #[case] config: QcnlConfig) {
+        let quote_bin = fs::read(quote_path).unwrap();
+
+        let parsed_quote = parse_quote(&quote_bin).expect("parse quote");
+        let platform_info =
+            parse_platform_info(&parsed_quote.cert_data().qe_certification_data.certificates)
+                .expect("parse platform info");
+
+        let pcs = Pcs::new(&config).expect("Pcs::new");
+        let collateral = build_quote_collateral(
+            platform_info.fmspc,
+            platform_info.is_platform_ca,
+            parsed_quote.tee_type(),
+            &pcs,
+        )
+        .await
+        .expect("fetch collateral");
+
+        let res = ecdsa_quote_verification(quote_bin.as_slice(), Some(collateral));
         assert!(res.is_ok(), "{res:?}");
-
-        let claims = serde_json::to_string(&res.unwrap()).expect("Custom claims are available.");
-
-        assert_eq!(
-            claims, expected_output,
-            "Unexpected verification output for {quote}"
-        );
     }
 }

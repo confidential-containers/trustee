@@ -3,16 +3,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 use super::intel_dcap::{
+    collateral::build_quote_collateral,
+    collateral_service::CollateralService,
     ecdsa_quote_verification, extend_using_custom_claims,
     pck::parse_platform_info,
     quote::{parse_quote, Quote},
+    QcnlConfig,
 };
 use super::{regularize_data, InitDataHash, ReportData};
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
@@ -26,7 +29,17 @@ struct SgxEvidence {
 }
 
 #[derive(Debug, Default)]
-pub struct SgxVerifier {}
+pub struct SgxVerifier {
+    config: QcnlConfig,
+}
+
+impl SgxVerifier {
+    pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
+        Self {
+            config: config.unwrap_or_default(),
+        }
+    }
+}
 
 #[async_trait]
 impl Verifier for SgxVerifier {
@@ -42,9 +55,15 @@ impl Verifier for SgxVerifier {
 
         debug!("evidence: {}", serde_json::to_string(&tee_evidence)?);
 
-        let claims = verify_evidence(expected_report_data, expected_init_data_hash, tee_evidence)
-            .await
-            .map_err(|e| anyhow!("SGX Verifier: {:?}", e))?;
+        let pcs = self.config.pcs()?;
+        let claims = verify_evidence(
+            expected_report_data,
+            expected_init_data_hash,
+            tee_evidence,
+            &pcs,
+        )
+        .await
+        .context("SGX Verifier")?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }
@@ -54,6 +73,7 @@ async fn verify_evidence(
     expected_report_data: &ReportData<'_>,
     expected_init_data_hash: &InitDataHash<'_>,
     evidence: SgxEvidence,
+    pcs: &impl CollateralService,
 ) -> Result<TeeEvidenceParsedClaim> {
     if evidence.quote.is_empty() {
         bail!("SGX Quote is empty.");
@@ -61,11 +81,20 @@ async fn verify_evidence(
 
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
 
-    let custom_claims = ecdsa_quote_verification(&quote_bin)
-        .await
-        .context("Evidence's identity verification error.")?;
-
     let quote = parse_quote(&quote_bin)?;
+
+    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
+
+    let collateral = build_quote_collateral(
+        platform_info.fmspc,
+        platform_info.is_platform_ca,
+        quote.tee_type(),
+        pcs,
+    )
+    .await?;
+
+    let custom_claims = ecdsa_quote_verification(&quote_bin, Some(collateral))
+        .context("Evidence's identity verification error.")?;
     let (report_data, config_id) = match &quote {
         Quote::V3 { body, .. } => (body.report_data, body.config_id),
         _ => bail!("expected SGX quote (v3), got non-SGX quote"),
@@ -87,7 +116,6 @@ async fn verify_evidence(
         }
     }
 
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
     let mut claim = claims::generate_parsed_claims(&quote, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
@@ -118,7 +146,7 @@ mod tests {
     #[case("./test_data/occlum_quote.dat")]
     async fn test_verify_sgx_quote(#[case] quote_dir: &str) {
         let quote_bin = fs::read(quote_dir).unwrap();
-        let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
+        let res = ecdsa_quote_verification(quote_bin.as_slice(), None);
         assert!(res.is_ok());
     }
 }

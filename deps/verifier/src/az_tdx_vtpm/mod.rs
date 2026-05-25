@@ -12,7 +12,8 @@ use super::az_snp_vtpm::{
 };
 use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
 use super::intel_dcap::{
-    ecdsa_quote_verification, extend_using_custom_claims, pck::parse_platform_info,
+    collateral::build_quote_collateral, ecdsa_quote_verification, extend_using_custom_claims,
+    pck::parse_platform_info, QcnlConfig,
 };
 use super::tdx::claims::generate_parsed_claim;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
@@ -23,7 +24,17 @@ use az_tdx_vtpm::hcl::HclReport;
 use tracing::{debug, instrument};
 
 #[derive(Default)]
-pub struct AzTdxVtpm;
+pub struct AzTdxVtpm {
+    config: QcnlConfig,
+}
+
+impl AzTdxVtpm {
+    pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
+        Self {
+            config: config.unwrap_or_default(),
+        }
+    }
+}
 
 #[async_trait]
 impl Verifier for AzTdxVtpm {
@@ -56,20 +67,30 @@ impl Verifier for AzTdxVtpm {
 
         verify_tpm_pcrs(&tpm_quote)?;
 
-        let custom_claims = ecdsa_quote_verification(evidence.td_quote()).await?;
         let td_quote = parse_quote(evidence.td_quote())?;
         if matches!(td_quote, TdQuote::V3 { .. }) {
             bail!("expected TDX quote (v4/v5), got SGX quote (v3)");
         }
+
+        let platform_info =
+            parse_platform_info(&td_quote.cert_data().qe_certification_data.certificates)?;
+
+        let pcs = self.config.pcs()?;
+        let collateral = build_quote_collateral(
+            platform_info.fmspc,
+            platform_info.is_platform_ca,
+            td_quote.tee_type(),
+            &pcs,
+        )
+        .await?;
+
+        let custom_claims = ecdsa_quote_verification(evidence.td_quote(), Some(collateral))?;
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
 
         let pcrs = get_pcrs(&tpm_quote)?;
         let pcr_refs: Vec<&[u8; 32]> = pcrs.iter().collect();
         verify_init_data(expected_init_data_hash, &pcr_refs)?;
-
-        let platform_info =
-            parse_platform_info(&td_quote.cert_data().qe_certification_data.certificates)?;
 
         let mut claim = generate_parsed_claim(&td_quote, None, &platform_info)?;
         extend_claim(&mut claim, &tpm_quote)?;
@@ -125,7 +146,7 @@ mod tests {
     #[tokio::test]
     async fn test_evaluate(#[case] evidence_json: &str) {
         let tee_evidence: TeeEvidence = serde_json::from_str(evidence_json).unwrap();
-        let verifier = AzTdxVtpm;
+        let verifier = AzTdxVtpm::default();
         let result = verifier
             .evaluate(
                 tee_evidence,

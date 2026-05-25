@@ -82,9 +82,8 @@ pub async fn to_verifier(
         Tee::AzTdxVtpm => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-tdx-vtpm-verifier")] {
-                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
-                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
-                    Ok(Box::<az_tdx_vtpm::AzTdxVtpm>::default() as Box<dyn Verifier + Send + Sync>)
+                    let dcap_config = _config.and_then(|c| c.dcap_verifier);
+                    Ok(Box::new(az_tdx_vtpm::AzTdxVtpm::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `az-tdx-vtpm-verifier` is not enabled for `verifier` crate.");
                 }
@@ -93,9 +92,8 @@ pub async fn to_verifier(
         Tee::Tdx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "tdx-verifier")] {
-                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
-                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
-                    Ok(Box::<tdx::Tdx>::default() as Box<dyn Verifier + Send + Sync>)
+                    let dcap_config = _config.and_then(|c| c.dcap_verifier);
+                    Ok(Box::new(tdx::Tdx::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `tdx-verifier` is not enabled for `verifier` crate.")
                 }
@@ -117,9 +115,8 @@ pub async fn to_verifier(
         Tee::Sgx => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "sgx-verifier")] {
-                    // Write custom QCNL configuration file if $QCNL_CONF_PATH is set.
-                    let _ = intel_dcap::set_qcnl_config(_config.map(|c| c.dcap_verifier).unwrap_or(None));
-                    Ok(Box::<sgx::SgxVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                    let dcap_config = _config.and_then(|c| c.dcap_verifier);
+                    Ok(Box::new(sgx::SgxVerifier::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `sgx-verifier` is not enabled for `verifier` crate.")
                 }
