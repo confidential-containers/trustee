@@ -58,7 +58,7 @@ RUN if [ "${ARCH}" = "x86_64" ] && ( [ "${VERIFIER}" = "all-verifier" ] || [ "${
     tee -a /etc/apt/preferences.d/99dcap && \
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
-    apt-get install --no-install-recommends -y libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
+    apt-get install --no-install-recommends -y libsgx-dcap-quote-verify && \
     apt-get remove curl gnupg -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*; fi

@@ -4,7 +4,6 @@ RELEASE := $(shell lsb_release -sr)
 CODENAME := $(shell lsb_release -sc)
 SGX_REPO_URL := https://download.01.org/intel-sgx/sgx_repo/ubuntu
 KBS_CONFIG_PATH := ./config
-QCNL_CONF_PATH := $(shell mktemp --suffix=.kbs-qcnl.conf)
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(MAKEFILE_DIR)/..
 BOLD := $(shell tput bold)
@@ -124,7 +123,6 @@ install-dependencies:
 		| sudo tee /etc/apt/sources.list.d/intel-sgx.list && \
 	sudo apt-get update && \
 	sudo apt-get install -y \
-		libsgx-dcap-default-qpl \
 		libsgx-dcap-quote-verify \
 		libsgx-urts \
 		libtss2-esys-3.0.2-0 \
