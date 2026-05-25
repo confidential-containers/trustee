@@ -38,7 +38,7 @@
 //! }
 //! ```
 
-use anyhow::*;
+use anyhow::{bail, Result};
 use serde_json::{Map, Value};
 
 use crate::intel_dcap::pck::PlatformInfo;
