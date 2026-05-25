@@ -43,6 +43,9 @@ nebula-ca-plugin = []
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
+# Use AWS Secrets Manager as KBS resource backend
+aws = ["aws-config", "aws-sdk-secretsmanager"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
@@ -101,6 +104,12 @@ uuid = { workspace = true, features = ["serde"] }
 openssl.workspace = true
 az-cvm-vtpm = { version = "0.8.0", default-features = false, optional = true }
 vaultrs = { version = "0.8.0", optional = true }
+aws-config = { version = "1", features = [
+    "behavior-version-latest",
+], optional = true }
+aws-sdk-secretsmanager = { version = "1", features = [
+    "behavior-version-latest",
+], optional = true }
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
