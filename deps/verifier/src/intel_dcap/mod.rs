@@ -18,6 +18,7 @@ use strum::Display;
 use tracing::{debug, warn};
 
 mod claims;
+pub(crate) mod collateral_service;
 mod error;
 pub(crate) mod pck;
 pub(crate) mod quote;

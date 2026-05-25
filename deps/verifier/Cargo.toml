@@ -74,7 +74,7 @@ csv-rs = { version = "0.1.0", optional = true, default-features = false, feature
     "network",
 ] }
 eventlog = { path = "../eventlog", optional = true }
-hex.workspace = true
+hex = { workspace = true, features = ["serde"] }
 jsonwebkey = "0.4.0"
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
@@ -109,6 +109,7 @@ http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, feat
     "manager-moka",
     "url-standard",
 ] }
+chrono = { workspace = true, features = ["serde"] }
 bitflags = { version = "2.12.1", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
