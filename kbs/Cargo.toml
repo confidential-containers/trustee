@@ -51,7 +51,7 @@ aes-gcm = { version = "0.10.1", features = ["zeroize"] }
 # Direct deps to activate their `zeroize` feature: `aes-gcm`'s own `zeroize`
 # feature does not propagate down to `aes` or `polyval`. Do not remove.
 aes = { version = "0.8", features = ["zeroize"] }
-polyval = { version = "0.6", features = ["zeroize"] }
+polyval = { version = "0.7", features = ["zeroize"] }
 aes-kw = "0.3.0"
 anyhow.workspace = true
 async-trait.workspace = true
