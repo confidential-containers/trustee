@@ -3,7 +3,7 @@ sockets = ["127.0.0.1:8085"]
 insecure_http = true
 
 [attestation_token]
-insecure_key = true
+insecure_header_jwk = true
 
 [admin]
 authorization_mode = "InsecureAllowAll"

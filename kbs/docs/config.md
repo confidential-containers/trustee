@@ -41,7 +41,7 @@ The following properties can be set under the `[attestation_token]` section.
 | `trusted_jwk_sets`    | String Array | Trusted JWKS/OpenID sources (`file://` or `https://`) used to verify attestation tokens                                         | Empty   |
 | `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                            | Empty   |
 | `extra_teekey_paths`  | String Array | User defined paths to the tee public key in the JWT body                                                                          | Empty   |
-| `insecure_key`        | Boolean      | Whether to skip provenance checks of header-embedded JWK keys. Signature is still verified.                                      | `false` |
+| `insecure_header_jwk`        | Boolean      | Skip `x5c`/`trusted_certs_paths` endorsement for a JWK in the JWT header; signature is still verified | `false` |
 
 Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of
 this Key in the JWT.
@@ -49,16 +49,20 @@ Example of `extra_teekey_paths` is `/attester_runtime_data/tee-pubkey` which ref
 `attester_runtime_data.tee-pubkey` inside the JWT body claims. By default CoCo AS Token and Intel TA
 Token TEE Public Key paths are supported.
 
-For Attestation Services like CoCo-AS, the public key to verify the JWT will be given
-in the token's `jwk` field (with or without the public key cert chain `x5c`).
+For attestation services like CoCo-AS, the JWT header often carries a `jwk` (sometimes with an
+`x5c` certificate chain). KBS uses that key to verify the token signature. Whether the key's
+provenance is checked depends on `insecure_header_jwk`:
 
-- If `insecure_key` is set to `true`, KBS will ignore to verify the trustworthy of the `jwk`.
-- If `insecure_key` is set to `false`, KBS will look up its `trusted_certs_paths` and the `x5c`
-  field to verify the trustworthy of the `jwk`.
+- If `insecure_header_jwk` is `true`, the header `jwk` is used as-is; KBS does not validate its `x5c`
+  chain against `trusted_certs_paths`. The JWT signature is still verified. Intended for
+  testing only.
+- If `insecure_header_jwk` is `false`, the header `jwk` must include a non-empty `x5c` chain that
+  matches the key and chains to a certificate in `trusted_certs_paths`.
+  If `trusted_certs_paths` is empty, tokens with a header `jwk` cannot be verified.
 
-For Attestation Services like Intel TA, there will only be a `kid` field inside the JWT.
-The `kid` field is used to look up the trusted jwk configured by KBS via `trusted_jwk_sets` to
-verify the integrity and trustworthy of the JWT.
+For attestation services like Intel TA, the JWT header carries a `kid` instead of an embedded
+`jwk`. The `kid` is used to look up the signing key from `trusted_jwk_sets`.
+This lookup path is not affected by `insecure_header_jwk`.
 
 ### Attestation Configuration
 
@@ -574,7 +578,7 @@ authorization_mode = "InsecureAllowAll"
 
 [attestation_token]
 trusted_certs_paths = ["./work/ca-cert.pem"]
-insecure_key = false
+insecure_header_jwk = false
 
 [storage_backend]
 storage_type = "LocalFs"

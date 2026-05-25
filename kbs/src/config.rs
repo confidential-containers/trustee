@@ -251,7 +251,7 @@ mod tests {
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec!["/etc/ca".into(), "/etc/ca2".into()],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
         },
@@ -294,7 +294,7 @@ mod tests {
     #[case("test_data/configs/coco-as-builtin-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
         },
@@ -343,7 +343,7 @@ mod tests {
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["/etc/ca".into(), "/etc/ca2".into()],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
         },
@@ -426,7 +426,7 @@ mod tests {
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
         },
@@ -469,7 +469,7 @@ mod tests {
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
         },
@@ -527,7 +527,7 @@ mod tests {
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_jwk_sets: vec!["https://portal.trustauthority.intel.com".into()],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
         },
@@ -557,7 +557,7 @@ mod tests {
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
         attestation_token: AttestationTokenVerifierConfig {
             trusted_certs_paths: vec![],
-            insecure_key: false,
+            insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
         },

@@ -80,7 +80,7 @@ insecure_http = false
 authorization_mode = "InsecureAllowAll"
 
 [attestation_token]
-insecure_key = true
+insecure_header_jwk = true
 
 [policy_engine]
 policy_path = "/opa/confidential-containers/kbs/policy.rego"

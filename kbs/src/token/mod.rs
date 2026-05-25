@@ -44,18 +44,22 @@ pub struct AttestationTokenVerifierConfig {
     #[serde(default)]
     pub trusted_jwk_sets: Vec<String>,
 
-    /// Whether the token signing key is (not) validated.
-    /// If true, the attestation token can be modified in flight.
-    /// This should only be set to true for testing.
-    /// While the token signature is still validated, the provenance of the
-    /// signing key is not checked and the key could be replaced.
+    /// Whether to skip endorsement checks for a JWK embedded in the JWT header.
     ///
-    /// When false, the key must be endorsed by the certificates or JWK sets
-    /// specified above.
+    /// When false (default) and the token header carries a `jwk`, the key must be
+    /// backed by an `x5c` certificate chain that chains to [`trusted_certs_paths`].
+    /// When true, that `jwk` is used directly to verify the signature without
+    /// checking its provenance; the signature itself is still validated.
+    ///
+    /// This only affects header-embedded `jwk` keys. Tokens that identify the
+    /// signing key via `kid` are still resolved from [`trusted_jwk_sets`].
+    ///
+    /// Should only be set to true for testing: an attacker who can replace the
+    /// header `jwk` can make KBS accept tokens signed with an arbitrary key.
     ///
     /// Default: false
     #[serde(default = "bool::default")]
-    pub insecure_key: bool,
+    pub insecure_header_jwk: bool,
 }
 
 #[derive(Clone)]
@@ -76,7 +80,7 @@ impl TokenVerifier {
             &config.trusted_jwk_sets,
             &config.trusted_certs_paths,
             &Vec::new(),
-            config.insecure_key,
+            config.insecure_header_jwk,
         )
         .await
         .map_err(|e| Error::TokenVerifierInitialization { source: e })?;
