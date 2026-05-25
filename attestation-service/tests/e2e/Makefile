@@ -28,8 +28,7 @@ install-dependencies:
 		protobuf-compiler \
 		clang \
 		libtss2-dev \
-		libsgx-dcap-quote-verify-dev \
-		libsgx-dcap-default-qpl && \
+		libsgx-dcap-quote-verify-dev && \
 	go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 
 $(RESTFUL_BIN) $(GRPC_BIN):

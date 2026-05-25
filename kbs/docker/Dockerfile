@@ -68,7 +68,6 @@ RUN apt-get update && \
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    libsgx-dcap-default-qpl \
     libsgx-dcap-quote-verify \
     libtss2-dev \
     libtss2-tctildr0 \
