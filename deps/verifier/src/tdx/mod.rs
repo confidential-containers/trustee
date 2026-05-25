@@ -7,9 +7,12 @@ use crate::tdx::claims::generate_parsed_claim;
 
 use super::*;
 use crate::intel_dcap::{
+    collateral::build_quote_collateral,
+    collateral_service::CollateralService,
     ecdsa_quote_verification, extend_using_custom_claims,
     pck::parse_platform_info,
     quote::{parse_quote, Quote},
+    QcnlConfig,
 };
 use async_trait::async_trait;
 use base64::Engine;
@@ -27,7 +30,17 @@ struct TdxEvidence {
 }
 
 #[derive(Debug, Default)]
-pub struct Tdx {}
+pub struct Tdx {
+    config: QcnlConfig,
+}
+
+impl Tdx {
+    pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
+        Self {
+            config: config.unwrap_or_default(),
+        }
+    }
+}
 
 #[async_trait]
 impl Verifier for Tdx {
@@ -41,9 +54,15 @@ impl Verifier for Tdx {
         let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
             .context("Deserialize TDX Evidence failed.")?;
 
-        let claims = verify_evidence(expected_report_data, expected_init_data_hash, tdx_evidence)
-            .await
-            .map_err(|e| anyhow!("TDX Verifier: {:?}", e))?;
+        let pcs = self.config.pcs()?;
+        let claims = verify_evidence(
+            expected_report_data,
+            expected_init_data_hash,
+            tdx_evidence,
+            &pcs,
+        )
+        .await
+        .context("TDX Verifier")?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }
@@ -53,6 +72,7 @@ async fn verify_evidence(
     expected_report_data: &ReportData<'_>,
     expected_init_data_hash: &InitDataHash<'_>,
     evidence: TdxEvidence,
+    cs: &impl CollateralService,
 ) -> Result<TeeEvidenceParsedClaim> {
     if evidence.quote.is_empty() {
         bail!("TDX Quote is empty.");
@@ -60,17 +80,28 @@ async fn verify_evidence(
 
     // Verify TD quote ECDSA signature.
     let quote_bin = base64::engine::general_purpose::STANDARD.decode(evidence.quote)?;
-    let custom_claims = ecdsa_quote_verification(quote_bin.as_slice()).await?;
 
-    info!("Quote DCAP check succeeded.");
-
-    // Parse quote and Compare report data
+    // Parse quote early so PlatformInfo is available for collateral fetch.
     let quote = parse_quote(&quote_bin)?;
     if matches!(quote, Quote::V3 { .. }) {
         bail!("expected TDX quote (v4/v5), got SGX quote (v3)");
     }
 
     debug!("{quote}");
+
+    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
+
+    let collateral = build_quote_collateral(
+        platform_info.fmspc,
+        platform_info.is_platform_ca,
+        quote.tee_type(),
+        cs,
+    )
+    .await?;
+
+    let custom_claims = ecdsa_quote_verification(quote_bin.as_slice(), Some(collateral))?;
+
+    info!("Quote DCAP check succeeded.");
 
     if let ReportData::Value(expected_report_data) = expected_report_data {
         debug!("Check the binding of REPORT_DATA.");
@@ -132,8 +163,6 @@ async fn verify_evidence(
         }
     }
     // Return Evidence parsed claim
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
-
     let mut claim = generate_parsed_claim(&quote, ccel_option, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
@@ -155,8 +184,8 @@ mod tests {
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
         let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_quote(&quote_bin).unwrap();
-        let pck_certs = &quote.cert_data().qe_certification_data.certificates;
-        let platform_info = parse_platform_info(pck_certs).unwrap();
+        let platform_info =
+            parse_platform_info(&quote.cert_data().qe_certification_data.certificates).unwrap();
 
         let parsed_claim = generate_parsed_claim(&quote, Some(ccel), &platform_info);
         assert!(parsed_claim.is_ok());
