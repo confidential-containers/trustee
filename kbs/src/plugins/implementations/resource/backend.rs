@@ -15,6 +15,9 @@ use crate::{
     prometheus::{RESOURCE_DELETES_TOTAL, RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
 };
 
+#[cfg(feature = "aws")]
+use super::aws_kms;
+
 #[cfg(feature = "vault")]
 use super::vault_kv;
 
@@ -87,6 +90,10 @@ pub enum RepositoryConfig {
     #[serde(alias = "aliyun")]
     Aliyun(super::aliyun_kms::AliyunKmsBackendConfig),
 
+    #[cfg(feature = "aws")]
+    #[serde(alias = "aws")]
+    Aws(aws_kms::AwsKmsBackendConfig),
+
     #[cfg(feature = "vault")]
     #[serde(alias = "vault")]
     Vault(vault_kv::VaultKvBackendConfig),
@@ -119,6 +126,13 @@ impl ResourceStorage {
             #[cfg(feature = "aliyun")]
             RepositoryConfig::Aliyun(config) => {
                 let client = super::aliyun_kms::AliyunKmsBackend::new(&config)?;
+                Ok(Self {
+                    backend: Arc::new(client),
+                })
+            }
+            #[cfg(feature = "aws")]
+            RepositoryConfig::Aws(config) => {
+                let client = aws_kms::AwsKmsBackend::new(&config).await?;
                 Ok(Self {
                     backend: Arc::new(client),
                 })
