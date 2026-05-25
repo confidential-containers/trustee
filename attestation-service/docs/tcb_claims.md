@@ -12,7 +12,7 @@ Policy input is a JSON object composed from verifier output. In most cases, it f
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
+| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
 | `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
 | `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
 | `init_data_claims` | object | Parsed init-data claims (present when init-data is provided and verified) |
@@ -256,16 +256,16 @@ Generally, policies should be evaluated against the reported TCB.
 
 ## Hygon DCU
 
-Claims are reported per attestation report entry using numeric keys under the top-level `hygondcu` object:
+Each attestation report produces one set of claims under `hygondcu`. Multiple DCUs are evaluated separately (EAR token submods `dcu0`, `dcu1`, ... in evidence list order):
 
-- `hygondcu.<index>.body.version`: Firmware version.
-- `hygondcu.<index>.body.chip_id`: DCU chip ID.
-- `hygondcu.<index>.body.user_data`: The challenge data for the attestation.
-- `hygondcu.<index>.body.measure`: measurement of the firmware.
-- `hygondcu.<index>.body.reserved`: Reserved field.
-- `hygondcu.<index>.body.sig_usage`: The usage of the signature.
-- `hygondcu.<index>.body.sig_algo`: The algorithm of the signature.
-- `hygondcu.<index>.report_data` (same value as `body.user_data`)
+- `hygondcu.body.version`: Firmware version.
+- `hygondcu.body.chip_id`: DCU chip ID.
+- `hygondcu.body.user_data`: The challenge data for the attestation.
+- `hygondcu.body.measure`: measurement of the firmware.
+- `hygondcu.body.reserved`: Reserved field.
+- `hygondcu.body.sig_usage`: The usage of the signature.
+- `hygondcu.body.sig_algo`: The algorithm of the signature.
+- `hygondcu.report_data` (same value as `body.user_data`)
 
 ## Hygon CSV
 
