@@ -8120,6 +8120,7 @@ dependencies = [
  "bitflags 2.12.1",
  "ccatoken",
  "cfg-if",
+ "chrono",
  "codicon",
  "csv-rs",
  "ear",
