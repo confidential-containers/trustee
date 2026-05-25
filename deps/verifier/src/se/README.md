@@ -106,7 +106,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [attestation_token]
-insecure_key = true
+insecure_header_jwk = true
 
 [attestation_service]
 type = "coco_as_builtin"
@@ -193,7 +193,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [attestation_token]
-insecure_key = true
+insecure_header_jwk = true
 
 [attestation_service]
 type = "coco_as_builtin"
