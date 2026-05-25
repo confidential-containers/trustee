@@ -8150,6 +8150,8 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tss-esapi",
+ "url",
+ "urlencoding",
  "veraison-apiclient",
  "x509-parser",
 ]
