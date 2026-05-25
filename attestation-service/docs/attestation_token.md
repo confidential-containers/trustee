@@ -11,6 +11,7 @@ Each submod is given a generic key constructed from the CPU class and the device
 For instance, the CPU submod will be called `cpu0`.
 If a GPU has been attested as part of the guest, there will be a `gpu0` submod.
 If there is more than one GPU, there will be additional `gpuN` submods.
+Hygon DCU attestation uses `dcu0` and additional `dcuN` submods in the same way.
 
 `cpu0` is considered to be the primary attester and has some special
 information associated with it.
