@@ -36,12 +36,18 @@ token will be together with the request, and KBS will first verify the token.
 
 The following properties can be set under the `[attestation_token]` section.
 
-| Property              | Type         | Description                                                                                                                       | Default |
-|-----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|---------|
-| `trusted_jwk_sets`    | String Array | Trusted JWKS/OpenID sources (`file://` or `https://`) used to verify attestation tokens                                         | Empty   |
-| `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                            | Empty   |
-| `extra_teekey_paths`  | String Array | User defined paths to the tee public key in the JWT body                                                                          | Empty   |
-| `insecure_key`        | Boolean      | Whether to skip provenance checks of header-embedded JWK keys. Signature is still verified.                                      | `false` |
+| Property                       | Type         | Description                                                                                                                                                                                                                              | Default |
+|--------------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `trusted_jwk_sets`             | String Array | Trusted JWKS/OpenID issuer sources. `file://` and local paths load a JWKS JSON file directly; `https://` and `http://` (when `insecure_public_key_from_uri=true`) load keys via OpenID discovery (`.well-known/openid-configuration` → `jwks_uri`). | Empty   |
+| `trusted_certs_paths`          | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                                                                                                                                   | Empty   |
+| `extra_teekey_paths`           | String Array | User defined paths to the tee public key in the JWT body                                                                                                                                                                                 | Empty   |
+| `insecure_key`                 | Boolean      | Whether to skip provenance checks of header-embedded JWK keys. Signature is still verified.                                                                                                                                             | `false` |
+| `insecure_public_key_from_uri` | Boolean      | Allow loading `trusted_jwk_sets` via plaintext `http://` URLs                                                                                                                                                                            | `false` |
+
+> [!NOTE]
+> `https://`, `file://`, and local paths are always accepted for `trusted_jwk_sets`.
+> Enable `insecure_public_key_from_uri` only in controlled network environments or for
+> development, as plaintext HTTP is vulnerable to tampering.
 
 Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of
 this Key in the JWT.
