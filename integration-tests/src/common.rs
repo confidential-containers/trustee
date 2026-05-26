@@ -258,6 +258,7 @@ impl TestHarness {
                 insecure_key: true,
                 trusted_jwk_sets: vec![],
                 extra_teekey_paths: vec![],
+                insecure_public_key_from_uri: false,
             },
             attestation_service: AttestationConfig {
                 attestation_service: AttestationServiceConfig::CoCoASBuiltIn(

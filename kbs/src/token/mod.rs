@@ -56,6 +56,11 @@ pub struct AttestationTokenVerifierConfig {
     /// Default: false
     #[serde(default = "bool::default")]
     pub insecure_key: bool,
+
+    /// Allow loading JWK sets/PEM public keys from insecure HTTP sources.
+    /// Keep disabled by default and only enable in controlled environments.
+    #[serde(default = "bool::default")]
+    pub insecure_public_key_from_uri: bool,
 }
 
 #[derive(Clone)]
@@ -77,6 +82,7 @@ impl TokenVerifier {
             &config.trusted_certs_paths,
             &Vec::new(),
             config.insecure_key,
+            config.insecure_public_key_from_uri,
         )
         .await
         .map_err(|e| Error::TokenVerifierInitialization { source: e })?;

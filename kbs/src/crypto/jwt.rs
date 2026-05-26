@@ -36,7 +36,10 @@ fn path_to_file_uri(path: &str) -> Result<String> {
 }
 
 fn normalize_jwk_set_source(source: &str) -> Result<String> {
-    if source.starts_with("https://") || source.starts_with("file://") {
+    if source.starts_with("https://")
+        || source.starts_with("http://")
+        || source.starts_with("file://")
+    {
         return Ok(source.to_string());
     }
 
@@ -47,12 +50,21 @@ fn normalize_jwk_set_source(source: &str) -> Result<String> {
     path_to_file_uri(source)
 }
 
-/// Read a PEM public key from a URI (`https://`, `file://`, or local path).
-pub(crate) async fn read_pem_public_key_from_uri(uri: &str) -> Result<DecodingKey> {
+/// Read a PEM public key from a URI.
+///
+/// # Arguments
+///
+/// * `uri` - The URI of the PEM public key.
+/// * `allow_insecure_http` - Whether to allow HTTP address as uri.
+pub(crate) async fn read_pem_public_key_from_uri(
+    uri: &str,
+    allow_insecure_http: bool,
+) -> Result<DecodingKey> {
     let maybe_url = Url::parse(uri);
     let data = if let Ok(url) = maybe_url {
         match url.scheme() {
             "https" => reqwest::get(uri).await?.bytes().await?.to_vec(),
+            "http" if allow_insecure_http => reqwest::get(uri).await?.bytes().await?.to_vec(),
             "file" => std::fs::read(url.path())?,
             _ => {
                 bail!("unsupported scheme in {uri}");
@@ -127,16 +139,18 @@ impl JwtVerifier {
     /// * `trusted_cert_paths` - The paths of the trusted certificates.
     /// * `trusted_pem_public_key_uris` - The URIs of the trusted PEM public keys.
     /// * `insecure_public_key_from_jwt` - Whether to verify the endorsement of the public key from JWT header.
+    /// * `insecure_public_key_from_uri` - Whether to allow insecure HTTP address in trusted_pem_public_key_uris and trusted_jwk_set_uris.
     pub async fn new(
         trusted_jwk_set_uris: &[String],
         trusted_cert_paths: &[String],
         trusted_pem_public_key_uris: &[String],
         insecure_public_key_from_jwt: bool,
+        insecure_public_key_from_uri: bool,
     ) -> Result<Self> {
         let mut trusted_jwk_sets = JwkSet { keys: Vec::new() };
         for uri in trusted_jwk_set_uris {
             let uri = normalize_jwk_set_source(&uri[..])?;
-            let mut jwk_set = read_jwk_from_uri(&uri[..]).await?;
+            let mut jwk_set = read_jwk_from_uri(&uri[..], insecure_public_key_from_uri).await?;
             trusted_jwk_sets.keys.append(&mut jwk_set.keys);
         }
 
@@ -156,7 +170,8 @@ impl JwtVerifier {
 
         let mut trusted_pem_public_keys = Vec::new();
         for uri in trusted_pem_public_key_uris {
-            let public_key = read_pem_public_key_from_uri(uri).await?;
+            let public_key =
+                read_pem_public_key_from_uri(uri, insecure_public_key_from_uri).await?;
             trusted_pem_public_keys.push(public_key);
         }
 
@@ -356,7 +371,7 @@ mod tests {
 
         use crate::crypto::jwt::JwtVerifier;
 
-        let verifier = JwtVerifier::new(&[], &[trusted_pem_path.to_string()], &[], false)
+        let verifier = JwtVerifier::new(&[], &[trusted_pem_path.to_string()], &[], false, false)
             .await
             .expect("verifier init");
         let jwk_json = std::fs::read_to_string(jwk_json_path).expect("read jwk json");

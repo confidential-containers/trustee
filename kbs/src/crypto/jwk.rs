@@ -7,7 +7,7 @@ use reqwest::{get, Url};
 use serde::Deserialize;
 use std::fs;
 use thiserror::Error;
-use tracing::info;
+use tracing::{info, warn};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
 
@@ -29,19 +29,25 @@ pub(crate) struct OpenIDConfig {
     jwks_uri: String,
 }
 
-pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
+pub async fn read_jwk_from_uri(
+    uri: &str,
+    insecure_public_key_from_uri: bool,
+) -> Result<JwkSet, JwksGetError> {
     let url = Url::parse(uri).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
-        "https" => {
+        "https" | "http" if insecure_public_key_from_uri => {
             let openid_config_url = url
                 .join(OPENID_CONFIG_URL_SUFFIX)
                 .map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
+
+            if url.scheme() == "http" {
+                warn!("Getting OpenID configuration from insecure HTTP source, please ensure the source is trusted or it's only used in a controlled/test environment");
+            }
 
             info!(
                 "Getting OpenID configuration from {}",
                 openid_config_url.as_str()
             );
-
             let oidc = get(openid_config_url.as_str())
                 .await
                 .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?
@@ -88,7 +94,10 @@ mod tests {
     #[case("/does/not/exist/keys.jwks", true)]
     #[tokio::test]
     async fn test_source_path_validation(#[case] source_path: &str, #[case] expect_error: bool) {
-        assert_eq!(expect_error, read_jwk_from_uri(source_path).await.is_err())
+        assert_eq!(
+            expect_error,
+            read_jwk_from_uri(source_path, false).await.is_err()
+        )
     }
 
     #[rstest]
@@ -108,7 +117,7 @@ mod tests {
         std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
-        let jwtks = read_jwk_from_uri(&p).await.expect("to get jwks");
+        let jwtks = read_jwk_from_uri(&p, false).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
     }
