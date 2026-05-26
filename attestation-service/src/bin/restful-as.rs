@@ -4,7 +4,7 @@ use actix_cors::Cors;
 use actix_web::{http::header, web, App, HttpServer};
 use anyhow::Result;
 use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
-use clap::{arg, command, Parser};
+use clap::Parser;
 use openssl::{
     pkey::PKey,
     ssl::{SslAcceptor, SslMethod},

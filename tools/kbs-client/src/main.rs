@@ -280,15 +280,15 @@ async fn main() -> Result<()> {
                 None => None,
             };
 
-            if token.is_some() {
-                if tee_key.is_none() {
+            if let Some(token) = token {
+                let Some(tee_key) = tee_key else {
                     bail!("if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token.");
-                }
+                };
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
                     &path,
-                    tee_key.unwrap(),
-                    token.unwrap(),
+                    tee_key,
+                    token,
                     kbs_cert.clone(),
                 )
                 .await?;
