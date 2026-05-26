@@ -460,7 +460,7 @@ fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertifi
             bail!("expected cert data type {QE_REPORT_CERT_DATA_TYPE}, got {qe_report_cert_data_type}");
         }
 
-        // Skip length for now
+        // Advance past the QE Report Certification Data length field.
         _ = data.gread::<u32>(&mut offset)?;
     }
 
