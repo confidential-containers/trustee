@@ -88,9 +88,17 @@ jobs:
       - name: Run KBS Vault integration e2e (no SSL + SSL)
         run: make test-kbs-vault-e2e
 
+  # Docker Compose cluster images (shared with docker-e2e-test via workflow artifacts)
+  build-docker-e2e-images:
+    name: Build Docker Compose e2e images
+    uses: ./.github/workflows/workflow-call-build-docker-e2e-images.yml
+    permissions:
+      contents: read
+
   # Docker Compose cluster e2e
   docker-e2e-test:
     name: Docker Compose e2e
+    needs: build-docker-e2e-images
     strategy:
       matrix:
         instance:
@@ -98,13 +106,9 @@ jobs:
           - ubuntu-24.04-arm
         include:
           - instance: ubuntu-24.04
-            build_platform: linux/amd64
-            target_arch: x86_64
-            verifier: all-verifier
+            platform_slug: linux-amd64
           - instance: ubuntu-24.04-arm
-            build_platform: linux/arm64
-            target_arch: aarch64
-            verifier: cca-verifier
+            platform_slug: linux-arm64
     runs-on: ${{ matrix.instance }}
     permissions:
       contents: read
@@ -115,6 +119,15 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Download pre-built images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docker-e2e-images-${{ matrix.platform_slug }}
+          path: ${{ runner.temp }}/docker-e2e-images
+
+      - name: Load images
+        run: docker load --input "${{ runner.temp }}/docker-e2e-images/images.tar"
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
@@ -134,9 +147,7 @@ jobs:
 
       - name: Run KBS Docker Compose e2e
         env:
-          BUILD_PLATFORM: ${{ matrix.build_platform }}
-          TARGET_ARCH: ${{ matrix.target_arch }}
-          VERIFIER: ${{ matrix.verifier }}
+          SKIP_DOCKER_COMPOSE_BUILD: "1"
         run: make test-kbs-docker-e2e
 
   # External plugin e2e

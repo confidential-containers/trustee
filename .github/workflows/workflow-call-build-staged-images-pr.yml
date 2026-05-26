@@ -1,5 +1,10 @@
 name: Build Staged Images (PR)
 
+# linux/amd64 and linux/arm64 images used by docker-compose e2e are built once in
+# workflow-call-build-docker-e2e-images.yml (called from test-e2e-kbs.yml) and
+# passed to docker-e2e-test via workflow artifacts. They are omitted here on PR to
+# avoid rebuilding the same Dockerfiles.
+
 on:
   workflow_call:
     inputs:
@@ -41,21 +46,9 @@ jobs:
           - name: gRPC AS
             tag: kbs-grpc-as
             docker_file: kbs/docker/coco-as-grpc/Dockerfile
-            platform: linux/amd64
-            instance: ubuntu-24.04
-            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
-          - name: gRPC AS
-            tag: kbs-grpc-as
-            docker_file: kbs/docker/coco-as-grpc/Dockerfile
             platform: linux/s390x
             instance: ubuntu-24.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
-          - name: gRPC AS
-            tag: kbs-grpc-as
-            docker_file: kbs/docker/coco-as-grpc/Dockerfile
-            platform: linux/arm64
-            instance: ubuntu-24.04-arm
-            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
           - name: Intel Trust Authority AS
             tag: kbs-ita-as
             docker_file: kbs/docker/intel-trust-authority/Dockerfile
@@ -101,21 +94,9 @@ jobs:
           - name: gRPC CoCo-AS
             tag: coco-as-grpc
             docker_file: attestation-service/docker/as-grpc/Dockerfile
-            platform: linux/amd64
-            instance: ubuntu-24.04
-            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64 --build-arg VERIFIER=all-verifier
-          - name: gRPC CoCo-AS
-            tag: coco-as-grpc
-            docker_file: attestation-service/docker/as-grpc/Dockerfile
             platform: linux/s390x
             instance: ubuntu-24.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x --build-arg VERIFIER=snp-verifier,nvidia-verifier,se-verifier
-          - name: gRPC CoCo-AS
-            tag: coco-as-grpc
-            docker_file: attestation-service/docker/as-grpc/Dockerfile
-            platform: linux/arm64
-            instance: ubuntu-24.04-arm
-            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64 --build-arg VERIFIER=cca-verifier
           - name: RESTful CoCo-AS
             tag: coco-as-restful
             docker_file: attestation-service/docker/as-restful/Dockerfile
@@ -161,21 +142,9 @@ jobs:
           - name: RVPS
             tag: rvps
             docker_file: rvps/docker/Dockerfile
-            platform: linux/amd64
-            instance: ubuntu-24.04
-            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
-          - name: RVPS
-            tag: rvps
-            docker_file: rvps/docker/Dockerfile
             platform: linux/s390x
             instance: ubuntu-24.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
-          - name: RVPS
-            tag: rvps
-            docker_file: rvps/docker/Dockerfile
-            platform: linux/arm64
-            instance: ubuntu-24.04-arm
-            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
