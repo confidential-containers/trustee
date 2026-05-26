@@ -7,15 +7,15 @@ use crate::tdx::claims::generate_parsed_claim;
 
 use super::*;
 use crate::intel_dcap::{
-    ecdsa_quote_verification, extend_using_custom_claims, pck::parse_platform_info,
+    ecdsa_quote_verification, extend_using_custom_claims,
+    pck::parse_platform_info,
+    quote::{parse_quote, Quote},
 };
 use async_trait::async_trait;
 use base64::Engine;
-use quote::{parse_tdx_quote, parse_tdx_quote_certification};
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod claims;
-pub(crate) mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TdxEvidence {
@@ -65,7 +65,10 @@ async fn verify_evidence(
     info!("Quote DCAP check succeeded.");
 
     // Parse quote and Compare report data
-    let quote = parse_tdx_quote(&quote_bin)?;
+    let quote = parse_quote(&quote_bin)?;
+    if matches!(quote, Quote::V3 { .. }) {
+        bail!("expected TDX quote (v4/v5), got SGX quote (v3)");
+    }
 
     debug!("{quote}");
 
@@ -129,12 +132,9 @@ async fn verify_evidence(
         }
     }
     // Return Evidence parsed claim
-    let pck_certs = parse_tdx_quote_certification(&quote_bin, &quote)?
-        .qe_certification_data
-        .certificates;
-    let platform_info = parse_platform_info(&pck_certs)?;
+    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
 
-    let mut claim = generate_parsed_claim(quote, ccel_option, &platform_info)?;
+    let mut claim = generate_parsed_claim(&quote, ccel_option, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)
@@ -142,27 +142,23 @@ async fn verify_evidence(
 
 #[cfg(test)]
 mod tests {
+    use crate::intel_dcap::quote::parse_quote;
     use crate::tdx::claims::generate_parsed_claim;
-    use crate::tdx::quote::parse_tdx_quote;
     use eventlog::CcEventLog;
     use std::fs;
 
     #[test]
     fn test_generate_parsed_claim() {
         use crate::intel_dcap::pck::parse_platform_info;
-        use crate::tdx::quote::parse_tdx_quote_certification;
 
         let ccel_bin = fs::read("./test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
         let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
-        let quote = parse_tdx_quote(&quote_bin).unwrap();
-        let pck_certs = parse_tdx_quote_certification(&quote_bin, &quote)
-            .unwrap()
-            .qe_certification_data
-            .certificates;
-        let platform_info = parse_platform_info(&pck_certs).unwrap();
+        let quote = parse_quote(&quote_bin).unwrap();
+        let pck_certs = &quote.cert_data().qe_certification_data.certificates;
+        let platform_info = parse_platform_info(pck_certs).unwrap();
 
-        let parsed_claim = generate_parsed_claim(quote, Some(ccel), &platform_info);
+        let parsed_claim = generate_parsed_claim(&quote, Some(ccel), &platform_info);
         assert!(parsed_claim.is_ok());
 
         let _ = fs::write(

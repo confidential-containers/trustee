@@ -1,7 +1,7 @@
 use intel_tee_quote_verification_rs::quote3_error_t;
 
 /// List of DCAP related errors.
-/// <https://download.01.org/intel-sgx/sgx-dcap/1.25/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf>
+/// <https://download.01.org/intel-sgx/sgx-dcap/1.26/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf>
 pub(super) fn describe_error(error: quote3_error_t) -> String {
     let description = match error {
         quote3_error_t::TEE_SUCCESS => "Success.",

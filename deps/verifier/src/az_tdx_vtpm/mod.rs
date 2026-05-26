@@ -10,12 +10,12 @@ use super::az_snp_vtpm::{
     extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs, verify_tpm_signature,
     TpmQuote,
 };
-use super::tdx::claims::generate_parsed_claim;
-use super::tdx::quote::{parse_tdx_quote, parse_tdx_quote_certification, Quote as TdQuote};
-use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
-use crate::intel_dcap::{
+use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
+use super::intel_dcap::{
     ecdsa_quote_verification, extend_using_custom_claims, pck::parse_platform_info,
 };
+use super::tdx::claims::generate_parsed_claim;
+use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
@@ -57,7 +57,10 @@ impl Verifier for AzTdxVtpm {
         verify_tpm_pcrs(&tpm_quote)?;
 
         let custom_claims = ecdsa_quote_verification(evidence.td_quote()).await?;
-        let td_quote = parse_tdx_quote(evidence.td_quote())?;
+        let td_quote = parse_quote(evidence.td_quote())?;
+        if matches!(td_quote, TdQuote::V3 { .. }) {
+            bail!("expected TDX quote (v4/v5), got SGX quote (v3)");
+        }
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
 
@@ -65,12 +68,10 @@ impl Verifier for AzTdxVtpm {
         let pcr_refs: Vec<&[u8; 32]> = pcrs.iter().collect();
         verify_init_data(expected_init_data_hash, &pcr_refs)?;
 
-        let pck_certs = parse_tdx_quote_certification(evidence.td_quote(), &td_quote)?
-            .qe_certification_data
-            .certificates;
-        let platform_info = parse_platform_info(&pck_certs)?;
+        let platform_info =
+            parse_platform_info(&td_quote.cert_data().qe_certification_data.certificates)?;
 
-        let mut claim = generate_parsed_claim(td_quote, None, &platform_info)?;
+        let mut claim = generate_parsed_claim(&td_quote, None, &platform_info)?;
         extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
@@ -144,7 +145,7 @@ mod tests {
     #[test]
     fn test_verify_hcl_var_data() {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
+        let td_quote = parse_quote(TD_QUOTE).unwrap();
         verify_hcl_var_data(&hcl_report, &td_quote).unwrap();
     }
 
@@ -153,7 +154,7 @@ mod tests {
         let mut wrong_report = *REPORT;
         wrong_report[0x0880] += 1;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
-        let td_quote = parse_tdx_quote(TD_QUOTE).unwrap();
+        let td_quote = parse_quote(TD_QUOTE).unwrap();
         assert_eq!(
             verify_hcl_var_data(&hcl_report, &td_quote)
                 .unwrap_err()

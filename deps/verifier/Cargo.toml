@@ -45,7 +45,7 @@ tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
 [dependencies]
 anyhow.workspace = true
 thiserror.workspace = true
-asn1-rs = { version = "0.7.1", optional = true }
+asn1-rs = { version = "0.7.2", optional = true }
 async-trait.workspace = true
 az-snp-vtpm = { version = "0.8.1", default-features = false, features = [
     "verifier",
@@ -86,7 +86,7 @@ sev = { version = "7", default-features = false, features = [
 sha2.workspace = true
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
-intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.25", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.26", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/veraison/rust-apiclient", rev = "fe149cd", optional = true }
 ccatoken = { git = "https://github.com/veraison/rust-ccatoken", rev = "870c83f", optional = true }

@@ -8,6 +8,7 @@ use crate::token::AttestationTokenVerifierConfig;
 use anyhow::anyhow;
 use clap::Parser;
 use config::{Config, File};
+use const_format::concatcp;
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -92,18 +93,68 @@ pub struct KbsConfig {
     pub plugins: Vec<PluginsConfig>,
 }
 
+/// The commit ref of the config documentation in the Trustee repository
+const DOC_COMMIT_REF: &str = "dc6ea0dd";
+
+const CONFIG_DOC: &str = concatcp!(
+    "https://github.com/confidential-containers/trustee/blob/",
+    DOC_COMMIT_REF,
+    "/kbs/docs/config.md"
+);
+
+fn config_section_hint(err: &str) -> Option<&'static str> {
+    if err.contains("admin") || err.contains("admin.") {
+        return Some(concatcp!(CONFIG_DOC, "#admin-api-configuration"));
+    }
+    if err.contains("attestation_service") {
+        return Some(concatcp!(CONFIG_DOC, "#attestation-configuration"));
+    }
+    if err.contains("attestation_token") {
+        return Some(concatcp!(CONFIG_DOC, "#attestation-token-configuration"));
+    }
+    if err.contains("http_server") {
+        return Some(concatcp!(CONFIG_DOC, "#http-server-configuration"));
+    }
+    if err.contains("storage_backend") {
+        return Some(concatcp!(CONFIG_DOC, "#storage-backend-configuration"));
+    }
+    if err.contains("plugins") {
+        return Some(concatcp!(CONFIG_DOC, "#plugins-configuration"));
+    }
+    None
+}
+
+fn format_config_load_error(config_path: &Path, err: impl std::fmt::Display) -> anyhow::Error {
+    let err_str = err.to_string();
+    let mut message = format!(
+        "failed to load configuration file {}: {err_str}",
+        config_path.display()
+    );
+    if let Some(doc) = config_section_hint(&err_str) {
+        message.push_str("\nSee ");
+        message.push_str(doc);
+        message.push('.');
+    }
+    anyhow!(message)
+}
+
 impl TryFrom<&Path> for KbsConfig {
     type Error = anyhow::Error;
 
     /// Load `Config` from a configuration file. Supported formats are all formats supported by the
     /// `config` crate. See `KbsConfig` for schema information.
     fn try_from(config_path: &Path) -> Result<Self, Self::Error> {
+        let config_name = config_path
+            .to_str()
+            .ok_or_else(|| anyhow!("configuration path is not valid UTF-8"))?;
+
         let c = Config::builder()
-            .add_source(File::with_name(config_path.to_str().unwrap()))
-            .build()?;
+            .add_source(File::with_name(config_name))
+            .build()
+            .map_err(|e| format_config_load_error(config_path, e))?;
 
         c.try_deserialize()
-            .map_err(|e| anyhow!("invalid config: {}", e))
+            .map_err(|e| format_config_load_error(config_path, e))
     }
 }
 
@@ -122,10 +173,7 @@ mod tests {
     use std::path::Path;
 
     use crate::{
-        admin::{
-            simple::{SimpleAdminConfig, SimplePersonaConfig},
-            AdminBackendType, AdminConfig,
-        },
+        admin::AdminConfig,
         config::{
             HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
@@ -149,6 +197,55 @@ mod tests {
     };
 
     use rstest::rstest;
+    use serde_json::json;
+
+    fn make_token_authorization_admin_config() -> AdminConfig {
+        serde_json::from_value(json!({
+            "authorization_mode": "AuthenticatedAuthorization",
+            "authentication": {
+                "bearer_jwt": {
+                    "identity_providers": [
+                        {
+                            "issuer": "admin1-issuer",
+                            "public_key_uri": "/opt/confidential-containers/trustee/admin1-pubkey.pem",
+                        },
+                        {
+                            "issuer": "admin2-issuer",
+                            "public_key_uri": "/opt/confidential-containers/trustee/admin2-pubkey.pem",
+                        }
+                    ]
+                }
+            },
+            "authorization": {
+                "regex_acl": {
+                    "acls": [
+                        {
+                            "role": "admin1",
+                            "allowed_endpoints": "^/kbs/v0/resource/.+$",
+                        },
+                        {
+                            "role": "admin2",
+                            "allowed_endpoints": "^/kbs/v0/config/.+$",
+                        }
+                    ]
+                }
+            }
+        }))
+        .expect("valid token authorization admin config")
+    }
+
+    fn make_token_authorization_admin_config_with_defaults() -> AdminConfig {
+        serde_json::from_value(json!({
+            "authorization_mode": "AuthenticatedAuthorization",
+            "authentication": {
+                "bearer_jwt": {}
+            },
+            "authorization": {
+                "regex_acl": {}
+            }
+        }))
+        .expect("valid token authorization admin config with defaults")
+    }
 
     #[rstest]
     #[case("test_data/configs/coco-as-grpc-1.toml",         KbsConfig {
@@ -177,10 +274,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -232,10 +326,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -278,10 +369,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -321,15 +409,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: vec![SimplePersonaConfig {
-                    id: "admin1".to_string(),
-                    public_key_path: "/opt/confidential-containers/trustee/admin1-pubkey.pem".into()
-                }],
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_token_authorization_admin_config(),
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -374,10 +454,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::InsecureAllowAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::InsecureAllowAll {},
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::Memory,
             backends: KeyValueStorageStructConfig {
@@ -418,10 +495,7 @@ mod tests {
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: Some(KeyValueStorageType::Memory),
         plugins: Vec::new(),
@@ -445,10 +519,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: None,
         plugins: Vec::new(),
@@ -478,10 +549,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::DenyAll,
-            roles: Vec::new(),
-        },
+        admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: None,
         plugins: Vec::new(),
@@ -513,12 +581,7 @@ mod tests {
             insecure_http: true,
             ..Default::default()
         },
-        admin: AdminConfig {
-            admin_backend: AdminBackendType::Simple(SimpleAdminConfig {
-                personas: Vec::new(),
-            }),
-            roles: Vec::new(),
-        },
+        admin: make_token_authorization_admin_config_with_defaults(),
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalJson,
             backends: KeyValueStorageStructConfig {
@@ -537,5 +600,35 @@ mod tests {
     fn read_config(#[case] config_path: &str, #[case] expected: KbsConfig) {
         let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
         assert_eq!(config, expected, "case {config_path}");
+    }
+
+    #[test]
+    fn config_load_error_includes_path_and_section_hint() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("kbs.toml");
+        std::fs::write(
+            &path,
+            r#"
+[http_server]
+sockets = ["127.0.0.1:8080"]
+
+[admin]
+authorization_mode = "InsecureAllowAll"
+type = "Simple"
+"#,
+        )
+        .expect("write config");
+
+        let err = KbsConfig::try_from(path.as_path()).unwrap_err();
+        let message = format!("{err}");
+        assert!(message.contains("kbs.toml"), "expected path in: {message}");
+        assert!(
+            message.contains("key `admin`") || message.contains("admin"),
+            "expected admin key in: {message}"
+        );
+        assert!(
+            message.contains("#admin-api-configuration"),
+            "expected admin doc hint in: {message}"
+        );
     }
 }

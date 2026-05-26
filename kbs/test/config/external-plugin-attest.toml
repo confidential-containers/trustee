@@ -21,11 +21,15 @@ cert_path = "./work/token-cert-chain.pem"
 type = "BuiltIn"
 
 [admin]
-type = "Simple"
+authorization_mode = "AuthenticatedAuthorization"
 
-[[admin.personas]]
-id = "admin"
-public_key_path = "./work/kbs.pem"
+[admin.authentication.bearer_jwt]
+identity_providers = [
+  { issuer = "issuer", audience = "kbs", public_key_uri = "./work/kbs.pem" },
+]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "admin", allowed_endpoints = "^/kbs/.+$" }]
 
 [[plugins]]
 name = "external"

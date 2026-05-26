@@ -1,6 +1,6 @@
-# rust:1.90.0
+# rust:1.93.0
 FROM --platform=${BUILDPLATFORM:-linux/amd64} \
-    docker.io/library/rust@sha256:e227f20ec42af3ea9a3c9c1dd1b2012aa15f12279b5e9d5fb890ca1c2bb5726c \
+    docker.io/library/rust@sha256:bbde3ca426faeebab3eb58b8005d3d6da70607817a14bb92a55c94611d4d905f \
     AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
@@ -19,7 +19,7 @@ RUN apt-get update && \
 
 RUN if [ "${ARCH}" = "aarch64" ]; then apt-get install -y libc-bin; fi
 
-ARG DCAP_VERSION=1_25_100
+ARG DCAP_VERSION=1_26_100
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
@@ -55,7 +55,7 @@ ARG ARCH=x86_64
 
 WORKDIR /tmp
 
-ARG DCAP_VERSION=1_25_100
+ARG DCAP_VERSION=1_26_100
 RUN apt-get update && \
     apt-get install -y \
     curl \

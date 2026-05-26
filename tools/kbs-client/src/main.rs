@@ -10,6 +10,7 @@ use base64::Engine;
 use clap::{Args, Parser, Subcommand};
 use serde_json::json;
 use std::path::PathBuf;
+use tracing::warn;
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[derive(Parser)]
@@ -89,11 +90,11 @@ struct Config {
     #[clap(subcommand)]
     command: ConfigCommands,
 
-    /// PEM file path of private key used to authenticate the resource registration endpoint token (JWT)
-    /// to Key Broker Service. This key can sign legal JWTs.
-    /// This client tool only support ED22519 key now.
+    /// Optional admin bearer token file path.
+    /// If omitted, tries `kbs/config/docker-compose/admin-token` (relative to cwd), then
+    /// `~/.trustee/admin-token`, then sends unauthenticated admin requests.
     #[clap(long, value_parser)]
-    auth_private_key: PathBuf,
+    admin_token_file: Option<PathBuf>,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -191,6 +192,8 @@ enum ConfigCommands {
     },
 }
 
+const DOCKER_COMPOSE_ADMIN_TOKEN_PATH: &str = "kbs/config/docker-compose/admin-token";
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let env_filter = match std::env::var_os("RUST_LOG") {
@@ -208,6 +211,34 @@ async fn main() -> Result<()> {
         Some(ref p) => vec![std::fs::read_to_string(p)
             .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?],
         None => vec![],
+    };
+
+    let resolve_admin_token = |token_file: &Option<PathBuf>| -> Result<Option<String>> {
+        if let Some(path) = token_file {
+            let token = std::fs::read_to_string(path)
+                .inspect_err(|_| eprintln!("Failed to read: {}", path.display()))?;
+            return Ok(Some(token.trim().to_string()));
+        }
+
+        if let Ok(token) = std::fs::read_to_string(DOCKER_COMPOSE_ADMIN_TOKEN_PATH)
+            .inspect_err(|_| eprintln!("Failed to read: {DOCKER_COMPOSE_ADMIN_TOKEN_PATH}"))
+        {
+            return Ok(Some(token.trim().to_string()));
+        }
+
+        if let Some(home) = std::env::var_os("HOME") {
+            let default_path = PathBuf::from(home).join(".trustee").join("admin-token");
+            if default_path.exists() {
+                let token = std::fs::read_to_string(&default_path)
+                    .inspect_err(|_| eprintln!("Failed to read: {}", default_path.display()))?;
+                return Ok(Some(token.trim().to_string()));
+            }
+        }
+
+        warn!(
+            "No admin token configured. Sending anonymous admin requests; this only works when KBS admin authorization_mode is InsecureAllowAll."
+        );
+        Ok(None)
     };
 
     match cli.command {
@@ -249,15 +280,15 @@ async fn main() -> Result<()> {
                 None => None,
             };
 
-            if token.is_some() {
-                if tee_key.is_none() {
+            if let Some(token) = token {
+                let Some(tee_key) = tee_key else {
                     bail!("if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token.");
-                }
+                };
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
                     &path,
-                    tee_key.unwrap(),
-                    token.unwrap(),
+                    tee_key,
+                    token,
                     kbs_cert.clone(),
                 )
                 .await?;
@@ -275,10 +306,7 @@ async fn main() -> Result<()> {
             }
         }
         Commands::Config(config) => {
-            let auth_private_key_path = &config.auth_private_key;
-            let auth_key = std::fs::read_to_string(auth_private_key_path).inspect_err(|_| {
-                eprintln!("Failed to read: {}", auth_private_key_path.display())
-            })?;
+            let admin_token = resolve_admin_token(&config.admin_token_file)?;
             match config.command {
                 ConfigCommands::SetAttestationPolicy {
                     r#type,
@@ -288,7 +316,7 @@ async fn main() -> Result<()> {
                     let policy_bytes = std::fs::read(policy_file)?;
                     kbs_client::set_attestation_policy(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         policy_bytes.clone(),
                         r#type,
                         id,
@@ -322,7 +350,7 @@ async fn main() -> Result<()> {
                     };
                     kbs_client::set_resource_policy(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         policy_bytes.clone(),
                         kbs_cert.clone(),
                     )
@@ -339,7 +367,7 @@ async fn main() -> Result<()> {
                     let resource_bytes = std::fs::read(resource_file)?;
                     kbs_client::set_resource(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         resource_bytes.clone(),
                         &path,
                         kbs_cert.clone(),
@@ -353,7 +381,7 @@ async fn main() -> Result<()> {
                 ConfigCommands::DeleteResource { path } => {
                     kbs_client::delete_resource(
                         &cli.url,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         &path,
                         kbs_cert.clone(),
                     )
@@ -384,7 +412,7 @@ async fn main() -> Result<()> {
                         cli.url,
                         name,
                         rv,
-                        auth_key.clone(),
+                        admin_token.clone(),
                         kbs_cert.clone(),
                     )
                     .await?;
@@ -392,7 +420,8 @@ async fn main() -> Result<()> {
                 }
                 ConfigCommands::GetReferenceValue { id } => {
                     let values =
-                        kbs_client::get_rv(cli.url, auth_key.clone(), kbs_cert.clone(), id).await?;
+                        kbs_client::get_rv(cli.url, admin_token.clone(), kbs_cert.clone(), id)
+                            .await?;
                     println!("{:?}", values);
                 }
             }

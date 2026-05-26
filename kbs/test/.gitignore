@@ -3,6 +3,8 @@ echo-plugin
 plugin-resource
 ext-plugin-kbs
 client
+kbs
+resource-kbs
 
 # Runtime state
 work/

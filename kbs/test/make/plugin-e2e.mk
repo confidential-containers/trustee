@@ -130,12 +130,12 @@ stop-ext-plugin-attest-kbs:
 
 # Get attestation token for external plugin test
 .PHONY: $(PLUGIN_ATTESTATION_TOKEN)
-$(PLUGIN_ATTESTATION_TOKEN): client $(TEE_KEY) start-ext-plugin-attest-kbs
+$(PLUGIN_ATTESTATION_TOKEN): client $(TEE_KEY) start-ext-plugin-attest-kbs $(ADMIN_TOKEN)
 	./client \
 		--url https://127.0.0.1:8087 \
 		--cert-file "$(HTTPS_CERT)" \
 		config \
-		--auth-private-key "$(KBS_KEY)" \
+		--admin-token-file "$(ADMIN_TOKEN)" \
 		set-resource-policy \
 		--policy-file "$(EXT_PLUGIN_ATTEST_POLICY)" && \
 	./client \
@@ -247,10 +247,10 @@ stop-ext-resource-kbs:
 # Note: PLUGIN_ENCRYPT_GET is disabled — JWE decryption requires kbs-client
 #       which hardcodes /kbs/v0/resource/... and cannot reach external plugins.
 .PHONY: test-ext-resource-plugin
-test-ext-resource-plugin: start-plugin-resource start-ext-resource-kbs client $(EXT_RESOURCE_SECRET) $(TEE_KEY)
+test-ext-resource-plugin: start-plugin-resource start-ext-resource-kbs client $(EXT_RESOURCE_SECRET) $(TEE_KEY) $(ADMIN_TOKEN)
 	@printf "${BOLD}running external resource plugin roundtrip test${SGR0}\n"
 	./client --url http://127.0.0.1:8088 \
-		config --auth-private-key "$(KBS_KEY)" \
+		config --admin-token-file "$(ADMIN_TOKEN)" \
 		set-resource-policy \
 		--policy-file "$(EXT_RESOURCE_POLICY)" && \
 	curl -sf -X POST \
@@ -316,10 +316,10 @@ stop-ext-resource-tls-kbs:
 # Resource plugin TLS roundtrip test: same as test-ext-resource-plugin but
 # with TLS on the KBS→plugin gRPC connection.
 .PHONY: test-ext-resource-plugin-tls
-test-ext-resource-plugin-tls: start-plugin-resource-tls start-ext-resource-tls-kbs client $(EXT_RESOURCE_SECRET) $(TEE_KEY)
+test-ext-resource-plugin-tls: start-plugin-resource-tls start-ext-resource-tls-kbs client $(EXT_RESOURCE_SECRET) $(TEE_KEY) $(ADMIN_TOKEN)
 	@printf "${BOLD}running external resource plugin TLS roundtrip test${SGR0}\n"
 	./client --url http://127.0.0.1:8089 \
-		config --auth-private-key "$(KBS_KEY)" \
+		config --admin-token-file "$(ADMIN_TOKEN)" \
 		set-resource-policy \
 		--policy-file "$(EXT_RESOURCE_POLICY)" && \
 	curl -sf -X POST \

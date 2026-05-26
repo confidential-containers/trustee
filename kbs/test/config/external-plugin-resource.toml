@@ -6,7 +6,7 @@ insecure_http = true
 trusted_certs_paths = ["./work/ca-cert.pem"]
 
 [admin]
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 [attestation_service]
 type = "coco_as_builtin"

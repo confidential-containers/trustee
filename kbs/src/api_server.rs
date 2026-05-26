@@ -105,7 +105,7 @@ impl ApiServer {
                 false,
             )
             .await?;
-        let admin = Admin::try_from(config.admin.clone())?;
+        let admin = Admin::new(config.admin.clone()).await?;
 
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
@@ -258,7 +258,12 @@ pub(crate) async fn api(
             .map_err(From::from),
         #[cfg(feature = "as")]
         "attestation-policy" if request.method() == Method::POST => {
-            core.admin.check_admin_access(&request)?;
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "attestation-policy".to_string(),
+                })?;
             core.attestation_service.set_policy(&body).await?;
 
             Ok(HttpResponse::Ok().finish())
@@ -267,7 +272,12 @@ pub(crate) async fn api(
         // Reference value querying API is exposed as
         // GET /reference-value/<reference_value_id>
         "reference-value" if request.method() == Method::GET => {
-            core.admin.check_admin_access(&request)?;
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "reference-value".to_string(),
+                })?;
             let reference_value_id = resource_path.join("/");
             let reference_values = core
                 .attestation_service
@@ -283,7 +293,12 @@ pub(crate) async fn api(
         }
         #[cfg(feature = "as")]
         "reference-value" if request.method() == Method::POST => {
-            core.admin.check_admin_access(&request)?;
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "reference-value".to_string(),
+                })?;
             let message = std::str::from_utf8(&body).map_err(|_| Error::RvpsError {
                 message: "Failed to parse reference value message".to_string(),
             })?;
@@ -303,7 +318,12 @@ pub(crate) async fn api(
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
-            core.admin.check_admin_access(&request)?;
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "resource-policy".to_string(),
+                })?;
             let request: serde_json::Value =
                 serde_json::from_slice(&body).map_err(|_| Error::ParsePolicyError {
                     source: anyhow::anyhow!("Illegal SetPolicy Request Json"),
@@ -340,7 +360,12 @@ pub(crate) async fn api(
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::GET => {
-            core.admin.check_admin_access(&request)?;
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "resource-policy".to_string(),
+                })?;
             let policy = core.policy_engine.list_policies().await?;
 
             Ok(HttpResponse::Ok()
@@ -378,7 +403,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|_| Error::TokenNotFound)?;
 
-                let claims = core.token_verifier.verify(token).await?;
+                let claims = core.token_verifier.verify(token)?;
 
                 let claim_str = serde_json::to_string(&claims)?;
 
