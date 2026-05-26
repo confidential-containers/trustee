@@ -1,0 +1,151 @@
+name: Build Docker Compose e2e Images
+
+# Builds the docker-compose cluster images (kbs-grpc-as, coco-as-grpc, rvps) in
+# parallel (one matrix job per image/arch), then packages them per arch for
+# docker-e2e-test. See https://docs.docker.com/build/ci/github-actions/share-image-jobs/
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  build-image:
+    name: Build ${{ matrix.tag }} (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - instance: ubuntu-24.04
+            platform: linux/amd64
+            platform_slug: linux-amd64
+            arch: x86_64
+            tag: kbs-grpc-as
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - instance: ubuntu-24.04
+            platform: linux/amd64
+            platform_slug: linux-amd64
+            arch: x86_64
+            tag: coco-as-grpc
+            docker_file: attestation-service/docker/as-grpc/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64 --build-arg VERIFIER=all-verifier
+          - instance: ubuntu-24.04
+            platform: linux/amd64
+            platform_slug: linux-amd64
+            arch: x86_64
+            tag: rvps
+            docker_file: rvps/docker/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
+          - instance: ubuntu-24.04-arm
+            platform: linux/arm64
+            platform_slug: linux-arm64
+            arch: aarch64
+            tag: kbs-grpc-as
+            docker_file: kbs/docker/coco-as-grpc/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
+          - instance: ubuntu-24.04-arm
+            platform: linux/arm64
+            platform_slug: linux-arm64
+            arch: aarch64
+            tag: coco-as-grpc
+            docker_file: attestation-service/docker/as-grpc/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64 --build-arg VERIFIER=cca-verifier
+          - instance: ubuntu-24.04-arm
+            platform: linux/arm64
+            platform_slug: linux-arm64
+            arch: aarch64
+            tag: rvps
+            docker_file: rvps/docker/Dockerfile
+            build_args: --build-arg BUILDPLATFORM=linux/arm64 --build-arg ARCH=aarch64
+    runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
+    env:
+      IMAGE_PREFIX: ghcr.io/confidential-containers/staged-images
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build ${{ matrix.tag }}
+        uses: ./.github/actions/build-single-image
+        with:
+          ghcr_token: ""
+          docker_file: ${{ matrix.docker_file }}
+          tag: ${{ matrix.tag }}
+          platform: ${{ matrix.platform }}
+          build_args: ${{ matrix.build_args }}
+          load: true
+
+      - name: Tag image for docker compose
+        run: |
+          set -euo pipefail
+          docker tag "${IMAGE_PREFIX}/${{ matrix.tag }}:latest-$(uname -m)" \
+            "${IMAGE_PREFIX}/${{ matrix.tag }}:latest"
+
+      - name: Save image
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ runner.temp }}/docker-e2e-image"
+          docker save -o "${{ runner.temp }}/docker-e2e-image/${{ matrix.tag }}.tar" \
+            "${IMAGE_PREFIX}/${{ matrix.tag }}:latest"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-e2e-image-${{ matrix.platform_slug }}-${{ matrix.tag }}
+          path: ${{ runner.temp }}/docker-e2e-image/${{ matrix.tag }}.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  package-images:
+    name: Package docker e2e images (${{ matrix.platform }})
+    needs: build-image
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - instance: ubuntu-24.04
+            platform: linux/amd64
+            platform_slug: linux-amd64
+          - instance: ubuntu-24.04-arm
+            platform: linux/arm64
+            platform_slug: linux-arm64
+    runs-on: ${{ matrix.instance }}
+    permissions:
+      contents: read
+    env:
+      IMAGE_PREFIX: ghcr.io/confidential-containers/staged-images
+    steps:
+      - name: Download built images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: docker-e2e-image-${{ matrix.platform_slug }}-*
+          path: ${{ runner.temp }}/docker-e2e-images
+          merge-multiple: true
+
+      - name: Load and repackage images (KBS-GRPC-AS, COCO-AS-GRPC, RVPS) in a single tarball
+        run: |
+          set -euo pipefail
+          mapfile -t image_tars < <(find "${{ runner.temp }}/docker-e2e-images" -name '*.tar' -type f)
+          if [ "${#image_tars[@]}" -ne 3 ]; then
+            echo "Expected 3 image tarballs, found ${#image_tars[@]}:" "${image_tars[@]}"
+            exit 1
+          fi
+          for tar in "${image_tars[@]}"; do
+            docker load --input "$tar"
+          done
+          docker image ls "${IMAGE_PREFIX}/"*
+          mkdir -p "${{ runner.temp }}/docker-e2e-bundle"
+          docker save -o "${{ runner.temp }}/docker-e2e-bundle/images.tar" \
+            "${IMAGE_PREFIX}/kbs-grpc-as:latest" \
+            "${IMAGE_PREFIX}/coco-as-grpc:latest" \
+            "${IMAGE_PREFIX}/rvps:latest"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-e2e-images-${{ matrix.platform_slug }}
+          path: ${{ runner.temp }}/docker-e2e-bundle/images.tar
+          retention-days: 1
+          if-no-files-found: error
