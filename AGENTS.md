@@ -104,7 +104,7 @@ alternative options that have been considered.
 
 ### Prerequisites
 
-- **Rust toolchain**: version pinned in `rust-toolchain.toml` (currently `1.90.0`)
+- **Rust toolchain**: version pinned in `rust-toolchain.toml` (currently `1.93.0`)
 - **Protobuf compiler** (`protoc`) for gRPC code generation
 - **OpenSSL** development libraries
 - **tpm2-tss** (for TPM verifier features)
