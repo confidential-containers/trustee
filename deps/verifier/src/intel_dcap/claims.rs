@@ -1,9 +1,14 @@
+use anyhow::Result;
+use bitflags::Flags;
 use intel_tee_quote_verification_rs::{sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t};
-use serde_json::{Map, Number, Value};
+use serde_json::{json, Map, Number, Value};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+
+use crate::intel_dcap::pck::parse_platform_info;
+use crate::intel_dcap::quote::{Quote, QuoteV5Body, QuoteV5Type, TdAttributesFlags};
 
 struct SgxQlQvResultWrapper(pub sgx_ql_qv_result_t);
 
@@ -134,6 +139,180 @@ fn format_rfc3339(timestamp: i64) -> String {
         .expect("invalid unix timestamp.")
         .format(&Rfc3339)
         .expect("failed to format timestamp.")
+}
+
+fn parse_td_attributes(data: &[u8]) -> Result<Map<String, Value>> {
+    let arr = <[u8; 8]>::try_from(data)?;
+    let td = TdAttributesFlags::from_bits_retain(u64::from_le_bytes(arr));
+    let attribs = TdAttributesFlags::FLAGS
+        .iter()
+        .map(|f| {
+            (
+                f.name().to_string().to_lowercase(),
+                Value::Bool(td.contains(f.value().clone())),
+            )
+        })
+        .collect();
+
+    Ok(attribs)
+}
+
+impl Quote {
+    pub(crate) fn generate_parsed_claim(&self) -> Result<Map<String, Value>> {
+        let claims = match self {
+            Quote::V3 { header, body, .. } => {
+                // Claims from SGX Quote Header.
+                // tee_type encodes the same bytes as att_key_data_0 in the SGX v3 wire format.
+                // reserved[0..2] and reserved[2..4] encode qe_svn and pce_svn respectively.
+                json!({
+                    "header": {
+                        "version": hex::encode(header.version),
+                        "att_key_type": hex::encode(header.att_key_type),
+                        "att_key_data_0": hex::encode(header.tee_type),
+                        "qe_svn": hex::encode(&header.reserved[..2]),
+                        "pce_svn": hex::encode(&header.reserved[2..]),
+                        "vendor_id": hex::encode(header.vendor_id),
+                        "user_data": hex::encode(header.user_data),
+                    },
+                    "body": {
+                        "cpu_svn": hex::encode(body.cpu_svn),
+                        "misc_select": hex::encode(body.misc_select),
+                        "reserved1": hex::encode(body.reserved1),
+                        "isv_ext_prod_id": hex::encode(body.isv_ext_prod_id),
+                        "attributes.flags": hex::encode(body.attributes_flags),
+                        "attributes.xfrm": hex::encode(body.attributes_xfrm),
+                        "mr_enclave": hex::encode(body.mr_enclave),
+                        "reserved2": hex::encode(body.reserved2),
+                        "mr_signer": hex::encode(body.mr_signer),
+                        "reserved3": hex::encode(body.reserved3),
+                        "config_id": hex::encode(body.config_id),
+                        "isv_prod_id": hex::encode(body.isv_prod_id),
+                        "isv_svn": hex::encode(body.isv_svn),
+                        "config_svn": hex::encode(body.config_svn),
+                        "reserved4": hex::encode(body.reserved4),
+                        "isv_family_id": hex::encode(body.isv_family_id),
+                        "report_data": hex::encode(body.report_data),
+                    },
+                    "report_data": hex::encode(body.report_data),
+                    "init_data": hex::encode(body.config_id),
+                })
+            }
+            Quote::V4 { header, body, .. } => {
+                let td_attributes = parse_td_attributes(self.td_attributes())?;
+                json!({
+                    "quote": {
+                        "header": {
+                            "version": hex::encode(b"\x04\x00"),
+                            "att_key_type": hex::encode(header.att_key_type),
+                            "tee_type": hex::encode(header.tee_type),
+                            "reserved": hex::encode(header.reserved),
+                            "vendor_id": hex::encode(header.vendor_id),
+                            "user_data": hex::encode(header.user_data),
+                        },
+                        "body": {
+                            "tcb_svn": hex::encode(body.tcb_svn),
+                            "mr_seam": hex::encode(body.mr_seam),
+                            "mrsigner_seam": hex::encode(body.mrsigner_seam),
+                            "seam_attributes": hex::encode(body.seam_attributes),
+                            "td_attributes": hex::encode(body.td_attributes),
+                            "xfam": hex::encode(body.xfam),
+                            "mr_td": hex::encode(body.mr_td),
+                            "mr_config_id": hex::encode(body.mr_config_id),
+                            "mr_owner": hex::encode(body.mr_owner),
+                            "mr_owner_config": hex::encode(body.mr_owner_config),
+                            "rtmr_0": hex::encode(body.rtmr_0),
+                            "rtmr_1": hex::encode(body.rtmr_1),
+                            "rtmr_2": hex::encode(body.rtmr_2),
+                            "rtmr_3": hex::encode(body.rtmr_3),
+                            "report_data": hex::encode(body.report_data),
+                        },
+                    },
+                    "report_data": hex::encode(body.report_data),
+                    "init_data": hex::encode(body.mr_config_id),
+                    "td_attributes": td_attributes,
+                })
+            }
+            Quote::V5 {
+                header,
+                r#type,
+                size,
+                body,
+                ..
+            } => {
+                let td_attributes = parse_td_attributes(self.td_attributes())?;
+                json!({
+                    "quote": {
+                        "header": {
+                            "version": hex::encode(b"\x05\x00"),
+                            "att_key_type": hex::encode(header.att_key_type),
+                            "tee_type": hex::encode(header.tee_type),
+                            "reserved": hex::encode(header.reserved),
+                            "vendor_id": hex::encode(header.vendor_id),
+                            "user_data": hex::encode(header.user_data),
+                        },
+                        "body": match body {
+                            QuoteV5Body::Tdx10(body) => json!({
+                                "tcb_svn": hex::encode(body.tcb_svn),
+                                "mr_seam": hex::encode(body.mr_seam),
+                                "mrsigner_seam": hex::encode(body.mrsigner_seam),
+                                "seam_attributes": hex::encode(body.seam_attributes),
+                                "td_attributes": hex::encode(body.td_attributes),
+                                "xfam": hex::encode(body.xfam),
+                                "mr_td": hex::encode(body.mr_td),
+                                "mr_config_id": hex::encode(body.mr_config_id),
+                                "mr_owner": hex::encode(body.mr_owner),
+                                "mr_owner_config": hex::encode(body.mr_owner_config),
+                                "rtmr_0": hex::encode(body.rtmr_0),
+                                "rtmr_1": hex::encode(body.rtmr_1),
+                                "rtmr_2": hex::encode(body.rtmr_2),
+                                "rtmr_3": hex::encode(body.rtmr_3),
+                                "report_data": hex::encode(body.report_data),
+                            }),
+                            QuoteV5Body::Tdx15(body) => json!({
+                                "tcb_svn": hex::encode(body.tcb_svn),
+                                "mr_seam": hex::encode(body.mr_seam),
+                                "mrsigner_seam": hex::encode(body.mrsigner_seam),
+                                "seam_attributes": hex::encode(body.seam_attributes),
+                                "td_attributes": hex::encode(body.td_attributes),
+                                "xfam": hex::encode(body.xfam),
+                                "mr_td": hex::encode(body.mr_td),
+                                "mr_config_id": hex::encode(body.mr_config_id),
+                                "mr_owner": hex::encode(body.mr_owner),
+                                "mr_owner_config": hex::encode(body.mr_owner_config),
+                                "rtmr_0": hex::encode(body.rtmr_0),
+                                "rtmr_1": hex::encode(body.rtmr_1),
+                                "rtmr_2": hex::encode(body.rtmr_2),
+                                "rtmr_3": hex::encode(body.rtmr_3),
+                                "report_data": hex::encode(body.report_data),
+                                "tee_tcb_svn2": hex::encode(body.tee_tcb_svn2),
+                                "mr_servicetd": hex::encode(body.mr_servicetd),
+                            }),
+                        },
+                        "type": match r#type {
+                            QuoteV5Type::TDX10 => "0200",
+                            QuoteV5Type::TDX15 => "0300",
+                        },
+                        "size": hex::encode(&size[..]),
+                    },
+                    "report_data": hex::encode(self.report_data()),
+                    "init_data": hex::encode(self.mr_config_id()),
+                    "td_attributes": td_attributes,
+                })
+            }
+        };
+
+        let mut claims = claims.as_object().expect("claims is not an object").clone();
+        let platform_info =
+            parse_platform_info(&self.cert_data().qe_certification_data.certificates)?;
+        if let Some(piid) = platform_info.platform_instance_id {
+            claims.insert(
+                "platform_instance_id".to_string(),
+                Value::String(hex::encode(&piid[..])),
+            );
+        }
+
+        Ok(claims)
+    }
 }
 
 #[cfg(test)]

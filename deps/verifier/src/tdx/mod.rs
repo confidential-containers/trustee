@@ -8,7 +8,6 @@ use crate::tdx::claims::generate_parsed_claim;
 use super::*;
 use crate::intel_dcap::{
     ecdsa_quote_verification, extend_using_custom_claims,
-    pck::parse_platform_info,
     quote::{parse_quote, Quote},
 };
 use async_trait::async_trait;
@@ -132,9 +131,8 @@ async fn verify_evidence(
         }
     }
     // Return Evidence parsed claim
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
 
-    let mut claim = generate_parsed_claim(&quote, ccel_option, &platform_info)?;
+    let mut claim = generate_parsed_claim(&quote, ccel_option)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)
@@ -149,21 +147,15 @@ mod tests {
 
     #[test]
     fn test_generate_parsed_claim() {
-        use crate::intel_dcap::pck::parse_platform_info;
-
         let ccel_bin = fs::read("./test_data/CCEL_data").unwrap();
         let ccel = CcEventLog::try_from(ccel_bin).unwrap();
         let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_quote(&quote_bin).unwrap();
-        let pck_certs = &quote.cert_data().qe_certification_data.certificates;
-        let platform_info = parse_platform_info(pck_certs).unwrap();
-
-        let parsed_claim = generate_parsed_claim(&quote, Some(ccel), &platform_info);
-        assert!(parsed_claim.is_ok());
+        let parsed_claim = generate_parsed_claim(&quote, Some(ccel)).unwrap();
 
         let _ = fs::write(
             "./test_data/evidence_claim_output.txt",
-            format!("{:?}", parsed_claim.unwrap()),
+            format!("{:?}", parsed_claim),
         );
     }
 }

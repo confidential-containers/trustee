@@ -11,9 +11,7 @@ use super::az_snp_vtpm::{
     TpmQuote,
 };
 use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
-use super::intel_dcap::{
-    ecdsa_quote_verification, extend_using_custom_claims, pck::parse_platform_info,
-};
+use super::intel_dcap::{ecdsa_quote_verification, extend_using_custom_claims};
 use super::tdx::claims::generate_parsed_claim;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::{InitDataHash, ReportData};
@@ -68,10 +66,7 @@ impl Verifier for AzTdxVtpm {
         let pcr_refs: Vec<&[u8; 32]> = pcrs.iter().collect();
         verify_init_data(expected_init_data_hash, &pcr_refs)?;
 
-        let platform_info =
-            parse_platform_info(&td_quote.cert_data().qe_certification_data.certificates)?;
-
-        let mut claim = generate_parsed_claim(&td_quote, None, &platform_info)?;
+        let mut claim = generate_parsed_claim(&td_quote, None)?;
         extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
 
