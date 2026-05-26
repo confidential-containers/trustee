@@ -4,7 +4,6 @@
 
 use strum::AsRefStr;
 use thiserror::Error;
-use tracing::error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
