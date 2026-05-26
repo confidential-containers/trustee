@@ -80,6 +80,7 @@ This lets you keep identity issuance external while keeping KBS-side authorizati
 
 - `identity_providers` (array): list of trusted identity providers
 - `insecure_public_key_from_uri` (optional bool, default `false`): allow fetching`public_key_uri` and `jwk_set_uri` over `http://`
+- `insecure_header_jwk` (optional bool, default `false`): skip endorsement checks for JWT header-embedded JWK keys (signature is still verified, testing only)
 
 Each `identity_providers` entry:
 

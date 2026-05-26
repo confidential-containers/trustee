@@ -18,16 +18,26 @@ use crate::crypto::jwt::JwtVerifier;
 #[serde(default, deny_unknown_fields)]
 pub struct BearerJwtConfig {
     pub identity_providers: Vec<IssuerConfig>,
+
     /// Allow loading admin PEM keys/keysets from insecure HTTP sources.
     /// Keep disabled by default and only enable in controlled environments.
     pub insecure_public_key_from_uri: bool,
+
+    /// Whether to skip endorsement checks of header-embedded JWK keys.
+    /// Signature is still verified.
+    /// This should only be set to true for testing.
+    ///
+    /// When false, the key must be endorsed by one of the the
+    /// `public_key_uri` or `jwk_set_uri` specified in the `identity_providers` field.
+    pub insecure_header_jwk: bool,
 }
 
 /// Issuer config used to verify admin JWT tokens.
 ///
 /// - `public_key_uri`: a PEM file source (`https://`, `file://`, local path,
 ///   or `http://` when `insecure_public_key_from_uri=true`)
-/// - `jwk_set_uri`: a JWKS source (https://, file:// or local path)
+/// - `jwk_set_uri`: a JWKS source (`https://`, `file://`, local path,
+///   or `http://` when `insecure_public_key_from_uri=true`)
 /// - `issuer`: the issuer of the JWT token. If given, This field will be checked when a token is verified successfully
 ///   with given public key or JWKS. If the token's issuer is matched, the token will be verified successfully.
 /// - `audience`: the audience of the JWT token. If given, This field will be checked when a token is verified successfully
@@ -72,7 +82,7 @@ impl BearerJwtTokenVerifier {
                 &trusted_jwk_set_uris,
                 &[],
                 &trusted_pem_public_key_uris,
-                false,
+                config.insecure_header_jwk,
                 config.insecure_public_key_from_uri,
             )
             .await
@@ -175,4 +185,33 @@ fn claims_from_value(value: Value) -> Result<Claims> {
         .to_string();
 
     Ok(Claims { role })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BearerJwtConfig;
+
+    #[test]
+    fn deserialize_insecure_header_jwk_true() {
+        let config: BearerJwtConfig = toml::from_str(
+            r#"
+            insecure_public_key_from_uri = true
+            insecure_header_jwk = true
+            identity_providers = [
+                { issuer = "admin", public_key_uri = "/etc/kbs-admin.pub" },
+            ]
+            "#,
+        )
+        .expect("valid bearer_jwt config");
+
+        assert!(config.insecure_header_jwk);
+        assert!(config.insecure_public_key_from_uri);
+        assert_eq!(config.identity_providers.len(), 1);
+    }
+
+    #[test]
+    fn default_insecure_header_jwk_false() {
+        let config = BearerJwtConfig::default();
+        assert!(!config.insecure_header_jwk);
+    }
 }

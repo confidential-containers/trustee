@@ -199,6 +199,7 @@ For `authorization_mode = "AuthenticatedAuthorization"`, configure:
 |----------|------|-------------|----------|---------|
 | `identity_providers` | Array | Trusted issuer entries for JWT verification | No | Empty |
 | `insecure_public_key_from_uri` | Boolean | Allow loading `public_key_uri` and `jwk_set_uri` via plaintext `http://` | No | `false` |
+| `insecure_header_jwk` | Boolean | Skip endorsement checks for header-embedded JWK keys. Signature is still verified; use only in controlled test environments. | No | `false` |
 
 Each `identity_providers` item:
 
