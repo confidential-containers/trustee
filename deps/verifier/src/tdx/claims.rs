@@ -75,7 +75,14 @@ pub fn generate_parsed_claim(
             parse_claim!(quote_header, "reserved", header.reserved);
             parse_claim!(quote_header, "vendor_id", header.vendor_id);
             parse_claim!(quote_header, "user_data", header.user_data);
-            parse_claim!(quote_map, "type", r#type.as_bytes());
+            parse_claim!(
+                quote_map,
+                "type",
+                match r#type {
+                    QuoteV5Type::TDX10 => 2u16.to_le_bytes(),
+                    QuoteV5Type::TDX15 => 3u16.to_le_bytes(),
+                }
+            );
             parse_claim!(quote_map, "size", &size[..]);
             match body {
                 QuoteV5Body::Tdx10(body) => {

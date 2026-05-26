@@ -268,13 +268,6 @@ impl QuoteV5Type {
         Ok(r#type)
     }
 
-    pub fn as_bytes(&self) -> [u8; 2] {
-        // The unsafe here is ok as it is marked as repr(u16)
-        unsafe {
-            let raw_value: u16 = *(self as *const QuoteV5Type as *const u16);
-            raw_value.to_ne_bytes()
-        }
-    }
 }
 
 pub enum QuoteV5Body {
