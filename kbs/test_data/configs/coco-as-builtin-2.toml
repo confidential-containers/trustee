@@ -8,7 +8,7 @@ insecure_http = true
 payload_request_size = 2
 
 [attestation_token]
-insecure_key = false
+insecure_header_jwk = false
 
 [attestation_service]
 type = "coco_as_builtin"

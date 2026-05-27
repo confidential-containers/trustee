@@ -183,6 +183,7 @@ impl TestHarness {
                             }),
                             local_fs: None,
                             postgres: None,
+                            redis: None,
                         },
                     },
                 })
@@ -255,7 +256,7 @@ impl TestHarness {
         let kbs_config = KbsConfig {
             attestation_token: AttestationTokenVerifierConfig {
                 trusted_certs_paths: vec![],
-                insecure_key: true,
+                insecure_header_jwk: true,
                 trusted_jwk_sets: vec![],
                 extra_teekey_paths: vec![],
             },
@@ -287,6 +288,7 @@ impl TestHarness {
                     }),
                     local_json: None,
                     postgres: None,
+                    redis: None,
                 },
             },
             session_storage_type: None,

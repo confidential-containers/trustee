@@ -9,7 +9,7 @@ This crate provides a unified `KeyValueStorage` trait and multiple backend imple
 ## Features
 
 - **Unified Interface**: A common `KeyValueStorage` trait that all backends implement
-- **Multiple Backends**: Support for memory, local file system, local JSON file, and PostgreSQL storage
+- **Multiple Backends**: Support for memory, local file system, local JSON file, PostgreSQL, and Redis storage
 - **Thread Safety**: All implementations are thread-safe and support concurrent access
 - **Async Support**: Built on async/await for efficient I/O operations
 - **Flexible Configuration**: Easy configuration through config structures
@@ -50,6 +50,15 @@ Stores key-value pairs in a PostgreSQL database table.
 
 See [Postgres README](src/postgres/README.md) for more details.
 
+### Redis Protocol Storage (`Redis`)
+
+Stores key-value pairs in Redis-portocol server, prefixed by namespace for logical isolation.
+
+- **Use Cases**: Distributed deployments, low-latency shared storage
+- **Features**: Namespace isolation, async access, simple operational model
+
+See [Redis README](src/redis/README.md) for more details.
+
 ## Unified Storage Backend Configuration
 
 The `StorageBackendConfig` provides a unified way to configure storage backends that can be shared across multiple components in an application. This is particularly useful for applications like KBS (Key Broker Service) that need to manage multiple storage namespaces for different purposes.
@@ -74,7 +83,7 @@ The unified storage backend configuration uses the following structure:
 
 ```toml
 [storage_backend]
-storage_type = "LocalFs"  # or "Memory", "LocalJson", "Postgres"
+storage_type = "LocalFs"  # or "Memory", "LocalJson", "Postgres", "Redis"
 
 [storage_backend.backends.local_fs]
 dir_path = "/opt/confidential-containers/storage/local_fs"
@@ -88,6 +97,9 @@ port = 5432
 db = "postgres"
 username = "postgres"
 password = "password"
+
+[storage_backend.backends.redis]
+url = "redis://127.0.0.1:6379"
 ```
 
 Or in JSON format:
@@ -109,7 +121,7 @@ Or in JSON format:
 
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
-| `storage_type` | String | Storage backend type. Possible values: `Memory`/`memory`, `LocalFs`/`local_fs`, `LocalJson`/`local_json`, `Postgres`/`postgres` | No | `Memory` |
+| `storage_type` | String | Storage backend type. Possible values: `Memory`/`memory`, `LocalFs`/`local_fs`, `LocalJson`/`local_json`, `Postgres`/`postgres`, `Redis`/`redis` | No | `Memory` |
 | `backends` | Object | Backend-specific configuration object | No | - |
 
 The `backends` object can contain the following sub-sections:
@@ -119,6 +131,7 @@ The `backends` object can contain the following sub-sections:
 | `local_fs` | Object | LocalFs backend configuration (required when `storage_type = "LocalFs"`) | Conditional | - |
 | `local_json` | Object | LocalJson backend configuration (required when `storage_type = "LocalJson"`) | Conditional | - |
 | `postgres` | Object | PostgreSQL backend configuration (required when `storage_type = "Postgres"`) | Conditional | - |
+| `redis` | Object | Redis backend configuration (required when `storage_type = "Redis"`) | Conditional | - |
 
 ### LocalFs Backend Configuration
 
@@ -165,6 +178,17 @@ When `storage_type = "Postgres"`, the following properties can be set under `bac
 ### Memory Backend
 
 When `storage_type = "Memory"`, no additional configuration is needed. Each namespace will have its own in-memory storage that is not persisted.
+
+### Redis Backend Configuration
+
+When `storage_type = "Redis"`, the following properties can be set under `backends.redis`:
+
+| Property | Type | Description | Required | Default |
+|----------|------|-------------|----------|---------|
+| `url` | String | Redis connection URL | No | `redis://127.0.0.1:6379` |
+
+**Example:**
+- Namespace `"kbs"` with key `"policy/default"` → stored as Redis key `kbs:policy/default`
 
 ## Key Format
 

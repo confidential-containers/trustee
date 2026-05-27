@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use async_trait::async_trait;
 use csv_rs::api::dcu::{verify_reports, AttestationReport};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map};
+use serde_json::json;
 use tracing::{instrument, warn};
 
 use crate::{
@@ -53,30 +53,25 @@ impl Verifier for HygonDcuVerifier {
             warn!("DCU does not support init data hash mechanism. skip.");
         }
 
-        let claims = parse_tee_evidence(tee_evidence.attestation_reports)?;
-        Ok(vec![(claims, "dcu".to_string())])
+        let claims = tee_evidence
+            .attestation_reports
+            .into_iter()
+            .map(|report| {
+                let value = json!({
+                    "body": {
+                        "version": report.body.version,
+                        "chip_id": hex::encode(report.body.chip_id),
+                        "user_data": hex::encode(report.body.user_data),
+                        "measure": hex::encode(report.body.measure),
+                        "reserved": hex::encode(report.body.reserved),
+                        "sig_usage": format!("{:x}", report.body.sig_usage),
+                        "sig_algo": format!("{:x}", report.body.sig_algo),
+                    },
+                    "report_data": hex::encode(report.body.user_data),
+                });
+                (value, HYGON_DCU_TEE_CLASS.to_string())
+            })
+            .collect();
+        Ok(claims)
     }
-}
-
-// Dump the DCU information from the report.
-fn parse_tee_evidence(reports: Vec<AttestationReport>) -> Result<TeeEvidenceParsedClaim> {
-    let mut claims = Map::new();
-    for (index, report) in reports.into_iter().enumerate() {
-        let key = index.to_string();
-        let value = json!({
-            "body": {
-                "version": report.body.version,
-                "chip_id": hex::encode(report.body.chip_id),
-                "user_data": hex::encode(report.body.user_data),
-                "measure": hex::encode(report.body.measure),
-                "reserved": hex::encode(report.body.reserved),
-                "sig_usage": format!("{:x}", report.body.sig_usage),
-                "sig_algo": format!("{:x}", report.body.sig_algo),
-            },
-            "report_data": hex::encode(report.body.user_data),
-        });
-        claims.insert(key, value);
-    }
-
-    Ok(TeeEvidenceParsedClaim::Object(claims))
 }
