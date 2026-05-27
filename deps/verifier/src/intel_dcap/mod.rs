@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::mem;
 use std::time::{Duration, SystemTime};
+use strum::Display;
 use tracing::{debug, warn};
 
 mod claims;
@@ -25,8 +26,9 @@ pub(crate) mod quote;
 
 const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certification/v4/";
 
-#[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq, Display)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum TcbUpdateType {
     #[default]
     Early,
