@@ -16,9 +16,6 @@ pub mod corim;
 pub mod sample;
 pub mod swid;
 
-#[cfg(feature = "in-toto")]
-pub mod in_toto;
-
 /// Extractor is a standard interface that all provenance extractors
 /// need to implement. Here reference_value can be modified in the
 /// handler, added any field if needed.
@@ -55,12 +52,6 @@ impl Extractors {
         );
 
         extractor_map.insert("corim".to_string(), Box::new(corim::CorimExtractor));
-
-        #[cfg(feature = "in-toto")]
-        extractor_map.insert(
-            "in-toto".to_string(),
-            Box::new(in_toto::InTotoExtractor::new()),
-        );
 
         Ok(Extractors { extractor_map })
     }
