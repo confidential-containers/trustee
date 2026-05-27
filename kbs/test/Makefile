@@ -99,7 +99,7 @@ endef
 export EXT_RESOURCE_PLUGIN_POLICY_REGO
 
 ifneq ($(TEST_FEATURES),)
-  TEST_ARGUMENTS = --no-default-features --features $(TEST_FEATURES)
+  TEST_ARGUMENTS = --features $(TEST_FEATURES)
 endif
 
 .PHONY: install-dev-dependencies
