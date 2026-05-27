@@ -80,7 +80,7 @@ prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
 regex = "1.12.3"
 regorus.workspace = true
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true, features = ["default-tls"] }
 rsa.workspace = true
 rustls = { version = "0.23", default-features = false, features = [
     "ring",
