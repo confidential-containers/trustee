@@ -362,7 +362,7 @@ mod tests {
     use openssl::rsa::Rsa;
     use p256::pkcs8::EncodePrivateKey;
 
-    use crate::jwe::jwe:: {
+    use crate::jwe:: {
         AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA1_5_ALGORITHM,
         RSA_OAEP256_ALGORITHM,
     };
