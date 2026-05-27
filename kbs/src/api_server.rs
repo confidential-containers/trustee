@@ -455,7 +455,7 @@ pub(crate) async fn api(
                     if let Some(akp) =
                         core.token_verifier.try_extract_tee_akp_public_key(&claims)
                     {
-                        let jwe = crate::akp::ml_kem_768_a192kw(&akp.public_key, response)
+                        let jwe = crate::jwe::akp::ml_kem_768_a192kw(&akp.public_key, response)
                             .map_err(|e| Error::JweError { source: e })?;
                         let res = serde_json::to_string(&jwe)?;
                         return Ok(HttpResponse::Ok()

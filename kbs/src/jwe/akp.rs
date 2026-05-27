@@ -19,7 +19,7 @@ use aes_gcm::{
     Aes256Gcm, KeyInit, Nonce,
 };
 use aes_kw::{KeyInit as AesKwKeyInit, KwAes192};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, anyhow, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response};
 use ml_kem::{Encapsulate, EncapsulationKey, Key, MlKem768};
@@ -94,11 +94,11 @@ pub fn ml_kem_768_a192kw(pub_key_b64: &str, mut payload_data: Vec<u8>) -> Result
         .decode(pub_key_b64)
         .context("base64 decode AKP pub_key failed")?;
     if pub_key_bytes.len() != ML_KEM_768_ENCAP_KEY_LEN {
-        return Err(anyhow!(
+        bail!(
             "ML-KEM-768 encapsulation key has wrong length: got {}, expected {}",
             pub_key_bytes.len(),
             ML_KEM_768_ENCAP_KEY_LEN,
-        ));
+        );
     }
     let ek_typed: &Key<EncapsulationKey<MlKem768>> = pub_key_bytes
         .as_slice()

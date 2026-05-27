@@ -1,6 +1,9 @@
-// Copyright (c) 2024 by Alibaba.
+// Copyright (c) 2026 Trustee contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+#[cfg(feature = "pqc-experimental")]
+pub mod akp;
 
 use core::{clone::Clone, convert::TryInto};
 
@@ -359,7 +362,7 @@ mod tests {
     use openssl::rsa::Rsa;
     use p256::pkcs8::EncodePrivateKey;
 
-    use crate::jwe::{
+    use crate::jwe::jwe:: {
         AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA1_5_ALGORITHM,
         RSA_OAEP256_ALGORITHM,
     };

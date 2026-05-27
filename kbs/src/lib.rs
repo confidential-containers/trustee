@@ -25,7 +25,4 @@ pub mod admin;
 pub mod http;
 pub mod jwe;
 
-#[cfg(feature = "pqc-experimental")]
-pub mod akp;
-
 pub mod prometheus;
