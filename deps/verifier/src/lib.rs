@@ -39,11 +39,7 @@ pub mod se;
 #[cfg(feature = "nvidia-verifier")]
 pub mod nvidia;
 
-#[cfg(any(
-    feature = "az-tdx-vtpm-verifier",
-    feature = "tdx-verifier",
-    feature = "sgx-verifier"
-))]
+#[cfg(any(feature = "tdx-verifier", feature = "sgx-verifier"))]
 pub(crate) mod intel_dcap;
 
 #[cfg(feature = "tpm-verifier")]
