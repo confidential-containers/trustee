@@ -146,8 +146,6 @@ RVPS supports the following extractors (enabled by default):
    - Default expiration time: 12 months
    - Default hash algorithm: `sha384`
 
-3. **In-toto Extractor** (`in-toto`): Verifies and extracts reference values from in-toto provenance metadata. Requires the `in-toto` feature flag. See [In-toto Extractor README](src/extractors/in_toto/README.md) for details.
-
 **Example Configuration:**
 
 ```json

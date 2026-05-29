@@ -21,9 +21,3 @@ updates:
       github-actions:
         patterns:
           - "*"
-
-  - package-ecosystem: "gomod"
-    directory: "/rvps/cgo" # Location of go.mod
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 1

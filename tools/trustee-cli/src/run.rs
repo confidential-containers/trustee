@@ -71,17 +71,18 @@ fn get_config(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> Result<K
     // Generate and use a self-signed certificate if there is none configured.
     // Intended to discourage using the service in the clear.
     if !config.http_server.insecure_http {
-        if config.http_server.private_key.is_none() {
+        if config.http_server.tls.private_key.is_none() {
             let (private_path, _) = ensure_https_key_pair(trustee_home_dir)?;
 
-            config.http_server.private_key = Some(private_path);
+            config.http_server.tls.private_key = Some(private_path);
         }
 
-        if config.http_server.certificate.is_none() {
+        if config.http_server.tls.certificate.is_none() {
             let private_key = {
                 let private_key_data = std::fs::read(
                     config
                         .http_server
+                        .tls
                         .private_key
                         .as_ref()
                         .expect("private_key should be already set in config"),
@@ -93,7 +94,7 @@ fn get_config(config_file: Option<PathBuf>, trustee_home_dir: &Path) -> Result<K
             let cert_path = trustee_home_dir.join("https_cert_cache.pem");
             write(&cert_path, &cert.to_pem()?)?;
 
-            config.http_server.certificate = Some(cert_path);
+            config.http_server.tls.certificate = Some(cert_path);
         }
     }
 

@@ -5,7 +5,7 @@
 use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
 use crate::token::AttestationTokenVerifierConfig;
-use anyhow::anyhow;
+use anyhow::{anyhow, bail, Context, Result};
 use clap::Parser;
 use config::{Config, File};
 use const_format::concatcp;
@@ -13,22 +13,104 @@ use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use strum::AsRefStr;
 
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
 const DEFAULT_PAYLOAD_REQUEST_SIZE: u32 = 2;
+
+/// TLS security profile
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TlsProfile {
+    Old,
+    #[default]
+    Intermediate,
+    Modern,
+    Custom,
+}
+
+/// TLS protocol version
+#[derive(Clone, Debug, Deserialize, PartialEq, AsRefStr)]
+pub enum TlsVersion {
+    #[serde(rename = "1.2")]
+    #[strum(serialize = "1.2")]
+    Tls12,
+    #[serde(rename = "1.3")]
+    #[strum(serialize = "1.3")]
+    Tls13,
+}
+
+/// TLS/HTTPS configuration
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct TlsConfig {
+    /// HTTPS private key.
+    pub private_key: Option<PathBuf>,
+
+    /// HTTPS Certificate.
+    pub certificate: Option<PathBuf>,
+
+    /// TLS security profile: old, intermediate, modern, or custom
+    #[serde(rename = "tls_profile")]
+    pub profile: TlsProfile,
+
+    /// Minimum TLS version (for custom profile)
+    #[serde(rename = "tls_min_version")]
+    pub min_version: Option<TlsVersion>,
+
+    /// Maximum TLS version (for custom profile)
+    #[serde(rename = "tls_max_version")]
+    pub max_version: Option<TlsVersion>,
+
+    /// TLS cipher suites (colon-separated OpenSSL cipher list)
+    #[serde(rename = "tls_ciphers")]
+    pub ciphers: Option<String>,
+
+    /// TLS groups for key exchange (colon-separated list)
+    #[serde(rename = "tls_groups")]
+    pub groups: Option<String>,
+}
+
+impl TlsConfig {
+    /// Validate TLS configuration consistency
+    pub fn validate(&self) -> Result<()> {
+        // Warn if non-custom profile has custom fields
+        if self.profile != TlsProfile::Custom
+            && (self.min_version.is_some()
+                || self.max_version.is_some()
+                || self.ciphers.is_some()
+                || self.groups.is_some())
+        {
+            tracing::warn!(
+                "TLS profile is {:?} but custom fields are set. Custom fields will override profile defaults.",
+                self.profile
+            );
+        }
+
+        // Validate version range
+        if let (Some(min_version), Some(max_version)) = (&self.min_version, &self.max_version) {
+            if matches!(
+                (min_version, max_version),
+                (TlsVersion::Tls13, TlsVersion::Tls12)
+            ) {
+                bail!(
+                    "tls_min_version ({}) cannot be greater than tls_max_version ({})",
+                    min_version.as_ref(),
+                    max_version.as_ref()
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct HttpServerConfig {
     /// Socket addresses (IP:port) to listen on, e.g. 127.0.0.1:8080.
     pub sockets: Vec<SocketAddr>,
-
-    /// HTTPS private key.
-    pub private_key: Option<PathBuf>,
-
-    /// HTTPS Certificate.
-    pub certificate: Option<PathBuf>,
 
     /// Insecure HTTP.
     /// WARNING: Using this option makes the HTTP connection insecure.
@@ -40,17 +122,20 @@ pub struct HttpServerConfig {
     /// Number of worker threads for the actix-web server.
     /// If not specified, defaults to the number of logical CPU cores.
     pub worker_count: Option<usize>,
+
+    /// TLS/HTTPS configuration
+    #[serde(flatten)]
+    pub tls: TlsConfig,
 }
 
 impl Default for HttpServerConfig {
     fn default() -> Self {
         Self {
             sockets: vec![DEFAULT_SOCKET.parse().expect("unexpected parse error")],
-            private_key: None,
-            certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig::default(),
         }
     }
 }
@@ -153,8 +238,18 @@ impl TryFrom<&Path> for KbsConfig {
             .build()
             .map_err(|e| format_config_load_error(config_path, e))?;
 
-        c.try_deserialize()
-            .map_err(|e| format_config_load_error(config_path, e))
+        let config: KbsConfig = c
+            .try_deserialize()
+            .map_err(|e| format_config_load_error(config_path, e))?;
+
+        // Validate TLS configuration
+        config
+            .http_server
+            .tls
+            .validate()
+            .context("TLS configuration error")?;
+
+        Ok(config)
     }
 }
 
@@ -175,7 +270,8 @@ mod tests {
     use crate::{
         admin::AdminConfig,
         config::{
-            HttpServerConfig, DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
+            HttpServerConfig, TlsConfig, TlsProfile, TlsVersion, DEFAULT_INSECURE_HTTP,
+            DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
             implementations::{RepositoryConfig, SampleConfig},
@@ -268,11 +364,18 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
-            private_key: Some("/etc/kbs-private.key".into()),
-            certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig {
+                private_key: Some("/etc/kbs-private.key".into()),
+                certificate: Some("/etc/kbs-cert.pem".into()),
+                profile: TlsProfile::default(),
+                min_version: None,
+                max_version: None,
+                ciphers: None,
+                groups: None,
+            },
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -321,11 +424,10 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec![DEFAULT_SOCKET.parse().unwrap()],
-            private_key: None,
-            certificate: None,
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -365,11 +467,18 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
-            private_key: Some("/etc/kbs-private.key".into()),
-            certificate: Some("/etc/kbs-cert.pem".into()),
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig {
+                private_key: Some("/etc/kbs-private.key".into()),
+                certificate: Some("/etc/kbs-cert.pem".into()),
+                profile: TlsProfile::default(),
+                min_version: None,
+                max_version: None,
+                ciphers: None,
+                groups: None,
+            },
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig {
@@ -406,11 +515,10 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
-            private_key: None,
-            certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig::default(),
         },
         admin: make_token_authorization_admin_config(),
         storage_backend: StorageBackendConfig {
@@ -452,11 +560,10 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
-            private_key: None,
-            certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig::default(),
         },
         admin: AdminConfig::InsecureAllowAll {},
         storage_backend: StorageBackendConfig {
@@ -494,11 +601,10 @@ mod tests {
         },
         http_server: HttpServerConfig {
             sockets: vec!["0.0.0.0:8080".parse().unwrap()],
-            private_key: None,
-            certificate: None,
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
@@ -636,5 +742,57 @@ type = "Simple"
             message.contains("#admin-api-configuration"),
             "expected admin doc hint in: {message}"
         );
+    }
+
+    #[test]
+    fn test_tls_profile_default() {
+        let config = HttpServerConfig::default();
+        assert_eq!(config.tls.profile, TlsProfile::Intermediate);
+    }
+
+    #[test]
+    fn test_tls_version_range_validation_error() {
+        let mut config = TlsConfig::default();
+        config.min_version = Some(TlsVersion::Tls13);
+        config.max_version = Some(TlsVersion::Tls12);
+
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_tls_version_range_validation_ok() {
+        let mut config = TlsConfig::default();
+        config.min_version = Some(TlsVersion::Tls12);
+        config.max_version = Some(TlsVersion::Tls13);
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[rstest]
+    #[case("test_data/configs/tls-profile-old.toml", TlsProfile::Old, None)]
+    #[case(
+        "test_data/configs/tls-profile-intermediate.toml",
+        TlsProfile::Intermediate,
+        None
+    )]
+    #[case("test_data/configs/tls-profile-modern.toml", TlsProfile::Modern, None)]
+    #[case(
+        "test_data/configs/tls-profile-custom.toml",
+        TlsProfile::Custom,
+        Some(TlsVersion::Tls13)
+    )]
+    #[case(
+        "test_data/configs/tls-profile-custom-pqc.toml",
+        TlsProfile::Custom,
+        Some(TlsVersion::Tls13)
+    )]
+    fn test_tls_config_files(
+        #[case] config_path: &str,
+        #[case] expected_profile: TlsProfile,
+        #[case] expected_min_version: Option<TlsVersion>,
+    ) {
+        let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
+        assert_eq!(config.http_server.tls.profile, expected_profile);
+        assert_eq!(config.http_server.tls.min_version, expected_min_version);
     }
 }
