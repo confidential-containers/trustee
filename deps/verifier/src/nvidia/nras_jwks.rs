@@ -10,6 +10,11 @@ use jsonwebtoken::jwk::{Jwk, JwkSet};
 /// Using Trustee with the NRAS remote verifier assumes that you have done this.
 pub const NRAS_JWKS_URL: &str = "https://nras.attestation.nvidia.com/.well-known/jwks.json";
 
+/// Timeout for fetching the NRAS JWKS. Unlike an attestation request this is
+/// just a small, static document download with no server-side work, so a
+/// tighter budget than NRAS_ATTESTATION_TIMEOUT is sufficient.
+const NRAS_JWKS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 #[derive(Clone, Debug)]
 pub struct NrasJwks {
     // Mapping of Key Ids to JWKs
@@ -18,7 +23,10 @@ pub struct NrasJwks {
 
 impl NrasJwks {
     pub async fn new() -> Result<Self> {
-        let res = reqwest::get(NRAS_JWKS_URL).await?;
+        let client = reqwest::Client::builder()
+            .timeout(NRAS_JWKS_TIMEOUT)
+            .build()?;
+        let res = client.get(NRAS_JWKS_URL).send().await?;
 
         if !res.status().is_success() {
             bail!(
