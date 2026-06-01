@@ -133,7 +133,7 @@ async fn get_secret(
     gpu_attestation_policy: Option<&str>,
     expected_result: Result<&[u8; 8]>,
 ) -> Result<()> {
-    harness.wait().await;
+    harness.wait().await?;
 
     // Set Secret
     info!("TEST: setting secret");

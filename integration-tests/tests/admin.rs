@@ -31,7 +31,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
-    harness.wait().await;
+    harness.wait().await?;
 
     if !valid_key {
         info!("TEST: replacing admin private key");
@@ -118,7 +118,7 @@ async fn set_attestation_policy(
     init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
-    harness.wait().await;
+    harness.wait().await?;
 
     if !valid_key {
         info!("TEST: replacing admin private key");
@@ -210,7 +210,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     init_tracing();
 
     let mut harness = TestHarness::new(test_config.clone().into()).await?;
-    harness.wait().await;
+    harness.wait().await?;
 
     if !valid_key {
         info!("TEST: replacing admin private key");

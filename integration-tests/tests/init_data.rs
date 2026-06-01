@@ -248,7 +248,7 @@ async fn check_validated_identifiers() -> Result<()> {
     init_tracing();
 
     let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
-    harness.wait().await;
+    harness.wait().await?;
 
     let token_payload = harness
         .get_attestation_token_payload(Some(POLICY_INIT_DATA.to_string()))
