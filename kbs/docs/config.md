@@ -162,12 +162,13 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `timeout`                  | Integer                     | The maximum time (in minutes) of the attestation session | 5                                                                                                             |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                       | See [RVPSConfiguration][2]                                                                                    |
 | `attestation_token_broker` | [AttestationTokenBroker][1] | Attestation result token configuration.                  | See [AttestationTokenBroker][1]                                                                               |
-| `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM)| None                                                                                                          |
+| `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM)| See [Verifier Configuration][vcfg]                                                                            |
 
 [1]: #attestationtokenbroker
 [2]: #rvps-configuration
 [3]: #keyvaluestorage
 [4]: #tokensignerconfig
+[vcfg]: ../../attestation-service/docs/config.md#verifier-configuration
 
 ##### AttestationTokenBroker
 
