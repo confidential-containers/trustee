@@ -3778,6 +3778,7 @@ dependencies = [
  "anyhow",
  "attestation-service",
  "base64 0.22.1",
+ "const_format",
  "jsonwebtoken",
  "kbs",
  "kbs-client",
