@@ -39,6 +39,12 @@ pub const DMTF_MEASUREMENT_SPECIFICATION_VALUE: u8 = 1;
 /// Using Trustee with the NRAS remote verifier assumes that you have done this.
 pub const NRAS_URL: &str = "https://nras.attestation.nvidia.com/v4/attest";
 
+/// Timeout for a single NRAS attestation request. The remote service performs
+/// non-trivial verification work on the submitted evidence, so this is more
+/// generous than a plain document fetch; it only guards against an unreachable
+/// or wedged endpoint hanging the verifier indefinitely.
+const NRAS_ATTESTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
 #[derive(Default, Debug)]
 pub struct Nvidia {
     verifier_type: NvidiaVerifierType,
@@ -268,8 +274,9 @@ impl Nvidia {
             "claims_version": "3.0"
         });
 
-        // We can reuse this client for multiple requests, but for now create a new one.
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(NRAS_ATTESTATION_TIMEOUT)
+            .build()?;
         let res = client.post(request_url).json(&request_json).send().await?;
 
         if !res.status().is_success() {
