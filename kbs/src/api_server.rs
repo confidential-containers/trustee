@@ -180,6 +180,7 @@ impl ApiServer {
                             .route(web::get().to(prometheus_metrics_handler))
                             .route(web::post().to(|| HttpResponse::MethodNotAllowed())),
                     )
+                    .route("/healthz", web::get().to(HttpResponse::Ok))
             }
         });
 

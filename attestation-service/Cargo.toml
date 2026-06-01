@@ -21,7 +21,7 @@ tpm-verifier = ["verifier/tpm-verifier"]
 rvps-grpc = ["prost", "tonic", "mobc"]
 
 # For building gRPC CoCo-AS binary
-grpc-bin = ["clap", "prost", "tonic", "tonic-prost"]
+grpc-bin = ["clap", "prost", "tonic", "tonic-health", "tonic-prost"]
 
 # For restful CoCo-AS binary
 restful-bin = ["actix-cors", "actix-web/openssl", "clap"]
@@ -66,6 +66,7 @@ thiserror.workspace = true
 tokio.workspace = true
 toml.workspace = true
 tonic = { workspace = true, optional = true }
+tonic-health = { workspace = true, optional = true }
 tonic-prost = { workspace = true, optional = true }
 tracing.workspace = true
 tracing-subscriber.workspace = true
