@@ -32,6 +32,12 @@ mod attestation {
 pub const DEFAULT_AS_ADDR: &str = "http://127.0.0.1:50004";
 pub const DEFAULT_POOL_SIZE: u64 = 100;
 
+/// Upper bound on a single KBS->AS gRPC request. TEE evidence verification
+/// (notably Intel TDX DCAP, which fetches collateral over the network) can be
+/// legitimately slow, so this is deliberately generous; it exists only to keep
+/// a silently wedged connection from blocking a request forever.
+const AS_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct GrpcConfig {
     #[serde(default = "default_as_addr")]
@@ -239,6 +245,7 @@ impl Manager for GrpcManager {
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
         let connection = Channel::from_shared(self.as_addr.clone())?
+            .timeout(AS_REQUEST_TIMEOUT)
             .connect()
             .await?;
         let as_rpc = AttestationServiceClient::new(connection.clone());
