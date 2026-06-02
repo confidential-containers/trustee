@@ -351,7 +351,7 @@ This is also called "Repository" in old versions. The properties to be configure
 
 | Property | Type   | Description                                                   | Required | Default    |
 |----------|--------|---------------------------------------------------------------|----------|------------|
-| `type`| String | Storage type for resources: `kvstorage`, `Aliyun`, `Vault` | No       | `kvstorage`|
+| `type`| String | Storage type for resources: `kvstorage`, `Aliyun`, `Aws`, `Vault` | No       | `kvstorage`|
 
 When `storage_backend_type = "kvstorage"` (default), the resource plugin uses the unified [storage backend](#storage-backend-configuration) with namespace `repository`. Configure storage in the `[storage_backend]` section only.
 
@@ -363,6 +363,18 @@ When `storage_backend_type = "Aliyun"`:
 | `kms_instance_id` | String | The KMS instance id               | Yes      | `kst-shh668f7...`                                   |
 | `password`        | String | AAP client key password           | Yes      | `8f9989c18d27...`                                   |
 | `cert_pem`        | String | CA cert for the KMS instance      | Yes      | `-----BEGIN CERTIFICATE----- ...`                   |
+
+When `storage_backend_type = "Aws"`:
+
+| Property       | Type   | Description                                                                                                       | Required | Example                                                |
+|----------------|--------|-------------------------------------------------------------------------------------------------------------------|----------|--------------------------------------------------------|
+| `region`       | String | AWS region. If omitted, resolved from the default credential chain (`AWS_REGION`, profile, IMDS, …).              | No       | `us-east-1`                                            |
+| `endpoint_url` | String | Endpoint override. Use for FIPS endpoints, GovCloud, or LocalStack in tests.                                      | No       | `https://secretsmanager-fips.us-east-1.amazonaws.com`  |
+
+Credentials are resolved by the AWS default provider chain (env vars, shared
+config, IRSA, EC2/ECS instance role). The backend is read-only — provision
+secrets via AWS APIs. The KBS `tag` field maps to the Secrets Manager
+`SecretId` (name or ARN); `repo/type` are ignored.
 
 When `storage_backend_type = "Vault"`:
 

@@ -1,4 +1,4 @@
-# Resource Storage Backend 
+# Resource Storage Backend
 
 KBS stores confidential resources through a `StorageBackend` abstraction specified
 by a Rust trait. The `StorageBackend` interface can be implemented for different
@@ -29,6 +29,21 @@ In this mode, resources will be stored with [generic secrets](https://www.alibab
 One KBS can be configured with a specified KMS instance in `repository_config` field of KBS launch config. For config, see the [document](./config.md#repository-configuration).
 These materials can be found in KMS instance's [AAP](https://www.alibabacloud.com/help/en/kms/user-guide/manage-aaps?spm=a3c0i.23458820.2359477120.1.4fd96e9bmEFST4).
 When being accessed, a resource URI of `kbs:///repo/type/tag` will be translated into the generic secret with name `tag`. Hinting that `repo/type` field will be ignored.
+
+### AWS Secrets Manager
+
+[AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html)
+can also work as the KBS resource storage backend. Build KBS with the `aws`
+feature flag enabled. Resources are stored as Secrets Manager secrets and
+fetched via `GetSecretValue`.
+
+A resource URI of `kbs:///repo/type/tag` is translated into the Secrets Manager
+secret with `SecretId = tag`. The `repo/type` portion is ignored — match the
+behavior of the Aliyun KMS backend. `tag` may be either a secret name or a full
+secret ARN.
+
+This backend is read-only. Writes and deletes return an error — provision and
+rotate secrets via AWS APIs.
 
 ### Hashicorp Vault Backend
 

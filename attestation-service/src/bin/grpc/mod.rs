@@ -13,6 +13,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
+use tonic_health::server::health_reporter;
 use tracing::{debug, info, instrument, Span};
 use uuid::Uuid;
 
@@ -317,7 +318,13 @@ pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()
 
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
 
+    let (health_reporter, health_service) = health_reporter();
+    health_reporter
+        .set_serving::<AttestationServiceServer<Arc<RwLock<AttestationServer>>>>()
+        .await;
+
     Server::builder()
+        .add_service(health_service)
         .add_service(AttestationServiceServer::new(attestation_server.clone()))
         .add_service(ReferenceValueProviderServiceServer::new(attestation_server))
         .serve(socket)

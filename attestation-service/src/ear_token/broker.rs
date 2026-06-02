@@ -194,13 +194,16 @@ impl EarAttestationTokenBroker {
 
                         let rvps_client = rvps_client.clone();
                         let reference_value_id = params[0].as_string()?.to_string();
+                        // Capture the current (main) runtime handle *before* spawning
+                        // the thread. Using the main runtime's handle ensures that
+                        // pool.get() and the tonic I/O operations run in the same
+                        // runtime context where the mobc pool and gRPC channels were
+                        // created. Creating a new isolated runtime here causes pool
+                        // futures and I/O wakeups to be delivered on the wrong reactor,
+                        // making pool.get() hang indefinitely.
+                        let rt_handle = tokio::runtime::Handle::current();
                         let handle = thread::spawn(move || {
-                            let rt = tokio::runtime::Builder::new_current_thread()
-                                .enable_all()
-                                .build()
-                                .expect("failed to build runtime");
-
-                            rt.block_on(async move {
+                            rt_handle.block_on(async move {
                                 tokio::time::timeout(
                                     Duration::from_secs(10),
                                     fut(rvps_client, reference_value_id),

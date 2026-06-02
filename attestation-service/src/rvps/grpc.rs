@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use mobc::{Manager, Pool};
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,6 +32,30 @@ fn default_address() -> String {
 /// The default pool size for the RVPS client.
 const DEFAULT_RVPS_POOL_SIZE: u64 = 10;
 
+/// Drop and re-establish a pooled connection once it has been idle for this
+/// long, so a connection that died silently while idle is recycled instead of
+/// being handed out to the next query.
+const RVPS_CONN_MAX_IDLE_LIFETIME: Duration = Duration::from_secs(30);
+
+/// Send an HTTP/2 keep-alive ping after this much inactivity on a pooled
+/// connection, so a broken connection is noticed promptly rather than on the
+/// next (possibly much later) query.
+const RVPS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(10);
+
+/// How long to wait for a keep-alive ping acknowledgement before treating the
+/// connection as dead.
+const RVPS_KEEP_ALIVE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Time budget for the on-checkout connection health probe. It runs on every
+/// pool.get() and only needs a local round-trip to RVPS, so it is kept short.
+const RVPS_HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// Placeholder reference-value key used to probe connection liveness. RVPS
+/// returns Ok(None) for an unknown key, which confirms the connection is live
+/// without triggering an "Is a directory" error that would otherwise force an
+/// unnecessary reconnect on every pool.get() call.
+const RVPS_HEALTH_CHECK_KEY: &str = "__healthcheck__";
+
 pub struct Agent {
     pool: Pool<GrpcManager>,
 }
@@ -50,6 +76,7 @@ impl Agent {
         let manager = GrpcManager { address };
         let pool = Pool::builder()
             .max_open(DEFAULT_RVPS_POOL_SIZE)
+            .max_idle_lifetime(Some(RVPS_CONN_MAX_IDLE_LIFETIME))
             .build(manager);
 
         // the mobc Pool builder does not establish an actual connection,
@@ -100,7 +127,14 @@ impl Manager for GrpcManager {
     type Error = anyhow::Error;
 
     async fn connect(&self) -> std::result::Result<Self::Connection, Self::Error> {
+        // Called for the initial connection and whenever the pool replaces a
+        // connection that failed check() below, so this is the single place
+        // that observes every (re)connection to RVPS.
+        debug!("establishing RVPS gRPC connection to {}", self.address);
         let channel = Channel::from_shared(self.address.clone())?
+            .keep_alive_while_idle(true)
+            .http2_keep_alive_interval(RVPS_KEEP_ALIVE_INTERVAL)
+            .keep_alive_timeout(RVPS_KEEP_ALIVE_TIMEOUT)
             .connect()
             .await?;
         Ok(ReferenceValueProviderServiceClient::new(channel))
@@ -110,6 +144,16 @@ impl Manager for GrpcManager {
         &self,
         conn: Self::Connection,
     ) -> std::result::Result<Self::Connection, Self::Error> {
-        Ok(conn)
+        let mut c = conn;
+        let req = tonic::Request::new(ReferenceValueQueryRequest {
+            reference_value_id: RVPS_HEALTH_CHECK_KEY.to_string(),
+        });
+        // We only report whether the connection is still usable; the pool is
+        // responsible for discarding it and calling connect() to replace it.
+        match tokio::time::timeout(RVPS_HEALTH_CHECK_TIMEOUT, c.query_reference_value(req)).await {
+            Ok(Ok(_)) => Ok(c),
+            Ok(Err(e)) => Err(anyhow::anyhow!("stale connection: {e}")),
+            Err(_) => Err(anyhow::anyhow!("RVPS health check timed out")),
+        }
     }
 }

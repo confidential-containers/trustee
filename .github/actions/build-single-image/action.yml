@@ -27,6 +27,10 @@ inputs:
     description: Whether to push the built image to GHCR
     required: false
     default: "false"
+  load:
+    description: Load the built image into the local Docker engine (for docker save / compose e2e)
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -60,6 +64,8 @@ runs:
         build_option_args=()
         if [ "${{ inputs.push }}" = "true" ]; then
           build_option_args+=(--push)
+        elif [ "${{ inputs.load }}" = "true" ]; then
+          build_option_args+=(--load)
         fi
         docker buildx build --provenance false \
           "${platform_args[@]}" \

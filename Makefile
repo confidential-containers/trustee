@@ -70,7 +70,12 @@ test-kbs-docker-e2e:
 		$(CURDIR)/kbs/config/docker-compose/kbs-config.toml \
 		$(CURDIR)/kbs/config/docker-compose/setup.sh \
 		$$E2E_DIR/kbs/config/docker-compose/ && \
-	docker compose -f $(CURDIR)/docker-compose.yml build --build-arg BUILDPLATFORM="$${BUILD_PLATFORM:-linux/amd64}" --build-arg ARCH="$${TARGET_ARCH:-x86_64}" --build-arg VERIFIER="$${VERIFIER:-all-verifier}" && \
+	if [ -z "$${SKIP_DOCKER_COMPOSE_BUILD:-}" ]; then \
+		docker compose -f $(CURDIR)/docker-compose.yml build \
+			--build-arg BUILDPLATFORM="$${BUILD_PLATFORM:-linux/amd64}" \
+			--build-arg ARCH="$${TARGET_ARCH:-x86_64}" \
+			--build-arg VERIFIER="$${VERIFIER:-all-verifier}"; \
+	fi && \
 	docker compose -f $(CURDIR)/docker-compose.yml --project-directory $$E2E_DIR up -d && \
 	cd $(CURDIR)/target/release && \
 	echo "shhhhh" > test-secret && \
