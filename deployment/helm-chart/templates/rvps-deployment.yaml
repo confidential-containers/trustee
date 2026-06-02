@@ -52,6 +52,18 @@ spec:
             - name: tcp
               containerPort: {{ include "coco-trustee.port.rvps" . }}
               protocol: TCP
+          readinessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.rvps" . }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.rvps" . }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
           {{- with .Values.rvps.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
