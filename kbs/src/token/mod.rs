@@ -9,9 +9,6 @@ use tracing::debug;
 
 use crate::crypto::jwt::JwtVerifier;
 
-#[cfg(feature = "pqc-experimental")]
-use crate::jwe::akp;
-
 mod error;
 pub use error::*;
 
@@ -114,22 +111,5 @@ impl TokenVerifier {
         }
 
         Err(Error::NoTeePubKeyClaimFound)
-    }
-
-    /// Try to extract a PQC `AKP` public key from the same claim paths
-    /// used for classical keys. Returns `None` if no claim path resolves
-    /// to a JWK with `kty == "AKP"` — the caller is expected to fall
-    /// through to [`Self::extract_tee_public_key`].
-    #[cfg(feature = "pqc-experimental")]
-    pub fn try_extract_tee_akp_public_key(&self, claim: &Value) -> Option<akp::AkpPubKey> {
-        for path in &self.extra_teekey_paths {
-            if let Some(pkey_value) = claim.pointer(path) {
-                if pkey_value.get("kty").and_then(Value::as_str) == Some(akp::AKP_KTY) {
-                    debug!("Extract AKP tee public key from {path}");
-                    return akp::AkpPubKey::deserialize(pkey_value).ok();
-                }
-            }
-        }
-        None
     }
 }

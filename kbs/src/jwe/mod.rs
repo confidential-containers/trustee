@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "pqc-experimental")]
 pub mod akp;
 
 use core::{clone::Clone, convert::TryInto};
@@ -345,6 +344,9 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
             (P521_CURVE, ECDH_ES_A256KW) => ecdh_es_a256kw_p521(x, y, payload_data),
             (crv, alg) => bail!("curve {crv} and algorithm {alg} is not supported"),
         },
+        TeePubKey::AKP { alg: _, public_key: _ } => {
+            bail!("AKP types for PQC encryption not supported by this module, see akp module.");
+        }
     }
 }
 

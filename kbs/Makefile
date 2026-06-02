@@ -1,6 +1,5 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
-PQC_EXPERIMENTAL ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= true
 EXTERNAL_PLUGIN ?= false
@@ -64,10 +63,6 @@ endif
 
 ifeq ($(EXTERNAL_PLUGIN), true)
   override FEATURES := $(FEATURES),external-plugin
-endif
-
-ifeq ($(PQC_EXPERIMENTAL), true)
-  override FEATURES := $(FEATURES),pqc-experimental
 endif
 
 ifeq ($(CLI_FEATURES),sample_only)

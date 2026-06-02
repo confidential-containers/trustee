@@ -9,7 +9,6 @@ use aes_gcm::aead::OsRng;
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-#[cfg(not(feature = "pqc-experimental"))]
 use kbs_types::Attestation;
 use kbs_types::{Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
@@ -31,40 +30,6 @@ use super::{
     session::SessionStatus,
     Error, Result,
 };
-
-/// Feature-gated local mirror of [`kbs_types::Attestation`], used only when
-/// `pqc-experimental` is enabled.
-///
-/// `kbs_types::TeePubKey` is `#[serde(tag = "kty")]` with only `RSA`/`EC`
-/// variants, so an inbound Attestation carrying a PQC `kty: "AKP"` key fails
-/// to deserialize before a token is ever issued. This mirror keeps every
-/// field identical to the upstream type except `runtime_data.tee_pubkey`,
-/// which is a permissive `serde_json::Value`. In the `/attest` handler the
-/// tee-pubkey is only ever re-serialized into the token claims (where the AKP
-/// extractor later reads it back as a `Value`), so `Value` is lossless for
-/// both classical and AKP keys. Retire this once the `AKP` variant is
-/// upstreamed to `kbs-types`.
-#[cfg(feature = "pqc-experimental")]
-mod pqc_attestation {
-    use kbs_types::{CompositeEvidence, InitData};
-    use serde::{Deserialize, Serialize};
-    use serde_json::Value;
-
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    #[serde(rename_all = "kebab-case")]
-    pub struct Attestation {
-        pub init_data: Option<InitData>,
-        pub runtime_data: RuntimeData,
-        pub tee_evidence: CompositeEvidence,
-    }
-
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct RuntimeData {
-        pub nonce: String,
-        #[serde(rename = "tee-pubkey")]
-        pub tee_pubkey: Value,
-    }
-}
 
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
 
@@ -330,12 +295,7 @@ impl AttestationService {
 
         let session_id = cookie.value();
 
-        #[cfg(not(feature = "pqc-experimental"))]
         let attestation: Attestation = serde_json::from_slice(attestation)
-            .inspect_err(|_| ATTESTATION_ERRORS.inc())
-            .context("deserialize Attestation")?;
-        #[cfg(feature = "pqc-experimental")]
-        let attestation: pqc_attestation::Attestation = serde_json::from_slice(attestation)
             .inspect_err(|_| ATTESTATION_ERRORS.inc())
             .context("deserialize Attestation")?;
         let (tee, nonce) = {

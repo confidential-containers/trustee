@@ -24,7 +24,6 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response};
 use ml_kem::{Encapsulate, EncapsulationKey, Key, MlKem768};
 use rsa::rand_core::RngCore;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha3_kmac::Kmac256;
 
@@ -40,25 +39,6 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 
 /// ML-KEM-768 encapsulation-key length in bytes (FIPS 203).
 const ML_KEM_768_ENCAP_KEY_LEN: usize = 1184;
-
-/// AKP public key as received from a TEE client, per the JWK
-/// representation in draft-ietf-jose-pqc-kem-05 §10.
-///
-/// Defined locally rather than as a new `kbs_types::TeePubKey` variant
-/// while the wire format stabilises. When the prototype proves out, this
-/// should be upstreamed to the `kbs-types` crate.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AkpPubKey {
-    /// JWK key type — MUST be `"AKP"`.
-    pub kty: String,
-    /// Algorithm identifier, e.g. `"ML-KEM-768+A192KW"`.
-    pub alg: String,
-    /// Base64url-encoded ML-KEM encapsulation key.
-    /// For ML-KEM-768 this decodes to 1184 bytes.
-    #[serde(rename = "pub")]
-    pub public_key: String,
-}
-
 
 /// KMAC256-based KDF per draft-ietf-jose-pqc-kem-05 §5.1.
 ///
@@ -229,7 +209,7 @@ mod tests {
             "alg": "ML-KEM-768+A192KW",
             "pub": "AAAAAAAAAAAAAAAAAA",
         });
-        let key: AkpPubKey = serde_json::from_value(json).expect("deserialize");
+        let key: TeePubKey = serde_json::from_value(json).expect("deserialize");
         assert_eq!(key.kty, AKP_KTY);
         assert_eq!(key.alg, ML_KEM_768_A192KW_ALGORITHM);
         assert_eq!(key.public_key, "AAAAAAAAAAAAAAAAAA");
