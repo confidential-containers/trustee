@@ -20,6 +20,9 @@ use super::{Pkcs11Backend, Pkcs11Config};
 #[cfg(feature = "external-plugin")]
 use super::{ExternalPlugin, ExternalPluginConfig};
 
+#[cfg(feature = "keyflux-plugin")]
+use super::{KeyFluxPlugin, KeyFluxPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -81,6 +84,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "external-plugin")]
     #[serde(alias = "external")]
     ExternalPlugin(ExternalPluginConfig),
+
+    #[cfg(feature = "keyflux-plugin")]
+    #[serde(alias = "keyflux")]
+    KeyFluxPlugin(KeyFluxPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -94,6 +101,8 @@ impl Display for PluginsConfig {
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
+            #[cfg(feature = "keyflux-plugin")]
+            PluginsConfig::KeyFluxPlugin(_) => f.write_str("keyflux"),
         }
     }
 }
@@ -136,6 +145,12 @@ impl PluginsConfig {
                     .await
                     .context("Initialize 'external' plugin failed")?;
                 Arc::new(external_plugin) as _
+            }
+            #[cfg(feature = "keyflux-plugin")]
+            PluginsConfig::KeyFluxPlugin(pkivault_config) => {
+                let pkivault_plugin = KeyFluxPlugin::try_from(pkivault_config)
+                    .context("Initialize 'keyflux' plugin failed")?;
+                Arc::new(pkivault_plugin) as _
             }
         };
 
