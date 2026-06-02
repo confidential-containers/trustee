@@ -113,3 +113,21 @@ secrets:
   # KBS_ADMIN_PRIVATE_KEY, KBS_ADMIN_PUBKEY, KBS_ADMIN_TOKEN (optional if you generate tokens locally),
   # AS_TOKEN_SIGNING_PRIVATE_KEY, AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN
   existingSecretName: ""
+
+# Optional Kubernetes Ingress for the KBS service.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Host-based routing. Leave empty to match all hosts (IP-only access).
+  host: ""
+  tls: []
+  #  - secretName: kbs-tls
+  #    hosts:
+  #      - kbs.example.com
+
+# Expose the KBS service via a NodePort.
+nodePort:
+  enabled: false
+  # If empty, Kubernetes assigns a random port from the NodePort range.
+  port: ""
