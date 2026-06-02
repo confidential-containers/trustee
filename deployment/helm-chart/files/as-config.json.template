@@ -20,5 +20,8 @@
             "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
             "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
         }
+    },
+    "verifier_config": {
+        {{- include "coco-trustee.as.verifier" . | nindent 8 }}
     }
 }

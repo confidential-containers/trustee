@@ -62,6 +62,13 @@ as:
     repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
     pullPolicy: Always
     tag: "latest"
+  verifier:
+    # `type` field can be `Local` or `Remote`.
+    # When `type` is `Local`, it will default to `Local`.
+    # When `type` is `Remote`, the `verifierUrl` will be used as NRAS and must be set.
+    nvidia:
+      type: "Local"
+      verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
   service:
     type: ClusterIP
     port: 50004
