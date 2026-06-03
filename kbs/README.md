@@ -143,7 +143,7 @@ for more details.
 
 ## Experimental Features
 
-PQC algorithm support for the KBS protocol as a replacement for classic cryptographic methods is provided as an experimental compile-time feature in guest. These can be enabled by building with the additional [PQC_EXPERIMENTAL=?] parameter set as required, e.g.
+PQC algorithm support for the KBS protocol as a replacement for classic cryptographic methods is provided here as an experimental compile-time feature. These can be enabled by building with the additional [PQC_EXPERIMENTAL=?] parameter set as required, e.g.
 
 ```shell
 PQC_EXPERIMENTAL=true make

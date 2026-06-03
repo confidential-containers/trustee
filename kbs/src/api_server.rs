@@ -13,7 +13,6 @@ use actix_web::{
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
-use kbs_types::TeePubKey;
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
@@ -455,15 +454,6 @@ pub(crate) async fn api(
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
 
-                    if let TeePubKey::AKP { alg: _, public_key } = public_key {
-                        let jwe = crate::jwe::akp::ml_kem_768_a192kw(&public_key, response)
-                            .map_err(|e| Error::JweError { source: e })?;
-                        let res = serde_json::to_string(&jwe)?;
-                        return Ok(HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(res));
-                    }
-                    
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

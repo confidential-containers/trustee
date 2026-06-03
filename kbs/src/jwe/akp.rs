@@ -24,7 +24,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response};
 use ml_kem::{Encapsulate, EncapsulationKey, Key, MlKem768};
 use rsa::rand_core::RngCore;
-use serde_json::json;
+use serde_json::{Map, Value};
 use sha3_kmac::Kmac256;
 
 /// `kty` value for the Algorithm Key Pair (AKP) key type per
@@ -108,13 +108,12 @@ pub fn ml_kem_768_a192kw(pub_key_b64: &str, mut payload_data: Vec<u8>) -> Result
     // 5. Protected header carries the KEM ciphertext in the `ek` parameter
     // per draft-ietf-jose-pqc-kem §6.2.
     let ek_b64 = URL_SAFE_NO_PAD.encode(kem_ciphertext.as_slice());
+    let mut other_fields = Map::new();
+    other_fields.insert("ek".to_string(), Value::String(ek_b64));
     let protected = ProtectedHeader {
         alg: ML_KEM_768_A192KW_ALGORITHM.to_string(),
         enc: AES_GCM_256_ALGORITHM.to_string(),
-        other_fields: json!({ "ek": ek_b64 })
-            .as_object()
-            .unwrap()
-            .clone(),
+        other_fields,
     };
 
     // 6. Encrypt payload with AES-256-GCM under the CEK; AAD per RFC 7516.
@@ -141,6 +140,7 @@ pub fn ml_kem_768_a192kw(pub_key_b64: &str, mut payload_data: Vec<u8>) -> Result
 mod tests {
     use super::*;
     use aes_gcm::aead::generic_array::GenericArray;
+    use kbs_types::TeePubKey;
     use ml_kem::{kem::KeyExport, Decapsulate, Kem};
 
     #[test]
@@ -210,8 +210,10 @@ mod tests {
             "pub": "AAAAAAAAAAAAAAAAAA",
         });
         let key: TeePubKey = serde_json::from_value(json).expect("deserialize");
-        assert_eq!(key.kty, AKP_KTY);
-        assert_eq!(key.alg, ML_KEM_768_A192KW_ALGORITHM);
-        assert_eq!(key.public_key, "AAAAAAAAAAAAAAAAAA");
+        let TeePubKey::AKP { alg, public_key } = key else {
+            panic!("expected AKP variant");
+        };
+        assert_eq!(alg, ML_KEM_768_A192KW_ALGORITHM);
+        assert_eq!(public_key, "AAAAAAAAAAAAAAAAAA");
     }
 }

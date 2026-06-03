@@ -43,6 +43,13 @@ nebula-ca-plugin = []
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
+
+# Experimental Post-Quantum Cryptography support for the resource-response
+# JWE path. Implements draft-ietf-jose-pqc-kem-05 (ML-KEM-768+A192KW). The
+# IETF draft is not finalized and the wire format may change; do not enable
+# in production.
+pqc-experimental = ["dep:ml-kem", "dep:sha3-kmac"]
+
 # Use AWS Secrets Manager as KBS resource backend
 aws = ["aws-config", "aws-sdk-secretsmanager"]
 
@@ -104,8 +111,8 @@ uuid = { workspace = true, features = ["serde"] }
 openssl.workspace = true
 az-cvm-vtpm = { version = "0.8.0", default-features = false, optional = true }
 vaultrs = { version = "0.8.0", optional = true }
-ml-kem = { version = "0.3.2", features = ["getrandom"] }
-sha3-kmac = { version = "0.3.0" }
+ml-kem = { version = "0.3.2", features = ["getrandom"], optional = true }
+sha3-kmac = { version = "0.3.0", optional = true }
 aws-config = { version = "1", features = [
     "behavior-version-latest",
 ], optional = true }

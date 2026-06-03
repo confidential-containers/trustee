@@ -344,9 +344,10 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
             (P521_CURVE, ECDH_ES_A256KW) => ecdh_es_a256kw_p521(x, y, payload_data),
             (crv, alg) => bail!("curve {crv} and algorithm {alg} is not supported"),
         },
-        TeePubKey::AKP { alg: _, public_key: _ } => {
-            bail!("AKP types for PQC encryption not supported by this module, see akp module.");
-        }
+        TeePubKey::AKP { alg, public_key } => match &alg[..] {
+            akp::ML_KEM_768_A192KW_ALGORITHM => akp::ml_kem_768_a192kw(&public_key, payload_data),
+            others => bail!("algorithm {others} is not supported"),
+        },
     }
 }
 
