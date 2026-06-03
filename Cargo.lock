@@ -339,15 +339,6 @@ dependencies = [
 
 [[package]]
 name = "aes-kw"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69fa2b352dcefb5f7f3a5fb840e02665d311d878955380515e4fd50095dd3d8c"
-dependencies = [
- "aes 0.8.4",
-]
-
-[[package]]
-name = "aes-kw"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41ac571010bd60765c56085a4f1d412012a9be2663b1a2f2b19b49318653fd0d"
@@ -565,7 +556,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -579,8 +570,8 @@ dependencies = [
  "kbs-types",
  "serde",
  "serde_json",
- "sha2 0.10.9",
- "shadow-rs 1.7.1",
+ "sha2 0.11.0",
+ "shadow-rs",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",
@@ -620,7 +611,7 @@ dependencies = [
  "serde_variant",
  "serial_test",
  "sha2 0.11.0",
- "shadow-rs 2.0.0",
+ "shadow-rs",
  "strum 0.28.0",
  "tempfile",
  "testing_logger",
@@ -641,7 +632,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -651,11 +642,11 @@ dependencies = [
  "cfg-if",
  "codicon",
  "crypto",
- "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs.git?rev=2243c67)",
+ "csv-rs",
  "hex",
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
- "iocuddle",
+ "iocuddle 0.2.0",
  "kbs-types",
  "num-traits",
  "nv-attestation-sdk",
@@ -664,13 +655,13 @@ dependencies = [
  "picky-asn1",
  "picky-asn1-der",
  "picky-asn1-x509",
- "s390_pv 0.10.0",
+ "s390_pv",
  "scroll",
  "serde",
  "serde_json",
  "serde_with",
  "sev 6.3.1",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",
@@ -1162,7 +1153,7 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.18",
  "tss-esapi",
- "zerocopy 0.8.48",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1192,7 +1183,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "ureq",
- "zerocopy 0.8.48",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1404,15 +1395,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-padding"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8894febbff9f758034a5b8e12d87918f56dfc64a8e1fe757d65e29041538d93"
-dependencies = [
- "generic-array",
-]
-
-[[package]]
 name = "brotli"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1477,15 +1459,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86566c496f2f47d9b8147a4c8b02ffdb69c919fe0c2b2e7195d22cbba0e635c9"
 dependencies = [
  "bytes",
-]
-
-[[package]]
-name = "cbc"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26b52a9543ae338f279b96b0b9fed9c8093744685043739079ce85cd58f289a6"
-dependencies = [
- "cipher 0.4.4",
 ]
 
 [[package]]
@@ -2055,10 +2028,10 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "aes-gcm",
- "aes-kw 0.2.1",
+ "aes-kw",
  "anyhow",
  "base64 0.22.1",
  "concat-kdf",
@@ -2066,12 +2039,12 @@ dependencies = [
  "kbs-types",
  "p256",
  "p521",
+ "rand 0.10.1",
  "rand 0.8.6",
- "rand 0.9.4",
  "rsa",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "strum 0.28.0",
  "zeroize",
 ]
@@ -2135,7 +2108,8 @@ dependencies = [
 [[package]]
 name = "csv-rs"
 version = "0.1.0"
-source = "git+https://github.com/openanolis/csv-rs.git?rev=2243c67#2243c67bc9c77794bd070cd0a8fd7ae26e7c77a3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed4c8d1a3c3a3573d7d33a74f612a0f1d532ef0de4eebf935374bad348df974e"
 dependencies = [
  "bincode 1.3.3",
  "bitfield 0.13.2",
@@ -2145,33 +2119,7 @@ dependencies = [
  "hex",
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
- "iocuddle",
- "libc",
- "log",
- "openssl",
- "openssl-sys",
- "rand 0.8.6",
- "serde",
- "serde-big-array",
- "serde_bytes",
- "static_assertions",
- "tokio",
-]
-
-[[package]]
-name = "csv-rs"
-version = "0.1.0"
-source = "git+https://github.com/openanolis/csv-rs?rev=b67a07e#b67a07e4a42030ecd1b35bb281f3e778aeefec81"
-dependencies = [
- "bincode 1.3.3",
- "bitfield 0.13.2",
- "bitflags 1.3.2",
- "codicon",
- "dirs 5.0.1",
- "hex",
- "hyper 0.14.32",
- "hyper-tls 0.5.0",
- "iocuddle",
+ "iocuddle 0.1.1",
  "libc",
  "log",
  "openssl",
@@ -2412,15 +2360,6 @@ dependencies = [
  "rustc_version",
  "syn 2.0.117",
  "unicode-xid",
-]
-
-[[package]]
-name = "des"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffdd80ce8ce993de27e9f063a444a4d53ce8e8db4c1f00cc03af5ad5a9867a1e"
-dependencies = [
- "cipher 0.4.4",
 ]
 
 [[package]]
@@ -3145,7 +3084,7 @@ checksum = "6ea2d84b969582b4b1864a92dc5d27cd2b77b622a8d79306834f1be5ba20d84b"
 dependencies = [
  "cfg-if",
  "crunchy",
- "zerocopy 0.8.48",
+ "zerocopy",
 ]
 
 [[package]]
@@ -3749,7 +3688,6 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"
 dependencies = [
- "block-padding",
  "generic-array",
 ]
 
@@ -3819,6 +3757,12 @@ name = "iocuddle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8972d5be69940353d5347a1344cb375d9b457d6809b428b05bb1ca2fb9ce007"
+
+[[package]]
+name = "iocuddle"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6a239b45d1a4561e861ae04c14539ae7b5608290b173a7bfbd666c915aeb662"
 
 [[package]]
 name = "ipnet"
@@ -4006,7 +3950,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
- "yasna 0.4.0",
+ "yasna",
  "zeroize",
 ]
 
@@ -4091,7 +4035,7 @@ dependencies = [
  "actix-web-httpauth",
  "aes 0.8.4",
  "aes-gcm",
- "aes-kw 0.3.1",
+ "aes-kw",
  "anyhow",
  "async-trait",
  "attestation-service",
@@ -4134,7 +4078,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sha2 0.11.0",
- "shadow-rs 2.0.0",
+ "shadow-rs",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",
@@ -4187,7 +4131,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4201,8 +4145,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_json_canonicalizer",
- "sha2 0.10.9",
- "shadow-rs 1.7.1",
+ "sha2 0.11.0",
+ "shadow-rs",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -4244,7 +4188,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4253,16 +4197,15 @@ dependencies = [
  "chrono",
  "const_format",
  "hex",
- "p12",
+ "openssl",
  "prost",
  "protos",
- "rand 0.9.4",
+ "rand 0.10.1",
  "reqwest 0.13.4",
  "resource_uri",
- "ring",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "strum 0.28.0",
  "thiserror 2.0.18",
  "tokio",
@@ -4271,7 +4214,6 @@ dependencies = [
  "tonic-build",
  "tracing",
  "url",
- "yasna 0.5.2",
 ]
 
 [[package]]
@@ -4752,15 +4694,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_threads"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "nv-attestation-sdk"
 version = "1.2.0"
 source = "git+https://github.com/NVIDIA/attestation-sdk?tag=2026.03.02#0c1be386a8fbb8f2766a6a556d10df86f5fed9d3"
@@ -4902,23 +4835,6 @@ name = "outref"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
-
-[[package]]
-name = "p12"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4873306de53fe82e7e484df31e1e947d61514b6ea2ed6cd7b45d63006fd9224"
-dependencies = [
- "cbc",
- "cipher 0.4.4",
- "des",
- "getrandom 0.2.17",
- "hmac 0.12.1",
- "lazy_static",
- "rc2",
- "sha1 0.10.6",
- "yasna 0.5.2",
-]
 
 [[package]]
 name = "p256"
@@ -5374,7 +5290,7 @@ version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
- "zerocopy 0.8.48",
+ "zerocopy",
 ]
 
 [[package]]
@@ -5505,7 +5421,7 @@ dependencies = [
 [[package]]
 name = "protos"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "prost",
  "tonic",
@@ -5711,15 +5627,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rc2"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62c64daa8e9438b84aaae55010a93f396f8e60e3911590fcba770d04643fc1dd"
-dependencies = [
- "cipher 0.4.4",
-]
-
-[[package]]
 name = "redis"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5834,7 +5741,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "shadow-rs 2.0.0",
+ "shadow-rs",
  "sled",
  "strum 0.28.0",
  "tempfile",
@@ -6059,7 +5966,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=19b727ade7591f6b29e3c092ec6a1b1566f95a62#19b727ade7591f6b29e3c092ec6a1b1566f95a62"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=1fcebcb66a3c21b62e852819d5b55212c90eba2a#1fcebcb66a3c21b62e852819d5b55212c90eba2a"
 dependencies = [
  "anyhow",
  "serde",
@@ -6392,24 +6299,6 @@ checksum = "dd29631678d6fb0903b69223673e122c32e9ae559d0960a38d574695ebc0ea15"
 
 [[package]]
 name = "s390_pv"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f75b3a6c5bb5b3e8e4fdced5e8b406fcfaf909a96975c4010e839799bf25f48"
-dependencies = [
- "byteorder",
- "curl",
- "foreign-types",
- "log",
- "openssl",
- "openssl-sys",
- "s390_pv_core 0.10.0",
- "serde",
- "thiserror 1.0.69",
- "zerocopy 0.7.35",
-]
-
-[[package]]
-name = "s390_pv"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73b3164010c1c8f2555721d3c2297158fc957e751d383b4e617610b40bf40ac6"
@@ -6421,24 +6310,10 @@ dependencies = [
  "log",
  "openssl",
  "openssl-sys",
- "s390_pv_core 0.12.0",
+ "s390_pv_core",
  "serde",
  "thiserror 2.0.18",
- "zerocopy 0.8.48",
-]
-
-[[package]]
-name = "s390_pv_core"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dacc93d1903ab065f327d8c71745a9a48f4e812dd6707cec62538d5a84654627"
-dependencies = [
- "byteorder",
- "libc",
- "log",
- "serde",
- "thiserror 1.0.69",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
@@ -6453,7 +6328,7 @@ dependencies = [
  "regex",
  "serde",
  "thiserror 2.0.18",
- "zerocopy 0.8.48",
+ "zerocopy",
 ]
 
 [[package]]
@@ -6773,7 +6648,7 @@ dependencies = [
  "codicon",
  "dirs 6.0.0",
  "hex",
- "iocuddle",
+ "iocuddle 0.1.1",
  "lazy_static",
  "libc",
  "serde",
@@ -6794,7 +6669,7 @@ dependencies = [
  "byteorder",
  "dirs 6.0.0",
  "hex",
- "iocuddle",
+ "iocuddle 0.1.1",
  "lazy_static",
  "libc",
  "openssl",
@@ -6868,19 +6743,6 @@ checksum = "be176f1a57ce4e3d31c1a166222d9768de5954f811601fb7ca06fc8203905ce1"
 dependencies = [
  "digest 0.11.3",
  "keccak",
-]
-
-[[package]]
-name = "shadow-rs"
-version = "1.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c798acfc78a69c7b038adde44084d8df875555b091da42c90ae46257cdcc41a"
-dependencies = [
- "const_format",
- "git2",
- "is_debug",
- "time",
- "tzdb",
 ]
 
 [[package]]
@@ -7558,9 +7420,7 @@ checksum = "743bd48c283afc0388f9b8827b976905fb217ad9e647fae3a379a9283c4def2c"
 dependencies = [
  "deranged",
  "itoa",
- "libc",
  "num-conv",
- "num_threads",
  "powerfmt",
  "serde_core",
  "time-core",
@@ -8027,32 +7887,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
 
 [[package]]
-name = "tz-rs"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fc6c929ffa10fb34f4a3c7e9a73620a83ef2e85e47f9ec3381b8289e6762f42"
-
-[[package]]
-name = "tzdb"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56d4e985b6dda743ae7fd4140c28105316ffd75bc58258ee6cc12934e3eb7a0c"
-dependencies = [
- "iana-time-zone",
- "tz-rs",
- "tzdb_data",
-]
-
-[[package]]
-name = "tzdb_data"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "febaa995f6852367564e16c3369988b99d471d43ed12b1255b8d294661797f1c"
-dependencies = [
- "tz-rs",
-]
-
-[[package]]
 name = "ucd-trie"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8275,7 +8109,7 @@ dependencies = [
  "ccatoken",
  "cfg-if",
  "codicon",
- "csv-rs 0.1.0 (git+https://github.com/openanolis/csv-rs?rev=b67a07e)",
+ "csv-rs",
  "ear",
  "eventlog",
  "hex",
@@ -8288,7 +8122,7 @@ dependencies = [
  "reqwest 0.13.4",
  "reqwest-middleware",
  "rstest",
- "s390_pv 0.12.0",
+ "s390_pv",
  "scroll",
  "serde",
  "serde_json",
@@ -8972,12 +8806,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "yasna"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e17bb3549cc1321ae1296b9cdc2698e2b6cb1992adfa19a8c72e5b7a738f44cd"
-
-[[package]]
 name = "yoke"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9002,32 +8830,11 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
-dependencies = [
- "byteorder",
- "zerocopy-derive 0.7.35",
-]
-
-[[package]]
-name = "zerocopy"
 version = "0.8.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eed437bf9d6692032087e337407a86f04cd8d6a16a37199ed57949d415bd68e9"
 dependencies = [
- "zerocopy-derive 0.8.48",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
+ "zerocopy-derive",
 ]
 
 [[package]]
