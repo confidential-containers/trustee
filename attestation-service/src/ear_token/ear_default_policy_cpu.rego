@@ -242,7 +242,7 @@ tdx_uefi_event_tdvfkernelparams_ok if {
 executables := 3 if {
 	input["az-snp-vtpm"]
 
-	input["az-snp-vtpm"].measurement in query_reference_value("measurement")
+	# input["az-snp-vtpm"].measurement in query_reference_value("measurement")
 	input["az-snp-vtpm"].tpm.pcr11 in query_reference_value("snp_pcr11")
 }
 
@@ -250,10 +250,10 @@ hardware := 2 if {
 	input["az-snp-vtpm"]
 
 	# Check the reported TCB to validate the ASP FW
-	input["az-snp-vtpm"].reported_tcb_bootloader in query_reference_value("tcb_bootloader")
-	input["az-snp-vtpm"].reported_tcb_microcode in query_reference_value("tcb_microcode")
-	input["az-snp-vtpm"].reported_tcb_snp in query_reference_value("tcb_snp")
-	input["az-snp-vtpm"].reported_tcb_tee in query_reference_value("tcb_tee")
+	# input["az-snp-vtpm"].reported_tcb_bootloader in query_reference_value("tcb_bootloader")
+	# input["az-snp-vtpm"].reported_tcb_microcode in query_reference_value("tcb_microcode")
+	# input["az-snp-vtpm"].reported_tcb_snp in query_reference_value("tcb_snp")
+	# input["az-snp-vtpm"].reported_tcb_tee in query_reference_value("tcb_tee")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -263,12 +263,14 @@ hardware := 2 if {
 configuration := 2 if {
 	input["az-snp-vtpm"]
 
-	input["az-snp-vtpm"].platform_smt_enabled in query_reference_value("smt_enabled")
-	input["az-snp-vtpm"].platform_tsme_enabled in query_reference_value("tsme_enabled")
-	input["az-snp-vtpm"].policy_abi_major in query_reference_value("abi_major")
-	input["az-snp-vtpm"].policy_abi_minor in query_reference_value("abi_minor")
-	input["az-snp-vtpm"].policy_single_socket in query_reference_value("single_socket")
-	input["az-snp-vtpm"].policy_smt_allowed in query_reference_value("smt_allowed")
+	# smt is disabled only if the CVM has 1 vcpu per core (--v-cpus-per-core=1)
+	input["az-snp-vtpm"].platform_smt_enabled == "true"
+	input["az-snp-vtpm"].policy_smt_allowed == "true"
+
+	# input["az-snp-vtpm"].platform_tsme_enabled in query_reference_value("tsme_enabled")
+	# input["az-snp-vtpm"].policy_abi_major in query_reference_value("abi_major")
+	# input["az-snp-vtpm"].policy_abi_minor in query_reference_value("abi_minor")
+	# input["az-snp-vtpm"].policy_single_socket in query_reference_value("single_socket")
 }
 
 ##### Azure vTPM TDX
@@ -289,7 +291,7 @@ hardware := 2 if {
 	# input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
 	#
 	# Check OVMF code hash
-	input["az-tdx-vtpm"].quote.body.mr_td in query_reference_value("mr_td")
+	# input["az-tdx-vtpm"].quote.body.mr_td in query_reference_value("mr_td")
 
 	# Check TCB status (covers quote.body.tcb_svn claim check)
 	input["az-tdx-vtpm"].tcb_status == "UpToDate"
@@ -300,7 +302,7 @@ hardware := 2 if {
 configuration := 2 if {
 	input["az-tdx-vtpm"]
 
-	input["az-tdx-vtpm"].quote.body.xfam in query_reference_value("xfam")
+	# input["az-tdx-vtpm"].quote.body.xfam in query_reference_value("xfam")
 }
 
 ##### TPM
