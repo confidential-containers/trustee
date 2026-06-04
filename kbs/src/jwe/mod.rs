@@ -346,10 +346,9 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
             (crv, alg) => bail!("curve {crv} and algorithm {alg} is not supported"),
         }
         
-        #[allow(unused_variables)]
-        TeePubKey::AKP { alg, public_key } => match &alg[..] {            
+        TeePubKey::AKP { alg, public_key:_public_key } => match &alg[..] {            
             #[cfg(feature = "pqc-experimental")]
-            akp::ML_KEM_768_A192KW_ALGORITHM => akp::ml_kem_768_a192kw(&public_key, payload_data),
+            akp::ML_KEM_768_A192KW_ALGORITHM => akp::ml_kem_768_a192kw(&_public_key, payload_data),
             others => bail!("pqc-experimental feature not enabled or algorithm {others} is not supported"),
         },
         
