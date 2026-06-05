@@ -18,8 +18,19 @@ all-verifier = [
     "nvidia-verifier",
     "tpm-verifier",
 ]
-tdx-verifier = ["eventlog", "scroll", "intel-tee-quote-verification-rs", "asn1-rs", "x509-parser"]
-sgx-verifier = ["scroll", "intel-tee-quote-verification-rs", "asn1-rs", "x509-parser"]
+tdx-verifier = [
+    "eventlog",
+    "scroll",
+    "intel-tee-quote-verification-rs",
+    "asn1-rs",
+    "x509-parser",
+]
+sgx-verifier = [
+    "scroll",
+    "intel-tee-quote-verification-rs",
+    "asn1-rs",
+    "x509-parser",
+]
 az-snp-vtpm-verifier = [
     "az-snp-vtpm",
     "serde_with",
@@ -59,7 +70,7 @@ az-tdx-vtpm = { version = "0.8.1", default-features = false, features = [
 base64.workspace = true
 cfg-if.workspace = true
 codicon = { version = "3.0", optional = true }
-csv-rs = { git = "https://github.com/openanolis/csv-rs", rev = "b67a07e", optional = true, default-features = false, features = [
+csv-rs = { version = "0.1.0", optional = true, default-features = false, features = [
     "network",
 ] }
 eventlog = { path = "../eventlog", optional = true }
@@ -98,7 +109,7 @@ http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, feat
     "manager-moka",
     "url-standard",
 ] }
-bitflags = { version = "2.11.0", features = ["serde"] }
+bitflags = { version = "2.12.1", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
 
