@@ -28,7 +28,7 @@ assert-json-diff = "2.0.2"
 async-trait = "0.1.88"
 base64 = "0.22.1"
 cfg-if = "1.0.4"
-chrono = "0.4.44"
+chrono = "0.4.45"
 clap = { version = "4", features = ["derive"] }
 config = "0.15.23"
 educe = "0.6"
@@ -59,7 +59,7 @@ reqwest = { version = "0.13", default-features = false, features = [
 rstest = "0.26.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.150"
-serde_with = { version = "3.20.0", features = ["base64", "hex"] }
+serde_with = { version = "3.21.0", features = ["base64", "hex"] }
 serial_test = { version = "3.5.0", features = ["async"] }
 sha2 = "0.11"
 shadow-rs = "2.0.0"
