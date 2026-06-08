@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, bail, Context, Result};
+use bitflags::bitflags;
 use core::fmt;
 use scroll::Pread;
 use std::mem::size_of;
@@ -410,6 +411,31 @@ pub(crate) enum Quote {
     },
 }
 
+macro_rules! body_field {
+    ($r: ident) => {
+        pub(crate) fn $r(&self) -> &[u8] {
+            match self {
+                Quote::V3 { .. } => unreachable!("TDX field not available on SGX v3 quote"),
+                Quote::V4 { body, .. } => &body.$r,
+                Quote::V5 { body, .. } => match body {
+                    QuoteV5Body::Tdx10(body) => &body.$r,
+                    QuoteV5Body::Tdx15(body) => &body.$r,
+                },
+            }
+        }
+    };
+}
+
+impl Quote {
+    body_field!(report_data);
+    body_field!(mr_config_id);
+    body_field!(rtmr_0);
+    body_field!(rtmr_1);
+    body_field!(rtmr_2);
+    body_field!(rtmr_3);
+    body_field!(td_attributes);
+}
+
 impl Quote {
     pub(crate) fn cert_data(&self) -> &QuoteCertificationData {
         match self {
@@ -608,6 +634,17 @@ pub(crate) fn parse_quote(quote_bin: &[u8]) -> Result<Quote> {
             })
         }
         (v, t) => bail!("unsupported quote version {v} / tee_type {t:#010x}"),
+    }
+}
+
+bitflags! {
+    #[derive(Debug, Clone)]
+    pub struct TdAttributesFlags: u64 {
+        const DEBUG            = 1 << 0;
+        const SEPTVE_DISABLE   = 1 << 28;
+        const PROTECTION_KEYS  = 1 << 30;
+        const KEY_LOCKER       = 1 << 31;
+        const PERFMON          = 1 << 63;
     }
 }
 

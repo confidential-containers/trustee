@@ -11,7 +11,6 @@ use tracing::{debug, instrument};
 
 use super::intel_dcap::{
     ecdsa_quote_verification, extend_using_custom_claims,
-    pck::parse_platform_info,
     quote::{parse_quote, Quote},
 };
 use super::{regularize_data, InitDataHash, ReportData};
@@ -87,8 +86,7 @@ async fn verify_evidence(
         }
     }
 
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
-    let mut claim = claims::generate_parsed_claims(&quote, &platform_info)?;
+    let mut claim = claims::generate_parsed_claims(&quote)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)

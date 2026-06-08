@@ -7,167 +7,19 @@
 //! serialize them into a JSON. The format will look like example available in test data:
 //! ./test_data/parse_tdx_claims_expected.json
 
-use anyhow::{bail, Result};
-use bitflags::{bitflags, Flags};
-use serde_json::{Map, Value};
+use anyhow::Result;
 
-use crate::intel_dcap::quote::Quote;
-use crate::{
-    intel_dcap::{
-        pck::PlatformInfo,
-        quote::{QuoteV5Body, QuoteV5Type},
-    },
-    TeeEvidenceParsedClaim,
-};
+use serde_json::Value;
 
-macro_rules! body_field {
-    ($r: ident) => {
-        pub(crate) fn $r(&self) -> &[u8] {
-            match self {
-                Quote::V3 { .. } => unreachable!("TDX field not available on SGX v3 quote"),
-                Quote::V4 { body, .. } => &body.$r,
-                Quote::V5 { body, .. } => match body {
-                    QuoteV5Body::Tdx10(body) => &body.$r,
-                    QuoteV5Body::Tdx15(body) => &body.$r,
-                },
-            }
-        }
-    };
-}
+use crate::{intel_dcap::quote::Quote, TeeEvidenceParsedClaim};
 
-impl Quote {
-    body_field!(report_data);
-    body_field!(mr_config_id);
-    body_field!(rtmr_0);
-    body_field!(rtmr_1);
-    body_field!(rtmr_2);
-    body_field!(rtmr_3);
-    body_field!(td_attributes);
-}
 use eventlog::CcEventLog;
-
-macro_rules! parse_claim {
-    ($map_name: ident, $key_name: literal, $field: ident) => {
-        $map_name.insert($key_name.to_string(), serde_json::Value::Object($field))
-    };
-    ($map_name: ident, $key_name: literal, $field: expr) => {
-        $map_name.insert(
-            $key_name.to_string(),
-            serde_json::Value::String(hex::encode($field)),
-        )
-    };
-}
 
 pub fn generate_parsed_claim(
     quote: &Quote,
     cc_eventlog: Option<CcEventLog>,
-    platform_info: &PlatformInfo,
 ) -> Result<TeeEvidenceParsedClaim> {
-    let mut quote_map = Map::new();
-    let mut quote_body = Map::new();
-    let mut quote_header = Map::new();
-
-    match &quote {
-        Quote::V3 { .. } => bail!("expected TDX quote (v4/v5), got SGX quote (v3)"),
-        Quote::V4 { header, body, .. } => {
-            parse_claim!(quote_header, "version", b"\x04\x00");
-            parse_claim!(quote_header, "att_key_type", header.att_key_type);
-            parse_claim!(quote_header, "tee_type", header.tee_type);
-            parse_claim!(quote_header, "reserved", header.reserved);
-            parse_claim!(quote_header, "vendor_id", header.vendor_id);
-            parse_claim!(quote_header, "user_data", header.user_data);
-            parse_claim!(quote_body, "tcb_svn", body.tcb_svn);
-            parse_claim!(quote_body, "mr_seam", body.mr_seam);
-            parse_claim!(quote_body, "mrsigner_seam", body.mrsigner_seam);
-            parse_claim!(quote_body, "seam_attributes", body.seam_attributes);
-            parse_claim!(quote_body, "td_attributes", body.td_attributes);
-            parse_claim!(quote_body, "xfam", body.xfam);
-            parse_claim!(quote_body, "mr_td", body.mr_td);
-            parse_claim!(quote_body, "mr_config_id", body.mr_config_id);
-            parse_claim!(quote_body, "mr_owner", body.mr_owner);
-            parse_claim!(quote_body, "mr_owner_config", body.mr_owner_config);
-            parse_claim!(quote_body, "rtmr_0", body.rtmr_0);
-            parse_claim!(quote_body, "rtmr_1", body.rtmr_1);
-            parse_claim!(quote_body, "rtmr_2", body.rtmr_2);
-            parse_claim!(quote_body, "rtmr_3", body.rtmr_3);
-            parse_claim!(quote_body, "report_data", body.report_data);
-
-            parse_claim!(quote_map, "header", quote_header);
-            parse_claim!(quote_map, "body", quote_body);
-        }
-        Quote::V5 {
-            header,
-            r#type,
-            size,
-            body,
-            ..
-        } => {
-            parse_claim!(quote_header, "version", b"\x05\x00");
-            parse_claim!(quote_header, "att_key_type", header.att_key_type);
-            parse_claim!(quote_header, "tee_type", header.tee_type);
-            parse_claim!(quote_header, "reserved", header.reserved);
-            parse_claim!(quote_header, "vendor_id", header.vendor_id);
-            parse_claim!(quote_header, "user_data", header.user_data);
-            parse_claim!(
-                quote_map,
-                "type",
-                match r#type {
-                    QuoteV5Type::TDX10 => 2u16.to_le_bytes(),
-                    QuoteV5Type::TDX15 => 3u16.to_le_bytes(),
-                }
-            );
-            parse_claim!(quote_map, "size", &size[..]);
-            match body {
-                QuoteV5Body::Tdx10(body) => {
-                    parse_claim!(quote_body, "tcb_svn", body.tcb_svn);
-                    parse_claim!(quote_body, "mr_seam", body.mr_seam);
-                    parse_claim!(quote_body, "mrsigner_seam", body.mrsigner_seam);
-                    parse_claim!(quote_body, "seam_attributes", body.seam_attributes);
-                    parse_claim!(quote_body, "td_attributes", body.td_attributes);
-                    parse_claim!(quote_body, "xfam", body.xfam);
-                    parse_claim!(quote_body, "mr_td", body.mr_td);
-                    parse_claim!(quote_body, "mr_config_id", body.mr_config_id);
-                    parse_claim!(quote_body, "mr_owner", body.mr_owner);
-                    parse_claim!(quote_body, "mr_owner_config", body.mr_owner_config);
-                    parse_claim!(quote_body, "rtmr_0", body.rtmr_0);
-                    parse_claim!(quote_body, "rtmr_1", body.rtmr_1);
-                    parse_claim!(quote_body, "rtmr_2", body.rtmr_2);
-                    parse_claim!(quote_body, "rtmr_3", body.rtmr_3);
-                    parse_claim!(quote_body, "report_data", body.report_data);
-
-                    parse_claim!(quote_map, "header", quote_header);
-                    parse_claim!(quote_map, "body", quote_body);
-                }
-                QuoteV5Body::Tdx15(body) => {
-                    parse_claim!(quote_body, "tcb_svn", body.tcb_svn);
-                    parse_claim!(quote_body, "mr_seam", body.mr_seam);
-                    parse_claim!(quote_body, "mrsigner_seam", body.mrsigner_seam);
-                    parse_claim!(quote_body, "seam_attributes", body.seam_attributes);
-                    parse_claim!(quote_body, "td_attributes", body.td_attributes);
-                    parse_claim!(quote_body, "xfam", body.xfam);
-                    parse_claim!(quote_body, "mr_td", body.mr_td);
-                    parse_claim!(quote_body, "mr_config_id", body.mr_config_id);
-                    parse_claim!(quote_body, "mr_owner", body.mr_owner);
-                    parse_claim!(quote_body, "mr_owner_config", body.mr_owner_config);
-                    parse_claim!(quote_body, "rtmr_0", body.rtmr_0);
-                    parse_claim!(quote_body, "rtmr_1", body.rtmr_1);
-                    parse_claim!(quote_body, "rtmr_2", body.rtmr_2);
-                    parse_claim!(quote_body, "rtmr_3", body.rtmr_3);
-                    parse_claim!(quote_body, "report_data", body.report_data);
-
-                    parse_claim!(quote_body, "tee_tcb_svn2", body.tee_tcb_svn2);
-                    parse_claim!(quote_body, "mr_servicetd", body.mr_servicetd);
-
-                    parse_claim!(quote_map, "header", quote_header);
-                    parse_claim!(quote_map, "body", quote_body);
-                }
-            }
-        }
-    }
-
-    let td_attributes = parse_td_attributes(quote.td_attributes())?;
-
-    let mut claims = Map::new();
+    let mut claims = quote.generate_parsed_claim()?;
 
     // Claims from EventLog.
     if let Some(ccel) = cc_eventlog {
@@ -175,44 +27,7 @@ pub fn generate_parsed_claim(
         claims.insert("uefi_event_logs".to_string(), result);
     }
 
-    parse_claim!(claims, "quote", quote_map);
-    parse_claim!(claims, "td_attributes", td_attributes);
-
-    parse_claim!(claims, "report_data", quote.report_data());
-    parse_claim!(claims, "init_data", quote.mr_config_id());
-
-    if let Some(piid) = platform_info.platform_instance_id {
-        parse_claim!(claims, "platform_instance_id", &piid[..]);
-    }
-
     Ok(Value::Object(claims) as TeeEvidenceParsedClaim)
-}
-
-bitflags! {
-    #[derive(Debug, Clone)]
-    struct TdAttributesFlags: u64 {
-        const DEBUG            = 1 << 0;
-        const SEPTVE_DISABLE   = 1 << 28;
-        const PROTECTION_KEYS  = 1 << 30;
-        const KEY_LOCKER       = 1 << 31;
-        const PERFMON          = 1 << 63;
-    }
-}
-
-fn parse_td_attributes(data: &[u8]) -> Result<Map<String, Value>> {
-    let arr = <[u8; 8]>::try_from(data)?;
-    let td = TdAttributesFlags::from_bits_retain(u64::from_le_bytes(arr));
-    let attribs = TdAttributesFlags::FLAGS
-        .iter()
-        .map(|f| {
-            (
-                f.name().to_string().to_lowercase(),
-                Value::Bool(td.contains(f.value().clone())),
-            )
-        })
-        .collect();
-
-    Ok(attribs)
 }
 
 #[cfg(test)]
@@ -292,7 +107,6 @@ mod tests {
     use assert_json_diff::assert_json_eq;
     use serde_json::Value;
 
-    use crate::intel_dcap::pck::parse_platform_info;
     use crate::intel_dcap::quote::parse_quote;
     use crate::tdx::claims::PlatformConfigInfoError;
 
@@ -307,11 +121,7 @@ mod tests {
         let ccel_bin = std::fs::read("./test_data/CCEL_data").expect("read ccel failed");
         let quote = parse_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
-        let platform_info =
-            parse_platform_info(&quote.cert_data().qe_certification_data.certificates)
-                .expect("parse platform info");
-        let claims =
-            generate_parsed_claim(&quote, Some(ccel), &platform_info).expect("parse claim failed");
+        let claims = generate_parsed_claim(&quote, Some(ccel)).expect("parse claim failed");
         let expected_json_str =
             std::fs::read_to_string("./test_data/parse_tdx_claims_expected.json")
                 .expect("read expected json output failed");
