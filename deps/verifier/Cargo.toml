@@ -116,7 +116,7 @@ http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, feat
 chrono = { workspace = true, features = ["serde"] }
 urlencoding = "2.1.3"
 url = "2.5.7"
-bitflags = { version = "2.12.1", features = ["serde"] }
+bitflags = { version = "2.13.0", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
 
