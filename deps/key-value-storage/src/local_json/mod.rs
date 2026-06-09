@@ -85,7 +85,9 @@ impl KeyValueStorage for LocalJson {
             return Ok(SetResult::AlreadyExists);
         }
 
-        items.insert(key.to_string(), value_b64);
+        if items.insert(key.to_string(), value_b64).is_some() {
+            debug!(key = key, "key already exists, overwriting");
+        }
 
         let new_contents =
             serde_json::to_string(&items).map_err(|e| KeyValueStorageError::SetKeyFailed {
