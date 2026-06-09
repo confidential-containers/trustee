@@ -11,7 +11,7 @@ use std::{fs, path::PathBuf};
 use async_trait::async_trait;
 use serde::Deserialize;
 use tokio::sync::RwLock;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use crate::{
     is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
@@ -71,18 +71,20 @@ impl KeyValueStorage for LocalFs {
         let _ = self.lock.write().await;
         let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
 
-        if parameters.overwrite || !file_path.exists() {
-            tokio::fs::write(&file_path, value).await.map_err(|e| {
-                KeyValueStorageError::SetKeyFailed {
-                    source: e.into(),
-                    key: key.to_string(),
-                }
-            })?;
-        }
-
         if !parameters.overwrite && file_path.exists() {
             return Ok(SetResult::AlreadyExists);
         }
+
+        if file_path.exists() {
+            debug!(file_path =? file_path, "file already exists, overwriting");
+        }
+
+        tokio::fs::write(&file_path, value).await.map_err(|e| {
+            KeyValueStorageError::SetKeyFailed {
+                source: e.into(),
+                key: key.to_string(),
+            }
+        })?;
 
         Ok(SetResult::Inserted)
     }
