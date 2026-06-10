@@ -109,6 +109,7 @@ AS verifier config JSON fragment
 */}}
 {{- define "coco-trustee.as.verifier" -}}
 {{- $nv := dig "verifier" "nvidia" (dict) (default dict .Values.as) | default dict -}}
+{{- $dcap := dig "verifier" "dcap" (dict) (default dict .Values.as) | default dict -}}
 {{- if $nv -}}
 {{- if eq $nv.type "Remote" -}}
 {{- $_ := required "as.verifier.nvidia.verifierUrl must be set when as.verifier.nvidia.type is Remote" (trim (default "" $nv.verifierUrl)) -}}
@@ -118,6 +119,20 @@ AS verifier config JSON fragment
     "type": "{{ $nvType }}"
     {{- if eq $nv.type "Remote" }},
     "verifier_url": "{{ $nv.verifierUrl }}"
+    {{- end }}
+}
+{{- end -}}
+{{- if and $dcap $nv }},
+{{- end }}
+{{ if $dcap -}}
+{{- $_ := required "as.verifier.dcap.collateral_service must be set when as.verifier.dcap is set" (trim (default "" $dcap.collateral_service)) -}}
+"dcap_verifier": {
+    "collateral_service": "{{ $dcap.collateral_service }}"
+    {{- if hasKey $dcap "use_secure_cert" }},
+    "use_secure_cert": {{ $dcap.use_secure_cert }}
+    {{- end }}
+    {{- if $dcap.tcb_update_type }},
+    "tcb_update_type": "{{ $dcap.tcb_update_type }}"
     {{- end }}
 }
 {{- end -}}

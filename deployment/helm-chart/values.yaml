@@ -69,6 +69,12 @@ as:
     nvidia:
       type: "Local"
       verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
+    # If dcap configuration is provided, `collateral_service` must be set.
+    dcap:
+      collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
+      use_secure_cert: false
+      tcb_update_type: "early"
+
   service:
     type: ClusterIP
     port: 50004
