@@ -78,7 +78,7 @@ zeroize.workspace = true
 policy-engine.path = "../deps/policy-engine"
 prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
-regex = "1.12.3"
+regex = "1.12.4"
 regorus.workspace = true
 reqwest = { workspace = true, features = ["default-tls"] }
 rsa.workspace = true
