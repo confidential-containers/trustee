@@ -34,7 +34,7 @@ kbs:
       role: admin
   image:
     repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "latest"
   service:
     # Internal KBS Service remains ClusterIP. Set this to true to create an extra external LoadBalancer Service.
@@ -43,17 +43,24 @@ kbs:
     loadBalancerAnnotations: {}
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 250m
+      memory: 256Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: "2"
+      memory: 2Gi
   resourceRepository: []
+
+  # Extra environment variables to inject into the KBS container.
+  extraEnvVars: []
+  # Extra volumes to attach to the KBS pod.
+  extraVolumes: []
+  # Extra volume mounts for the KBS container.
+  extraVolumeMounts: []
 
 as:
   image:
     repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "latest"
   service:
     type: ClusterIP
@@ -61,16 +68,19 @@ as:
     loadBalancerAnnotations: {}
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+  # Extra environment variables for the Attestation Service container (e.g. HTTP(S)_PROXY and NO_PROXY).
+  extraEnvVars: []
 
 rvps:
   image:
     repository: ghcr.io/confidential-containers/staged-images/rvps
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "latest"
   service:
     type: ClusterIP
@@ -83,8 +93,10 @@ rvps:
       cpu: 100m
       memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: "1"
+      memory: 1Gi
+  # Extra environment variables for the RVPS container (e.g. HTTP(S)_PROXY and NO_PROXY).
+  extraEnvVars: []
 
 # If `secrets.useEphemeralGeneratedKeys` is true, a Helm hook Job generates ephemeral demo keys into a release-scoped Secret.
 # The keygen image is used to generate the demo keys, and the kubectl image is used to create the release-scoped Secret.
