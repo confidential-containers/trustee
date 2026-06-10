@@ -328,6 +328,9 @@ impl EarAttestationTokenBroker {
         extensions.register("exp", 4, RawValueKind::Integer)?;
         extensions.set_by_name("exp", RawValue::Integer(exp.unix_timestamp()))?;
 
+        extensions.register("iss", 1, RawValueKind::String)?;
+        extensions.set_by_name("iss", RawValue::String(self.config.issuer_name.clone()))?;
+
         let ear = Ear {
             profile: self.config.profile_name.clone(),
             iat: now.unix_timestamp(),
