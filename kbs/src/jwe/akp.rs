@@ -19,7 +19,7 @@ use aes_gcm::{
     Aes256Gcm, KeyInit, Nonce,
 };
 use aes_kw::{KeyInit as AesKwKeyInit, KwAes192};
-use anyhow::{bail, anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response};
 use ml_kem::{Encapsulate, EncapsulationKey, Key, MlKem768};
@@ -58,8 +58,8 @@ fn kmac256_kdf(shared_secret: &[u8], alg: &str, out_len_bytes: usize) -> Result<
     x.extend_from_slice(alg_bytes);
     x.extend_from_slice(&keydatalen_bits);
 
-    let mut kmac = Kmac256::new(shared_secret, b"")
-        .map_err(|e| anyhow!("KMAC256 init failed: {e:?}"))?;
+    let mut kmac =
+        Kmac256::new(shared_secret, b"").map_err(|e| anyhow!("KMAC256 init failed: {e:?}"))?;
     kmac.update(&x);
     let mut out = vec![0u8; out_len_bytes];
     kmac.finalize_into(&mut out);
