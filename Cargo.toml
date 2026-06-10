@@ -31,6 +31,7 @@ cfg-if = "1.0.4"
 chrono = "0.4.45"
 clap = { version = "4", features = ["derive"] }
 config = "0.15.23"
+const_format = "0.2.36"
 educe = "0.6"
 ear = "0.5.0"
 hex = "0.4.3"
@@ -52,10 +53,7 @@ regorus = { version = "0.10.1", default-features = false, features = [
     "time",
     "std",
 ] }
-reqwest = { version = "0.13", default-features = false, features = [
-    "default-tls",
-    "json",
-] }
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
 rstest = "0.26.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.150"

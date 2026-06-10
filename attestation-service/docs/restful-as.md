@@ -21,7 +21,6 @@ Users can use a [community version of restful CoCoAS image](https://github.com/c
 ```shell
 # run restful CoCoAS server locally
 docker run -d \
-  -e QCNL_CONF_PATH=/run/dcap/qcnl.conf --tmpfs /run/dcap \
   -p 8080:8080 \
   ghcr.io/confidential-containers/staged-images/coco-as-restful:latest
 ```

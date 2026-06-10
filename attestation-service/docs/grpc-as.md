@@ -20,7 +20,6 @@ Users can use a [community version of gRPC CoCoAS image](https://github.com/conf
 ```shell
 # run gRPC CoCoAS server locally
 docker run -d \
-  -e QCNL_CONF_PATH=/run/dcap/qcnl.conf --tmpfs /run/dcap \
   -p 50004:50004 \
   ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest
 ```

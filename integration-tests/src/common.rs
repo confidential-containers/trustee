@@ -2,10 +2,11 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use const_format::concatcp;
 use kbs::admin::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
-use kbs::config::{HttpServerConfig, TlsConfig};
 use kbs::config::KbsConfig;
+use kbs::config::{HttpServerConfig, TlsConfig};
 use kbs::token::AttestationTokenVerifierConfig;
 use kbs::ApiServer;
 
@@ -31,16 +32,27 @@ use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use openssl::pkey::PKey;
 use serde_json::json;
 use std::sync::{Arc, Once};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
+use tokio::sync::oneshot;
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use tonic::transport::Server;
 use tracing::{info, Level};
 use tracing_subscriber::fmt;
 
-const KBS_URL: &str = "http://127.0.0.1:8081";
-const RVPS_URL: &str = "http://127.0.0.1:51003";
-const WAIT_TIME: u64 = 5000;
+const KBS_TCP: &str = "127.0.0.1:8081";
+const KBS_URL: &str = concatcp!("http://", KBS_TCP);
+
+const RVPS_TCP: &str = "127.0.0.1:51003";
+const RVPS_URL: &str = concatcp!("http://", RVPS_TCP);
+
+const READY_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const READY_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Shared file lock key for integration tests that bind fixed local ports.
+pub const INTEGRATION_PORTS_LOCK: &str = "integration_ports";
+
 pub const ADMIN_ROLE: &str = "tester";
 pub const ADMIN_ISSUER: &str = "issuer";
 pub const ADMIN_AUDIENCE: &str = "audience";
@@ -117,10 +129,58 @@ pub struct TestHarness {
     pub kbs_config: KbsConfig,
     pub auth_privkey: String,
     kbs_server_handle: actix_web::dev::ServerHandle,
+    rvps_url: Option<String>,
+    rvps_shutdown: Option<oneshot::Sender<()>>,
+    rvps_join: Option<JoinHandle<()>>,
     _work_dir: TempDir,
 
     // Future tests will use some parameters at runtime
     _test_parameters: TestParameters,
+}
+
+async fn wait_for_tcp(addr: &str) -> Result<()> {
+    let deadline = tokio::time::Instant::now() + READY_TIMEOUT;
+    loop {
+        if tokio::net::TcpStream::connect(addr).await.is_ok() {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            bail!("Timed out waiting for TCP endpoint {addr}");
+        }
+        tokio::time::sleep(READY_POLL_INTERVAL).await;
+    }
+}
+
+async fn wait_for_rvps(url: &str) -> Result<()> {
+    let deadline = tokio::time::Instant::now() + READY_TIMEOUT;
+    loop {
+        if rvps_client::query(url.to_string(), "ready-probe".to_string())
+            .await
+            .is_ok()
+        {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            bail!("Timed out waiting for RVPS at {url}");
+        }
+        tokio::time::sleep(READY_POLL_INTERVAL).await;
+    }
+}
+
+async fn wait_for_reference_value(url: &str, key: &str) -> Result<()> {
+    let deadline = tokio::time::Instant::now() + READY_TIMEOUT;
+    loop {
+        if rvps_client::query(url.to_string(), key.to_string())
+            .await?
+            .is_some()
+        {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            bail!("Timed out waiting for reference value {key} in RVPS at {url}");
+        }
+        tokio::time::sleep(READY_POLL_INTERVAL).await;
+    }
 }
 
 impl TestHarness {
@@ -165,6 +225,10 @@ impl TestHarness {
 
         let attestation_token_config = EarTokenConfiguration::default();
 
+        let mut rvps_url = None;
+        let mut rvps_shutdown = None;
+        let mut rvps_join = None;
+
         // Setup RVPS either remotely or builtin
         let rvps_config = match &test_parameters.rvps_type {
             RvpsType::Builtin => RvpsConfig::BuiltIn {
@@ -191,15 +255,22 @@ impl TestHarness {
                 let inner = Arc::new(RwLock::new(service));
                 let rvps_server = RvpsServer::new(inner.clone());
 
-                let rvps_future = Server::builder()
-                    .add_service(ReferenceValueProviderServiceServer::new(rvps_server))
-                    .serve("127.0.0.1:51003".parse()?);
+                let (shutdown_tx, shutdown_rx) = oneshot::channel();
+                let rvps_addr = RVPS_TCP.parse()?;
+                let join = tokio::spawn(async move {
+                    let _ = Server::builder()
+                        .add_service(ReferenceValueProviderServiceServer::new(rvps_server))
+                        .serve_with_shutdown(rvps_addr, async {
+                            shutdown_rx.await.ok();
+                        })
+                        .await;
+                });
 
-                tokio::spawn(rvps_future);
+                wait_for_rvps(RVPS_URL).await?;
 
-                // Wait for rvps to start
-                let duration = tokio::time::Duration::from_millis(WAIT_TIME);
-                tokio::time::sleep(duration).await;
+                rvps_url = Some(RVPS_URL.to_string());
+                rvps_shutdown = Some(shutdown_tx);
+                rvps_join = Some(join);
 
                 RvpsConfig::GrpcRemote(RvpsRemoteConfig {
                     address: RVPS_URL.to_string(),
@@ -272,7 +343,7 @@ impl TestHarness {
                 timeout: 5,
             },
             http_server: HttpServerConfig {
-                sockets: vec!["127.0.0.1:8081".parse()?],
+                sockets: vec![KBS_TCP.parse()?],
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
@@ -301,17 +372,29 @@ impl TestHarness {
 
         tokio::spawn(kbs_server);
 
+        wait_for_tcp(KBS_TCP).await?;
+
         Ok(TestHarness {
             kbs_config,
             auth_privkey,
             kbs_server_handle: kbs_handle,
+            rvps_url,
+            rvps_shutdown,
+            rvps_join,
             _work_dir: work_dir,
             _test_parameters: test_parameters,
         })
     }
 
-    pub async fn cleanup(&self) -> Result<()> {
+    pub async fn cleanup(mut self) -> Result<()> {
         self.kbs_server_handle.stop(true).await;
+
+        if let Some(tx) = self.rvps_shutdown.take() {
+            let _ = tx.send(());
+        }
+        if let Some(join) = self.rvps_join.take() {
+            let _ = join.await;
+        }
 
         Ok(())
     }
@@ -372,13 +455,16 @@ impl TestHarness {
         Ok(resource_bytes)
     }
 
-    pub async fn wait(&self) {
-        let duration = tokio::time::Duration::from_millis(WAIT_TIME);
-        tokio::time::sleep(duration).await;
+    pub async fn wait(&self) -> Result<()> {
+        wait_for_tcp(KBS_TCP).await?;
+        if let Some(url) = &self.rvps_url {
+            wait_for_rvps(url).await?;
+        }
+        Ok(())
     }
 
     pub async fn set_reference_value(&self, key: String, value: serde_json::Value) -> Result<()> {
-        let provenance = json!({key: value}).to_string();
+        let provenance = json!({&key: value}).to_string();
         let provenance = STANDARD.encode(provenance);
 
         let message = json!({
@@ -387,7 +473,13 @@ impl TestHarness {
             "payload": provenance
         });
 
-        rvps_client::register(RVPS_URL.to_string(), message.to_string()).await?;
+        let rvps_url = self
+            .rvps_url
+            .as_ref()
+            .ok_or_else(|| anyhow!("Reference values require a remote RVPS harness"))?;
+
+        rvps_client::register(rvps_url.clone(), message.to_string()).await?;
+        wait_for_reference_value(rvps_url, &key).await?;
 
         Ok(())
     }

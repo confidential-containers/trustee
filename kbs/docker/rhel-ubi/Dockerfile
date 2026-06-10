@@ -28,7 +28,7 @@ FROM registry.access.redhat.com/ubi9
 # Install runtime dependencies from Intel repo.
 COPY --from=builder /root/sgx_rpm_local_repo /root/sgx_rpm_local_repo
 RUN dnf -y install --nogpgcheck --setopt=install_weak_deps=0 --repofrompath "sgx,file:///root/sgx_rpm_local_repo" \
-libsgx-dcap-default-qpl libsgx-dcap-quote-verify && \
+libsgx-dcap-quote-verify && \
 rm -rf /root/sgx_rpm_local_repo
 
 COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs

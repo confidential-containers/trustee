@@ -5,28 +5,28 @@ use anyhow::{anyhow, bail};
 use intel_tee_quote_verification_rs::{
     quote3_error_t, sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, sgx_ql_request_policy_t,
     sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
-    tee_qv_get_collateral, tee_supp_data_descriptor_t, tee_verify_quote,
+    tee_supp_data_descriptor_t, tee_verify_quote,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::env;
-use std::fs::File;
-use std::io::{ErrorKind, Write};
 use std::mem;
 use std::time::{Duration, SystemTime};
+use strum::Display;
 use tracing::{debug, warn};
 
 mod claims;
+pub(crate) mod collateral;
+pub(crate) mod collateral_service;
 mod error;
-#[cfg(any(feature = "tdx-verifier", feature = "sgx-verifier"))]
 pub(crate) mod pck;
-#[cfg(any(feature = "tdx-verifier", feature = "sgx-verifier"))]
+pub(crate) mod pcs;
 pub(crate) mod quote;
 
 const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certification/v4/";
 
-#[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq, Display)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum TcbUpdateType {
     #[default]
     Early,
@@ -52,36 +52,23 @@ impl Default for QcnlConfig {
     }
 }
 
-pub(crate) fn set_qcnl_config(c: Option<QcnlConfig>) -> Result<(), std::io::Error> {
-    env::var("QCNL_CONF_PATH")
-        .map_err(std::io::Error::other)
-        .and_then(File::create_new)
-        .and_then(|mut f| {
-            f.write_all(
-                serde_json::to_string(&c.unwrap_or_default())
-                    .map_err(|_| std::io::Error::from(ErrorKind::InvalidInput))?
-                    .as_bytes(),
-            )
-        })
-        .inspect_err(|e| match e.kind() {
-            ErrorKind::Other => debug!(
-                "QCNL_CONF_PATH environment variable is not set so configuration was skipped."
-            ),
-            ErrorKind::AlreadyExists => debug!("DCAP QCNL is already configured."),
-            ErrorKind::PermissionDenied => {
-                warn!("DCAP QCNL configuration failed due to permission error.")
-            }
-            ErrorKind::InvalidInput => {
-                warn!("DCAP QCNL configuration failed due to invalid JSON.")
-            }
-            _ => warn!("DCAP QCNL configuration failed due to an unknown error."),
-        })
-        .inspect(|_| debug!("DCAP QCNL configuration was written to $QCNL_CONF_PATH."))
+impl QcnlConfig {
+    /// Build a [`pcs::Pcs`] collateral client from the configured `collateral_service` URL.
+    ///
+    /// A `file://` URL selects the offline file backend; any other URL selects
+    /// the PCS/PCCS HTTPS backend.
+    pub(crate) fn pcs(&self) -> Result<pcs::Pcs, pcs::PcsError> {
+        pcs::Pcs::new(self)
+    }
 }
 
-pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map<String, Value>> {
-    // Call DCAP quote verify library to set QvE loading policy to multi-thread
-    // We only need to set the policy once; otherwise, it will return the error code 0xe00c (SGX_QL_UNSUPPORTED_LOADING_POLICY)
+pub(crate) fn ecdsa_quote_verification(
+    quote: &[u8],
+    collateral: Option<intel_tee_quote_verification_rs::QuoteCollateral>,
+) -> anyhow::Result<Map<String, Value>> {
+    // Call DCAP quote verify library to set QvE loading policy to multi-thread.
+    // We only need to set the policy once; otherwise, it will return the error code
+    // 0xe00c (SGX_QL_UNSUPPORTED_LOADING_POLICY).
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
         match sgx_qv_set_enclave_load_policy(
@@ -116,18 +103,6 @@ pub(crate) async fn ecdsa_quote_verification(quote: &[u8]) -> anyhow::Result<Map
         major_version: 0,
         data_size: supp_size,
         p_data: std::ptr::from_mut(&mut supp_data).cast(),
-    };
-
-    // get collateral
-    let collateral = match tee_qv_get_collateral(quote) {
-        Ok(c) => {
-            debug!("tee_qv_get_collateral successfully returned.");
-            Some(c)
-        }
-        Err(e) => {
-            warn!("tee_qv_get_collateral failed: {}", describe_error(e));
-            None
-        }
     };
 
     // set current time. This is only for sample purposes, in production mode a trusted time should be used.

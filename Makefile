@@ -60,7 +60,7 @@ test-kbs-vault-e2e: kbs-vault-e2e-install-deps kbs-vault-e2e-run
 # KBS Docker Compose e2e (cluster with sample TEE)
 # Uses a temp dir for config/keys and always runs 'docker compose down -v' on exit.
 test-kbs-docker-e2e:
-	cargo build --manifest-path tools/kbs-client/Cargo.toml --no-default-features --release
+	cargo build --manifest-path tools/kbs-client/Cargo.toml --release
 	E2E_DIR=$$(mktemp -d) && \
 	trap "docker compose -f $(CURDIR)/docker-compose.yml --project-directory $$E2E_DIR down -v; sudo rm -rf $$E2E_DIR || true" EXIT && \
 	set -e && \

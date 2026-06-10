@@ -31,12 +31,9 @@ services:
     image: ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest
     environment:
       - RUST_LOG
-      - QCNL_CONF_PATH=/run/dcap/qcnl.conf
     ports:
     - "50004:50004"
     restart: always
-    tmpfs:
-    - /run/dcap:size=50k
     volumes:
     - ./kbs/data/attestation-service:/opt/confidential-containers/attestation-service:rw
     - ./kbs/config/docker-compose/as-config.json:/etc/as-config.json:rw
