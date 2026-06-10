@@ -63,6 +63,16 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ .Values.log_level }}
+            {{- $pgurl := include "coco-trustee.postgresUrlSecretName" . | trim }}
+            {{- $storageBackendIsPostgres := include "coco-trustee.storage.storageBackendIsPostgres" . | trim }}
+            {{- $kbsSessionStorageIsPostgres := include "coco-trustee.kbs.sessionStorageIsPostgres" . | trim }}
+            {{- if or ($storageBackendIsPostgres | default false) ($kbsSessionStorageIsPostgres | default false) }}
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pgurl }}
+                  key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
+            {{- end }}
             {{- with .Values.kbs.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

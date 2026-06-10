@@ -90,6 +90,12 @@ Each helper truncates `coco-trustee.fullname` to leave room for its suffix befor
 {{- define "coco-trustee.names.bootstrapUserKeysSecret" -}}
 {{- printf "%s-bootstrap-user-keys" (include "coco-trustee.fullname" . | trunc 43 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
 {{- end }}
+{{- define "coco-trustee.names.postgres" -}}
+{{- printf "%s-postgres" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+{{- define "coco-trustee.names.postgresInitdb" -}}
+{{- printf "%s-postgres-initdb" .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 
 {{/*
 Fixed workload ports (override only via undocumented values for advanced use).
@@ -102,6 +108,12 @@ Fixed workload ports (override only via undocumented values for advanced use).
 {{- end }}
 {{- define "coco-trustee.port.rvps" -}}
 {{- $s := .Values.rvps.service | default dict }}{{ default 50003 $s.port }}
+{{- end }}
+{{- define "coco-trustee.port.postgres" -}}
+{{- $pg := (.Values.postgresql | default dict) }}
+{{- $ports := dig "service" "ports" dict $pg }}
+{{- $gport := dig "postgresql" "service" "ports" "postgresql" "" (.Values.global | default dict) }}
+{{- default 5432 (coalesce $gport $ports.postgresql) }}
 {{- end }}
 
 {{/*
@@ -158,6 +170,43 @@ Unified storage backend type (single source: `storageBackend.type`).
 {{- if $g.type }}{{ $g.type }}{{- else }}LocalFs{{- end -}}
 {{- end }}
 
+{{- define "coco-trustee.storage.storageBackendIsPostgres" -}}
+{{- $st := include "coco-trustee.storage.type" . | trim }}
+{{- if or (eq $st "Postgres") (eq $st "postgres") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.kbs.sessionStorageIsPostgres" -}}
+{{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+{{- if or (eq $sst "Postgres") (eq $sst "postgres") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.storage.needsPostgres" -}}
+{{- $st := include "coco-trustee.storage.type" . | trim }}
+{{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+{{- if or (eq $st "Postgres") (eq $st "postgres") (eq $sst "Postgres") (eq $sst "postgres") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.postgres.mode" -}}
+{{- $pg := (.Values.storageBackend.postgres | default dict) }}
+{{- $mode := default "internal" $pg.mode }}
+{{- lower $mode }}
+{{- end }}
+
+{{/*
+True when the Bitnami PostgreSQL subchart should be used (in-cluster, non-external).
+*/}}
+{{- define "coco-trustee.postgres.useBitnami" -}}
+{{- $needsPostgres := include "coco-trustee.storage.needsPostgres" . | trim }}
+{{- $mode := include "coco-trustee.postgres.mode" . | trim }}
+{{- if and (eq $needsPostgres "true") (ne $mode "external") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.postgres.initKvTables" -}}
+{{- $pg := (.Values.storageBackend.postgres | default dict) }}
+{{- $pgi := ($pg.internal | default dict) }}
+{{- if (ternary $pgi.initKvTables true (hasKey $pgi "initKvTables")) }}true{{- end }}
+{{- end }}
+
 {{/*
 PVC claim names for local KV backends (LocalFs / LocalJson). Empty => chart uses emptyDir for that workload path.
 KBS may need a claim when main or session storage is local; AS/RVPS follow unified `storageBackend.type` only.
@@ -212,6 +261,51 @@ Fixed on-disk paths for LocalFs / LocalJson (match Trustee images and `key-value
 {{- define "coco-trustee.svc.kbs" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "coco-trustee.names.kbs" .) .Release.Namespace -}}
 {{- end }}
+{{- define "coco-trustee.svc.postgres" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "coco-trustee.names.postgres" .) .Release.Namespace -}}
+{{- end }}
+
+{{- define "coco-trustee.postgres.internalSecretName" -}}
+{{- printf "%s-postgres-auth" (include "coco-trustee.fullname" . | trunc 48 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+{{- define "coco-trustee.postgres.internalUser" -}}
+{{- $auth := dig "auth" dict (.Values.postgresql | default dict) }}
+{{- $gauth := dig "postgresql" "auth" dict (.Values.global | default dict) }}
+{{- default "trustee" (coalesce $gauth.username $auth.username) }}
+{{- end }}
+{{- define "coco-trustee.postgres.internalPassword" -}}
+{{- $auth := dig "auth" dict (.Values.postgresql | default dict) }}
+{{- $gauth := dig "postgresql" "auth" dict (.Values.global | default dict) }}
+{{- default "trustee" (coalesce $gauth.password $auth.password) }}
+{{- end }}
+{{- define "coco-trustee.postgres.internalDatabase" -}}
+{{- $auth := dig "auth" dict (.Values.postgresql | default dict) }}
+{{- $gauth := dig "postgresql" "auth" dict (.Values.global | default dict) }}
+{{- default "trustee" (coalesce $gauth.database $auth.database) }}
+{{- end }}
+
+{{- define "coco-trustee.postgresUrlSecretName" -}}
+{{- $pg := (.Values.storageBackend.postgres | default dict) }}
+{{- $ext := ($pg.external | default dict) }}
+{{- $mode := include "coco-trustee.postgres.mode" . | trim }}
+{{- $needsPostgres := include "coco-trustee.storage.needsPostgres" . | trim }}
+{{- if and (eq $mode "external") (eq $needsPostgres "true") -}}
+{{ required "storageBackend.postgres.external.existingSecretName must be set when storageBackend.postgres.mode=external" (trim (default "" $ext.existingSecretName)) }}
+{{- else -}}
+{{ include "coco-trustee.postgres.internalSecretName" . }}
+{{- end -}}
+{{- end }}
+
+{{- define "coco-trustee.postgresUrlSecretKey" -}}
+{{- $pg := (.Values.storageBackend.postgres | default dict) }}
+{{- $ext := ($pg.external | default dict) }}
+{{- $mode := include "coco-trustee.postgres.mode" . | trim }}
+{{- if eq $mode "external" -}}
+{{ required "storageBackend.postgres.external.existingSecretKey must be set when storageBackend.postgres.mode=external" (trim (default "" $ext.existingSecretKey)) }}
+{{- else -}}
+POSTGRES_URL
+{{- end -}}
+{{- end }}
 
 {{/*
 KBS session storage.
@@ -228,9 +322,12 @@ nothing (e.g. first dry-run), this block is omitted; run helm upgrade again afte
 {{- define "coco-trustee.podHostAliases" -}}
 {{- if .Values.dnsHostAliasWorkaround }}
 {{- $ns := .Release.Namespace }}
+{{- $pg := lookup "v1" "Service" $ns (include "coco-trustee.names.postgres" .) }}
 {{- $rv := lookup "v1" "Service" $ns (include "coco-trustee.names.rvps" .) }}
 {{- $as := lookup "v1" "Service" $ns (include "coco-trustee.names.as" .) }}
 {{- $kbs := lookup "v1" "Service" $ns (include "coco-trustee.names.kbs" .) }}
+{{- $pgip := "" }}
+{{- if $pg }}{{ $pgip = default "" $pg.spec.clusterIP }}{{- end }}
 {{- $rvip := "" }}
 {{- if $rv }}{{ $rvip = default "" $rv.spec.clusterIP }}{{- end }}
 {{- $asip := "" }}
@@ -239,6 +336,12 @@ nothing (e.g. first dry-run), this block is omitted; run helm upgrade again afte
 {{- if $kbs }}{{ $kbsip = default "" $kbs.spec.clusterIP }}{{- end }}
 {{- if and $rv $as $kbs $rvip $asip $kbsip (ne $rvip "None") (ne $asip "None") (ne $kbsip "None") }}
 hostAliases:
+  {{- if and $pg $pgip (ne $pgip "None") (eq (include "coco-trustee.postgres.useBitnami" . | trim) "true") }}
+  - ip: {{ $pgip | quote }}
+    hostnames:
+      - {{ include "coco-trustee.names.postgres" . | quote }}
+      - {{ include "coco-trustee.svc.postgres" . | quote }}
+  {{- end }}
   - ip: {{ $rvip | quote }}
     hostnames:
       - {{ include "coco-trustee.names.rvps" . | quote }}

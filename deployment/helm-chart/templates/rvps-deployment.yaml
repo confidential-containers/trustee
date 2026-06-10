@@ -30,6 +30,20 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if eq (include "coco-trustee.postgres.useBitnami" . | trim) "true" }}
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              until nc -z -w 2 {{ include "coco-trustee.names.postgres" . }} {{ include "coco-trustee.port.postgres" . }}; do
+                echo "waiting for Postgres at {{ include "coco-trustee.names.postgres" . }}:{{ include "coco-trustee.port.postgres" . }}";
+                sleep 2;
+              done
+      {{- end }}
       containers:
         - name: rvps
           securityContext:
@@ -45,6 +59,13 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ .Values.log_level }}
+            {{- if eq (include "coco-trustee.storage.storageBackendIsPostgres" . | trim) "true" }}
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.postgresUrlSecretName" . }}
+                  key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
+            {{- end }}
             {{- with .Values.rvps.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

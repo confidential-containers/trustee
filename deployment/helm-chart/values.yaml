@@ -8,7 +8,7 @@ fullnameOverride: ""
 log_level: info
 dnsHostAliasWorkaround: false
 
-# KBS protocol session store: Memory | LocalJson | LocalFs (empty = same as `storageBackend.type`).
+# KBS protocol session store: Memory | LocalJson | LocalFs | Postgres (empty = same as `storageBackend.type`).
 sessionStorageType: "Memory"
 
 # Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
@@ -24,6 +24,45 @@ storageBackend:
       kbs: ""
       as: ""
       rvps: ""
+  postgres:
+    # internal | external
+    mode: internal
+    external:
+      # Required when mode is external.
+      existingSecretName: ""
+      existingSecretKey: ""
+    # When 
+    internal:
+      # Trustee-only: mount KV init SQL from files/postgres-initkv.sql (see postgresql.primary.initdb.scriptsConfigMap).
+      initKvTables: true
+
+# Bitnami PostgreSQL subchart (https://artifacthub.io/packages/helm/bitnami/postgresql).
+# Single source for bundled Postgres auth, persistence, and resources when `mode` is `internal`.
+# Set `enabled: true` when `storageBackend.type` or `sessionStorageType` is Postgres (see scenarios/postgres-backend.yaml).
+postgresql:
+  enabled: false
+  # Service name becomes `{Helm release}-postgres` (matches `coco-trustee.names.postgres`).
+  nameOverride: postgres
+  auth:
+    username: trustee
+    password: trustee
+    database: trustee
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+      existingClaim: ""
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    initdb:
+      # Wired to files/postgres-initkv.sql via templates/postgres-initdb-configmap.yaml (do not override).
+      scriptsConfigMap: trustee-postgres-initdb
 
 kbs:
   config:

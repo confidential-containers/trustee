@@ -1,0 +1,30 @@
+# Fast demo: Bitnami PostgreSQL + KBS sessions in Memory + Postgres KV backend + shared demo keys.
+#
+# Install (from repo root):
+#   helm dependency update ./deployment/helm-chart
+#   helm upgrade --install trustee ./deployment/helm-chart \
+#     --namespace coco-trustee --create-namespace \
+#     -f ./deployment/helm-chart/scenarios/postgres-backend.yaml
+#
+# Keys: with default `secrets.useEphemeralGeneratedKeys: true`, a Helm hook creates
+# `<release>-bootstrap-user-keys` (Secret keys: KBS_ADMIN_* / AS_TOKEN_*; see README).
+#
+# If Postgres PVC stays Pending (no default StorageClass on your cluster), set one explicitly, e.g.:
+#   helm upgrade --install trustee ./deployment/helm-chart ... \
+#     -f ./deployment/helm-chart/scenarios/postgres-backend.yaml \
+#     --set postgresql.primary.persistence.storageClass=<your-cluster-storage-class>
+#
+# Production: pre-create a Secret (see README), set `secrets.useEphemeralGeneratedKeys: false` and `secrets.existingSecretName`.
+
+sessionStorageType: Memory
+
+storageBackend:
+  type: Postgres
+  postgres:
+    mode: internal
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      storageClass: ""
