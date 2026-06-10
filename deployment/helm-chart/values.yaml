@@ -150,7 +150,7 @@ rvps:
   # Extra environment variables for the RVPS container (e.g. HTTP(S)_PROXY and NO_PROXY).
   extraEnvVars: []
 
-# If `secrets.useEphemeralGeneratedKeys` is true, a Helm hook Job generates ephemeral demo keys into a release-scoped Secret.
+# If `secrets.useEphemeralGeneratedKeys` is true, Helm hook Jobs create (pre-install/pre-upgrade) and delete (post-delete) a release-scoped demo-keys Secret.
 # The keygen image is used to generate the demo keys, and the kubectl image is used to create the release-scoped Secret.
 bootstrapUserKeysJob:
   keygenImage:

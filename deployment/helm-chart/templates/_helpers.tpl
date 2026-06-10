@@ -87,6 +87,9 @@ Each helper truncates `coco-trustee.fullname` to leave room for its suffix befor
 {{- define "coco-trustee.names.bootstrapKeys" -}}
 {{- printf "%s-bootstrap-keys" (include "coco-trustee.fullname" . | trunc 48 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
 {{- end }}
+{{- define "coco-trustee.names.bootstrapKeysDelete" -}}
+{{- printf "%s-bootstrap-keys-del" (include "coco-trustee.fullname" . | trunc 44 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 {{- define "coco-trustee.names.bootstrapUserKeysSecret" -}}
 {{- printf "%s-bootstrap-user-keys" (include "coco-trustee.fullname" . | trunc 43 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
 {{- end }}

@@ -26,10 +26,10 @@ Uninstall the release:
 
 ```bash
 helm uninstall trustee -n coco-trustee
-
-# If useEphemeralGeneratedKeys is set to true, you need to delete the ephemeral keys manually
-# kubectl delete secret -n coco-trustee trustee-bootstrap-user-keys
 ```
+
+> [!NOTE]
+> When `secrets.useEphemeralGeneratedKeys` is `true` (default), a **post-delete** Helm hook removes the release-scoped `*-bootstrap-user-keys` Secret automatically.
 
 ## Typical scenarios
 
@@ -71,7 +71,7 @@ When `storageBackend.postgres.mode=external`, the chart does **NOT** deploy the 
 
 Key material is controlled only by **`secrets.useEphemeralGeneratedKeys`**:
 
-- **`true` (default):** a Helm **pre-install / pre-upgrade hook** Job generates ephemeral demo keys into a release-scoped Secret (name ends with **`bootstrap-user-keys`**).
+- **`true` (default):** a Helm **pre-install / pre-upgrade hook** Job generates ephemeral demo keys into a release-scoped Secret (name ends with **`bootstrap-user-keys`**). **`helm uninstall`** runs a **post-delete** hook that removes that Secret.
 - **`false`:** you must **pre-create** a Kubernetes **`Secret`** in the target namespace, then set **`secrets.existingSecretName`** to that name. The bootstrap hook is **not** rendered.
 
 When ephemeral generation is enabled, the hook uses:
