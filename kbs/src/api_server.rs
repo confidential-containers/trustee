@@ -111,6 +111,16 @@ impl ApiServer {
             .map_err(|e| Error::StorageBackendInitialization { source: e })?;
         }
 
+        let policy_storage_backend = config
+            .storage_backend
+            .backends
+            .to_client_with_namespace(config.storage_backend.storage_type, KBS_STORAGE_NAMESPACE)
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+        key_value_storage::register_namespace(KBS_STORAGE_NAMESPACE, policy_storage_backend)
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+
         Ok(())
     }
 
@@ -121,10 +131,7 @@ impl ApiServer {
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
 
-        let policy_storage_backend = config
-            .storage_backend
-            .backends
-            .to_client_with_namespace(config.storage_backend.storage_type, KBS_STORAGE_NAMESPACE)
+        let policy_storage_backend = key_value_storage::get_namespace(KBS_STORAGE_NAMESPACE)
             .await
             .map_err(|e| Error::StorageBackendInitialization { source: e })?;
         let policy_engine = PolicyEngine::new(policy_storage_backend);
