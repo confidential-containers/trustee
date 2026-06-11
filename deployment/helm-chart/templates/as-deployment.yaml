@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coco-trustee.names.as" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 1 .Values.as.replicaCount }}
+  selector:
+    matchLabels:
+      app: attestation-service
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.as.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: attestation-service
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+{{- include "coco-trustee.podHostAliases" . | nindent 6 }}
+      {{- with .Values.as.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- with .Values.as.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-rvps
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              until nc -z -w 2 {{ include "coco-trustee.names.rvps" . }} {{ include "coco-trustee.port.rvps" . }}; do
+                echo "waiting for RVPS at {{ include "coco-trustee.names.rvps" . }}:{{ include "coco-trustee.port.rvps" . }}";
+                sleep 2;
+              done
+      containers:
+        - name: as
+          securityContext:
+            {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.as.image.repository }}:{{ .Values.as.image.tag }}"
+          imagePullPolicy: {{ .Values.as.image.pullPolicy }}
+          command:
+            - "grpc-as"
+            - "--socket"
+            - "0.0.0.0:{{ include "coco-trustee.port.as" . }}"
+            - "--config-file"
+            - "/etc/attestation-service/config.json"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+            {{- if eq (include "coco-trustee.storage.storageBackendIsPostgres" . | trim) "true" }}
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.postgresUrlSecretName" . }}
+                  key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
+            {{- end }}
+            {{- with .Values.as.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: tcp
+              containerPort: {{ include "coco-trustee.port.as" . }}
+              protocol: TCP
+          # Intel TDX/SGX DCAP verification makes blocking FFI + collateral
+          # calls that can stall the gRPC health endpoint for several seconds
+          # under attestation load.
+          # A startupProbe plus more tolerant liveness/readiness keep the AS in
+          # the Service while it is processing heavy (e.g. TDX) verifications.
+          startupProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
+          {{- with .Values.as.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/attestation-service
+            - name: policy
+              mountPath: /opt/confidential-containers/attestation-service/token/ear/policies/opa
+            - name: user-keys
+              mountPath: /opt/confidential-containers/kbs/user-keys
+            - name: data
+              mountPath: /opt/confidential-containers/attestation-service
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "coco-trustee.names.asConfig" . }}
+        - name: policy
+          emptyDir: {}
+        - name: user-keys
+          secret:
+            secretName: {{ include "coco-trustee.userKeysSecretNameResolved" . | trim }}
+{{- include "coco-trustee.userKeysSecretVolumeItems" . | nindent 12 }}
+        {{- $asClaim := include "coco-trustee.persistence.asDataClaimName" . | trim }}
+        - name: data
+        {{- if $asClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $asClaim }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.as.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.as.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.as.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

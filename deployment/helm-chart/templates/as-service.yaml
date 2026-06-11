@@ -1,0 +1,42 @@
+{{- $asvc := .Values.as.service | default dict }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.as" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ include "coco-trustee.port.as" . }}
+      targetPort: tcp
+      protocol: TCP
+      name: tcp
+  selector:
+    app: attestation-service
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+
+{{- if eq (default "ClusterIP" $asvc.type) "LoadBalancer" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.asLb" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  {{- with $asvc.loadBalancerAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ include "coco-trustee.port.as" . }}
+      targetPort: tcp
+      protocol: TCP
+      name: tcp
+  selector:
+    app: attestation-service
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+{{- end }}

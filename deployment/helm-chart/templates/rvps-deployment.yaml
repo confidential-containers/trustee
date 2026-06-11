@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coco-trustee.names.rvps" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 1 .Values.rvps.replicaCount }}
+  selector:
+    matchLabels:
+      app: reference-value-provider-service
+      {{- include "coco-trustee.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.rvps.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: reference-value-provider-service
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+{{- include "coco-trustee.podHostAliases" . | nindent 6 }}
+      {{- with .Values.rvps.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- with .Values.rvps.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if eq (include "coco-trustee.postgres.useBitnami" . | trim) "true" }}
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              until nc -z -w 2 {{ include "coco-trustee.names.postgres" . }} {{ include "coco-trustee.port.postgres" . }}; do
+                echo "waiting for Postgres at {{ include "coco-trustee.names.postgres" . }}:{{ include "coco-trustee.port.postgres" . }}";
+                sleep 2;
+              done
+      {{- end }}
+      containers:
+        - name: rvps
+          securityContext:
+            {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.rvps.image.repository }}:{{ .Values.rvps.image.tag }}"
+          imagePullPolicy: {{ .Values.rvps.image.pullPolicy }}
+          command:
+            - "rvps"
+            - "--config"
+            - "/etc/rvps.json"
+            - "--address"
+            - "0.0.0.0:{{ include "coco-trustee.port.rvps" . }}"
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.log_level }}
+            {{- if eq (include "coco-trustee.storage.storageBackendIsPostgres" . | trim) "true" }}
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.postgresUrlSecretName" . }}
+                  key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
+            {{- end }}
+            {{- with .Values.rvps.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: tcp
+              containerPort: {{ include "coco-trustee.port.rvps" . }}
+              protocol: TCP
+          readinessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.rvps" . }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.rvps" . }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+          {{- with .Values.rvps.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/rvps.json
+              subPath: rvps.json
+            - name: reference-values
+              mountPath: /opt/confidential-containers/attestation-service/reference_values
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "coco-trustee.names.rvpsConfig" . }}
+        {{- $rvClaim := include "coco-trustee.persistence.rvpsRefClaimName" . | trim }}
+        - name: reference-values
+        {{- if $rvClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $rvClaim }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.rvps.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rvps.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,93 @@
+{{- if include "coco-trustee.kbs.useBootstrapKeysJob" . | trim }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-delete
+    helm.sh/hook-weight: "-20"
+    helm.sh/hook-delete-policy: hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-delete
+    helm.sh/hook-weight: "-18"
+    helm.sh/hook-delete-policy: hook-succeeded
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-delete
+    helm.sh/hook-weight: "-16"
+    helm.sh/hook-delete-policy: hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-delete
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 120
+  backoffLimit: 2
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "coco-trustee.names.bootstrapKeysDelete" . }}
+      automountServiceAccountToken: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: delete-user-keys-secret
+          image: {{ include "coco-trustee.internal.bootstrapKeysKubectlImage" . | quote }}
+          imagePullPolicy: {{ default "IfNotPresent" (((.Values.bootstrapUserKeysJob | default dict).kubectlImage | default dict).pullPolicy) }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          {{- with .Values.bootstrapUserKeysJob.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              NS="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+              NAME="{{ include "coco-trustee.userKeysSecretNameResolved" . | trim }}"
+              kubectl delete secret "$NAME" -n "$NS" --ignore-not-found
+              echo "Deleted ephemeral user-keys secret $NAME (if present)"
+{{- end }}

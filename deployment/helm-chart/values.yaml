@@ -1,0 +1,197 @@
+# Default values for CoCo Trustee (Helm).
+# Intentionally small: fixed paths and many operational defaults live in templates (`_helpers.tpl`, workload YAML).
+# Override via `-f` / `--set` or add keys not listed here (Helm merges arbitrary values).
+
+nameOverride: ""
+fullnameOverride: ""
+
+log_level: info
+dnsHostAliasWorkaround: false
+
+# KBS protocol session store: Memory | LocalJson | LocalFs | Postgres (empty = same as `storageBackend.type`).
+sessionStorageType: "Memory"
+
+# Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
+storageBackend:
+  type: LocalFs
+  localFs:
+    persistence:
+      kbs: ""
+      as: ""
+      rvps: ""
+  localJson:
+    persistence:
+      kbs: ""
+      as: ""
+      rvps: ""
+  postgres:
+    # internal | external
+    mode: internal
+    external:
+      # Required when mode is external.
+      existingSecretName: ""
+      existingSecretKey: ""
+    # When 
+    internal:
+      # Trustee-only: mount KV init SQL from files/postgres-initkv.sql (see postgresql.primary.initdb.scriptsConfigMap).
+      initKvTables: true
+
+# Bitnami PostgreSQL subchart (https://artifacthub.io/packages/helm/bitnami/postgresql).
+# Single source for bundled Postgres auth, persistence, and resources when `mode` is `internal`.
+# Set `enabled: true` when `storageBackend.type` or `sessionStorageType` is Postgres (see scenarios/postgres-backend.yaml).
+postgresql:
+  enabled: false
+  # Service name becomes `{Helm release}-postgres` (matches `coco-trustee.names.postgres`).
+  nameOverride: postgres
+  auth:
+    username: trustee
+    password: trustee
+    database: trustee
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+      existingClaim: ""
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    initdb:
+      # Wired to files/postgres-initkv.sql via templates/postgres-initdb-configmap.yaml (do not override).
+      scriptsConfigMap: trustee-postgres-initdb
+
+kbs:
+  config:
+    admin:
+      # JWT claims for bootstrap-generated admin token; must match [admin.authentication.bearer_jwt] and regex_acl role.
+      issuer: TrusteeInHelm
+      audience: KBS
+      role: admin
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
+    pullPolicy: Always
+    tag: "latest"
+  service:
+    # Internal KBS Service remains ClusterIP. Set this to true to create an extra external LoadBalancer Service.
+    exposeLoadBalancer: false
+    port: 8080
+    loadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  resourceRepository: []
+
+  # Extra environment variables to inject into the KBS container.
+  extraEnvVars: []
+  # Extra volumes to attach to the KBS pod.
+  extraVolumes: []
+  # Extra volume mounts for the KBS container.
+  extraVolumeMounts: []
+
+as:
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    pullPolicy: Always
+    tag: "latest"
+  verifier:
+    # `type` field can be `Local` or `Remote`.
+    # When `type` is `Local`, it will default to `Local`.
+    # When `type` is `Remote`, the `verifierUrl` will be used as NRAS and must be set.
+    nvidia:
+      type: "Local"
+      verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
+    # If dcap configuration is provided, `collateral_service` must be set.
+    dcap:
+      collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
+      use_secure_cert: false
+      tcb_update_type: "early"
+
+  service:
+    type: ClusterIP
+    port: 50004
+    loadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+
+  # Extra environment variables for the Attestation Service container (e.g. HTTP(S)_PROXY and NO_PROXY).
+  extraEnvVars: []
+
+rvps:
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/rvps
+    pullPolicy: Always
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 50003
+    loadBalancerType: internal
+    loadBalancerAnnotations: {}
+    publicLoadBalancerAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  # Extra environment variables for the RVPS container (e.g. HTTP(S)_PROXY and NO_PROXY).
+  extraEnvVars: []
+
+# If `secrets.useEphemeralGeneratedKeys` is true, Helm hook Jobs create (pre-install/pre-upgrade) and delete (post-delete) a release-scoped demo-keys Secret.
+# The keygen image is used to generate the demo keys, and the kubectl image is used to create the release-scoped Secret.
+bootstrapUserKeysJob:
+  keygenImage:
+    repository: alpine/openssl
+    tag: "3.5.6"
+    pullPolicy: IfNotPresent
+  kubectlImage:
+    repository: quay.io/kata-containers/kubectl
+    tag: "20260112"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+secrets:
+  # When true, a Helm hook Job generates ephemeral demo keys into a release-scoped Secret.
+  # When false, you must pre-create a Secret (see README) and set existingSecretName.
+  useEphemeralGeneratedKeys: true
+  # Required when useEphemeralGeneratedKeys is false. Secret must contain keys:
+  # KBS_ADMIN_PRIVATE_KEY, KBS_ADMIN_PUBKEY, KBS_ADMIN_TOKEN (optional if you generate tokens locally),
+  # AS_TOKEN_SIGNING_PRIVATE_KEY, AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN
+  existingSecretName: ""
+
+# Optional Kubernetes Ingress for the KBS service.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Host-based routing. Leave empty to match all hosts (IP-only access).
+  host: ""
+  tls: []
+  #  - secretName: kbs-tls
+  #    hosts:
+  #      - kbs.example.com
+
+# Expose the KBS service via a NodePort.
+nodePort:
+  enabled: false
+  # If empty, Kubernetes assigns a random port from the NodePort range.
+  port: ""
