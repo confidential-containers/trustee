@@ -2,7 +2,7 @@ use super::{Result, RvpsApi};
 use anyhow::Context;
 use async_trait::async_trait;
 use core::result::Result::Ok;
-use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
+use key_value_storage::StorageBackendConfig;
 use reference_value_provider_service::{
     extractors::ExtractorsConfig, Rvps, REFERENCE_VALUE_STORAGE_NAMESPACE,
 };
@@ -15,13 +15,22 @@ pub struct BuiltinRvps {
 impl BuiltinRvps {
     pub async fn new(
         config: Option<ExtractorsConfig>,
-        storage_type: KeyValueStorageType,
-        storage_config: &KeyValueStorageStructConfig,
+        storage_backend_config: &StorageBackendConfig,
     ) -> Result<Self> {
-        let storage = storage_config
-            .to_client_with_namespace(storage_type, REFERENCE_VALUE_STORAGE_NAMESPACE)
+        let storage = storage_backend_config
+            .backends
+            .to_client_with_namespace(
+                storage_backend_config.storage_type,
+                REFERENCE_VALUE_STORAGE_NAMESPACE,
+            )
             .await
             .context("initialize RVPS storage")?;
+        key_value_storage::register_namespace(REFERENCE_VALUE_STORAGE_NAMESPACE, storage)
+            .await
+            .context("register RVPS storage to key-value global registry")?;
+        let storage = key_value_storage::get_namespace(REFERENCE_VALUE_STORAGE_NAMESPACE)
+            .await
+            .context("get RVPS storage from key-value global registry")?;
         let rvps = Rvps::new_with_storage(config, storage)
             .await
             .context("initialize RVPS")?;

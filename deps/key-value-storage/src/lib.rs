@@ -27,6 +27,9 @@ pub mod local_json;
 
 pub mod local_fs;
 
+pub mod global;
+pub use global::{get_namespace, register_namespace};
+
 #[derive(Default)]
 pub struct SetParameters {
     /// Whether to overwrite the existing value.

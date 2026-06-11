@@ -126,13 +126,10 @@ pub struct AttestationService {
 impl AttestationService {
     /// Create a new Attestation Service instance.
     pub async fn new(config: Config) -> Result<Self, ServiceError> {
-        let rvps = rvps::initialize_rvps_client(
-            &config.rvps_config,
-            config.storage_backend.storage_type,
-            &config.storage_backend.backends,
-        )
-        .await
-        .map_err(ServiceError::Rvps)?;
+        let rvps =
+            rvps::initialize_rvps_client(&config.rvps_config, config.storage_backend.clone())
+                .await
+                .map_err(ServiceError::Rvps)?;
 
         let policy_storage = config
             .storage_backend
@@ -142,6 +139,8 @@ impl AttestationService {
                 AS_POLICY_STORAGE_NAMESPACE,
             )
             .await?;
+        key_value_storage::register_namespace(AS_POLICY_STORAGE_NAMESPACE, policy_storage).await?;
+        let policy_storage = key_value_storage::get_namespace(AS_POLICY_STORAGE_NAMESPACE).await?;
         let token_broker =
             EarAttestationTokenBroker::new(config.attestation_token_broker.clone(), policy_storage)
                 .await?;

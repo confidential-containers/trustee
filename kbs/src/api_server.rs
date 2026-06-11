@@ -21,7 +21,9 @@ use crate::{
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
-    plugins::PluginManager,
+    plugins::{
+        resource::RESOURCE_STORAGE_NAMESPACE, PluginManager, PluginsConfig, RepositoryConfig,
+    },
     prometheus::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
@@ -80,20 +82,84 @@ impl ApiServer {
         Ok(token)
     }
 
-    pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::new(config.plugins.clone(), &config.storage_backend)
-            .await
-            .map_err(|e| Error::PluginManagerInitialization { source: e })?;
-        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
-
+    /// This function is used to initialize all the storages for the KBS, including
+    /// - Resource plugin storage
+    async fn init_all_storages(config: &KbsConfig) -> Result<()> {
         info!(
             "Using storage backend type: {:?}",
             config.storage_backend.storage_type
         );
+
+        if config
+            .plugins
+            .contains(&PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage))
+        {
+            let resource_plugin_storage = config
+                .storage_backend
+                .backends
+                .to_client_with_namespace(
+                    config.storage_backend.storage_type,
+                    RESOURCE_STORAGE_NAMESPACE,
+                )
+                .await
+                .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+            key_value_storage::register_namespace(
+                RESOURCE_STORAGE_NAMESPACE,
+                resource_plugin_storage,
+            )
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+        }
+
         let policy_storage_backend = config
             .storage_backend
             .backends
             .to_client_with_namespace(config.storage_backend.storage_type, KBS_STORAGE_NAMESPACE)
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+        key_value_storage::register_namespace(KBS_STORAGE_NAMESPACE, policy_storage_backend)
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+
+        #[cfg(feature = "as")]
+        {
+            use crate::attestation::backend::KBS_SESSION_STORAGE_NAMESPACE;
+
+            let attestation_session_storage_backend =
+                config.session_storage_type.unwrap_or_else(|| {
+                    info!(
+                        "Session storage type not configured, using storage backend type: {:?}",
+                        config.storage_backend.storage_type
+                    );
+                    config.storage_backend.storage_type
+                });
+            let attestation_session_storage = config
+                .storage_backend
+                .backends
+                .to_client_with_namespace(
+                    attestation_session_storage_backend,
+                    KBS_SESSION_STORAGE_NAMESPACE,
+                )
+                .await
+                .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+            key_value_storage::register_namespace(
+                KBS_SESSION_STORAGE_NAMESPACE,
+                attestation_session_storage,
+            )
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+        }
+        Ok(())
+    }
+
+    pub async fn new(config: KbsConfig) -> Result<Self> {
+        Self::init_all_storages(&config).await?;
+        let plugin_manager = PluginManager::new(config.plugins.clone())
+            .await
+            .map_err(|e| Error::PluginManagerInitialization { source: e })?;
+        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
+
+        let policy_storage_backend = key_value_storage::get_namespace(KBS_STORAGE_NAMESPACE)
             .await
             .map_err(|e| Error::StorageBackendInitialization { source: e })?;
         let policy_engine = PolicyEngine::new(policy_storage_backend);
@@ -110,13 +176,6 @@ impl ApiServer {
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
             config.attestation_service.clone(),
-            &config.session_storage_type.unwrap_or_else(|| {
-                info!(
-                    "Session storage type not configured, using storage backend type: {:?}",
-                    config.storage_backend.storage_type
-                );
-                config.storage_backend.storage_type
-            }),
             &config.storage_backend,
         )
         .await?;
