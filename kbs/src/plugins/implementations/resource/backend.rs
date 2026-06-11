@@ -5,7 +5,6 @@
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{bail, Error, Result};
-use key_value_storage::StorageBackendConfig;
 use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
@@ -105,19 +104,10 @@ pub struct ResourceStorage {
 }
 
 impl ResourceStorage {
-    pub async fn new(
-        value: RepositoryConfig,
-        storage_backend_config: &StorageBackendConfig,
-    ) -> Result<Self> {
+    pub async fn new(value: RepositoryConfig) -> Result<Self> {
         match value {
             RepositoryConfig::KvStorage => {
-                let storage = storage_backend_config
-                    .backends
-                    .to_client_with_namespace(
-                        storage_backend_config.storage_type,
-                        RESOURCE_STORAGE_NAMESPACE,
-                    )
-                    .await?;
+                let storage = key_value_storage::get_namespace(RESOURCE_STORAGE_NAMESPACE).await?;
                 let backend = kv_storage::KvStorage::new(storage);
                 Ok(Self {
                     backend: Arc::new(backend),
