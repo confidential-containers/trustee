@@ -49,4 +49,13 @@ pub enum KeyValueStorageError {
 
     #[error("invalid configuration: {message}")]
     InvalidConfiguration { message: String },
+
+    #[error("storage registry already initialized")]
+    StorageRegistryAlreadyInitialized,
+
+    #[error("storage registry not initialized")]
+    StorageRegistryNotInitialized,
+
+    #[error("uninitialized storage namespace: {namespace}")]
+    UninitializedStorageNamespace { namespace: String },
 }
