@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
+use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 pub use reference_value_provider_service::config::Config as RvpsCrateConfig;
 use reference_value_provider_service::extractors::ExtractorsConfig;
 use serde::Deserialize;
@@ -85,8 +85,7 @@ pub type RvpsClient = Arc<Mutex<dyn RvpsApi + Send + Sync>>;
 #[instrument(skip_all, name = "Initialize RVPS")]
 pub async fn initialize_rvps_client(
     config: &RvpsConfig,
-    unified_storage_type: KeyValueStorageType,
-    storage_config: &KeyValueStorageStructConfig,
+    mut storage_backend_config: StorageBackendConfig,
 ) -> Result<RvpsClient> {
     match config {
         RvpsConfig::BuiltIn {
@@ -95,12 +94,12 @@ pub async fn initialize_rvps_client(
         } => {
             info!("launch a built-in RVPS.");
 
-            // Use RVPS-specific storage if provided, otherwise fall back to defaults
-            let actual_storage_type = storage_type.unwrap_or(unified_storage_type);
+            if let Some(storage_type) = storage_type {
+                storage_backend_config.storage_type = *storage_type;
+            }
 
             Ok(Arc::new(Mutex::new(
-                builtin::BuiltinRvps::new(extractors.clone(), actual_storage_type, storage_config)
-                    .await?,
+                builtin::BuiltinRvps::new(extractors.clone(), &storage_backend_config).await?,
             )) as RvpsClient)
         }
         #[cfg(feature = "rvps-grpc")]
