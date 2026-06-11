@@ -121,6 +121,34 @@ impl ApiServer {
             .await
             .map_err(|e| Error::StorageBackendInitialization { source: e })?;
 
+        #[cfg(feature = "as")]
+        {
+            use crate::attestation::backend::KBS_SESSION_STORAGE_NAMESPACE;
+
+            let attestation_session_storage_backend =
+                config.session_storage_type.unwrap_or_else(|| {
+                    info!(
+                        "Session storage type not configured, using storage backend type: {:?}",
+                        config.storage_backend.storage_type
+                    );
+                    config.storage_backend.storage_type
+                });
+            let attestation_session_storage = config
+                .storage_backend
+                .backends
+                .to_client_with_namespace(
+                    attestation_session_storage_backend,
+                    KBS_SESSION_STORAGE_NAMESPACE,
+                )
+                .await
+                .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+            key_value_storage::register_namespace(
+                KBS_SESSION_STORAGE_NAMESPACE,
+                attestation_session_storage,
+            )
+            .await
+            .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+        }
         Ok(())
     }
 
@@ -148,13 +176,6 @@ impl ApiServer {
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
             config.attestation_service.clone(),
-            &config.session_storage_type.unwrap_or_else(|| {
-                info!(
-                    "Session storage type not configured, using storage backend type: {:?}",
-                    config.storage_backend.storage_type
-                );
-                config.storage_backend.storage_type
-            }),
             &config.storage_backend,
         )
         .await?;

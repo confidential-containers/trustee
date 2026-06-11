@@ -10,7 +10,7 @@ use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
-use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
+use key_value_storage::StorageBackendConfig;
 use rsa::rand_core::RngCore;
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
@@ -30,7 +30,7 @@ use super::{
     Error, Result,
 };
 
-const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
+pub const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
 
 static KBS_MAJOR_VERSION: u64 = 0;
 static KBS_MINOR_VERSION: u64 = 4;
@@ -145,14 +145,13 @@ pub struct SetPolicyInput {
 impl AttestationService {
     pub async fn new(
         config: AttestationConfig,
-        session_storage_backend_type: &KeyValueStorageType,
-        storage_backend_config: &StorageBackendConfig,
+        _storage_backend_config: &StorageBackendConfig,
     ) -> Result<Self> {
         let inner = match config.attestation_service {
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
             AttestationServiceConfig::CoCoASBuiltIn(cfg) => {
                 let built_in_as =
-                    super::coco::builtin::BuiltInCoCoAs::new(cfg, storage_backend_config)
+                    super::coco::builtin::BuiltInCoCoAs::new(cfg, _storage_backend_config)
                         .await
                         .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
                 Arc::new(built_in_as) as _
@@ -173,11 +172,10 @@ impl AttestationService {
             }
         };
 
-        let session_storage_backend = storage_backend_config
-            .backends
-            .to_client_with_namespace(*session_storage_backend_type, KBS_SESSION_STORAGE_NAMESPACE)
-            .await
-            .map_err(|e| Error::SessionStorageInitialization { source: e })?;
+        let session_storage_backend =
+            key_value_storage::get_namespace(KBS_SESSION_STORAGE_NAMESPACE)
+                .await
+                .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
         let session_map = SessionMap::new(session_storage_backend.clone());
         // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
