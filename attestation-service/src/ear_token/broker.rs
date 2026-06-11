@@ -49,9 +49,6 @@ impl EarAttestationTokenBroker {
         config: EarTokenConfiguration,
         storage: KeyValueStorageInstance,
     ) -> Result<Self> {
-        // TODO: delete this warning
-        warn!("Simple Token has been deprecated in v0.16.0. Note that the `attestation_token_broker` config field `type` is now ignored and the token will always be an EAR token.");
-
         let policy_engine = PolicyEngine::<Regorus>::new(storage);
 
         let default_cpu_policy = include_str!("ear_default_policy_cpu.rego");
@@ -327,6 +324,9 @@ impl EarAttestationTokenBroker {
         let mut extensions = Extensions::new();
         extensions.register("exp", 4, RawValueKind::Integer)?;
         extensions.set_by_name("exp", RawValue::Integer(exp.unix_timestamp()))?;
+
+        extensions.register("iss", 1, RawValueKind::String)?;
+        extensions.set_by_name("iss", RawValue::String(self.config.issuer_name.clone()))?;
 
         let ear = Ear {
             profile: self.config.profile_name.clone(),
