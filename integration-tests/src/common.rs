@@ -202,6 +202,9 @@ impl TestHarness {
     }
 
     pub async fn new(test_parameters: TestParameters) -> Result<TestHarness> {
+        // integration-tests is a shared test environment, so we need to clear all the namespaces to avoid conflicts between tests.
+        key_value_storage::global::clear_all_namespaces().await?;
+
         let auth_keypair = PKey::generate_ed25519()?;
         let auth_pubkey = String::from_utf8(auth_keypair.public_key_to_pem()?)?;
         let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;

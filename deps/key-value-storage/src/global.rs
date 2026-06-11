@@ -41,3 +41,13 @@ pub async fn get_namespace(namespace: &str) -> Result<KeyValueStorageInstance> {
     })?;
     Ok(storage)
 }
+
+#[cfg(feature = "test-utils")]
+pub async fn clear_all_namespaces() -> Result<()> {
+    let registry = REGISTRY.get_or_init(|| RegistryInner {
+        storages: RwLock::new(HashMap::new()),
+    });
+    let mut storages = registry.storages.write().await;
+    storages.clear();
+    Ok(())
+}
