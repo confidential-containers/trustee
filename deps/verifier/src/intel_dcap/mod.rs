@@ -132,11 +132,12 @@ pub(crate) fn ecdsa_quote_verification(
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
-            Ok(prepare_custom_claims_map(
+            prepare_custom_claims_map(
                 &mut supp_data,
                 collateral_expiration_status,
                 quote_verification_result,
-            ))
+            )
+            .context("Failed to generate custom claims from supplemental data")
         }
         terminal_result => {
             bail!(

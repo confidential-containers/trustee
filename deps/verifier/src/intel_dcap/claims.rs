@@ -38,24 +38,24 @@ pub(crate) fn prepare_custom_claims_map(
     supp_data: &mut sgx_ql_qv_supplemental_t,
     collateral_expiration_status: u32,
     quote_verification_result: sgx_ql_qv_result_t,
-) -> Map<String, Value> {
+) -> anyhow::Result<Map<String, Value>> {
     let mut claims_map = Map::new();
 
     claims_map.insert(
         "earliest_issue_date".to_string(),
-        Value::String(format_rfc3339(supp_data.earliest_issue_date)),
+        Value::String(format_rfc3339(supp_data.earliest_issue_date)?),
     );
     claims_map.insert(
         "latest_issue_date".to_string(),
-        Value::String(format_rfc3339(supp_data.latest_issue_date)),
+        Value::String(format_rfc3339(supp_data.latest_issue_date)?),
     );
     claims_map.insert(
         "earliest_expiration_date".to_string(),
-        Value::String(format_rfc3339(supp_data.earliest_expiration_date)),
+        Value::String(format_rfc3339(supp_data.earliest_expiration_date)?),
     );
     claims_map.insert(
         "tcb_date".to_string(),
-        Value::String(format_rfc3339(supp_data.tcb_level_date_tag)),
+        Value::String(format_rfc3339(supp_data.tcb_level_date_tag)?),
     );
     claims_map.insert(
         "pck_crl_num".to_string(),
@@ -111,7 +111,7 @@ pub(crate) fn prepare_custom_claims_map(
         Value::String(collateral_expiration_status.to_string()),
     );
     claims_map.insert("advisory_ids".to_string(), get_sa_list(&supp_data.sa_list));
-    claims_map
+    Ok(claims_map)
 }
 
 fn get_sa_list(sa_list: &[c_char; 450]) -> Value {
@@ -129,11 +129,14 @@ fn get_sa_list(sa_list: &[c_char; 450]) -> Value {
         .collect()
 }
 
-fn format_rfc3339(timestamp: i64) -> String {
-    OffsetDateTime::from_unix_timestamp(timestamp)
-        .expect("invalid unix timestamp.")
-        .format(&Rfc3339)
-        .expect("failed to format timestamp.")
+fn format_rfc3339(timestamp: i64) -> anyhow::Result<String> {
+    let odt = OffsetDateTime::from_unix_timestamp(timestamp).map_err(|e| {
+        anyhow::anyhow!("invalid or out-of-range unix timestamp: {e:?}, timestamp: {timestamp}")
+    })?;
+    let formatted = odt.format(&Rfc3339).map_err(|e| {
+        anyhow::anyhow!("failed to format datetime to RFC3339: {e:?}, timestamp: {timestamp}")
+    })?;
+    Ok(formatted)
 }
 
 #[cfg(test)]
@@ -152,7 +155,8 @@ mod tests {
         let mut supp = deserialize_supp_data(&supplemental_data);
 
         let claims =
-            prepare_custom_claims_map(&mut supp, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK);
+            prepare_custom_claims_map(&mut supp, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK)
+                .unwrap();
 
         let expected = json!({
           "advisory_ids": [],
