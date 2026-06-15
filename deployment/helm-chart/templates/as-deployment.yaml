@@ -57,6 +57,9 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ .Values.log_level }}
+            {{- with .Values.as.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: tcp
               containerPort: {{ include "coco-trustee.port.as" . }}

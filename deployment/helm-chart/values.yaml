@@ -42,11 +42,16 @@ kbs:
       audience: "KBS"
       # -- JWT `role` claim and matching `[admin.authorization.regex_acl]` role.
       role: "admin"
+    attestationService:
+      # -- Connection pool size for the KBS -> gRPC AS client (`pool_size` in `files/kbs-config.toml.template`).
+      poolSize: 200
+      # -- Request timeout in seconds for the KBS -> gRPC AS client (`timeout` in `files/kbs-config.toml.template`).
+      timeout: 30
   image:
     # -- KBS container image repository.
     repository: "ghcr.io/confidential-containers/staged-images/kbs-grpc-as"
     # -- KBS container image pull policy.
-    pullPolicy: "IfNotPresent"
+    pullPolicy: "Always"
     # -- KBS container image tag.
     tag: "latest"
   service:
@@ -59,19 +64,39 @@ kbs:
   # -- Container CPU/memory requests and limits for KBS.
   resources:
     requests:
-      cpu: "100m"
-      memory: "128Mi"
+      cpu: "250m"
+      memory: "256Mi"
     limits:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "2"
+      memory: "2Gi"
   # -- KBS resource repository configuration (passed through to KBS config).
   resourceRepository: []
+  # -- Extra environment variables to inject into the KBS container.
+  extraEnvVars: []
+  # -- Extra volumes to attach to the KBS Pod.
+  extraVolumes: []
+  # -- Extra volume mounts for the KBS container.
+  extraVolumeMounts: []
+  # -- Number of KBS Pod replicas.
+  replicaCount: 1
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
+  # -- Extra Pod annotations (for example Prometheus scrape or service mesh integration).
+  podAnnotations:
+  # -- Pod-level security context overrides.
+  podSecurityContext:
+  # -- Node label selection constraints for KBS Pods.
+  nodeSelector:
+  # -- Affinity and anti-affinity scheduling rules for KBS Pods.
+  affinity:
+  # -- Tolerations for scheduling KBS Pods onto tainted nodes.
+  tolerations: []
 as:
   image:
     # -- AS container image repository.
     repository: "ghcr.io/confidential-containers/staged-images/coco-as-grpc"
     # -- AS container image pull policy.
-    pullPolicy: "IfNotPresent"
+    pullPolicy: "Always"
     # -- AS container image tag.
     tag: "latest"
   service:
@@ -84,17 +109,33 @@ as:
   # -- Container CPU/memory requests and limits for AS.
   resources:
     requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
       cpu: "500m"
-      memory: "512Mi"
+      memory: "1Gi"
+    limits:
+      cpu: "4"
+      memory: "4Gi"
+  # -- Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`).
+  extraEnvVars: []
+  # -- Number of Attestation Service Pod replicas.
+  replicaCount: 1
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
+  # -- Extra Pod annotations.
+  podAnnotations:
+  # -- Pod-level security context overrides.
+  podSecurityContext:
+  # -- Node label selection constraints for AS Pods.
+  nodeSelector:
+  # -- Affinity and anti-affinity scheduling rules for AS Pods.
+  affinity:
+  # -- Tolerations for scheduling AS Pods onto tainted nodes.
+  tolerations: []
 rvps:
   image:
     # -- RVPS container image repository.
     repository: "ghcr.io/confidential-containers/staged-images/rvps"
     # -- RVPS container image pull policy.
-    pullPolicy: "IfNotPresent"
+    pullPolicy: "Always"
     # -- RVPS container image tag.
     tag: "latest"
   service:
@@ -114,8 +155,24 @@ rvps:
       cpu: "100m"
       memory: "128Mi"
     limits:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "1"
+      memory: "1Gi"
+  # -- Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`).
+  extraEnvVars: []
+  # -- Number of RVPS Pod replicas.
+  replicaCount: 1
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
+  # -- Extra Pod annotations.
+  podAnnotations:
+  # -- Pod-level security context overrides.
+  podSecurityContext:
+  # -- Node label selection constraints for RVPS Pods.
+  nodeSelector:
+  # -- Affinity and anti-affinity scheduling rules for RVPS Pods.
+  affinity:
+  # -- Tolerations for scheduling RVPS Pods onto tainted nodes.
+  tolerations: []
 # -- Bootstrap hook Job settings (pre-install/pre-upgrade key generation when `secrets.useEphemeralGeneratedKeys=true`).
 bootstrapUserKeysJob:
   keygenImage:

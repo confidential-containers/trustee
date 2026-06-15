@@ -123,13 +123,21 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| as.image.pullPolicy | string | `"IfNotPresent"` | AS container image pull policy. |
+| as.affinity | string | `nil` | Affinity and anti-affinity scheduling rules for AS Pods. |
+| as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/staged-images/coco-as-grpc"` | AS container image repository. |
 | as.image.tag | string | `"latest"` | AS container image tag. |
-| as.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Container CPU/memory requests and limits for AS. |
+| as.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
+| as.nodeSelector | string | `nil` | Node label selection constraints for AS Pods. |
+| as.podAnnotations | string | `nil` | Extra Pod annotations. |
+| as.podSecurityContext | string | `nil` | Pod-level security context overrides. |
+| as.replicaCount | int | `1` | Number of Attestation Service Pod replicas. |
+| as.resources | object | `{"limits":{"cpu":"4","memory":"4Gi"},"requests":{"cpu":"500m","memory":"1Gi"}}` | Container CPU/memory requests and limits for AS. |
 | as.service.loadBalancerAnnotations | string | `nil` | Annotations applied when `as.service.type` is `LoadBalancer`. |
 | as.service.port | int | `50004` | AS Service port. |
 | as.service.type | string | `"ClusterIP"` | AS Service type (`ClusterIP` or `LoadBalancer`). |
+| as.tolerations | list | `[]` | Tolerations for scheduling AS Pods onto tainted nodes. |
 | bootstrapUserKeysJob | object | `{"keygenImage":{"pullPolicy":"IfNotPresent","repository":"alpine/openssl","tag":"3.5.6"},"kubectlImage":{"pullPolicy":"IfNotPresent","repository":"quay.io/kata-containers/kubectl","tag":"20260112"},"resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}}` | Bootstrap hook Job settings (pre-install/pre-upgrade key generation when `secrets.useEphemeralGeneratedKeys=true`). |
 | bootstrapUserKeysJob.keygenImage.pullPolicy | string | `"IfNotPresent"` | OpenSSL `initContainer` image pull policy. |
 | bootstrapUserKeysJob.keygenImage.repository | string | `"alpine/openssl"` | OpenSSL `initContainer` image repository that generates demo keys. |
@@ -146,31 +154,51 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | ingress.enabled | bool | `false` | Enable Ingress for KBS. |
 | ingress.host | string | `""` | Host-based routing. Leave empty to match all hosts (IP-only access). |
 | ingress.tls | list | `[]` | TLS configuration entries. |
+| kbs.affinity | string | `nil` | Affinity and anti-affinity scheduling rules for KBS Pods. |
 | kbs.config.admin.audience | string | `"KBS"` | JWT `audience` claim for the bootstrap-generated admin token. |
 | kbs.config.admin.issuer | string | `"TrusteeInHelm"` | JWT `issuer` claim for the bootstrap-generated admin token; must match `[admin.authentication.bearer_jwt]`. |
 | kbs.config.admin.role | string | `"admin"` | JWT `role` claim and matching `[admin.authorization.regex_acl]` role. |
-| kbs.image.pullPolicy | string | `"IfNotPresent"` | KBS container image pull policy. |
+| kbs.config.attestationService.poolSize | int | `200` | Connection pool size for the KBS -> gRPC AS client (`pool_size` in `files/kbs-config.toml.template`). |
+| kbs.config.attestationService.timeout | int | `30` | Request timeout in seconds for the KBS -> gRPC AS client (`timeout` in `files/kbs-config.toml.template`). |
+| kbs.extraEnvVars | list | `[]` | Extra environment variables to inject into the KBS container. |
+| kbs.extraVolumeMounts | list | `[]` | Extra volume mounts for the KBS container. |
+| kbs.extraVolumes | list | `[]` | Extra volumes to attach to the KBS Pod. |
+| kbs.image.pullPolicy | string | `"Always"` | KBS container image pull policy. |
 | kbs.image.repository | string | `"ghcr.io/confidential-containers/staged-images/kbs-grpc-as"` | KBS container image repository. |
 | kbs.image.tag | string | `"latest"` | KBS container image tag. |
+| kbs.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
+| kbs.nodeSelector | string | `nil` | Node label selection constraints for KBS Pods. |
+| kbs.podAnnotations | string | `nil` | Extra Pod annotations (for example Prometheus scrape or service mesh integration). |
+| kbs.podSecurityContext | string | `nil` | Pod-level security context overrides. |
+| kbs.replicaCount | int | `1` | Number of KBS Pod replicas. |
 | kbs.resourceRepository | list | `[]` | KBS resource repository configuration (passed through to KBS config). |
-| kbs.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Container CPU/memory requests and limits for KBS. |
+| kbs.resources | object | `{"limits":{"cpu":"2","memory":"2Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | Container CPU/memory requests and limits for KBS. |
 | kbs.service.exposeLoadBalancer | bool | `false` | When `true`, create an additional external `LoadBalancer` Service (`<fullname>-kbs-lb`). The primary KBS Service (`<fullname>-kbs`) is always internal `ClusterIP`. |
 | kbs.service.loadBalancerAnnotations | string | `nil` | Annotations applied to the optional KBS `LoadBalancer` Service when `exposeLoadBalancer=true`. |
 | kbs.service.port | int | `8080` | Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service. |
+| kbs.tolerations | list | `[]` | Tolerations for scheduling KBS Pods onto tainted nodes. |
 | log_level | string | `"info"` | Container `RUST_LOG` for KBS, AS, and RVPS (`info`, `debug`, `warn`, `error`). |
 | nameOverride | string | `""` | Override the chart name used in labels and resource names. |
 | nodePort | object | `{"enabled":false,"port":""}` | Expose the KBS Service via a NodePort. |
 | nodePort.enabled | bool | `false` | Enable a NodePort Service for KBS. |
 | nodePort.port | string | `""` | Fixed NodePort number; empty assigns a random port from the NodePort range. |
-| rvps.image.pullPolicy | string | `"IfNotPresent"` | RVPS container image pull policy. |
+| rvps.affinity | string | `nil` | Affinity and anti-affinity scheduling rules for RVPS Pods. |
+| rvps.extraEnvVars | list | `[]` | Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| rvps.image.pullPolicy | string | `"Always"` | RVPS container image pull policy. |
 | rvps.image.repository | string | `"ghcr.io/confidential-containers/staged-images/rvps"` | RVPS container image repository. |
 | rvps.image.tag | string | `"latest"` | RVPS container image tag. |
-| rvps.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Container CPU/memory requests and limits for RVPS. |
+| rvps.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
+| rvps.nodeSelector | string | `nil` | Node label selection constraints for RVPS Pods. |
+| rvps.podAnnotations | string | `nil` | Extra Pod annotations. |
+| rvps.podSecurityContext | string | `nil` | Pod-level security context overrides. |
+| rvps.replicaCount | int | `1` | Number of RVPS Pod replicas. |
+| rvps.resources | object | `{"limits":{"cpu":"1","memory":"1Gi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Container CPU/memory requests and limits for RVPS. |
 | rvps.service.loadBalancerAnnotations | string | `nil` | Annotations for the internal RVPS LoadBalancer Service. |
 | rvps.service.loadBalancerType | string | `"internal"` | Load balancer kind when `rvps.service.type` is `LoadBalancer`: `internal` or `public`. |
 | rvps.service.port | int | `50003` | RVPS Service port. |
 | rvps.service.publicLoadBalancerAnnotations | string | `nil` | Annotations for the public RVPS LoadBalancer Service when `loadBalancerType=public`. |
 | rvps.service.type | string | `"ClusterIP"` | RVPS Service type (`ClusterIP` or `LoadBalancer`). |
+| rvps.tolerations | list | `[]` | Tolerations for scheduling RVPS Pods onto tainted nodes. |
 | secrets.existingSecretName | string | `""` | Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout). |
 | secrets.useEphemeralGeneratedKeys | bool | `true` | When `true`, a pre-install/pre-upgrade hook generates demo keys into a release-scoped Secret; when `false`, you must pre-create a Secret and set `existingSecretName`. |
 | sessionStorageType | string | `"Memory"` | KBS protocol session store: `Memory`, `LocalJson`, or `LocalFs`. When empty, follows `storageBackend.type`. |
