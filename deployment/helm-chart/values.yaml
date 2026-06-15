@@ -105,6 +105,11 @@ as:
       type: "Local"
       # -- NRAS URL when `as.verifier.nvidia.type` is `Remote`.
       verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
+    dcap:
+      # -- Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured.
+      collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
+      # -- DCAP TCB update type (for example `early`).
+      tcb_update_type: "early"
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).
     type: "ClusterIP"
