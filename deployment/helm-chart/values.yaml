@@ -145,3 +145,21 @@ secrets:
   useEphemeralGeneratedKeys: true
   # -- Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout).
   existingSecretName: ""
+# -- Optional Kubernetes Ingress for the KBS Service.
+ingress:
+  # -- Enable Ingress for KBS.
+  enabled: false
+  # -- IngressClass name.
+  className: ""
+  # -- Ingress annotations.
+  annotations:
+  # -- Host-based routing. Leave empty to match all hosts (IP-only access).
+  host: ""
+  # -- TLS configuration entries.
+  tls: []
+# -- Expose the KBS Service via a NodePort.
+nodePort:
+  # -- Enable a NodePort Service for KBS.
+  enabled: false
+  # -- Fixed NodePort number; empty assigns a random port from the NodePort range.
+  port: ""
