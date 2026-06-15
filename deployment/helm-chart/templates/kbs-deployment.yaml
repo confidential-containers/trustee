@@ -63,6 +63,9 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ .Values.log_level }}
+            {{- with .Values.kbs.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ include "coco-trustee.port.kbs" . }}
@@ -86,6 +89,9 @@ spec:
             {{- end }}
             - name: nebula-ca
               mountPath: /opt/confidential-containers/kbs/nebula-ca
+            {{- with .Values.kbs.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
             {{- range .Values.kbs.resourceRepository }}
             - name: "{{ .repoName }}-{{ .type }}"
               mountPath: "/opt/confidential-containers/kbs/repository/{{ .repoName }}/{{ .type }}"
@@ -110,6 +116,9 @@ spec:
         {{- end }}
         - name: nebula-ca
           emptyDir: {}
+        {{- with .Values.kbs.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- range .Values.kbs.resourceRepository }}
         - name: "{{ .repoName }}-{{ .type }}"
           secret:
