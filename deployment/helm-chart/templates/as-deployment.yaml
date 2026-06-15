@@ -57,6 +57,13 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ .Values.log_level }}
+            {{- if eq (include "coco-trustee.storage.storageBackendIsPostgres" . | trim) "true" }}
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.postgresUrlSecretName" . }}
+                  key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
+            {{- end }}
             {{- with .Values.as.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
