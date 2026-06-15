@@ -1,0 +1,48 @@
+{{- if include "coco-trustee.kbs.sessionStorageType" . }}
+session_storage_type = "{{ include "coco-trustee.kbs.sessionStorageType" . }}"
+{{- end }}
+
+[http_server]
+sockets = ["0.0.0.0:{{ include "coco-trustee.port.kbs" . }}"]
+insecure_http = true
+
+[attestation_token]
+trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"]
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://{{ include "coco-trustee.svc.as" . }}:{{ include "coco-trustee.port.as" . }}"
+{{ $att := ((.Values.kbs | default dict).config | default dict).attestationService | default dict }}
+pool_size = {{ default 200 $att.poolSize }}
+timeout = {{ default 30 $att.timeout }}
+
+[admin]
+authorization_mode = "AuthenticatedAuthorization"
+
+[admin.authentication.bearer_jwt]
+identity_providers = [
+    { issuer = "{{ include "coco-trustee.kbs.adminIssuer" . }}", public_key_uri = "/opt/confidential-containers/kbs/user-keys/public.pub" },
+]
+
+[admin.authorization.regex_acl]
+acls = [{ role = "{{ include "coco-trustee.kbs.adminRole" . }}", allowed_endpoints = "^/kbs/.+$" }]
+
+[[plugins]]
+name = "resource"
+storage_backend_type = "kvstorage"
+
+{{- $st := include "coco-trustee.storage.type" . | trim }}
+{{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+{{- $needLocalJson := or (eq $st "LocalJson") (eq $st "local_json") (eq $sst "LocalJson") (eq $sst "local_json") }}
+{{- $needLocalFs := or (eq $st "LocalFs") (eq $st "local_fs") (eq $sst "LocalFs") (eq $sst "local_fs") }}
+[storage_backend]
+storage_type = "{{ $st }}"
+
+{{- if $needLocalJson }}
+[storage_backend.backends.local_json]
+file_dir_path = "{{ include "coco-trustee.storage.localJsonDir" . }}"
+{{- end }}
+{{- if $needLocalFs }}
+[storage_backend.backends.local_fs]
+dir_path = "{{ include "coco-trustee.storage.kbsLocalDir" . }}"
+{{- end }}

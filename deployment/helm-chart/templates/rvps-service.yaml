@@ -1,0 +1,67 @@
+{{- $rsvc := .Values.rvps.service | default dict }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.rvps" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ include "coco-trustee.port.rvps" . }}
+      targetPort: tcp
+      protocol: TCP
+      name: tcp
+  selector:
+    app: reference-value-provider-service
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+
+{{- if eq (default "ClusterIP" $rsvc.type) "LoadBalancer" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.rvpsLb" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  {{- with $rsvc.loadBalancerAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ include "coco-trustee.port.rvps" . }}
+      targetPort: tcp
+      protocol: TCP
+      name: tcp
+  selector:
+    app: reference-value-provider-service
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+
+{{- $lbKind := default "internal" $rsvc.loadBalancerType }}
+{{- if eq $lbKind "public" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.rvpsLbPublic" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  {{- with $rsvc.publicLoadBalancerAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ include "coco-trustee.port.rvps" . }}
+      targetPort: tcp
+      protocol: TCP
+      name: tcp
+  selector:
+    app: reference-value-provider-service
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+{{- end }}
+{{- end }}

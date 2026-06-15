@@ -1,0 +1,146 @@
+# Default values for CoCo Trustee (Helm).
+# Intentionally small: fixed on-disk paths and many operational defaults live in templates (`_helpers.tpl`, workload YAML).
+# Override via `-f` / `--set` or add keys not listed here (Helm merges arbitrary values).
+
+# -- Override the chart name used in labels and resource names.
+nameOverride: ""
+# -- Override the fully qualified release name (truncated to 63 characters).
+fullnameOverride: ""
+# -- Container `RUST_LOG` for KBS, AS, and RVPS (`info`, `debug`, `warn`, `error`).
+log_level: "info"
+# -- When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`.
+dnsHostAliasWorkaround: false
+# -- KBS protocol session store: `Memory`, `LocalJson`, or `LocalFs`. When empty, follows `storageBackend.type`.
+sessionStorageType: "Memory"
+# -- Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
+storageBackend:
+  # -- Backend type: `LocalFs`, `LocalJson`, or `Memory`. Only settings for the selected type take effect.
+  type: "LocalFs"
+  localFs:
+    persistence:
+      # -- PVC claim name for KBS local storage; empty uses `emptyDir`.
+      kbs: ""
+      # -- PVC claim name for AS local storage; empty uses `emptyDir`.
+      as: ""
+      # -- PVC claim name for RVPS local storage; empty uses `emptyDir`.
+      rvps: ""
+  localJson:
+    persistence:
+      # -- PVC claim name for KBS local JSON storage; empty uses `emptyDir`.
+      kbs: ""
+      # -- PVC claim name for AS local JSON storage; empty uses `emptyDir`.
+      as: ""
+      # -- PVC claim name for RVPS local JSON storage; empty uses `emptyDir`.
+      rvps: ""
+kbs:
+  config:
+    admin:
+      # -- JWT `issuer` claim for the bootstrap-generated admin token; must match `[admin.authentication.bearer_jwt]`.
+      issuer: "TrusteeInHelm"
+      # -- JWT `audience` claim for the bootstrap-generated admin token.
+      audience: "KBS"
+      # -- JWT `role` claim and matching `[admin.authorization.regex_acl]` role.
+      role: "admin"
+  image:
+    # -- KBS container image repository.
+    repository: "ghcr.io/confidential-containers/staged-images/kbs-grpc-as"
+    # -- KBS container image pull policy.
+    pullPolicy: "IfNotPresent"
+    # -- KBS container image tag.
+    tag: "latest"
+  service:
+    # -- When `true`, create an additional external `LoadBalancer` Service (`<fullname>-kbs-lb`). The primary KBS Service (`<fullname>-kbs`) is always internal `ClusterIP`.
+    exposeLoadBalancer: false
+    # -- Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service.
+    port: 8080
+    # -- Annotations applied to the optional KBS `LoadBalancer` Service when `exposeLoadBalancer=true`.
+    loadBalancerAnnotations:
+  # -- Container CPU/memory requests and limits for KBS.
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  # -- KBS resource repository configuration (passed through to KBS config).
+  resourceRepository: []
+as:
+  image:
+    # -- AS container image repository.
+    repository: "ghcr.io/confidential-containers/staged-images/coco-as-grpc"
+    # -- AS container image pull policy.
+    pullPolicy: "IfNotPresent"
+    # -- AS container image tag.
+    tag: "latest"
+  service:
+    # -- AS Service type (`ClusterIP` or `LoadBalancer`).
+    type: "ClusterIP"
+    # -- AS Service port.
+    port: 50004
+    # -- Annotations applied when `as.service.type` is `LoadBalancer`.
+    loadBalancerAnnotations:
+  # -- Container CPU/memory requests and limits for AS.
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+rvps:
+  image:
+    # -- RVPS container image repository.
+    repository: "ghcr.io/confidential-containers/staged-images/rvps"
+    # -- RVPS container image pull policy.
+    pullPolicy: "IfNotPresent"
+    # -- RVPS container image tag.
+    tag: "latest"
+  service:
+    # -- RVPS Service type (`ClusterIP` or `LoadBalancer`).
+    type: "ClusterIP"
+    # -- RVPS Service port.
+    port: 50003
+    # -- Load balancer kind when `rvps.service.type` is `LoadBalancer`: `internal` or `public`.
+    loadBalancerType: "internal"
+    # -- Annotations for the internal RVPS LoadBalancer Service.
+    loadBalancerAnnotations:
+    # -- Annotations for the public RVPS LoadBalancer Service when `loadBalancerType=public`.
+    publicLoadBalancerAnnotations:
+  # -- Container CPU/memory requests and limits for RVPS.
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+# -- Bootstrap hook Job settings (pre-install/pre-upgrade key generation when `secrets.useEphemeralGeneratedKeys=true`).
+bootstrapUserKeysJob:
+  keygenImage:
+    # -- OpenSSL `initContainer` image repository that generates demo keys.
+    repository: "alpine/openssl"
+    # -- OpenSSL `initContainer` image tag.
+    tag: "3.5.6"
+    # -- OpenSSL `initContainer` image pull policy.
+    pullPolicy: "IfNotPresent"
+  kubectlImage:
+    # -- kubectl container image repository that creates or updates the release-scoped Secret.
+    repository: "quay.io/kata-containers/kubectl"
+    # -- kubectl container image tag.
+    tag: "20260112"
+    # -- kubectl container image pull policy.
+    pullPolicy: "IfNotPresent"
+  # -- CPU/memory requests and limits for the bootstrap hook Job.
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+secrets:
+  # -- When `true`, a pre-install/pre-upgrade hook generates demo keys into a release-scoped Secret; when `false`, you must pre-create a Secret and set `existingSecretName`.
+  useEphemeralGeneratedKeys: true
+  # -- Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout).
+  existingSecretName: ""
