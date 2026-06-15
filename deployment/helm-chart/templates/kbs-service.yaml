@@ -17,7 +17,11 @@ spec:
     app: kbs
     {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
 
-{{- if (default true $ksvc.exposeLoadBalancer) }}
+{{- $exposeLB := true }}
+{{- if hasKey $ksvc "exposeLoadBalancer" }}
+{{- $exposeLB = index $ksvc "exposeLoadBalancer" }}
+{{- end }}
+{{- if $exposeLB }}
 ---
 apiVersion: v1
 kind: Service

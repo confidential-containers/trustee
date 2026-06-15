@@ -140,6 +140,12 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | bootstrapUserKeysJob.resources | object | `{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}` | CPU/memory requests and limits for the bootstrap hook Job. |
 | dnsHostAliasWorkaround | bool | `false` | When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`. |
 | fullnameOverride | string | `""` | Override the fully qualified release name (truncated to 63 characters). |
+| ingress | object | `{"annotations":null,"className":"","enabled":false,"host":"","tls":[]}` | Optional Kubernetes Ingress for the KBS Service. |
+| ingress.annotations | string | `nil` | Ingress annotations. |
+| ingress.className | string | `""` | IngressClass name. |
+| ingress.enabled | bool | `false` | Enable Ingress for KBS. |
+| ingress.host | string | `""` | Host-based routing. Leave empty to match all hosts (IP-only access). |
+| ingress.tls | list | `[]` | TLS configuration entries. |
 | kbs.config.admin.audience | string | `"KBS"` | JWT `audience` claim for the bootstrap-generated admin token. |
 | kbs.config.admin.issuer | string | `"TrusteeInHelm"` | JWT `issuer` claim for the bootstrap-generated admin token; must match `[admin.authentication.bearer_jwt]`. |
 | kbs.config.admin.role | string | `"admin"` | JWT `role` claim and matching `[admin.authorization.regex_acl]` role. |
@@ -153,6 +159,9 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.service.port | int | `8080` | Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service. |
 | log_level | string | `"info"` | Container `RUST_LOG` for KBS, AS, and RVPS (`info`, `debug`, `warn`, `error`). |
 | nameOverride | string | `""` | Override the chart name used in labels and resource names. |
+| nodePort | object | `{"enabled":false,"port":""}` | Expose the KBS Service via a NodePort. |
+| nodePort.enabled | bool | `false` | Enable a NodePort Service for KBS. |
+| nodePort.port | string | `""` | Fixed NodePort number; empty assigns a random port from the NodePort range. |
 | rvps.image.pullPolicy | string | `"IfNotPresent"` | RVPS container image pull policy. |
 | rvps.image.repository | string | `"ghcr.io/confidential-containers/staged-images/rvps"` | RVPS container image repository. |
 | rvps.image.tag | string | `"latest"` | RVPS container image tag. |
