@@ -1,14 +1,16 @@
 # Trustee Helm Chart
 
-Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**. KBS is wired to remote **`coco_as_grpc`** Attestation Service.
+Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
 
 ## Install
 
-**Requirements**: Kubernetes 1.19+, Helm 3.
+**Requirements**: Kubernetes 1.19+, Helm 3. If bundled Postgres is needed (when **`storageBackend.type: Postgres`** or **`sessionStorageType: Postgres`**), the Bitnami subchart uses PVC-backed storage, so your cluster must provide a usable **StorageClass** (or you must bind an existing claim).
 
 From the **repository root**:
 
 ```bash
+helm dependency update ./deployment/helm-chart
+
 helm upgrade --install trustee ./deployment/helm-chart \
   --namespace coco-trustee --create-namespace
 ```
@@ -30,7 +32,37 @@ helm uninstall trustee -n coco-trustee
 
 ### Default: LocalFs storage
 
-Same as **Install** above. Components use the default **`storageBackend`** (e.g. **LocalFs**).
+Same as **Install** above. If neither **`storageBackend.type`** nor **`sessionStorageType`** is **`Postgres`**, the chart does not deploy bundled Postgres; components use the default **`storageBackend`** (e.g. **LocalFs**).
+
+### PostgreSQL as storage backend + in-memory KBS sessions
+
+```bash
+helm dependency update ./deployment/helm-chart
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/postgres-backend.yaml
+```
+
+This enables the **Bitnami PostgreSQL** subchart (`postgresql.enabled: true`) and sets **`storageBackend.type: Postgres`**. KBS sessions stay in memory (`sessionStorageType: Memory`). Demo credentials default to `trustee` / `trustee` / `trustee` (override via `postgresql.auth.*`).
+
+### External PostgreSQL
+
+When an external Postgres service is used, set **`storageBackend.postgres.mode=external`**, pre-create a Secret with a **`POSTGRES_URL`** key, and point the chart at it:
+
+```bash
+kubectl create secret generic trustee-external-postgres -n coco-trustee \
+  --from-literal=POSTGRES_URL='postgresql://user:password@postgres.example.com:5432/trustee?sslmode=require'
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set storageBackend.type=Postgres \
+  --set storageBackend.postgres.mode=external \
+  --set storageBackend.postgres.external.existingSecretName=trustee-external-postgres \
+  --set storageBackend.postgres.external.existingSecretKey=POSTGRES_URL
+```
+
+When `storageBackend.postgres.mode=external`, the chart does **NOT** deploy the Bitnami subchart (`postgresql.enabled` stays `false`), even if Postgres is required by `storageBackend.type` or `sessionStorageType`.
 
 ### Bring your own keys (BYOK)
 
@@ -86,7 +118,10 @@ helm status trustee -n coco-trustee
 **Render-only check** (no install):
 
 ```bash
+helm dependency update ./deployment/helm-chart
+
 helm template trustee ./deployment/helm-chart \
+  -f ./deployment/helm-chart/scenarios/postgres-backend.yaml \
   --namespace coco-trustee > /tmp/trustee-render.yaml
 ```
 
@@ -186,6 +221,19 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | nodePort | object | `{"enabled":false,"port":""}` | Expose the KBS Service via a NodePort. |
 | nodePort.enabled | bool | `false` | Enable a NodePort Service for KBS. |
 | nodePort.port | string | `""` | Fixed NodePort number; empty assigns a random port from the NodePort range. |
+| postgresql | object | `{"auth":{"database":"trustee","password":"trustee","username":"trustee"},"enabled":false,"nameOverride":"postgres","primary":{"initdb":{"scriptsConfigMap":"trustee-postgres-initdb"},"persistence":{"enabled":true,"existingClaim":"","size":"8Gi","storageClass":""},"resources":{"limits":{"cpu":"1","memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}},"service":{"ports":{"postgresql":5432}}}` | [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql) subchart. Set `enabled: true` when bundled Postgres is required (`storageBackend.postgres.mode=internal` and Postgres storage is needed; see `scenarios/postgres-backend.yaml`). Additional subchart keys (image, metrics, replication, and so on) are supported; see upstream docs. |
+| postgresql.auth.database | string | `"trustee"` | Bundled Postgres database name (also used for the Trustee `POSTGRES_URL` Secret). |
+| postgresql.auth.password | string | `"trustee"` | Bundled Postgres password (also used for the Trustee `POSTGRES_URL` Secret). |
+| postgresql.auth.username | string | `"trustee"` | Bundled Postgres username (also used for the Trustee `POSTGRES_URL` Secret). |
+| postgresql.enabled | bool | `false` | Enable the Bitnami PostgreSQL subchart. Must be `true` when `storageBackend.postgres.mode=internal` and Postgres storage is required. |
+| postgresql.nameOverride | string | `"postgres"` | Subchart service name override; release Service becomes `{Helm release}-postgres`. |
+| postgresql.primary.initdb.scriptsConfigMap | string | `"trustee-postgres-initdb"` | ConfigMap wired to `files/postgres-initkv.sql` via `templates/postgres-initdb-configmap.yaml` (do not override unless you know what you are doing). |
+| postgresql.primary.persistence.enabled | bool | `true` | Enable PVC-backed storage for bundled Postgres. |
+| postgresql.primary.persistence.existingClaim | string | `""` | Existing PVC name to reuse for bundled Postgres. |
+| postgresql.primary.persistence.size | string | `"8Gi"` | Requested size for the auto-created bundled Postgres PVC (for example `8Gi`). |
+| postgresql.primary.persistence.storageClass | string | `""` | StorageClass for the auto-created bundled Postgres PVC; empty uses the cluster default. |
+| postgresql.primary.resources | object | `{"limits":{"cpu":"1","memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for bundled Postgres. |
+| postgresql.service.ports.postgresql | int | `5432` | Bundled Postgres Service port (used in `POSTGRES_URL`). |
 | rvps.affinity | string | `nil` | Affinity and anti-affinity scheduling rules for RVPS Pods. |
 | rvps.extraEnvVars | list | `[]` | Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
 | rvps.image.pullPolicy | string | `"Always"` | RVPS container image pull policy. |
@@ -205,18 +253,22 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | rvps.tolerations | list | `[]` | Tolerations for scheduling RVPS Pods onto tainted nodes. |
 | secrets.existingSecretName | string | `""` | Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout). |
 | secrets.useEphemeralGeneratedKeys | bool | `true` | When `true`, a pre-install/pre-upgrade hook generates demo keys into a release-scoped Secret; when `false`, you must pre-create a Secret and set `existingSecretName`. |
-| sessionStorageType | string | `"Memory"` | KBS protocol session store: `Memory`, `LocalJson`, or `LocalFs`. When empty, follows `storageBackend.type`. |
-| storageBackend | object | `{"localFs":{"persistence":{"as":"","kbs":"","rvps":""}},"localJson":{"persistence":{"as":"","kbs":"","rvps":""}},"type":"LocalFs"}` | Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config). |
+| sessionStorageType | string | `"Memory"` | KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`. |
+| storageBackend | object | `{"localFs":{"persistence":{"as":"","kbs":"","rvps":""}},"localJson":{"persistence":{"as":"","kbs":"","rvps":""}},"postgres":{"external":{"existingSecretKey":"","existingSecretName":""},"internal":{"initKvTables":true},"mode":"internal"},"type":"LocalFs"}` | Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config). |
 | storageBackend.localFs.persistence.as | string | `""` | PVC claim name for AS local storage; empty uses `emptyDir`. |
 | storageBackend.localFs.persistence.kbs | string | `""` | PVC claim name for KBS local storage; empty uses `emptyDir`. |
 | storageBackend.localFs.persistence.rvps | string | `""` | PVC claim name for RVPS local storage; empty uses `emptyDir`. |
 | storageBackend.localJson.persistence.as | string | `""` | PVC claim name for AS local JSON storage; empty uses `emptyDir`. |
 | storageBackend.localJson.persistence.kbs | string | `""` | PVC claim name for KBS local JSON storage; empty uses `emptyDir`. |
 | storageBackend.localJson.persistence.rvps | string | `""` | PVC claim name for RVPS local JSON storage; empty uses `emptyDir`. |
-| storageBackend.type | string | `"LocalFs"` | Backend type: `LocalFs`, `LocalJson`, or `Memory`. Only settings for the selected type take effect. |
+| storageBackend.postgres.external.existingSecretKey | string | `""` | Required when `mode` is `external`: Secret key name for the Postgres URL. |
+| storageBackend.postgres.external.existingSecretName | string | `""` | Required when `mode` is `external`: Secret containing the Postgres URL. |
+| storageBackend.postgres.internal.initKvTables | bool | `true` | When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`. |
+| storageBackend.postgres.mode | string | `"internal"` | Postgres source: `internal` (Bitnami subchart) or `external` (pre-created Secret). |
+| storageBackend.type | string | `"LocalFs"` | Backend type: `LocalFs`, `LocalJson`, `Postgres`, or `Memory`. When `Postgres` (or `sessionStorageType` is `Postgres`), the chart injects `POSTGRES_URL`. Only settings for the selected type take effect. |
 
 ## Development notes
 
-1. Do not change the files under [files](./files/) unless you are updating the corresponding Helm template logic. Service config is rendered from `*.template` files.
+1. Do not change the files under [files](./files/) unless you are updating the corresponding Helm template logic. Service config is rendered from `*.template` files; Postgres KV init SQL lives in `files/postgres-initkv.sql`.
 2. After changing `Chart.yaml` dependencies, run `helm dependency update ./deployment/helm-chart` and commit `Chart.lock` plus `charts/` if your packaging workflow vendors subcharts.
 3. After changing `values.yaml` comments or keys, regenerate this README from [README.md.gotmpl](./README.md.gotmpl): `helm-docs -c .` (run from this directory).

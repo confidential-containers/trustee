@@ -35,6 +35,7 @@ storage_backend_type = "kvstorage"
 {{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
 {{- $needLocalJson := or (eq $st "LocalJson") (eq $st "local_json") (eq $sst "LocalJson") (eq $sst "local_json") }}
 {{- $needLocalFs := or (eq $st "LocalFs") (eq $st "local_fs") (eq $sst "LocalFs") (eq $sst "local_fs") }}
+{{- $needPostgres := or (eq $st "Postgres") (eq $st "postgres") (eq $sst "Postgres") (eq $sst "postgres") }}
 [storage_backend]
 storage_type = "{{ $st }}"
 
@@ -45,4 +46,7 @@ file_dir_path = "{{ include "coco-trustee.storage.localJsonDir" . }}"
 {{- if $needLocalFs }}
 [storage_backend.backends.local_fs]
 dir_path = "{{ include "coco-trustee.storage.kbsLocalDir" . }}"
+{{- end }}
+{{- if $needPostgres }}
+[storage_backend.backends.postgres]
 {{- end }}

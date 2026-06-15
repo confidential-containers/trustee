@@ -11,11 +11,11 @@ fullnameOverride: ""
 log_level: "info"
 # -- When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`.
 dnsHostAliasWorkaround: false
-# -- KBS protocol session store: `Memory`, `LocalJson`, or `LocalFs`. When empty, follows `storageBackend.type`.
+# -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`.
 sessionStorageType: "Memory"
 # -- Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
 storageBackend:
-  # -- Backend type: `LocalFs`, `LocalJson`, or `Memory`. Only settings for the selected type take effect.
+  # -- Backend type: `LocalFs`, `LocalJson`, `Postgres`, or `Memory`. When `Postgres` (or `sessionStorageType` is `Postgres`), the chart injects `POSTGRES_URL`. Only settings for the selected type take effect.
   type: "LocalFs"
   localFs:
     persistence:
@@ -33,6 +33,55 @@ storageBackend:
       as: ""
       # -- PVC claim name for RVPS local JSON storage; empty uses `emptyDir`.
       rvps: ""
+  postgres:
+    # -- Postgres source: `internal` (Bitnami subchart) or `external` (pre-created Secret).
+    mode: "internal"
+    external:
+      # -- Required when `mode` is `external`: Secret containing the Postgres URL.
+      existingSecretName: ""
+      # -- Required when `mode` is `external`: Secret key name for the Postgres URL.
+      existingSecretKey: ""
+    internal:
+      # -- When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`.
+      initKvTables: true
+# -- [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql) subchart. Set `enabled: true` when bundled Postgres is required (`storageBackend.postgres.mode=internal` and Postgres storage is needed; see `scenarios/postgres-backend.yaml`). Additional subchart keys (image, metrics, replication, and so on) are supported; see upstream docs.
+postgresql:
+  # -- Enable the Bitnami PostgreSQL subchart. Must be `true` when `storageBackend.postgres.mode=internal` and Postgres storage is required.
+  enabled: false
+  # -- Subchart service name override; release Service becomes `{Helm release}-postgres`.
+  nameOverride: "postgres"
+  auth:
+    # -- Bundled Postgres username (also used for the Trustee `POSTGRES_URL` Secret).
+    username: "trustee"
+    # -- Bundled Postgres password (also used for the Trustee `POSTGRES_URL` Secret).
+    password: "trustee"
+    # -- Bundled Postgres database name (also used for the Trustee `POSTGRES_URL` Secret).
+    database: "trustee"
+  primary:
+    persistence:
+      # -- Enable PVC-backed storage for bundled Postgres.
+      enabled: true
+      # -- Requested size for the auto-created bundled Postgres PVC (for example `8Gi`).
+      size: "8Gi"
+      # -- StorageClass for the auto-created bundled Postgres PVC; empty uses the cluster default.
+      storageClass: ""
+      # -- Existing PVC name to reuse for bundled Postgres.
+      existingClaim: ""
+    # -- CPU/memory requests and limits for bundled Postgres.
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+    initdb:
+      # -- ConfigMap wired to `files/postgres-initkv.sql` via `templates/postgres-initdb-configmap.yaml` (do not override unless you know what you are doing).
+      scriptsConfigMap: "trustee-postgres-initdb"
+  service:
+    ports:
+      # -- Bundled Postgres Service port (used in `POSTGRES_URL`).
+      postgresql: 5432
 kbs:
   config:
     admin:

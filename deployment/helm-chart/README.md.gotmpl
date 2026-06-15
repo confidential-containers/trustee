@@ -1,14 +1,16 @@
 # Trustee Helm Chart
 
-Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**. KBS is wired to remote **`coco_as_grpc`** Attestation Service.
+Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
 
 ## Install
 
-**Requirements**: Kubernetes 1.19+, Helm 3.
+**Requirements**: Kubernetes 1.19+, Helm 3. If bundled Postgres is needed (when **`storageBackend.type: Postgres`** or **`sessionStorageType: Postgres`**), the Bitnami subchart uses PVC-backed storage, so your cluster must provide a usable **StorageClass** (or you must bind an existing claim).
 
 From the **repository root**:
 
 ```bash
+helm dependency update ./deployment/helm-chart
+
 helm upgrade --install trustee ./deployment/helm-chart \
   --namespace coco-trustee --create-namespace
 ```
@@ -26,11 +28,42 @@ Uninstall the release:
 helm uninstall trustee -n coco-trustee
 ```
 
+
 ## Typical scenarios
 
 ### Default: LocalFs storage
 
-Same as **Install** above. Components use the default **`storageBackend`** (e.g. **LocalFs**).
+Same as **Install** above. If neither **`storageBackend.type`** nor **`sessionStorageType`** is **`Postgres`**, the chart does not deploy bundled Postgres; components use the default **`storageBackend`** (e.g. **LocalFs**).
+
+### PostgreSQL as storage backend + in-memory KBS sessions
+
+```bash
+helm dependency update ./deployment/helm-chart
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/postgres-backend.yaml
+```
+
+This enables the **Bitnami PostgreSQL** subchart (`postgresql.enabled: true`) and sets **`storageBackend.type: Postgres`**. KBS sessions stay in memory (`sessionStorageType: Memory`). Demo credentials default to `trustee` / `trustee` / `trustee` (override via `postgresql.auth.*`).
+
+### External PostgreSQL
+
+When an external Postgres service is used, set **`storageBackend.postgres.mode=external`**, pre-create a Secret with a **`POSTGRES_URL`** key, and point the chart at it:
+
+```bash
+kubectl create secret generic trustee-external-postgres -n coco-trustee \
+  --from-literal=POSTGRES_URL='postgresql://user:password@postgres.example.com:5432/trustee?sslmode=require'
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set storageBackend.type=Postgres \
+  --set storageBackend.postgres.mode=external \
+  --set storageBackend.postgres.external.existingSecretName=trustee-external-postgres \
+  --set storageBackend.postgres.external.existingSecretKey=POSTGRES_URL
+```
+
+When `storageBackend.postgres.mode=external`, the chart does **NOT** deploy the Bitnami subchart (`postgresql.enabled` stays `false`), even if Postgres is required by `storageBackend.type` or `sessionStorageType`.
 
 ### Bring your own keys (BYOK)
 
@@ -86,7 +119,10 @@ helm status trustee -n coco-trustee
 **Render-only check** (no install):
 
 ```bash
+helm dependency update ./deployment/helm-chart
+
 helm template trustee ./deployment/helm-chart \
+  -f ./deployment/helm-chart/scenarios/postgres-backend.yaml \
   --namespace coco-trustee > /tmp/trustee-render.yaml
 ```
 
@@ -123,6 +159,6 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 
 ## Development notes
 
-1. Do not change the files under [files](./files/) unless you are updating the corresponding Helm template logic. Service config is rendered from `*.template` files.
+1. Do not change the files under [files](./files/) unless you are updating the corresponding Helm template logic. Service config is rendered from `*.template` files; Postgres KV init SQL lives in `files/postgres-initkv.sql`.
 2. After changing `Chart.yaml` dependencies, run `helm dependency update ./deployment/helm-chart` and commit `Chart.lock` plus `charts/` if your packaging workflow vendors subcharts.
 3. After changing `values.yaml` comments or keys, regenerate this README from [README.md.gotmpl](./README.md.gotmpl): `helm-docs -c .` (run from this directory).
