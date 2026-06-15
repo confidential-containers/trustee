@@ -1,0 +1,42 @@
+{{- $ksvc := .Values.kbs.service | default dict }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.kbs" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ include "coco-trustee.port.kbs" . }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: kbs
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+
+{{- if (default true $ksvc.exposeLoadBalancer) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.kbsLb" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  {{- with $ksvc.loadBalancerAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ include "coco-trustee.port.kbs" . }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: kbs
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+{{- end }}

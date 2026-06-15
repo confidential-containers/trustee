@@ -1,0 +1,24 @@
+# BYOK: use a pre-created Secret; disable the ephemeral bootstrap hook.
+#
+# 1) Create the Secret (PEM contents in local files — replace paths with yours):
+#
+#   kubectl create secret generic trustee-byok-keys -n coco-trustee \
+#     --from-file=KBS_ADMIN_PRIVATE_KEY=./kbs-admin.key.pem \
+#     --from-file=KBS_ADMIN_PUBKEY=./kbs-admin.pub.pem \
+#     --from-file=KBS_ADMIN_TOKEN=./admin-token \
+#     --from-file=AS_TOKEN_SIGNING_PRIVATE_KEY=./as-token.key.pem \
+#     --from-file=AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN=./as-token-chain.pem
+#   # admin-token: Ed25519 JWT with iss/role matching kbs.config.admin in values (see kbs/config/docker-compose/setup.sh).
+#
+# 2) Install:
+#
+#   helm upgrade --install trustee ./deployment/helm-chart \
+#     --namespace coco-trustee --create-namespace \
+#     -f ./deployment/helm-chart/scenarios/bring-your-own-keys.yaml
+#
+# Override the Secret name if needed:
+#   --set secrets.existingSecretName=my-other-secret
+
+secrets:
+  useEphemeralGeneratedKeys: false
+  existingSecretName: trustee-byok-keys

@@ -1,0 +1,24 @@
+{
+    "storage_backend": {
+        "storage_type": "{{ include "coco-trustee.storage.type" . }}",
+        "backends": {
+            "local_fs": {
+                "dir_path": "{{ include "coco-trustee.storage.asLocalDir" . }}"
+            },
+            "local_json": {
+                "file_dir_path": "{{ include "coco-trustee.storage.localJsonDir" . }}"
+            }
+        }
+    },
+    "rvps_config": {
+        "type": "GrpcRemote",
+        "address": "http://{{ include "coco-trustee.svc.rvps" . }}:{{ include "coco-trustee.port.rvps" . }}"
+    },
+    "attestation_token_broker": {
+        "duration_min": 5,
+        "signer": {
+            "key_path": "/opt/confidential-containers/kbs/user-keys/token.key",
+            "cert_path": "/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"
+        }
+    }
+}
