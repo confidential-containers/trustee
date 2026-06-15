@@ -637,7 +637,11 @@ pub(crate) fn get_common_name(cert: &x509::X509) -> Result<String> {
         bail!("No CN found");
     }
 
-    Ok(e.data().as_utf8()?.to_string())
+    let common_name = e
+        .data()
+        .to_string()
+        .context("Failed to convert CN to string")?;
+    Ok(common_name)
 }
 
 /// Determines the processor model based on the family and model IDs from the attestation report.
