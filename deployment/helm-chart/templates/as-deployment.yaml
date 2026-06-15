@@ -64,6 +64,31 @@ spec:
             - name: tcp
               containerPort: {{ include "coco-trustee.port.as" . }}
               protocol: TCP
+          # Intel TDX/SGX DCAP verification makes blocking FFI + collateral
+          # calls that can stall the gRPC health endpoint for several seconds
+          # under attestation load.
+          # A startupProbe plus more tolerant liveness/readiness keep the AS in
+          # the Service while it is processing heavy (e.g. TDX) verifications.
+          startupProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            grpc:
+              port: {{ include "coco-trustee.port.as" . }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
           {{- with .Values.as.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

@@ -70,6 +70,18 @@ spec:
             - name: http
               containerPort: {{ include "coco-trustee.port.kbs" . }}
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
           {{- with .Values.kbs.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
