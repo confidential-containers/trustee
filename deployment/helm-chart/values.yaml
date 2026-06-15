@@ -1,6 +1,7 @@
 # Default values for CoCo Trustee (Helm).
 # Intentionally small: fixed on-disk paths and many operational defaults live in templates (`_helpers.tpl`, workload YAML).
 # Override via `-f` / `--set` or add keys not listed here (Helm merges arbitrary values).
+# After changing comments or keys here, run `helm-docs -c .` in this directory to regenerate README.md.
 
 # -- Override the chart name used in labels and resource names.
 nameOverride: ""
