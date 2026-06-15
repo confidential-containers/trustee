@@ -138,6 +138,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.service.port | int | `50004` | AS Service port. |
 | as.service.type | string | `"ClusterIP"` | AS Service type (`ClusterIP` or `LoadBalancer`). |
 | as.tolerations | list | `[]` | Tolerations for scheduling AS Pods onto tainted nodes. |
+| as.verifier.nvidia.type | string | `"Local"` | NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set. |
+| as.verifier.nvidia.verifierUrl | string | `"https://nras.attestation.nvidia.com/v4/attest"` | NRAS URL when `as.verifier.nvidia.type` is `Remote`. |
 | bootstrapUserKeysJob | object | `{"keygenImage":{"pullPolicy":"IfNotPresent","repository":"alpine/openssl","tag":"3.5.6"},"kubectlImage":{"pullPolicy":"IfNotPresent","repository":"quay.io/kata-containers/kubectl","tag":"20260112"},"resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}}` | Bootstrap hook Job settings (pre-install/pre-upgrade key generation when `secrets.useEphemeralGeneratedKeys=true`). |
 | bootstrapUserKeysJob.keygenImage.pullPolicy | string | `"IfNotPresent"` | OpenSSL `initContainer` image pull policy. |
 | bootstrapUserKeysJob.keygenImage.repository | string | `"alpine/openssl"` | OpenSSL `initContainer` image repository that generates demo keys. |

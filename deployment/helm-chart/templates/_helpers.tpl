@@ -105,6 +105,25 @@ Fixed workload ports (override only via undocumented values for advanced use).
 {{- end }}
 
 {{/*
+AS verifier config JSON fragment
+*/}}
+{{- define "coco-trustee.as.verifier" -}}
+{{- $nv := dig "verifier" "nvidia" (dict) (default dict .Values.as) | default dict -}}
+{{- if $nv -}}
+{{- if eq $nv.type "Remote" -}}
+{{- $_ := required "as.verifier.nvidia.verifierUrl must be set when as.verifier.nvidia.type is Remote" (trim (default "" $nv.verifierUrl)) -}}
+{{- end -}}
+{{- $nvType := default "Local" $nv.type -}}
+"nvidia_verifier": {
+    "type": "{{ $nvType }}"
+    {{- if eq $nv.type "Remote" }},
+    "verifier_url": "{{ $nv.verifierUrl }}"
+    {{- end }}
+}
+{{- end -}}
+{{- end }}
+
+{{/*
 Container security defaults (aligned with prior chart defaults).
 */}}
 {{- define "coco-trustee.containerSecurityContext" -}}
