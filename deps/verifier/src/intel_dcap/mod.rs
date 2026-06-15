@@ -1,7 +1,7 @@
 use crate::intel_dcap::claims::prepare_custom_claims_map;
 use crate::intel_dcap::error::describe_error;
 use crate::TeeEvidenceParsedClaim;
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 use intel_tee_quote_verification_rs::{
     quote3_error_t, sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, sgx_ql_request_policy_t,
     sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
@@ -132,11 +132,12 @@ pub(crate) fn ecdsa_quote_verification(
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_CONFIG_AND_SW_HARDENING_NEEDED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
-            Ok(prepare_custom_claims_map(
+            prepare_custom_claims_map(
                 &mut supp_data,
                 collateral_expiration_status,
                 quote_verification_result,
-            ))
+            )
+            .context("Failed to generate custom claims from supplemental data")
         }
         terminal_result => {
             bail!(
