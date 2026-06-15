@@ -7,16 +7,19 @@
 nameOverride: ""
 # -- Override the fully qualified release name (truncated to 63 characters).
 fullnameOverride: ""
+
 # -- Container `RUST_LOG` for KBS, AS, and RVPS (`info`, `debug`, `warn`, `error`).
-log_level: "info"
+log_level: info
 # -- When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`.
 dnsHostAliasWorkaround: false
+
 # -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`.
 sessionStorageType: "Memory"
+
 # -- Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
 storageBackend:
   # -- Backend type: `LocalFs`, `LocalJson`, `Postgres`, or `Memory`. When `Postgres` (or `sessionStorageType` is `Postgres`), the chart injects `POSTGRES_URL`. Only settings for the selected type take effect.
-  type: "LocalFs"
+  type: LocalFs
   localFs:
     persistence:
       # -- PVC claim name for KBS local storage; empty uses `emptyDir`.
@@ -35,7 +38,7 @@ storageBackend:
       rvps: ""
   postgres:
     # -- Postgres source: `internal` (Bitnami subchart) or `external` (pre-created Secret).
-    mode: "internal"
+    mode: internal
     external:
       # -- Required when `mode` is `external`: Secret containing the Postgres URL.
       existingSecretName: ""
@@ -44,25 +47,26 @@ storageBackend:
     internal:
       # -- When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`.
       initKvTables: true
+
 # -- [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql) subchart. Set `enabled: true` when bundled Postgres is required (`storageBackend.postgres.mode=internal` and Postgres storage is needed; see `scenarios/postgres-backend.yaml`). Additional subchart keys (image, metrics, replication, and so on) are supported; see upstream docs.
 postgresql:
   # -- Enable the Bitnami PostgreSQL subchart. Must be `true` when `storageBackend.postgres.mode=internal` and Postgres storage is required.
   enabled: false
   # -- Subchart service name override; release Service becomes `{Helm release}-postgres`.
-  nameOverride: "postgres"
+  nameOverride: postgres
   auth:
     # -- Bundled Postgres username (also used for the Trustee `POSTGRES_URL` Secret).
-    username: "trustee"
+    username: trustee
     # -- Bundled Postgres password (also used for the Trustee `POSTGRES_URL` Secret).
-    password: "trustee"
+    password: trustee
     # -- Bundled Postgres database name (also used for the Trustee `POSTGRES_URL` Secret).
-    database: "trustee"
+    database: trustee
   primary:
     persistence:
       # -- Enable PVC-backed storage for bundled Postgres.
       enabled: true
       # -- Requested size for the auto-created bundled Postgres PVC (for example `8Gi`).
-      size: "8Gi"
+      size: 8Gi
       # -- StorageClass for the auto-created bundled Postgres PVC; empty uses the cluster default.
       storageClass: ""
       # -- Existing PVC name to reuse for bundled Postgres.
@@ -70,27 +74,30 @@ postgresql:
     # -- CPU/memory requests and limits for bundled Postgres.
     resources:
       requests:
-        cpu: "250m"
-        memory: "256Mi"
+        cpu: 250m
+        memory: 256Mi
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: 1Gi
     initdb:
       # -- ConfigMap wired to `files/postgres-initkv.sql` via `templates/postgres-initdb-configmap.yaml` (do not override unless you know what you are doing).
-      scriptsConfigMap: "trustee-postgres-initdb"
+      scriptsConfigMap: trustee-postgres-initdb
   service:
     ports:
       # -- Bundled Postgres Service port (used in `POSTGRES_URL`).
       postgresql: 5432
+
 kbs:
+  # -- Number of KBS Pod replicas.
+  replicaCount: 1
   config:
     admin:
       # -- JWT `issuer` claim for the bootstrap-generated admin token; must match `[admin.authentication.bearer_jwt]`.
-      issuer: "TrusteeInHelm"
+      issuer: TrusteeInHelm
       # -- JWT `audience` claim for the bootstrap-generated admin token.
-      audience: "KBS"
+      audience: KBS
       # -- JWT `role` claim and matching `[admin.authorization.regex_acl]` role.
-      role: "admin"
+      role: admin
     attestationService:
       # -- Connection pool size for the KBS -> gRPC AS client (`pool_size` in `files/kbs-config.toml.template`).
       poolSize: 200
@@ -98,26 +105,28 @@ kbs:
       timeout: 30
   image:
     # -- KBS container image repository.
-    repository: "ghcr.io/confidential-containers/staged-images/kbs-grpc-as"
+    repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
     # -- KBS container image pull policy.
-    pullPolicy: "Always"
+    pullPolicy: Always
     # -- KBS container image tag.
     tag: "latest"
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
   service:
     # -- When `true`, create an additional external `LoadBalancer` Service (`<fullname>-kbs-lb`). The primary KBS Service (`<fullname>-kbs`) is always internal `ClusterIP`.
     exposeLoadBalancer: false
     # -- Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service.
     port: 8080
     # -- Annotations applied to the optional KBS `LoadBalancer` Service when `exposeLoadBalancer=true`.
-    loadBalancerAnnotations:
+    loadBalancerAnnotations: {}
   # -- Container CPU/memory requests and limits for KBS.
   resources:
     requests:
-      cpu: "250m"
-      memory: "256Mi"
+      cpu: 250m
+      memory: 256Mi
     limits:
       cpu: "2"
-      memory: "2Gi"
+      memory: 2Gi
   # -- KBS resource repository configuration (passed through to KBS config).
   resourceRepository: []
   # -- Extra environment variables to inject into the KBS container.
@@ -126,28 +135,29 @@ kbs:
   extraVolumes: []
   # -- Extra volume mounts for the KBS container.
   extraVolumeMounts: []
-  # -- Number of KBS Pod replicas.
-  replicaCount: 1
-  # -- Optional image pull secrets for private registries.
-  imagePullSecrets: []
   # -- Extra Pod annotations (for example Prometheus scrape or service mesh integration).
-  podAnnotations:
+  podAnnotations: {}
   # -- Pod-level security context overrides.
-  podSecurityContext:
+  podSecurityContext: {}
   # -- Node label selection constraints for KBS Pods.
-  nodeSelector:
+  nodeSelector: {}
   # -- Affinity and anti-affinity scheduling rules for KBS Pods.
-  affinity:
+  affinity: {}
   # -- Tolerations for scheduling KBS Pods onto tainted nodes.
   tolerations: []
+
 as:
+  # -- Number of Attestation Service Pod replicas.
+  replicaCount: 1
   image:
     # -- AS container image repository.
-    repository: "ghcr.io/confidential-containers/staged-images/coco-as-grpc"
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
     # -- AS container image pull policy.
-    pullPolicy: "Always"
+    pullPolicy: Always
     # -- AS container image tag.
     tag: "latest"
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
   verifier:
     nvidia:
       # -- NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set.
@@ -161,107 +171,107 @@ as:
       tcb_update_type: "early"
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).
-    type: "ClusterIP"
+    type: ClusterIP
     # -- AS Service port.
     port: 50004
     # -- Annotations applied when `as.service.type` is `LoadBalancer`.
-    loadBalancerAnnotations:
+    loadBalancerAnnotations: {}
   # -- Container CPU/memory requests and limits for AS.
   resources:
     requests:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: 500m
+      memory: 1Gi
     limits:
       cpu: "4"
-      memory: "4Gi"
+      memory: 4Gi
   # -- Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`).
   extraEnvVars: []
-  # -- Number of Attestation Service Pod replicas.
-  replicaCount: 1
-  # -- Optional image pull secrets for private registries.
-  imagePullSecrets: []
   # -- Extra Pod annotations.
-  podAnnotations:
+  podAnnotations: {}
   # -- Pod-level security context overrides.
-  podSecurityContext:
+  podSecurityContext: {}
   # -- Node label selection constraints for AS Pods.
-  nodeSelector:
+  nodeSelector: {}
   # -- Affinity and anti-affinity scheduling rules for AS Pods.
-  affinity:
+  affinity: {}
   # -- Tolerations for scheduling AS Pods onto tainted nodes.
   tolerations: []
+
 rvps:
+  # -- Number of RVPS Pod replicas.
+  replicaCount: 1
   image:
     # -- RVPS container image repository.
-    repository: "ghcr.io/confidential-containers/staged-images/rvps"
+    repository: ghcr.io/confidential-containers/staged-images/rvps
     # -- RVPS container image pull policy.
-    pullPolicy: "Always"
+    pullPolicy: Always
     # -- RVPS container image tag.
     tag: "latest"
+  # -- Optional image pull secrets for private registries.
+  imagePullSecrets: []
   service:
     # -- RVPS Service type (`ClusterIP` or `LoadBalancer`).
-    type: "ClusterIP"
+    type: ClusterIP
     # -- RVPS Service port.
     port: 50003
     # -- Load balancer kind when `rvps.service.type` is `LoadBalancer`: `internal` or `public`.
-    loadBalancerType: "internal"
+    loadBalancerType: internal
     # -- Annotations for the internal RVPS LoadBalancer Service.
-    loadBalancerAnnotations:
+    loadBalancerAnnotations: {}
     # -- Annotations for the public RVPS LoadBalancer Service when `loadBalancerType=public`.
-    publicLoadBalancerAnnotations:
+    publicLoadBalancerAnnotations: {}
   # -- Container CPU/memory requests and limits for RVPS.
   resources:
     requests:
-      cpu: "100m"
-      memory: "128Mi"
+      cpu: 100m
+      memory: 128Mi
     limits:
       cpu: "1"
-      memory: "1Gi"
+      memory: 1Gi
   # -- Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`).
   extraEnvVars: []
-  # -- Number of RVPS Pod replicas.
-  replicaCount: 1
-  # -- Optional image pull secrets for private registries.
-  imagePullSecrets: []
   # -- Extra Pod annotations.
-  podAnnotations:
+  podAnnotations: {}
   # -- Pod-level security context overrides.
-  podSecurityContext:
+  podSecurityContext: {}
   # -- Node label selection constraints for RVPS Pods.
-  nodeSelector:
+  nodeSelector: {}
   # -- Affinity and anti-affinity scheduling rules for RVPS Pods.
-  affinity:
+  affinity: {}
   # -- Tolerations for scheduling RVPS Pods onto tainted nodes.
   tolerations: []
-# -- Bootstrap hook Job settings (pre-install/pre-upgrade key generation when `secrets.useEphemeralGeneratedKeys=true`).
+
+# -- Bootstrap hook Job settings (pre-install/pre-upgrade key generation and post-delete cleanup when `secrets.useEphemeralGeneratedKeys=true`).
 bootstrapUserKeysJob:
   keygenImage:
     # -- OpenSSL `initContainer` image repository that generates demo keys.
-    repository: "alpine/openssl"
+    repository: alpine/openssl
     # -- OpenSSL `initContainer` image tag.
     tag: "3.5.6"
     # -- OpenSSL `initContainer` image pull policy.
-    pullPolicy: "IfNotPresent"
+    pullPolicy: IfNotPresent
   kubectlImage:
     # -- kubectl container image repository that creates or updates the release-scoped Secret.
-    repository: "quay.io/kata-containers/kubectl"
+    repository: quay.io/kata-containers/kubectl
     # -- kubectl container image tag.
     tag: "20260112"
     # -- kubectl container image pull policy.
-    pullPolicy: "IfNotPresent"
+    pullPolicy: IfNotPresent
   # -- CPU/memory requests and limits for the bootstrap hook Job.
   resources:
     requests:
-      cpu: "50m"
-      memory: "64Mi"
+      cpu: 50m
+      memory: 64Mi
     limits:
-      cpu: "200m"
-      memory: "256Mi"
+      cpu: 200m
+      memory: 256Mi
+
 secrets:
   # -- When `true`, a pre-install/pre-upgrade hook generates demo keys into a release-scoped Secret; when `false`, you must pre-create a Secret and set `existingSecretName`.
   useEphemeralGeneratedKeys: true
   # -- Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout).
   existingSecretName: ""
+
 # -- Optional Kubernetes Ingress for the KBS Service.
 ingress:
   # -- Enable Ingress for KBS.
@@ -269,11 +279,15 @@ ingress:
   # -- IngressClass name.
   className: ""
   # -- Ingress annotations.
-  annotations:
+  annotations: {}
   # -- Host-based routing. Leave empty to match all hosts (IP-only access).
   host: ""
   # -- TLS configuration entries.
   tls: []
+  #  - secretName: kbs-tls
+  #    hosts:
+  #      - kbs.example.com
+
 # -- Expose the KBS Service via a NodePort.
 nodePort:
   # -- Enable a NodePort Service for KBS.
