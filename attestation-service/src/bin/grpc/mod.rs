@@ -4,17 +4,26 @@ use attestation_service::{
     config::Config, config::ConfigError, AttestationService as Service, ServiceError, Tee,
     TeeEvidence, VerificationRequest,
 };
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Json},
+    routing::get,
+};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use jsonwebtoken::jwk::JwkSet;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tonic::{
+    service::Routes,
+    transport::{Identity, Server, ServerTlsConfig},
+};
 use tonic::{Request, Response, Status};
 use tonic_health::server::health_reporter;
-use tracing::{debug, info, instrument, Span};
+use tracing::{debug, info, instrument, warn, Span};
 use uuid::Uuid;
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
@@ -86,6 +95,10 @@ impl AttestationServer {
         Ok(Self {
             attestation_service: service,
         })
+    }
+
+    pub fn get_token_signer_jwks(&self) -> anyhow::Result<JwkSet> {
+        self.attestation_service.get_token_signer_jwks()
     }
 }
 
@@ -332,7 +345,48 @@ pub async fn start(
         .set_serving::<AttestationServiceServer<Arc<RwLock<AttestationServer>>>>()
         .await;
 
-    let mut builder = Server::builder();
+    let jwks_server = attestation_server.clone();
+    let base_routes = {
+        let mut routes_builder = Routes::builder();
+        routes_builder
+            .add_service(health_service)
+            .add_service(AttestationServiceServer::new(attestation_server.clone()))
+            .add_service(ReferenceValueProviderServiceServer::new(attestation_server));
+        routes_builder.routes()
+    };
+    let routes = {
+        let mut router = base_routes.into_axum_router();
+        router = router.route(
+            "/.well-known/jwks.json",
+            get(move || {
+                let jwks_server = jwks_server.clone();
+                async move {
+                    let request_id = Uuid::new_v4().to_string();
+                    let span = tracing::info_span!("GetJWKS", request_id = %request_id);
+                    let _enter = span.enter();
+                    info!("GetJWKS called.");
+                    match jwks_server.read().await.get_token_signer_jwks() {
+                        Ok(jwks) => {
+                            info!("GetJWKS succeeded.");
+                            Json(jwks).into_response()
+                        }
+                        Err(err) => {
+                            warn!(error = %err, "GetJWKS failed");
+                            (StatusCode::INTERNAL_SERVER_ERROR, "failed to get JWKS")
+                                .into_response()
+                        }
+                    }
+                }
+            }),
+        );
+        Routes::from(router)
+    };
+
+    info!(
+        "JWKS endpoint available at http://{}/.well-known/jwks.json",
+        socket
+    );
+    let mut builder = Server::builder().accept_http1(true);
 
     match (https_pubkey_cert, https_prikey) {
         (Some(pubkey_cert), Some(prikey)) => {
@@ -360,11 +414,6 @@ pub async fn start(
         }
     }
 
-    builder
-        .add_service(health_service)
-        .add_service(AttestationServiceServer::new(attestation_server.clone()))
-        .add_service(ReferenceValueProviderServiceServer::new(attestation_server))
-        .serve(socket)
-        .await?;
+    builder.add_routes(routes).serve(socket).await?;
     Ok(())
 }
