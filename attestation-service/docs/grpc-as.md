@@ -126,3 +126,29 @@ docker build \
 ### API
 
 The API of gRPC CoCo-AS is defined in the [proto](../../protos/attestation.proto).
+
+For token verification key distribution, `grpc-as` also serves a standard HTTP JWKS
+endpoint on the same socket as the gRPC service:
+
+- `/.well-known/jwks.json`: returns a JWK Set document for validating attestation tokens
+  signed by this AS instance. Example response:
+
+```json
+{
+    "keys": [
+        {
+            "alg": "ES256",
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "<base64url>",
+            "y": "<base64url>"
+        }
+    ]
+}
+```
+
+Fetch keys from the same listen port as the gRPC service:
+
+```shell
+curl http://127.0.0.1:50004/.well-known/jwks.json
+```
