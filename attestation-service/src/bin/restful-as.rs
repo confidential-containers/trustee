@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info};
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
-use crate::restful::{attestation, get_challenge, get_policies, set_policy};
+use crate::restful::{attestation, get_challenge, get_jwks, get_policies, set_policy};
 
 mod restful;
 
@@ -61,6 +61,9 @@ enum WebApi {
 
     #[strum(serialize = "/challenge")]
     Challenge,
+
+    #[strum(serialize = "/.well-known/jwks.json")]
+    Jwks,
 }
 
 #[derive(Error, Debug)]
@@ -172,6 +175,7 @@ loglevel: {env_filter}
                     .route(web::get().to(get_policies)),
             )
             .service(web::resource(WebApi::Challenge.as_ref()).route(web::post().to(get_challenge)))
+            .service(web::resource(WebApi::Jwks.as_ref()).route(web::get().to(get_jwks)))
             .app_data(web::Data::clone(&attestation_service))
     });
 
