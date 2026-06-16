@@ -65,8 +65,7 @@ loglevel: {env_filter}
 
     let cli = Cli::parse();
 
-    let server = grpc::start(cli.socket, cli.config_file);
-    tokio::try_join!(server)?;
+    grpc::start(cli.socket, cli.config_file).await?;
 
     Ok(())
 }
