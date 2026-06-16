@@ -8,7 +8,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, VerifierID};
-use jsonwebtoken::jwk;
+use jsonwebtoken::jwk::{self, JwkSet};
 use kbs_types::Tee;
 use key_value_storage::KeyValueStorageInstance;
 use openssl::bn::{BigNum, BigNumContext};
@@ -374,6 +374,12 @@ impl EarAttestationTokenBroker {
             .await
             .map_err(Error::from)
     }
+
+    pub fn get_jwks(&self) -> Result<JwkSet> {
+        Ok(JwkSet {
+            keys: vec![self.pubkey_jwk()?],
+        })
+    }
 }
 
 impl EarAttestationTokenBroker {
@@ -507,6 +513,7 @@ pub fn transform_claims(
 #[cfg(test)]
 mod tests {
     use assert_json_diff::assert_json_eq;
+    use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve};
     use jsonwebtoken::DecodingKey;
     use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType, SetParameters};
     use serde_json::json;
@@ -603,6 +610,31 @@ mod tests {
 
         let ear = Ear::from_jwt(&token, jsonwebtoken::Algorithm::ES256, &public_key).unwrap();
         ear.validate().unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_get_jwks() {
+        let config = EarTokenConfiguration::default();
+        let storage = KeyValueStorageStructConfig::default()
+            .to_client_with_namespace(KeyValueStorageType::Memory, AS_POLICY_STORAGE_NAMESPACE)
+            .await
+            .unwrap();
+        let broker = EarAttestationTokenBroker::new(config, storage)
+            .await
+            .unwrap();
+
+        let jwks = broker.get_jwks().unwrap();
+        assert_eq!(jwks.keys.len(), 1);
+        assert_eq!(
+            jwks.keys[0].common.key_algorithm,
+            Some(jwk::KeyAlgorithm::ES256)
+        );
+        match &jwks.keys[0].algorithm {
+            AlgorithmParameters::EllipticCurve(ec) => {
+                assert_eq!(ec.curve, EllipticCurve::P256);
+            }
+            other => panic!("unexpected key type: {other:?}"),
+        }
     }
 
     #[test]

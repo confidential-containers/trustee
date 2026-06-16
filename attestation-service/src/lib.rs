@@ -15,6 +15,7 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
+use jsonwebtoken::jwk::JwkSet;
 use key_value_storage::StorageProvider;
 use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
@@ -191,6 +192,13 @@ impl AttestationService {
             .get_policy(policy_id)
             .await
             .context("Cannot Get Policy")
+    }
+
+    /// Get token verification key set in JWK Set format.
+    pub fn get_token_signer_jwks(&self) -> Result<JwkSet> {
+        self.token_broker
+            .get_jwks()
+            .context("Cannot Get Token Signer JWK Set")
     }
 
     /// Evaluate Attestation Evidence.
