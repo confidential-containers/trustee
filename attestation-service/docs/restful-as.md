@@ -205,3 +205,17 @@ RESTful CoCo-AS's endpoints are as following:
     "policy": "xxxxx"       // base64 encoded policy content
 }
 ```
+- `/.well-known/jwks.json`: returns a JWK Set document for validating attestation tokens signed by this AS instance. Example response:
+```json
+{
+    "keys": [
+        {
+            "alg": "ES256",
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "<base64url>",
+            "y": "<base64url>"
+        }
+    ]
+}
+```
