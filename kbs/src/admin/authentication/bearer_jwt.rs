@@ -21,9 +21,18 @@ pub struct BearerJwtConfig {
 
     /// Allow loading admin verification keys over plaintext HTTP.
     ///
-    /// When false, any HTTP fetch for key material is rejected. Keep disabled by default and only
-    /// enable in controlled environments.
+    /// When false, any HTTP fetch for key material is rejected: configured `public_key_uri`
+    /// and `jwk_set_uri` values, and any `jwks_uri` returned by OpenID discovery for remote
+    /// `jwk_set_uri` entries. Keep disabled by default and only enable in controlled environments.
     pub insecure_public_key_uri: bool,
+
+    /// Whether to skip endorsement checks of header-embedded JWK keys.
+    /// Signature is still verified.
+    /// This should only be set to true for testing.
+    ///
+    /// When false, header-embedded `jwk` keys must include an `x5c` certificate chain
+    /// that can be validated against configured trusted certificates (if any).
+    pub insecure_header_jwk: bool,
 }
 
 /// Issuer config used to verify admin JWT tokens.
@@ -77,7 +86,7 @@ impl BearerJwtTokenVerifier {
                 &trusted_jwk_set_uris,
                 &[],
                 &trusted_pem_public_key_uris,
-                false,
+                config.insecure_header_jwk,
                 config.insecure_public_key_uri,
             )
             .await
@@ -180,4 +189,33 @@ fn claims_from_value(value: Value) -> Result<Claims> {
         .to_string();
 
     Ok(Claims { role })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BearerJwtConfig;
+
+    #[test]
+    fn deserialize_insecure_header_jwk_true() {
+        let config: BearerJwtConfig = toml::from_str(
+            r#"
+            insecure_public_key_uri = true
+            insecure_header_jwk = true
+            identity_providers = [
+                { issuer = "admin", public_key_uri = "/etc/kbs-admin.pub" },
+            ]
+            "#,
+        )
+        .expect("valid bearer_jwt config");
+
+        assert!(config.insecure_header_jwk);
+        assert!(config.insecure_public_key_uri);
+        assert_eq!(config.identity_providers.len(), 1);
+    }
+
+    #[test]
+    fn default_insecure_header_jwk_false() {
+        let config = BearerJwtConfig::default();
+        assert!(!config.insecure_header_jwk);
+    }
 }

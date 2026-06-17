@@ -79,7 +79,8 @@ This lets you keep identity issuance external while keeping KBS-side authorizati
 `[admin.authentication.bearer_jwt]` accepts:
 
 - `identity_providers` (array): list of trusted identity providers
-- `insecure_public_key_uri` (optional bool, default `false`): allow fetching verification keys over plaintext `http://`
+- `insecure_public_key_uri` (optional bool, default `false`): allow fetching verification keys over plaintext `http://`. Applies to configured `public_key_uri` and `jwk_set_uri` values, and to any `jwks_uri` returned by OpenID discovery for remote `jwk_set_uri` entries
+- `insecure_header_jwk` (optional bool, default `false`): skip endorsement checks for JWT header-embedded JWK keys (signature is still verified, testing only)
 
 Each `identity_providers` entry:
 
