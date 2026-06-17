@@ -7,7 +7,7 @@ use reqwest::Url;
 use serde::Deserialize;
 use std::fs;
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
 
@@ -22,6 +22,8 @@ pub(crate) enum JwksGetError {
         #[source]
         source: anyhow::Error,
     },
+    #[error("HTTP source is not allowed when `insecure_public_key_uri` is false")]
+    HttpNotAllowed,
 }
 
 #[derive(Deserialize)]
@@ -32,13 +34,24 @@ pub(crate) struct OpenIDConfig {
 /// Load a JWK set from a configured source.
 ///
 /// - `file://` and local paths: JWKS JSON file, read directly.
-/// - `https://`: remote source. KBS tries to load JWKS from the configured URL directly; if
-///   that fails or returns no keys, it falls back to OpenID discovery at
+/// - `https://` and `http://`: remote source. KBS tries to load JWKS from the configured URL
+///   directly; if that fails or returns no keys, it falls back to OpenID discovery at
 ///   `{uri}/.well-known/openid-configuration` and loads the returned `jwks_uri`.
-pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
+///
+/// Plaintext `http://` is rejected unless `insecure_public_key_uri` is true. This applies
+/// to the configured URL and any `jwks_uri` returned by OpenID discovery.
+pub async fn read_jwk_from_uri(
+    uri: &str,
+    insecure_public_key_uri: bool,
+) -> Result<JwkSet, JwksGetError> {
     let url = Url::parse(uri).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
-        "https" => read_jwk_from_remote(&url, uri).await,
+        "https" | "http" => {
+            if url.scheme() == "http" && !insecure_public_key_uri {
+                return Err(JwksGetError::HttpNotAllowed);
+            }
+            read_jwk_from_remote(&url, uri).await
+        }
         "file" => {
             let data = fs::read(url.path())
                 .map_err(|e| JwksGetError::AccessFailed(format!("open {}: {}", url.path(), e)))?;
@@ -47,18 +60,27 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             })
         }
         _ => Err(JwksGetError::InvalidSourcePath(format!(
-            "unsupported scheme {} (must be either file or https)",
+            "unsupported scheme {} (must be either file, https, or http)",
             url.scheme()
         ))),
     }
 }
 
 async fn fetch_jwk_set_from_url(url: &str) -> Result<JwkSet, JwksGetError> {
+    let parsed = Url::parse(url).map_err(|e| {
+        JwksGetError::InvalidSourcePath(format!("failed to parse JWKS URL {url}: {e}"))
+    })?;
+
+    if parsed.scheme() == "http" {
+        warn!(
+            "Getting JWK set from insecure HTTP source, please ensure the source is trusted or it's only used in a controlled/test environment"
+        );
+    }
+
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?;
-
     let jwkset = client
         .get(url)
         .send()
@@ -84,6 +106,12 @@ async fn fetch_jwk_set_via_openid_discovery(base_url: &Url) -> Result<JwkSet, Jw
     let openid_config_url = issuer_url
         .join(OPENID_CONFIG_URL_SUFFIX)
         .map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
+
+    if openid_config_url.scheme() == "http" {
+        warn!(
+            "Getting OpenID configuration from insecure HTTP source, please ensure the source is trusted or it's only used in a controlled/test environment"
+        );
+    }
 
     info!(
         "Getting OpenID configuration from {}",
@@ -139,7 +167,10 @@ mod tests {
     #[case("/does/not/exist/keys.jwks", true)]
     #[tokio::test]
     async fn test_source_path_validation(#[case] source_path: &str, #[case] expect_error: bool) {
-        assert_eq!(expect_error, read_jwk_from_uri(source_path).await.is_err())
+        assert_eq!(
+            expect_error,
+            read_jwk_from_uri(source_path, false).await.is_err()
+        )
     }
 
     #[rstest]
@@ -159,7 +190,7 @@ mod tests {
         std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
-        let jwtks = read_jwk_from_uri(&p).await.expect("to get jwks");
+        let jwtks = read_jwk_from_uri(&p, false).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
     }
