@@ -81,6 +81,7 @@ impl TokenVerifier {
             &config.trusted_certs_paths,
             &Vec::new(),
             config.insecure_header_jwk,
+            false,
         )
         .await
         .map_err(|e| Error::TokenVerifierInitialization { source: e })?;

@@ -18,12 +18,21 @@ use crate::crypto::jwt::JwtVerifier;
 #[serde(default, deny_unknown_fields)]
 pub struct BearerJwtConfig {
     pub identity_providers: Vec<IssuerConfig>,
+
+    /// Allow loading admin verification keys over plaintext HTTP.
+    ///
+    /// When false, any HTTP fetch for key material is rejected. Keep disabled by default and only
+    /// enable in controlled environments.
+    pub insecure_public_key_uri: bool,
 }
 
 /// Issuer config used to verify admin JWT tokens.
 ///
-/// - `public_key_uri`: a PEM file source (`https://`, `file://`, local path)
-/// - `jwk_set_uri`: a JWKS source (https://, file:// or local path)
+/// - `public_key_uri`: a PEM file source (`https://`, `file://`, local path,
+///   or `http://` when `insecure_public_key_uri=true`)
+/// - `jwk_set_uri`: trusted JWKS source (`https://`, `file://`, local path,
+///   or `http://` when `insecure_public_key_uri=true`). Remote URLs are loaded as JWKS
+///   directly when possible, otherwise via OpenID discovery.
 /// - `issuer`: the issuer of the JWT token. If given, This field will be checked when a token is verified successfully
 ///   with given public key or JWKS. If the token's issuer is matched, the token will be verified successfully.
 /// - `audience`: the audience of the JWT token. If given, This field will be checked when a token is verified successfully
@@ -69,6 +78,7 @@ impl BearerJwtTokenVerifier {
                 &[],
                 &trusted_pem_public_key_uris,
                 false,
+                config.insecure_public_key_uri,
             )
             .await
             .map_err(|e| Error::InvalidTokenVerifierConfig(e.to_string()))?;
