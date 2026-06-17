@@ -276,7 +276,8 @@ For `authorization_mode = "AuthenticatedAuthorization"`, configure:
 | Property | Type | Description | Required | Default |
 |----------|------|-------------|----------|---------|
 | `identity_providers` | Array | Trusted issuer entries for JWT verification | No | Empty |
-| `insecure_public_key_uri` | Boolean | Allow loading admin verification keys via plaintext `http://` | No | `false` |
+| `insecure_public_key_uri` | Boolean | Allow loading admin verification keys via plaintext `http://`. Applies to configured URIs and any `jwks_uri` returned by OpenID discovery for remote `jwk_set_uri` entries. | No | `false` |
+| `insecure_header_jwk` | Boolean | Skip endorsement checks for header-embedded JWK keys. Signature is still verified; use only in controlled test environments. | No | `false` |
 
 Each `identity_providers` item:
 
