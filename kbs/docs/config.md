@@ -112,12 +112,19 @@ token signing, and deployment examples, see
 
 The following properties can be set under the `[attestation_token]` section.
 
-| Property              | Type         | Description                                                                                                                       | Default |
-|-----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|---------|
-| `trusted_jwk_sets`    | String Array | Trusted JWKS sources (`file://` or `https://`). Loads JWKS directly when possible, otherwise via OpenID discovery. The keys are used to verify attestation tokens.               | Empty   |
-| `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                            | Empty   |
-| `extra_teekey_paths`  | String Array | User defined paths to the tee public key in the JWT body                                                                          | Empty   |
-| `insecure_header_jwk`        | Boolean      | Skip `x5c`/`trusted_certs_paths` endorsement for a JWK in the JWT header; signature is still verified | `false` |
+| Property                       | Type         | Description                                                                                                                                                                                                                              | Default |
+|--------------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `trusted_jwk_sets`             | String Array | Trusted JWKS sources. `file://` and local paths: JWKS JSON file. `https://` and `http://` (when allowed): JWKS URL or OpenID issuer base URL; loads JWKS directly when possible, otherwise via OpenID discovery. The keys are used to verify attestation tokens. | Empty   |
+| `trusted_certs_paths`          | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                                                                                                                                   | Empty   |
+| `extra_teekey_paths`           | String Array | User defined paths to the tee public key in the JWT body                                                                                                                                                                                 | Empty   |
+| `insecure_header_jwk`          | Boolean      | Skip `x5c`/`trusted_certs_paths` endorsement for a JWK in the JWT header; signature is still verified.                                                                                                                                             | `false` |
+| `insecure_public_key_uri` | Boolean      | Allow loading attestation-token verification keys via plaintext `http://` URLs. Applies to configured `trusted_jwk_sets` and any `jwks_uri` returned by OpenID discovery. | `false` |
+
+> [!NOTE]
+> `https://`, `file://`, and local paths are always accepted for `trusted_jwk_sets`.
+> Plaintext `http://` is rejected unless `insecure_public_key_uri=true`, including on URLs
+> returned by OpenID discovery. Enable this flag only in controlled network environments or for
+> development, as HTTP is vulnerable to tampering.
 
 Each JWT contains a TEE Public Key. Users can use the `extra_teekey_paths` field to additionally specify the path of
 this Key in the JWT.
