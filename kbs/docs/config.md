@@ -106,6 +106,10 @@ Attestation Token configuration controls attestation token verifications. This
 is important when a resource retrievement is handled by KBS. Usually an attestation
 token will be together with the request, and KBS will first verify the token.
 
+For an overview of when verification happens, how trust anchors relate to AS
+token signing, and deployment examples, see
+[Attestation Token Verification](./attestation_token_verification.md).
+
 The following properties can be set under the `[attestation_token]` section.
 
 | Property              | Type         | Description                                                                                                                       | Default |

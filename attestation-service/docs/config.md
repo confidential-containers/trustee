@@ -41,6 +41,11 @@ section:
 
 This section is **optional**. When omitted, a new EC key pair is generated and used.
 
+The certificate chain (configured via `cert_path` or `cert_url`) is embedded in issued JWT headers
+as `jwk.x5c`. KBS verifies those tokens by checking the chain against
+`[attestation_token].trusted_certs_paths`. See
+[KBS Attestation Token Verification](../../kbs/docs/attestation_token_verification.md).
+
 | Property       | Type    | Description                                             | Required | Default |
 |----------------|---------|---------------------------------------------------------|----------|---------|
 | `key_path`     | String  | EC Key Pair file (PEM format) path.                     | Yes      | -       |

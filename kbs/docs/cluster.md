@@ -29,6 +29,12 @@ The `setup` container initializes files under `kbs/config/docker-compose/` autom
 - `admin-token`: long-lived admin bearer token for local development.
 - `ca-cert.pem`, `token.key`, `token-cert-chain.pem` and related files:
   attestation token signing and trust chain material used by AS and KBS.
+  - `token.key` + `token-cert-chain.pem` — configured as AS `signer` to sign JWTs.
+  - `ca-cert.pem` — root CA listed in KBS `[attestation_token].trusted_certs_paths`
+    so KBS can validate the `x5c` chain in token headers.
+
+  See [Attestation Token Verification](./attestation_token_verification.md#docker-compose-cluster)
+  for how these files fit together.
 
 Use the generated admin token with `kbs-client`:
 
