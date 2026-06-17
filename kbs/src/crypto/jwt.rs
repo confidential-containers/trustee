@@ -180,8 +180,7 @@ impl JwtVerifier {
 
         let mut trusted_pem_public_keys = Vec::new();
         for uri in trusted_pem_public_key_uris {
-            let public_key =
-                read_pem_public_key_from_uri(uri, insecure_public_key_uri).await?;
+            let public_key = read_pem_public_key_from_uri(uri, insecure_public_key_uri).await?;
             trusted_pem_public_keys.push(public_key);
         }
 

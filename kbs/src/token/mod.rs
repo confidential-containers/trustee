@@ -38,9 +38,11 @@ pub struct AttestationTokenVerifierConfig {
     #[serde(default)]
     pub trusted_certs_paths: Vec<String>,
 
-    /// URLs (file:// and https:// schemes accepted) pointing to a local JWKSet file
-    /// or to an OpenID configuration url giving a pointer to JWKSet certificates
-    /// (for "Jwk") to verify Attestation Token Signature.
+    /// Trusted JWKS sources for tokens that identify the signing key via `kid`.
+    ///
+    /// - Local `file://` and path values: JWKS JSON file, read directly.
+    /// - Remote `https://` and `http://` values: JWKS URL or OpenID issuer base URL.
+    ///   KBS loads JWKS directly when possible, otherwise via OpenID discovery.
     #[serde(default)]
     pub trusted_jwk_sets: Vec<String>,
 
@@ -60,6 +62,14 @@ pub struct AttestationTokenVerifierConfig {
     /// Default: false
     #[serde(default = "bool::default")]
     pub insecure_header_jwk: bool,
+
+    /// Allow loading attestation-token verification keys over HTTP.
+    ///
+    /// When false, HTTP is rejected for configured `trusted_jwk_sets` URIs and for any `jwks_uri`
+    /// returned by OpenID discovery for remote JWKS sources. Keep disabled by default and only
+    /// enable in controlled environments.
+    #[serde(default = "bool::default")]
+    pub insecure_public_key_uri: bool,
 }
 
 #[derive(Clone)]
@@ -81,7 +91,7 @@ impl TokenVerifier {
             &config.trusted_certs_paths,
             &Vec::new(),
             config.insecure_header_jwk,
-            false,
+            config.insecure_public_key_uri,
         )
         .await
         .map_err(|e| Error::TokenVerifierInitialization { source: e })?;
