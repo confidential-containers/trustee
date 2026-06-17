@@ -5,7 +5,7 @@
 
 use anyhow::{anyhow, bail, Context, Error, Result};
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, VerifierID};
 use jsonwebtoken::jwk::{self, JwkSet};
@@ -90,6 +90,9 @@ impl EarAttestationTokenBroker {
         let pem_data = std::fs::read(&signer.key_path)
             .map_err(|e| anyhow!("Read Token Signer private key failed: {:?}", e))?;
         let private_key = EcKey::private_key_from_pem(&pem_data)?;
+        if private_key.group().curve_name() != Some(Nid::X9_62_PRIME256V1) {
+            bail!("Only P-256 attestation token signing keys are supported");
+        }
 
         let cert_chain = signer
             .cert_path
@@ -391,7 +394,7 @@ impl EarAttestationTokenBroker {
                 let mut chain = vec![];
                 for cert in certs {
                     let der = cert.to_der()?;
-                    chain.push(URL_SAFE_NO_PAD.encode(der));
+                    chain.push(STANDARD.encode(der));
                 }
                 Ok(chain)
             })
@@ -412,11 +415,14 @@ impl EarAttestationTokenBroker {
         let mut y = BigNum::new()?;
         public_key.affine_coordinates_gfp(group, &mut x, &mut y, &mut ctx)?;
 
+        // RFC 7518 requires fixed-length coordinate octet strings (32 bytes for P-256).
+        let field_size = group.degree().div_ceil(8);
+
         let algorithm = jwk::AlgorithmParameters::EllipticCurve(jwk::EllipticCurveKeyParameters {
             key_type: jwk::EllipticCurveKeyType::EC,
             curve: jwk::EllipticCurve::P256,
-            x: URL_SAFE_NO_PAD.encode(x.to_vec()),
-            y: URL_SAFE_NO_PAD.encode(y.to_vec()),
+            x: URL_SAFE_NO_PAD.encode(x.to_vec_padded(field_size as i32)?),
+            y: URL_SAFE_NO_PAD.encode(y.to_vec_padded(field_size as i32)?),
         });
 
         let jwk = jwk::Jwk { common, algorithm };
@@ -632,9 +638,39 @@ mod tests {
         match &jwks.keys[0].algorithm {
             AlgorithmParameters::EllipticCurve(ec) => {
                 assert_eq!(ec.curve, EllipticCurve::P256);
+                let x = URL_SAFE_NO_PAD.decode(&ec.x).unwrap();
+                let y = URL_SAFE_NO_PAD.decode(&ec.y).unwrap();
+                assert_eq!(x.len(), 32, "x coordinate must be 32 bytes for P-256");
+                assert_eq!(y.len(), 32, "y coordinate must be 32 bytes for P-256");
             }
             other => panic!("unexpected key type: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_get_jwks_matches_fixture() {
+        let signer = TokenSignerConfig {
+            key_path: "tests/fixtures/jwk/signing-key.pem".to_string(),
+            cert_url: None,
+            cert_path: Some("tests/fixtures/jwk/cert-chain.pem".to_string()),
+        };
+
+        let mut config = EarTokenConfiguration::default();
+        config.signer = Some(signer);
+        let storage = KeyValueStorageStructConfig::default()
+            .to_client_with_namespace(KeyValueStorageType::Memory, AS_POLICY_STORAGE_NAMESPACE)
+            .await
+            .unwrap();
+        let broker = EarAttestationTokenBroker::new(config, storage)
+            .await
+            .unwrap();
+
+        let jwks = broker.get_jwks().unwrap();
+        let expected: JwkSet =
+            serde_json::from_str(include_str!("../../tests/fixtures/jwk/expected-jwks.json"))
+                .unwrap();
+
+        assert_eq!(jwks, expected);
     }
 
     #[test]
