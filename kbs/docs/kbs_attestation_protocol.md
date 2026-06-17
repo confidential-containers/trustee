@@ -445,6 +445,11 @@ response. The former is usually short-lived and is typically used for one-time,
 synchronous resources request. For longer KBS sessions, it is more convenient to
 use the latter.
 
+token stored in the attestation session (instead of resending it in an
+`Authorization` header), but KBS still verifies the JWT before use. See
+[Attestation Token Verification](./attestation_token_verification.md) for
+trust-chain configuration and per-attestation-service guidance.
+
 ### HTTP Cookie Authentication
 
 The KBS implementation keeps track of attestation results and binds them to a
@@ -501,6 +506,10 @@ token passes verification, the KBS will respond to the `GET` request with an HTT
 response whose content is set to a [Resource Response](#resource-response) JSON payload (JWE format). The
 symmetric key inside the [Resource Response](#resource-response) JSON payload will be wrapped by
 the public key inside the token.
+
+Configure KBS trust anchors for Bearer token verification under
+`[attestation_token]` in the KBS config file. See
+[Attestation Token Verification](./attestation_token_verification.md).
 
 ```
 ┌──────────┐                                         ┌─────┐
