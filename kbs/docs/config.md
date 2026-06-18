@@ -110,7 +110,7 @@ The following properties can be set under the `[attestation_token]` section.
 
 | Property              | Type         | Description                                                                                                                       | Default |
 |-----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|---------|
-| `trusted_jwk_sets`    | String Array | Trusted JWKS/OpenID sources (`file://` or `https://`) used to verify attestation tokens                                         | Empty   |
+| `trusted_jwk_sets`    | String Array | Trusted JWKS sources (`file://` or `https://`). Loads JWKS directly when possible, otherwise via OpenID discovery.                | Empty   |
 | `trusted_certs_paths` | String Array | Trusted Certificates file (PEM format) for Attestation Tokens trustworthy verification                                            | Empty   |
 | `extra_teekey_paths`  | String Array | User defined paths to the tee public key in the JWT body                                                                          | Empty   |
 | `insecure_header_jwk`        | Boolean      | Skip `x5c`/`trusted_certs_paths` endorsement for a JWK in the JWT header; signature is still verified | `false` |
@@ -277,7 +277,7 @@ Each `identity_providers` item:
 | `issuer` | String | Expected JWT `iss` value (leave empty to skip issuer check) | No |
 | `audience` | String | Expected JWT `aud` value (leave empty to skip audience check) | No |
 | `public_key_uri` | String | PEM public key source (`https://`, `file://`, local path) | No* |
-| `jwk_set_uri` | String | JWKS source (`https://`, `file://`, or local path) | No* |
+| `jwk_set_uri` | String | JWKS source (`https://`, `file://`, or local path). Remote `https://` URLs load JWKS directly when possible, otherwise via OpenID discovery. | No* |
 
 \* At least one of `public_key_uri` or `jwk_set_uri` is required.
 
