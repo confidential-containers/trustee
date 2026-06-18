@@ -222,15 +222,20 @@ impl Pcs {
 
             CollateralType::QeIdentity(tee) => {
                 let body = match (tee, &self.tcb_update_type) {
-                    (IntelTee::Tdx, TcbUpdateType::Early) => {
-                        col.tdqeidentity_early.as_ref().unwrap_or(&col.tdqeidentity)
-                    }
-                    (IntelTee::Tdx, _) => &col.tdqeidentity,
+                    (IntelTee::Tdx, TcbUpdateType::Early) => col
+                        .tdqeidentity_early
+                        .as_ref()
+                        .or(col.tdqeidentity.as_ref()),
+                    (IntelTee::Tdx, TcbUpdateType::Standard) => col.tdqeidentity.as_ref(),
                     (IntelTee::Sgx, TcbUpdateType::Early) => {
-                        col.qeidentity_early.as_ref().unwrap_or(&col.qeidentity)
+                        col.qeidentity_early.as_ref().or(col.qeidentity.as_ref())
                     }
-                    (IntelTee::Sgx, _) => &col.qeidentity,
-                };
+                    (IntelTee::Sgx, TcbUpdateType::Standard) => col.qeidentity.as_ref(),
+                }
+                .ok_or_else(|| {
+                    debug!("no {:?} qeidentity in {source}", tee);
+                    PcsError::Collateral(source.to_string())
+                })?;
 
                 Ok(CollateralData {
                     body: serde_json::to_vec(body)?,
