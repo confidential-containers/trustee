@@ -85,12 +85,16 @@ Each `identity_providers` entry:
 - `issuer` (optional string): expected JWT `iss` value; empty means no issuer check
 - `audience` (optional string): expected JWT `aud` value; empty means no audience check
 - `public_key_uri` (optional string): PEM public key source
-- `jwk_set_uri` (optional string): JWKS source
+- `jwk_set_uri` (optional string): trusted JWKS source (see formats below)
 
 Each entry must provide at least one of `public_key_uri` or `jwk_set_uri`.
 
-Supported source formats:
+`jwk_set_uri` formats:
 
-- `https://...` (remote fetch)
-- `file://...` (local file URI)
-- local path without scheme (for example `./keys/admin.pem`)
+- `file://...` or local path (for example `./keys/admin.jwks`): JWKS JSON file, read directly
+- `https://...`: remote JWKS URL or OpenID issuer base URL (see note below)
+
+> [!NOTE]
+> For remote `jwk_set_uri` values, KBS first tries to load JWKS from the configured URL
+> directly (for example a `/jwks/` endpoint). If that fails, it falls back to OpenID discovery
+> at `{uri}/.well-known/openid-configuration` and loads keys from the returned `jwks_uri`.
