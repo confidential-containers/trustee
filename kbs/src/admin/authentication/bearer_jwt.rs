@@ -69,6 +69,7 @@ impl BearerJwtTokenVerifier {
                 &[],
                 &trusted_pem_public_key_uris,
                 false,
+                false,
             )
             .await
             .map_err(|e| Error::InvalidTokenVerifierConfig(e.to_string()))?;
