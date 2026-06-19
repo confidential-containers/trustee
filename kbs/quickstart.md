@@ -225,7 +225,9 @@ key_path = "/path/to/token-key.pem"
 cert_path = "/path/to/token-cert-chain.pem"
 ```
 
-Refer to [config.md](./docs/config.md) for more details.
+See [Attestation Token Verification](./docs/attestation_token_verification.md) for how
+AS signing material maps to KBS trust anchors. Refer to [config.md](./docs/config.md)
+for the configuration reference.
 
 #### gRPC AS mode
 
@@ -270,4 +272,5 @@ When `insecure_header_jwk` is `false` and the token header contains a `jwk`, you
 `trusted_certs_paths`; otherwise verification fails. Tokens that use `kid` rely on
 `trusted_jwk_sets` instead and are not affected by `insecure_header_jwk`.
 
-Refer to [config.md](./docs/config.md) for more details.
+Refer to [Attestation Token Verification](./docs/attestation_token_verification.md) for
+trust-chain setup and [config.md](./docs/config.md) for the configuration reference.
