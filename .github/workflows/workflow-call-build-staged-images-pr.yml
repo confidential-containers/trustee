@@ -1,9 +1,9 @@
 name: Build Staged Images (PR)
 
-# linux/amd64 and linux/arm64 images used by docker-compose e2e are built once in
-# workflow-call-build-docker-e2e-images.yml (called from test-e2e-kbs.yml) and
-# passed to docker-e2e-test via workflow artifacts. They are omitted here on PR to
-# avoid rebuilding the same Dockerfiles.
+# linux/amd64 and linux/arm64 images used by Docker Compose/Helm e2e are built
+# once in workflow-call-build-docker-e2e-materials.yml (called from
+# test-e2e-kbs.yml) and passed via workflow artifacts. They are omitted here on
+# PR to avoid rebuilding the same Dockerfiles.
 
 on:
   workflow_call:
