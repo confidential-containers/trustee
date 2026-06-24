@@ -1,7 +1,7 @@
 .PHONY: test-all test-unit test-e2e \
 	test-kbs-unit test-as-unit test-trustee-cli-unit \
 	test-kbs-e2e test-as-e2e \
-	test-kbs-vault-e2e test-kbs-docker-e2e \
+	test-kbs-vault-e2e test-kbs-docker-e2e test-helm-e2e \
 	kbs-e2e-build kbs-e2e-install-deps kbs-e2e-build-bins \
 	kbs-vault-e2e-install-deps kbs-vault-e2e-run \
 	as-e2e-install-deps as-e2e-run
@@ -94,4 +94,8 @@ as-e2e-run:
 	$(MAKE) -C attestation-service/tests/e2e e2e-restful-test
 
 test-as-e2e: as-e2e-install-deps as-e2e-run
+
+# Helm chart e2e (deploy Trustee, kbs-client, undeploy; images must already be loaded)
+test-helm-e2e:
+	$(MAKE) -C deployment/helm-chart e2e-test
 

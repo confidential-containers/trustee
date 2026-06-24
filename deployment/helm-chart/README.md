@@ -270,6 +270,47 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | storageBackend.postgres.mode | string | `"internal"` | Postgres source: `internal` (Bitnami subchart) or `external` (pre-created Secret). |
 | storageBackend.type | string | `"LocalFs"` | Backend type: `LocalFs`, `LocalJson`, `Postgres`, or `Memory`. When `Postgres` (or `sessionStorageType` is `Postgres`), the chart injects `POSTGRES_URL`. Only settings for the selected type take effect. |
 
+## End-to-end test
+
+Provision a **kind** cluster out of band, preload the Trustee images into it, point `kubectl` at it, then from the repository root:
+
+```bash
+kind create cluster --name kind --wait 5m
+make -C deployment/helm-chart load-e2e-images-into-kind
+make test-helm-e2e
+```
+
+`make e2e-test` assumes **KBS / AS / RVPS** images are already loaded into the cluster and deploys with [scenarios/e2e-local-images.yaml](./scenarios/e2e-local-images.yaml). The Makefile injects image repositories, tags, and `pullPolicy: Never` at install time so local runs and CI can use different preloaded image names without changing the scenario file.
+
+- **Local preloaded images**: `trustee-e2e/*:e2e`, `pullPolicy: Never` (not GHCR `:latest`)
+- **CI images**: reuses `docker-e2e-images-linux-amd64` from `workflow-call-build-docker-e2e-materials.yml` as `ghcr.io/confidential-containers/staged-images/*:latest`
+- **Storage**: bundled Postgres KV backend (`storageBackend.type: Postgres`)
+- **KBS sessions**: `sessionStorageType: Memory`
+
+Steps:
+
+1. **`helm-dependency-build`**
+2. **`helm-lint`**
+3. **`deploy`**
+4. **`test-client`** — [e2e/test.sh](./e2e/test.sh)
+5. **`undeploy`** — always attempted, even after failures
+
+Debug individually:
+
+```bash
+make -C deployment/helm-chart load-e2e-images-into-kind
+make -C deployment/helm-chart helm-lint
+make -C deployment/helm-chart deploy
+make -C deployment/helm-chart test-client
+make -C deployment/helm-chart undeploy
+```
+
+Optional variables: `E2E_IMAGE_PREFIX`, `E2E_IMAGE_TAG`, `KBS_CLIENT`.
+
+CI (`test-e2e-kbs.yml`) reuses the Docker Compose e2e image build workflow artifacts: it loads the pre-built Trustee images into kind and uses the pre-built `kbs-client` binary before running Helm e2e.
+
+`make test-client` alone does not build images or undeploy.
+
 ## Development notes
 
 1. Do not change the files under [files](./files/) unless you are updating the corresponding Helm template logic. Service config is rendered from `*.template` files; Postgres KV init SQL lives in `files/postgres-initkv.sql`.

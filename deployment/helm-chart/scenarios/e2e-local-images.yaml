@@ -1,0 +1,20 @@
+# Helm e2e scenario: Postgres KV + Memory KBS sessions.
+# Used by `make e2e-test` (see deployment/helm-chart/Makefile). The Makefile injects
+# image repositories, tags, and pullPolicy so local runs and CI can share this scenario.
+
+sessionStorageType: Memory
+
+storageBackend:
+  type: Postgres
+  postgres:
+    mode: internal
+
+postgresql:
+  enabled: true
+  primary:
+    # The e2e test does not validate persistence; avoid relying on a default
+    # StorageClass in local CI clusters.
+    persistence:
+      enabled: false
+      existingClaim: ""
+      storageClass: ""
