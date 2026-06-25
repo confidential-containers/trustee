@@ -1,0 +1,21 @@
+{{- if .Values.nodePort.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coco-trustee.names.kbs" . }}-nodeport
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - port: {{ include "coco-trustee.port.kbs" . }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if .Values.nodePort.port }}
+      nodePort: {{ .Values.nodePort.port }}
+      {{- end }}
+  selector:
+    app: kbs
+    {{- include "coco-trustee.selectorLabels" . | nindent 4 }}
+{{- end }}

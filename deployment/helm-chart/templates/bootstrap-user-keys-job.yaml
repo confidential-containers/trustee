@@ -1,0 +1,113 @@
+{{- if include "coco-trustee.kbs.useBootstrapKeysJob" . | trim }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "coco-trustee.names.bootstrapKeys" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 120
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "coco-trustee.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "coco-trustee.names.bootstrapKeys" . }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: generated-user-keys
+          emptyDir: {}
+      initContainers:
+        - name: generate-keys
+          image: {{ include "coco-trustee.internal.bootstrapKeysKeygenImage" . | quote }}
+          imagePullPolicy: {{ default "IfNotPresent" (((.Values.bootstrapUserKeysJob | default dict).keygenImage | default dict).pullPolicy) }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: false
+          {{- with .Values.bootstrapUserKeysJob.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: generated-user-keys
+              mountPath: /work
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              WORKDIR=/work
+              mkdir -p "$WORKDIR"
+              cd "$WORKDIR"
+              openssl genpkey -algorithm ed25519 -out private.key
+              openssl pkey -in private.key -pubout -out public.pub
+              openssl genrsa -traditional -out ca.key 2048
+              openssl req -new -key ca.key -out ca-req.csr -subj "/O=CNCF/OU=CoCo/CN=trustee-root"
+              openssl req -x509 -days 3650 -key ca.key -in ca-req.csr -out ca-cert.pem
+              openssl ecparam -name prime256v1 -genkey -noout -out token.key
+              openssl req -new -key token.key -out token-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS"
+              printf '[v3_req]\nsubjectAltName=DNS:localhost\n' > ext.cnf
+              openssl x509 -req -days 3650 -in token-req.csr -CA ca-cert.pem -CAkey ca.key -CAcreateserial \
+                -out token-cert.pem -extensions v3_req -extfile ext.cnf
+              cat token-cert.pem ca-cert.pem > token-cert-chain.pem
+
+              b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+              header='{"alg":"EdDSA","typ":"JWT"}'
+              iat="$(date +%s)"
+              exp="$((iat + 315360000))"
+              payload="{\"iss\":\"{{ include "coco-trustee.kbs.adminIssuer" . }}\",\"sub\":\"admin\",\"aud\":[\"{{ include "coco-trustee.kbs.adminAudience" . }}\"],\"role\":\"{{ include "coco-trustee.kbs.adminRole" . }}\",\"iat\":${iat},\"exp\":${exp}}"
+              h64="$(printf '%s' "${header}" | b64url)"
+              p64="$(printf '%s' "${payload}" | b64url)"
+              signing_input="$(mktemp)"
+              printf '%s' "${h64}.${p64}" > "${signing_input}"
+              sig="$(openssl pkeyutl -sign -inkey private.key -rawin -in "${signing_input}" | b64url)"
+              rm -f "${signing_input}"
+              printf '%s.%s.%s\n' "${h64}" "${p64}" "${sig}" > admin-token
+      containers:
+        - name: create-user-keys-secret
+          image: {{ include "coco-trustee.internal.bootstrapKeysKubectlImage" . | quote }}
+          imagePullPolicy: {{ default "IfNotPresent" (((.Values.bootstrapUserKeysJob | default dict).kubectlImage | default dict).pullPolicy) }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          {{- with .Values.bootstrapUserKeysJob.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: generated-user-keys
+              mountPath: /work
+              readOnly: true
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              NS="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+              NAME="{{ include "coco-trustee.userKeysSecretNameResolved" . | trim }}"
+              if kubectl get secret "$NAME" -n "$NS" >/dev/null 2>&1; then
+                echo "Secret $NAME already exists"
+                exit 0
+              fi
+
+              # Minimal attestation-token material: signing key + cert chain.
+              # KBS trusts the same token-cert-chain.pem path; token-cert.pem and CA material are only issuance intermediates.
+              kubectl create secret generic "$NAME" -n "$NS" \
+                --from-file=KBS_ADMIN_PRIVATE_KEY=/work/private.key \
+                --from-file=KBS_ADMIN_PUBKEY=/work/public.pub \
+                --from-file=KBS_ADMIN_TOKEN=/work/admin-token \
+                --from-file=AS_TOKEN_SIGNING_PRIVATE_KEY=/work/token.key \
+                --from-file=AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN=/work/token-cert-chain.pem
+              echo "Created secret $NAME"
+{{- end }}

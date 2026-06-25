@@ -182,7 +182,6 @@ Available when the `tdx-verifier`, `sgx-verifier`, or `az-tdx-vtpm-verifier` fea
 | Property             | Type    | Description                                          | Required | Default                                                      |
 |----------------------|---------|------------------------------------------------------|----------|--------------------------------------------------------------|
 | `collateral_service` | String  | URL of the PCS/PCCS collateral service, or a `file://` path for offline verification (see note below) | Yes      | -                                                            |
-| `use_secure_cert`    | Boolean | Whether to use secure certificates                   | No       | -                                                            |
 | `tcb_update_type`    | String  | TCB update type: `"early"` or `"standard"`           | No       | `"early"`                                                    |
 
 > **Offline verification:** the `file://` URL must point to a JSON file produced by the
@@ -464,7 +463,6 @@ Configuration with Intel DCAP verifier (TDX/SGX):
     "verifier_config": {
         "dcap_verifier": {
             "collateral_service": "https://api.trustedservices.intel.com/sgx/certification/v4/",
-            "use_secure_cert": true,
             "tcb_update_type": "early"
         }
     }

@@ -8,6 +8,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 # Self-hosted runners do not set -o pipefail otherwise
 defaults:
   run:
@@ -15,8 +19,6 @@ defaults:
 
 jobs:
   e2e-test:
-    strategy:
-      fail-fast: false
     name: Attestation Service e2e
     runs-on: ubuntu-24.04
     permissions:

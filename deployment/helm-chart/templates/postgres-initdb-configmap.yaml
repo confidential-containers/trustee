@@ -1,0 +1,11 @@
+{{- if and (eq (include "coco-trustee.postgres.useBitnami" . | trim) "true") (eq (include "coco-trustee.postgres.initKvTables" . | trim) "true") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coco-trustee.names.postgresInitdb" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+data:
+  00-trustee-kv.sql: |
+{{ .Files.Get "files/postgres-initkv.sql" | nindent 4 }}
+{{- end }}

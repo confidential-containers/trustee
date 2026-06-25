@@ -190,12 +190,14 @@ pub struct PcsCollaterals {
     pub pckcacrl: PckCaCrl,
 
     /// QE enclave identity.
-    pub qeidentity: QeIdentity,
+    #[serde(default)]
+    pub qeidentity: Option<QeIdentity>,
     #[serde(default)]
     pub qeidentity_early: Option<QeIdentity>,
 
     /// TD QE enclave identity.
-    pub tdqeidentity: QeIdentity,
+    #[serde(default)]
+    pub tdqeidentity: Option<QeIdentity>,
     #[serde(default)]
     pub tdqeidentity_early: Option<QeIdentity>,
 
