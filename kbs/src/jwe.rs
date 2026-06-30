@@ -5,15 +5,15 @@
 use core::{clone::Clone, convert::TryInto};
 
 use aes_gcm::{
-    aead::{generic_array::GenericArray, AeadMutInPlace, OsRng},
+    aead::{AeadInOut, Generate},
     Aes256Gcm, KeyInit, Nonce,
 };
-use aes_kw::{KeyInit as AesKwKeyInit, KwAes256};
+use aes_kw::KwAes256;
 use anyhow::{anyhow, bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
-use p256::elliptic_curve::sec1::FromEncodedPoint;
-use rsa::{rand_core::RngCore, sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
+use p256::elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint};
+use rsa::{rand_core::OsRng, sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
 use serde_json::{json, Map};
 use tracing::warn;
 use zeroize::Zeroizing;
@@ -70,11 +70,11 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 #[deprecated(note = "This algorithm is no longer recommended.")]
 fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
     warn!("Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues.");
-    let aes_sym_key = Zeroizing::new(Aes256Gcm::generate_key(&mut OsRng));
-    let mut cipher = Aes256Gcm::new(&*aes_sym_key);
-    let mut iv = [0u8; 12];
-    OsRng.fill_bytes(&mut iv);
-    let nonce = Nonce::from_slice(&iv);
+    let aes_sym_key = Zeroizing::new(<[u8; 32]>::generate());
+    let cipher = Aes256Gcm::new_from_slice(aes_sym_key.as_slice())
+        .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
+    let iv = <[u8; 12]>::generate();
+    let nonce = Nonce::from(iv);
     let protected = ProtectedHeader {
         alg: RSA1_5_ALGORITHM.to_string(),
         enc: AES_GCM_256_ALGORITHM.to_string(),
@@ -84,7 +84,7 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
     let tag = cipher
-        .encrypt_in_place_detached(nonce, &aad, &mut payload_data)
+        .encrypt_inout_detached(&nonce, &aad, payload_data.as_mut_slice().into())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {e}"))?;
 
     let k_mod = URL_SAFE_NO_PAD
@@ -99,7 +99,7 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
     let rsa_pub_key =
         RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut OsRng, Pkcs1v15Encrypt, &aes_sym_key)
+        .encrypt(&mut OsRng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {
@@ -114,11 +114,11 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
 
 /// Use RSA-OAEP SHA-256 to encrypt the payload data.
 fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    let aes_sym_key = Zeroizing::new(Aes256Gcm::generate_key(&mut OsRng));
-    let mut cipher = Aes256Gcm::new(&*aes_sym_key);
-    let mut iv = [0u8; 12];
-    OsRng.fill_bytes(&mut iv);
-    let nonce = Nonce::from_slice(&iv);
+    let aes_sym_key = Zeroizing::new(<[u8; 32]>::generate());
+    let cipher = Aes256Gcm::new_from_slice(aes_sym_key.as_slice())
+        .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
+    let iv = <[u8; 12]>::generate();
+    let nonce = Nonce::from(iv);
     let protected = ProtectedHeader {
         alg: RSA_OAEP256_ALGORITHM.to_string(),
         enc: AES_GCM_256_ALGORITHM.to_string(),
@@ -128,7 +128,7 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
     let tag = cipher
-        .encrypt_in_place_detached(nonce, &aad, &mut payload_data)
+        .encrypt_inout_detached(&nonce, &aad, payload_data.as_mut_slice().into())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {e}"))?;
 
     let k_mod = URL_SAFE_NO_PAD
@@ -144,7 +144,7 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
         RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
     let padding = Oaep::new::<Sha256>();
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut OsRng, padding, &aes_sym_key)
+        .encrypt(&mut OsRng, padding, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {
@@ -160,7 +160,7 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
 /// Use ECDH-ES-A256KW to encrypt the payload data. The EC curve is P256.
 fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Result<Response> {
     // 1. Generate a random CEK
-    let cek = Zeroizing::new(Aes256Gcm::generate_key(&mut OsRng));
+    let cek = Zeroizing::new(<[u8; 32]>::generate());
 
     // 2. Wrap the CEK and generate ProtectedHeader
     let x: [u8; 32] = URL_SAFE_NO_PAD
@@ -193,7 +193,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;
     let mut encrypted_key = vec![0; 40];
     wrapping_cipher
-        .wrap_key(&cek, &mut encrypted_key)
+        .wrap_key(cek.as_slice(), &mut encrypted_key)
         .map_err(|e| anyhow!("failed to do AES wrapping: {e:?}"))?;
 
     let point = p256::EncodedPoint::from(encrypter_secret.public_key());
@@ -222,15 +222,15 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     };
 
     // 3. Encrypt content with CEK
-    let mut cek_cipher = Aes256Gcm::new(&*cek);
+    let cek_cipher = Aes256Gcm::new_from_slice(cek.as_slice())
+        .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
 
-    let mut iv = [0u8; 12];
-    OsRng.fill_bytes(&mut iv);
-    let nonce = Nonce::from_slice(&iv);
+    let iv = <[u8; 12]>::generate();
+    let nonce = Nonce::from(iv);
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
     let tag = cek_cipher
-        .encrypt_in_place_detached(nonce, &aad, &mut payload_data)
+        .encrypt_inout_detached(&nonce, &aad, payload_data.as_mut_slice().into())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {e}"))?;
 
     Ok(Response {
@@ -246,7 +246,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
 /// Use ECDH-ES-A256KW to encrypt the payload data. The EC curve is P521.
 fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Result<Response> {
     // 1. Generate a random CEK
-    let cek = Zeroizing::new(Aes256Gcm::generate_key(&mut OsRng));
+    let cek = Zeroizing::new(<[u8; 32]>::generate());
 
     // 2. Wrap the CEK and generate ProtectedHeader
     let x: [u8; 66] = URL_SAFE_NO_PAD
@@ -279,7 +279,7 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .map_err(|_| anyhow!("invalid bytes length of AES wrapping key"))?;
     let mut encrypted_key = vec![0; 40];
     wrapping_cipher
-        .wrap_key(&cek, &mut encrypted_key)
+        .wrap_key(cek.as_slice(), &mut encrypted_key)
         .map_err(|e| anyhow!("failed to do AES wrapping: {e:?}"))?;
 
     let point = p521::EncodedPoint::from(encrypter_secret.public_key());
@@ -308,15 +308,15 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
     };
 
     // 3. Encrypt content with CEK
-    let mut cek_cipher = Aes256Gcm::new(&*cek);
+    let cek_cipher = Aes256Gcm::new_from_slice(cek.as_slice())
+        .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
 
-    let mut iv = [0u8; 12];
-    OsRng.fill_bytes(&mut iv);
-    let nonce = Nonce::from_slice(&iv);
+    let iv = <[u8; 12]>::generate();
+    let nonce = Nonce::from(iv);
     let aad = protected.generate_aad().context("Generate JWE AAD")?;
 
     let tag = cek_cipher
-        .encrypt_in_place_detached(nonce, &aad, &mut payload_data)
+        .encrypt_inout_detached(&nonce, &aad, payload_data.as_mut_slice().into())
         .map_err(|e| anyhow!("AES encrypt Resource payload failed: {e}"))?;
 
     Ok(Response {
@@ -349,7 +349,6 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
 mod tests {
     use core::assert_eq;
 
-    use aes_gcm::aead::OsRng;
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use josekit::jwe::{
         alg::{ecdh_es::EcdhEsJweAlgorithm::EcdhEsA256kw, rsaes::RsaesJweAlgorithm::RsaOaep256},
@@ -358,6 +357,7 @@ mod tests {
     use kbs_types::TeePubKey;
     use openssl::rsa::Rsa;
     use p256::pkcs8::EncodePrivateKey;
+    use rsa::rand_core::OsRng;
 
     use crate::jwe::{
         AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA1_5_ALGORITHM,

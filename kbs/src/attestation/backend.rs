@@ -5,13 +5,12 @@
 use std::sync::{Arc, LazyLock};
 
 use actix_web::{HttpRequest, HttpResponse};
-use aes_gcm::aead::OsRng;
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
-use rsa::rand_core::RngCore;
+use rsa::rand_core::{OsRng, RngCore};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
