@@ -50,7 +50,7 @@ aws = ["aws-config", "aws-sdk-secretsmanager"]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
 actix-web-httpauth.workspace = true
-aes-gcm = { version = "0.10.1", features = ["zeroize"] }
+aes-gcm = { version = "0.11.0", features = ["zeroize"] }
 # Direct deps to activate their `zeroize` feature: `aes-gcm`'s own `zeroize`
 # feature does not propagate down to `aes` or `polyval`. Do not remove.
 aes = { version = "0.8", features = ["zeroize"] }
