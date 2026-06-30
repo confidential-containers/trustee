@@ -47,6 +47,7 @@ openssl = "0.10.80"
 p256 = "0.13.2"
 p521 = "0.13.2"
 prost = "0.14"
+rand = "0.8"
 regorus = { version = "0.10.1", default-features = false, features = [
     "regex",
     "base64",
