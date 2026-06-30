@@ -294,6 +294,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1973cfbc1a2daf9cf550e74e1f088c28e7f7d8c1e1418fb6c9dc5184b7e84c99"
 dependencies = [
+ "arrayvec",
  "crypto-common 0.2.2",
  "inout 0.2.2",
 ]
