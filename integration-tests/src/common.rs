@@ -207,12 +207,6 @@ impl TestHarness {
         let auth_privkey = String::from_utf8(auth_keypair.private_key_to_pem_pkcs8()?)?;
 
         let work_dir = TempDir::new()?;
-        let kbs_storage_path = work_dir
-            .path()
-            .join("kbs")
-            .into_os_string()
-            .into_string()
-            .map_err(|e| anyhow!("Failed to join kbs storage path: {:?}", e))?;
         let rv_path = work_dir
             .path()
             .join("reference_values")
@@ -220,6 +214,27 @@ impl TestHarness {
             .into_string()
             .map_err(|e| anyhow!("Failed to join reference values path: {:?}", e))?;
         let auth_pubkey_path = work_dir.path().join("auth_pubkey");
+
+        // Each harness gets its own storage directory for isolation. Tests share
+        // one process but run serially, and a fresh storage backend per harness
+        // means no global registry to reset between runs.
+        let kbs_storage_path = work_dir
+            .path()
+            .join("kbs")
+            .into_os_string()
+            .to_string_lossy()
+            .into_owned();
+        let storage_backend = StorageBackendConfig {
+            storage_type: KeyValueStorageType::LocalFs,
+            backends: KeyValueStorageStructConfig {
+                local_fs: Some(local_fs::Config {
+                    dir_path: kbs_storage_path,
+                }),
+                local_json: None,
+                postgres: None,
+                redis: None,
+            },
+        };
 
         tokio::fs::write(auth_pubkey_path.clone(), auth_pubkey.as_bytes()).await?;
 
@@ -350,17 +365,7 @@ impl TestHarness {
                 tls: TlsConfig::default(),
             },
             admin: admin_config,
-            storage_backend: StorageBackendConfig {
-                storage_type: KeyValueStorageType::LocalFs,
-                backends: KeyValueStorageStructConfig {
-                    local_fs: Some(local_fs::Config {
-                        dir_path: kbs_storage_path,
-                    }),
-                    local_json: None,
-                    postgres: None,
-                    redis: None,
-                },
-            },
+            storage_backend,
             session_storage_type: None,
             plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
         };
