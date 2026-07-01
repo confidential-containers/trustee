@@ -1,8 +1,10 @@
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
+use key_value_storage::StorageProvider;
 use serde::Deserialize;
 use tracing::debug;
 
@@ -64,9 +66,16 @@ pub struct VerifierConfig {
     dcap_verifier: Option<intel_dcap::QcnlConfig>,
 }
 
+/// Build the [`Verifier`] for `tee`.
+///
+/// `storage` is a namespace provider: a verifier that needs to persist state
+/// (e.g. cached DCAP collateral) mints its own namespace in-place with
+/// `storage.get_or_register("intel-dcap-collateral")`. Verifiers that don't
+/// need storage simply ignore it.
 pub async fn to_verifier(
     tee: &Tee,
     _config: Option<VerifierConfig>,
+    _storage: Arc<dyn StorageProvider>,
 ) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::AzSnpVtpm => {

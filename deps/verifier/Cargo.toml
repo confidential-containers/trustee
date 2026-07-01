@@ -80,6 +80,9 @@ csv-rs = { version = "0.1.0", optional = true, default-features = false, feature
 eventlog = { path = "../eventlog", optional = true }
 hex = { workspace = true, features = ["serde"] }
 jsonwebkey = "0.4.0"
+# Only the backend-agnostic `StorageProvider` is needed here, so the backend
+# features (postgres/redis) are intentionally left disabled.
+key-value-storage = { path = "../key-value-storage", default-features = false }
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 openssl = { workspace = true, optional = true }

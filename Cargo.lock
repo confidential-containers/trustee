@@ -8207,6 +8207,7 @@ dependencies = [
  "jsonwebkey 0.4.0",
  "jsonwebtoken",
  "kbs-types",
+ "key-value-storage",
  "openssl",
  "reqwest 0.13.4",
  "reqwest-middleware",
