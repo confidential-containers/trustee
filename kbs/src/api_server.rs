@@ -13,6 +13,7 @@ use actix_web::{
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
+use key_value_storage::StorageProvider;
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
@@ -81,21 +82,23 @@ impl ApiServer {
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
-        let plugin_manager = PluginManager::new(config.plugins.clone(), &config.storage_backend)
+        let storage_provider =
+            key_value_storage::KvStorageProvider::new(config.storage_backend.clone());
+        info!(
+            backend_type = ?config.storage_backend.storage_type,
+            "KBS storage backend"
+        );
+
+        let plugin_manager = PluginManager::new(config.plugins.clone(), storage_provider.clone())
             .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
         let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
 
-        info!(
-            "Using storage backend type: {:?}",
-            config.storage_backend.storage_type
-        );
-        let policy_storage_backend = config
-            .storage_backend
-            .backends
-            .to_client_with_namespace(config.storage_backend.storage_type, KBS_STORAGE_NAMESPACE)
+        let policy_storage_backend = storage_provider
+            .get_or_register(KBS_STORAGE_NAMESPACE)
             .await
             .map_err(|e| Error::StorageBackendInitialization { source: e })?;
+
         let policy_engine = PolicyEngine::new(policy_storage_backend);
 
         policy_engine
@@ -110,7 +113,7 @@ impl ApiServer {
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
             config.attestation_service.clone(),
-            &config.session_storage_type.unwrap_or_else(|| {
+            config.session_storage_type.unwrap_or_else(|| {
                 info!(
                     "Session storage type not configured, using storage backend type: {:?}",
                     config.storage_backend.storage_type
@@ -118,6 +121,7 @@ impl ApiServer {
                 config.storage_backend.storage_type
             }),
             &config.storage_backend,
+            storage_provider.clone(),
         )
         .await?;
 
