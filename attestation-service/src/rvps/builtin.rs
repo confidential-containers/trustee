@@ -2,11 +2,12 @@ use super::{Result, RvpsApi};
 use anyhow::Context;
 use async_trait::async_trait;
 use core::result::Result::Ok;
-use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
+use key_value_storage::{KeyValueStorageType, StorageProvider};
 use reference_value_provider_service::{
     extractors::ExtractorsConfig, Rvps, REFERENCE_VALUE_STORAGE_NAMESPACE,
 };
 use serde_json::Value;
+use std::sync::Arc;
 
 pub struct BuiltinRvps {
     rvps: Rvps,
@@ -16,12 +17,13 @@ impl BuiltinRvps {
     pub async fn new(
         config: Option<ExtractorsConfig>,
         storage_type: KeyValueStorageType,
-        storage_config: &KeyValueStorageStructConfig,
+        storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
-        let storage = storage_config
-            .to_client_with_namespace(storage_type, REFERENCE_VALUE_STORAGE_NAMESPACE)
+        let storage = storage_provider
+            .get_or_register_with_type(REFERENCE_VALUE_STORAGE_NAMESPACE, storage_type)
             .await
             .context("initialize RVPS storage")?;
+
         let rvps = Rvps::new_with_storage(config, storage)
             .await
             .context("initialize RVPS")?;

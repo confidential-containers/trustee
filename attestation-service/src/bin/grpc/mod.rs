@@ -78,7 +78,10 @@ impl AttestationServer {
         };
 
         debug!("Attestation Service config: {config:#?}");
-        let service = Service::new(config).await?;
+
+        let storage_provider =
+            key_value_storage::KvStorageProvider::new(config.storage_backend.clone());
+        let service = Service::new(config, storage_provider).await?;
 
         Ok(Self {
             attestation_service: service,

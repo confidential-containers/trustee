@@ -15,9 +15,11 @@ pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
 use config::Config;
+use key_value_storage::StorageProvider;
 use rvps::RvpsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, info};
 use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
@@ -121,27 +123,39 @@ pub struct AttestationService {
     config: Config,
     rvps: RvpsClient,
     token_broker: EarAttestationTokenBroker,
+    storage_provider: Arc<dyn StorageProvider>,
 }
 
 impl AttestationService {
     /// Create a new Attestation Service instance.
-    pub async fn new(config: Config) -> Result<Self, ServiceError> {
+    ///
+    /// `storage_provider` mints the namespaces this service (and its verifiers
+    /// and RVPS) need. The caller owns it, so the AS can share a provider with
+    /// a co-located KBS or get a dedicated one in the standalone binaries.
+    pub async fn new(
+        config: Config,
+        storage_provider: Arc<dyn StorageProvider>,
+    ) -> Result<Self, ServiceError> {
+        info!(
+            backend_type = ?config.storage_backend.storage_type,
+            "Attestation Service storage backend"
+        );
+
         let rvps = rvps::initialize_rvps_client(
             &config.rvps_config,
+            storage_provider.clone(),
             config.storage_backend.storage_type,
-            &config.storage_backend.backends,
         )
         .await
         .map_err(ServiceError::Rvps)?;
 
-        let policy_storage = config
-            .storage_backend
-            .backends
-            .to_client_with_namespace(
-                config.storage_backend.storage_type,
+        let policy_storage = storage_provider
+            .get_or_register_with_type(
                 AS_POLICY_STORAGE_NAMESPACE,
+                config.storage_backend.storage_type,
             )
-            .await?;
+            .await
+            .context("initialize policy storage")?;
         let token_broker =
             EarAttestationTokenBroker::new(config.attestation_token_broker.clone(), policy_storage)
                 .await?;
@@ -150,6 +164,7 @@ impl AttestationService {
             config,
             rvps,
             token_broker,
+            storage_provider,
         })
     }
 
@@ -198,6 +213,7 @@ impl AttestationService {
             let verifier = verifier::to_verifier(
                 &verification_request.tee,
                 self.config.clone().verifier_config,
+                self.storage_provider.clone(),
             )
             .await?;
 
@@ -280,7 +296,12 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
-        let verifier = verifier::to_verifier(&tee, self.config.clone().verifier_config).await?;
+        let verifier = verifier::to_verifier(
+            &tee,
+            self.config.clone().verifier_config,
+            self.storage_provider.clone(),
+        )
+        .await?;
         verifier
             .generate_supplemental_challenge(tee_parameters)
             .await
