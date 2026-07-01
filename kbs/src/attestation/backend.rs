@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
-use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
+use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use rsa::rand_core::{OsRng, RngCore};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
@@ -142,18 +142,22 @@ pub struct SetPolicyInput {
 }
 
 impl AttestationService {
-    pub async fn new(
+    pub(crate) async fn new(
         config: AttestationConfig,
-        session_storage_backend_type: &KeyValueStorageType,
+        session_storage_backend_type: KeyValueStorageType,
         storage_backend_config: &StorageBackendConfig,
+        storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
         let inner = match config.attestation_service {
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
             AttestationServiceConfig::CoCoASBuiltIn(cfg) => {
-                let built_in_as =
-                    super::coco::builtin::BuiltInCoCoAs::new(cfg, storage_backend_config)
-                        .await
-                        .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
+                let built_in_as = super::coco::builtin::BuiltInCoCoAs::new(
+                    cfg,
+                    storage_backend_config,
+                    storage_provider.clone(),
+                )
+                .await
+                .map_err(|e| Error::AttestationServiceInitialization { source: e })?;
                 Arc::new(built_in_as) as _
             }
             #[cfg(feature = "coco-as-grpc")]
@@ -172,13 +176,12 @@ impl AttestationService {
             }
         };
 
-        let session_storage_backend = storage_backend_config
-            .backends
-            .to_client_with_namespace(*session_storage_backend_type, KBS_SESSION_STORAGE_NAMESPACE)
+        let session_storage_backend = storage_provider
+            .get_or_register_with_type(KBS_SESSION_STORAGE_NAMESPACE, session_storage_backend_type)
             .await
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
-        let session_map = SessionMap::new(session_storage_backend.clone());
+        let session_map = SessionMap::new(session_storage_backend);
         // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
         {
             let cleanup_session_map = session_map.clone();
