@@ -49,4 +49,7 @@ pub enum KeyValueStorageError {
 
     #[error("invalid configuration: {message}")]
     InvalidConfiguration { message: String },
+
+    #[error("invalid storage namespace: {namespace}")]
+    InvalidNamespace { namespace: String },
 }
