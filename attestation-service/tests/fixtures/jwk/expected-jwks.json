@@ -1,0 +1,14 @@
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "crv": "P-256",
+      "alg": "ES256",
+      "x": "ANbJDpVEC_bNPvuKERn1FkQMSuPWEzIQ7Y-kl3K0yEo",
+      "y": "eba_t8dP5Et0TPv0jdtCWba8l78-lTtyJSwWq0q0IQA",
+      "x5c": [
+        "MIIBJzCBzqADAgECAggaKzxNXm9wiTAKBggqhkjOPQQDAjAaMRgwFgYDVQQDDA9hcy1qd2tzLWZpeHR1cmUwHhcNMjQwMTAxMDAwMDAwWhcNMzQwMTAxMDAwMDAwWjAaMRgwFgYDVQQDDA9hcy1qd2tzLWZpeHR1cmUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQA1skOlUQL9s0++4oRGfUWRAxK49YTMhDtj6SXcrTISnm2v7fHT+RLdEz79I3bQlm2vJe/PpU7ciUsFqtKtCEAMAoGCCqGSM49BAMCA0gAMEUCIC2xnh93iChqPmHt0ThE31wQAj/aedyEUi25DFwcng/oAiEA9zmH7hdGIZD35XU3k4WeZCn2rTbgge6by4+KpgU3PWs="
+      ]
+    }
+  ]
+}

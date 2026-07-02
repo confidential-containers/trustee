@@ -21,7 +21,7 @@ tpm-verifier = ["verifier/tpm-verifier"]
 rvps-grpc = ["prost", "tonic", "mobc"]
 
 # For building gRPC CoCo-AS binary
-grpc-bin = ["clap", "prost", "tonic", "tonic-health", "tonic-prost"]
+grpc-bin = ["axum", "clap", "prost", "tonic", "tonic-health", "tonic-prost"]
 
 # For restful CoCo-AS binary
 restful-bin = ["actix-cors", "actix-web/openssl", "clap"]
@@ -36,6 +36,7 @@ required-features = ["restful-bin"]
 
 [dependencies]
 actix-web = { workspace = true, optional = true }
+axum = { version = "0.8", default-features = false, features = ["json"], optional = true }
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true

@@ -310,6 +310,21 @@ pub async fn get_policies(
     }
 }
 
+#[instrument(skip_all, fields(request_id = tracing::field::Empty))]
+pub async fn get_jwks(cocoas: web::Data<Arc<RwLock<AttestationService>>>) -> Result<HttpResponse> {
+    let request_id = Uuid::new_v4().to_string();
+    Span::current().record("request_id", tracing::field::display(&request_id));
+    info!("GetJWKS called.");
+
+    let jwks = cocoas
+        .read()
+        .await
+        .get_token_signer_jwks()
+        .context("get token signer jwks")?;
+    info!("GetJWKS succeeded.");
+    Ok(HttpResponse::Ok().json(jwks))
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RemovePolicyRequest {
