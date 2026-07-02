@@ -157,7 +157,10 @@ loglevel: {env_filter}
         }
     };
     debug!("Attestation Service config: {config:#?}");
-    let attestation_service = AttestationService::new(config).await?;
+
+    let storage_provider =
+        key_value_storage::KvStorageProvider::new(config.storage_backend.clone());
+    let attestation_service = AttestationService::new(config, storage_provider).await?;
 
     let allowed_origin = cli.allowed_origin.clone();
 

@@ -6,7 +6,7 @@ use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use actix_web::http::Method;
 use anyhow::{Context, Result};
-use key_value_storage::StorageBackendConfig;
+use key_value_storage::StorageProvider;
 use serde::Deserialize;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
@@ -100,10 +100,9 @@ impl Display for PluginsConfig {
 
 impl PluginsConfig {
     /// Turn the PluginsConfig into a concrete plugin instance
-    /// If the plugin instance needs a backend storage, the storage_backend can be used.
     pub async fn into_client_plugin_instance(
         self,
-        storage_backend_config: &StorageBackendConfig,
+        storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<ClientPluginInstance> {
         let plugin = match self {
             PluginsConfig::Sample(cfg) => {
@@ -112,10 +111,9 @@ impl PluginsConfig {
                 Arc::new(sample_plugin) as _
             }
             PluginsConfig::ResourceStorage(repository_config) => {
-                let resource_storage =
-                    ResourceStorage::new(repository_config, storage_backend_config)
-                        .await
-                        .context("Initialize 'Resource' plugin failed")?;
+                let resource_storage = ResourceStorage::new(repository_config, storage_provider)
+                    .await
+                    .context("Initialize 'Resource' plugin failed")?;
                 Arc::new(resource_storage) as _
             }
             #[cfg(feature = "nebula-ca-plugin")]
@@ -151,16 +149,15 @@ pub struct PluginManager {
 
 impl PluginManager {
     /// Turn the PluginsConfig into a concrete plugin instance
-    /// If the plugin instance needs a backend storage, the storage_type and storage_config can be used.
     pub async fn new(
         value: Vec<PluginsConfig>,
-        storage_backend_config: &StorageBackendConfig,
+        storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
         let mut plugins = HashMap::new();
         for cfg in value {
             let name = cfg.to_string();
             let plugin: ClientPluginInstance = cfg
-                .into_client_plugin_instance(storage_backend_config)
+                .into_client_plugin_instance(storage_provider.clone())
                 .await?;
             plugins.insert(name, plugin);
         }

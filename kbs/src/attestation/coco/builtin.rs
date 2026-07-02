@@ -10,8 +10,9 @@ use attestation_service::{
     HashAlgorithm, InitDataInput, RuntimeData, VerificationRequest,
 };
 use kbs_types::{Challenge, Tee};
-use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
+use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use serde::Deserialize;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
@@ -152,9 +153,10 @@ impl BuiltInCoCoAs {
     pub async fn new(
         config: Config,
         storage_backend_config: &StorageBackendConfig,
+        storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
         let config = config.derive_as_config(storage_backend_config);
-        let inner = RwLock::new(AttestationService::new(config).await?);
+        let inner = RwLock::new(AttestationService::new(config, storage_provider).await?);
         Ok(Self { inner })
     }
 }

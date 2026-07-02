@@ -27,6 +27,9 @@ pub mod local_json;
 
 pub mod local_fs;
 
+pub mod provider;
+pub use provider::{scoped, KvStorageProvider, StorageProvider};
+
 #[derive(Default)]
 pub struct SetParameters {
     /// Whether to overwrite the existing value.
