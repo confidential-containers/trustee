@@ -7,7 +7,7 @@ use reqwest::{get, Url};
 use serde::Deserialize;
 use std::fs;
 use thiserror::Error;
-use tracing::info;
+use tracing::{debug, info, warn};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
 
@@ -22,6 +22,8 @@ pub(crate) enum JwksGetError {
         #[source]
         source: anyhow::Error,
     },
+    #[error("HTTP source is not allowed when `insecure_public_key_from_uri` is false")]
+    HttpNotAllowed,
 }
 
 #[derive(Deserialize)]
@@ -29,38 +31,21 @@ pub(crate) struct OpenIDConfig {
     jwks_uri: String,
 }
 
-pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
+/// Load a JWK set from a configured source.
+///
+/// - `file://` and local paths: JWKS JSON file, read directly.
+/// - `https://` and `http://`: remote source. KBS tries to load JWKS from the configured URL
+///   directly; if that fails or returns no keys, it falls back to OpenID discovery at
+///   `{uri}/.well-known/openid-configuration` and loads the returned `jwks_uri`.
+///
+/// Plaintext `http://` is rejected unless `insecure_public_key_from_uri` is true. This applies
+/// to the configured URL and any `jwks_uri` returned by OpenID discovery.
+pub async fn read_jwk_from_uri(
+    uri: &str,
+    insecure_public_key_from_uri: bool,
+) -> Result<JwkSet, JwksGetError> {
     let url = Url::parse(uri).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
-        "https" => {
-            let openid_config_url = url
-                .join(OPENID_CONFIG_URL_SUFFIX)
-                .map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
-
-            info!(
-                "Getting OpenID configuration from {}",
-                openid_config_url.as_str()
-            );
-
-            let oidc = get(openid_config_url.as_str())
-                .await
-                .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?
-                .json::<OpenIDConfig>()
-                .await
-                .map_err(|e| JwksGetError::FailedToGetKeyMaterial {
-                    source: Into::<anyhow::Error>::into(e)
-                        .context("failed to get OpenID configuration"),
-                })?;
-
-            get(oidc.jwks_uri)
-                .await
-                .map_err(|e| JwksGetError::AccessFailed(e.to_string()))?
-                .json::<JwkSet>()
-                .await
-                .map_err(|e| JwksGetError::FailedToGetKeyMaterial {
-                    source: Into::<anyhow::Error>::into(e).context("failed to get JWK set"),
-                })
-        }
         "file" => {
             let data = fs::read(url.path())
                 .map_err(|e| JwksGetError::AccessFailed(format!("open {}: {}", url.path(), e)))?;
@@ -68,17 +53,108 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
                 source: Into::<anyhow::Error>::into(e).context("failed to deserialize JWK set"),
             })
         }
-        _ => Err(JwksGetError::InvalidSourcePath(format!(
-            "unsupported scheme {} (must be either file or https)",
-            url.scheme()
+        "https" | "http" => {
+            // Gate the configured source. The OpenID configuration URL below is derived from `url`
+            // and shares its scheme, so this single check also covers it.
+            reject_insecure_http(&url, insecure_public_key_from_uri)?;
+
+            // Try to load a JWK set directly from the configured URL first.
+            match get(uri)
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
+                })?
+                .json::<JwkSet>()
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to deserialize into JWK set"),
+                }) {
+                Ok(jwks) if !jwks.keys.is_empty() => return Ok(jwks),
+                Ok(_) => debug!("empty JWK set at {uri}, trying OpenID discovery"),
+                Err(e) => debug!(
+                    "failed to load JWK set directly from {uri}: {e}, trying OpenID discovery"
+                ),
+            }
+
+            // Fall back to OpenID discovery at `{uri}/.well-known/openid-configuration`.
+            let openid_config_url = build_openid_config_url(&url)?;
+            info!("Getting OpenID configuration from {openid_config_url}");
+            let oidc: OpenIDConfig = get(openid_config_url.as_str())
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to get OpenID configuration"),
+                })?
+                .json::<OpenIDConfig>()
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to deserialize into OpenID configuration"),
+                })?;
+
+            // The advertised `jwks_uri` comes from the network, so apply the same scheme gate
+            // before fetching it.
+            let jwks_url = Url::parse(&oidc.jwks_uri).map_err(|e| {
+                JwksGetError::InvalidSourcePath(format!("invalid jwks_uri {}: {e}", oidc.jwks_uri))
+            })?;
+            reject_insecure_http(&jwks_url, insecure_public_key_from_uri)?;
+
+            let jwks = get(jwks_url.as_str())
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
+                })?
+                .json::<JwkSet>()
+                .await
+                .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to deserialize into JWK set"),
+                })?;
+
+            Ok(jwks)
+        }
+        scheme => Err(JwksGetError::InvalidSourcePath(format!(
+            "unsupported scheme {scheme} (must be either file, https, or http)"
         ))),
     }
 }
 
+/// Build the OpenID configuration discovery URL (`{base}/.well-known/openid-configuration`).
+///
+/// A trailing slash on the base path is significant for [`Url::join`]: without it the last path
+/// segment is treated as a file name and dropped (so `https://host/realms/foo` would lose `foo`),
+/// hence we ensure one is present first.
+fn build_openid_config_url(base: &Url) -> Result<Url, JwksGetError> {
+    let mut issuer_url = base.clone();
+    if !issuer_url.path().ends_with('/') {
+        issuer_url.set_path(&format!("{}/", issuer_url.path()));
+    }
+    issuer_url
+        .join(OPENID_CONFIG_URL_SUFFIX)
+        .map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))
+}
+
+/// Reject plaintext `http://` for a URL we are about to fetch key material from, unless
+/// `insecure_public_key_from_uri` is set (warning when it is). This is applied to every URL we
+/// fetch: the configured source, the OpenID configuration URL, and the discovered `jwks_uri`.
+fn reject_insecure_http(url: &Url, insecure_public_key_from_uri: bool) -> Result<(), JwksGetError> {
+    if url.scheme() == "http" {
+        if !insecure_public_key_from_uri {
+            return Err(JwksGetError::HttpNotAllowed);
+        }
+        warn!(
+            "Fetching key material from insecure HTTP source {url}, please ensure the source is trusted or it's only used in a controlled/test environment"
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::crypto::jwk::read_jwk_from_uri;
+    use super::{build_openid_config_url, read_jwk_from_uri, reject_insecure_http, JwksGetError};
     use jsonwebtoken::jwk::KeyAlgorithm;
+    use reqwest::Url;
     use rstest::rstest;
 
     #[rstest]
@@ -88,7 +164,10 @@ mod tests {
     #[case("/does/not/exist/keys.jwks", true)]
     #[tokio::test]
     async fn test_source_path_validation(#[case] source_path: &str, #[case] expect_error: bool) {
-        assert_eq!(expect_error, read_jwk_from_uri(source_path).await.is_err())
+        assert_eq!(
+            expect_error,
+            read_jwk_from_uri(source_path, false).await.is_err()
+        )
     }
 
     #[rstest]
@@ -108,8 +187,52 @@ mod tests {
         std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
-        let jwtks = read_jwk_from_uri(&p).await.expect("to get jwks");
+        let jwtks = read_jwk_from_uri(&p, false).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
+    }
+
+    /// The scheme gate is the single check applied to every URL we fetch, including the `jwks_uri`
+    /// discovered via OpenID configuration. It rejects/allows `http://` per the flag and always
+    /// permits `https://`. This is the security-relevant decision and needs no network.
+    #[test]
+    fn test_scheme_gate() {
+        let http = Url::parse("http://idp.example/jwks").unwrap();
+        assert!(matches!(
+            reject_insecure_http(&http, false),
+            Err(JwksGetError::HttpNotAllowed)
+        ));
+        assert!(reject_insecure_http(&http, true).is_ok());
+
+        let https = Url::parse("https://idp.example/jwks").unwrap();
+        assert!(reject_insecure_http(&https, false).is_ok());
+    }
+
+    /// `Url::join` drops the last path segment unless the base ends with `/`, so verify the
+    /// discovery URL is built correctly for issuer bases with and without a trailing slash.
+    #[rstest]
+    #[case(
+        "https://host/realms/foo",
+        "https://host/realms/foo/.well-known/openid-configuration"
+    )]
+    #[case(
+        "https://host/realms/foo/",
+        "https://host/realms/foo/.well-known/openid-configuration"
+    )]
+    #[case("https://host", "https://host/.well-known/openid-configuration")]
+    #[case("https://host/", "https://host/.well-known/openid-configuration")]
+    fn test_build_openid_config_url(#[case] base: &str, #[case] expected: &str) {
+        let url = Url::parse(base).expect("valid base url");
+        let got = build_openid_config_url(&url).expect("build discovery url");
+        assert_eq!(got.as_str(), expected);
+    }
+
+    /// A plaintext `http://` source is rejected before any network access, so this needs no server.
+    #[tokio::test]
+    async fn test_http_source_rejected_when_insecure_disabled() {
+        let err = read_jwk_from_uri("http://idp.example/jwks", false)
+            .await
+            .expect_err("plaintext http must be rejected when insecure is disabled");
+        assert!(matches!(err, JwksGetError::HttpNotAllowed));
     }
 }

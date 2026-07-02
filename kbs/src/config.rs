@@ -350,6 +350,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "coco-as-grpc")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -401,6 +402,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -450,6 +452,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -541,6 +544,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -584,6 +588,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -641,6 +646,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_certs_paths: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "intel-trust-authority-as")]
         attestation_service: crate::attestation::config::AttestationConfig {
@@ -671,6 +677,7 @@ mod tests {
             insecure_header_jwk: false,
             trusted_jwk_sets: vec![],
             extra_teekey_paths: vec![],
+            insecure_public_key_from_uri: false,
         },
         #[cfg(feature = "coco-as-builtin")]
         attestation_service: crate::attestation::config::AttestationConfig {
