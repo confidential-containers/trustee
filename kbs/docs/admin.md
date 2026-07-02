@@ -79,18 +79,27 @@ This lets you keep identity issuance external while keeping KBS-side authorizati
 `[admin.authentication.bearer_jwt]` accepts:
 
 - `identity_providers` (array): list of trusted identity providers
+- `insecure_public_key_uri` (optional bool, default `false`): allow fetching verification keys over plaintext `http://`. Applies to configured `public_key_uri` and `jwk_set_uri` values, and to any `jwks_uri` returned by OpenID discovery for remote `jwk_set_uri` entries
+- `insecure_header_jwk` (optional bool, default `false`): skip endorsement checks for JWT header-embedded JWK keys (signature is still verified, testing only)
 
 Each `identity_providers` entry:
 
 - `issuer` (optional string): expected JWT `iss` value; empty means no issuer check
 - `audience` (optional string): expected JWT `aud` value; empty means no audience check
 - `public_key_uri` (optional string): PEM public key source
-- `jwk_set_uri` (optional string): JWKS source
+- `jwk_set_uri` (optional string): trusted JWKS source (see formats below)
 
 Each entry must provide at least one of `public_key_uri` or `jwk_set_uri`.
 
-Supported source formats:
+`jwk_set_uri` formats:
 
-- `https://...` (remote fetch)
-- `file://...` (local file URI)
-- local path without scheme (for example `./keys/admin.pem`)
+- `file://...` or local path (for example `./keys/admin.jwks`): JWKS JSON file, read directly
+- `https://...`: remote JWKS URL or OpenID issuer base URL (see note below)
+- `http://...`: same as `https://`, only when `insecure_public_key_uri=true`
+
+> [!NOTE]
+> For remote `jwk_set_uri` values, KBS first tries to load JWKS from the configured URL
+> directly (for example a `/jwks/` endpoint). If that fails, it falls back to OpenID discovery
+> at `{uri}/.well-known/openid-configuration` and loads keys from the returned `jwks_uri`.
+> Plaintext `http://` is rejected unless `insecure_public_key_uri=true`, including on
+> URLs returned by discovery.
