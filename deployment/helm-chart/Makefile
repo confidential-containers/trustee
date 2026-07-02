@@ -12,6 +12,9 @@ KBS_CLIENT ?= $(REPO_ROOT)/target/release/kbs-client
 E2E_IMAGE_PREFIX ?= trustee-e2e
 E2E_IMAGE_TAG ?= e2e
 
+# kind cluster used by load-e2e-images-into-kind (override for parallel/self-hosted runs).
+KIND_CLUSTER ?= kind
+
 E2E_KBS_IMAGE_REPOSITORY := $(E2E_IMAGE_PREFIX)/kbs-grpc-as
 E2E_AS_IMAGE_REPOSITORY := $(E2E_IMAGE_PREFIX)/coco-as-grpc
 E2E_RVPS_IMAGE_REPOSITORY := $(E2E_IMAGE_PREFIX)/rvps
@@ -53,8 +56,8 @@ helm-lint: helm-dependency-build
 
 load-e2e-images-into-kind: check-docker
 	@command -v kind >/dev/null || (echo "missing: kind (required to load local images)" >&2; exit 1)
-	@echo "==> loading images into kind cluster kind"
-	kind load docker-image --name kind \
+	@echo "==> loading images into kind cluster $(KIND_CLUSTER)"
+	kind load docker-image --name '$(KIND_CLUSTER)' \
 		'$(E2E_KBS_IMAGE)' '$(E2E_AS_IMAGE)' '$(E2E_RVPS_IMAGE)'
 
 deploy: helm-lint
