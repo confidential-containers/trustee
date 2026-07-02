@@ -1,0 +1,111 @@
+name: Helm Trustee e2e
+
+# Deploys Trustee via the Helm chart into a kind cluster, runs the kbs-client
+# e2e checks, then tears everything down.
+
+on:
+  workflow_call:
+    inputs:
+      leg:
+        type: string
+        required: true
+        description: Leg name, used in the concurrency group and kind cluster name.
+      runs-on:
+        type: string
+        required: true
+        description: >-
+          JSON `runs-on` value for the e2e job: either an array of runner labels
+          (e.g. `["ubuntu-24.04"]`) or an object selecting a runner group
+          (e.g. `{"group":"my-group"}` or `{"group":"my-group","labels":["tdx"]}`).
+      client-artifact:
+        type: string
+        required: true
+        description: Artifact name of the pre-built kbs-client to download.
+      self-hosted:
+        type: boolean
+        default: false
+        description: When true, run pre/post cleanup to keep a persistent runner tidy.
+
+permissions: {}
+
+# Self-hosted runners do not set -o pipefail otherwise.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  helm-e2e:
+    name: Helm Trustee e2e (${{ inputs.leg }})
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    permissions:
+      contents: read
+    # Serialize per leg so multiple PRs cannot fight over a single self-hosted
+    # runner (shared kind cluster / port-forward). Queue instead of cancel.
+    concurrency:
+      group: helm-trustee-e2e-${{ inputs.leg }}
+      cancel-in-progress: false
+    env:
+      OS_VERSION: ubuntu-24.04
+      KIND_CLUSTER: kind-${{ inputs.leg }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Self-hosted runners persist state; drop any cluster left by a crashed run.
+      - name: Pre-clean stale kind cluster
+        if: inputs.self-hosted
+        run: kind delete cluster --name "${KIND_CLUSTER}" || true
+
+      - name: Download pre-built images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          # TDX is x86_64, so every leg consumes the amd64 image bundle.
+          name: docker-e2e-images-linux-amd64
+          path: ${{ runner.temp }}/docker-e2e-images
+
+      - name: Load images
+        run: docker load --input "${{ runner.temp }}/docker-e2e-images/images.tar"
+
+      - name: Download pre-built kbs-client
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.client-artifact }}
+          path: ${{ runner.temp }}/helm-e2e-kbs-client
+
+      - name: Prepare kbs-client
+        run: chmod +x "${{ runner.temp }}/helm-e2e-kbs-client/kbs-client"
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER }}
+
+      - name: Load Trustee images into kind
+        run: |
+          make -C deployment/helm-chart load-e2e-images-into-kind \
+            KIND_CLUSTER="${KIND_CLUSTER}" \
+            E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
+            E2E_IMAGE_TAG=latest
+
+      - name: Run Helm Trustee e2e
+        run: |
+          make -C deployment/helm-chart e2e-test \
+            E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
+            E2E_IMAGE_TAG=latest \
+            KBS_CLIENT="${{ runner.temp }}/helm-e2e-kbs-client/kbs-client"
+
+      # Self-hosted cleanup so the runner is left in a known-good state.
+      - name: Cleanup kind cluster
+        if: always() && inputs.self-hosted
+        run: kind delete cluster --name "${KIND_CLUSTER}" || true
+
+      - name: Prune docker
+        if: always() && inputs.self-hosted
+        run: docker system prune -f || true
