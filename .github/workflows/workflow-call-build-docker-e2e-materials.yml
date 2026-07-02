@@ -13,10 +13,20 @@ permissions: {}
 
 jobs:
   build-kbs-client:
-    name: Build kbs-client (linux/amd64)
+    name: Build kbs-client ${{ matrix.name }} (linux/amd64)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            features: ""
+            artifact: helm-e2e-kbs-client-linux-amd64
+          - name: tdx
+            features: "--features tdx-attester"
+            artifact: helm-e2e-kbs-client-tdx-linux-amd64
     env:
       OS_VERSION: ubuntu-24.04
     steps:
@@ -39,14 +49,14 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
-          key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+          key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-kbs-client-${{ matrix.name }}-${{ hashFiles('./Cargo.lock') }}
 
       - name: Build kbs-client
-        run: cargo build -p kbs-client --release
+        run: cargo build -p kbs-client --release ${{ matrix.features }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: helm-e2e-kbs-client-linux-amd64
+          name: ${{ matrix.artifact }}
           path: target/release/kbs-client
           retention-days: 1
           if-no-files-found: error

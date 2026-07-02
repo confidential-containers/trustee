@@ -3,6 +3,8 @@ name: KBS e2e Suite
 on:
   pull_request:
     branches: ["main"]
+    # `labeled` lets the TDX Helm e2e leg trigger when the `tdx-e2e` label is added.
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -217,6 +219,22 @@ jobs:
       runs-on: '["ubuntu-24.04"]'
       client-artifact: helm-e2e-kbs-client-linux-amd64
       self-hosted: false
+
+  # Real TDX Helm e2e on a self-hosted runner. Only runs when the PR carries the
+  # `tdx-e2e` label (or on manual dispatch), so unlabelled PRs never queue onto it.
+  helm-trustee-e2e-tdx:
+    name: Helm Trustee e2e (TDX)
+    needs: build-docker-e2e-materials
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'tdx-e2e')
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: tdx
+      # Runner group hosting the TDX runner(s); add `labels` here to narrow further.
+      runs-on: '{"group":"Intel TDX"}'
+      client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
+      self-hosted: true
 
   # Azure vTPM TEE e2e (manual trigger only)
   tdx-e2e-test:

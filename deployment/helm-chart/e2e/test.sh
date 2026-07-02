@@ -8,6 +8,16 @@ CHART_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${CHART_DIR}/../.." && pwd)"
 
 KBS_CLIENT="${KBS_CLIENT:-${REPO_ROOT}/target/release/kbs-client}"
+# Privilege prefix applied to kbs-client only (not kubectl/helm). Real-TEE
+# attesters such as TDX must write to configfs (/sys/kernel/config/tsm/report),
+# which an unprivileged user cannot do, so kbs-client runs via `sudo -E` by
+# default. 
+#
+# Note that it's required for passwordless sudo to be set up on the runner.
+#
+# Override with `KBS_CLIENT_SUDO=` to disable (e.g. local dev without
+# passwordless sudo, or when already running as root).
+KBS_CLIENT_SUDO="${KBS_CLIENT_SUDO:-sudo -E}"
 KBS_URL="http://127.0.0.1:8080"
 TEST_RESOURCE_FILE="${SCRIPT_DIR}/fixtures/test-resource.txt"
 RESOURCE_PATH="helm-e2e/test-repo/test-secret"
@@ -33,6 +43,13 @@ die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 require_cmd() {
 	command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+# Run kbs-client, optionally elevated via ${KBS_CLIENT_SUDO}. Only kbs-client is
+# elevated; kubectl/helm keep running as the current user (their kubeconfig is
+# user-scoped). ${KBS_CLIENT_SUDO} is intentionally left unquoted for word split.
+kbs_client() {
+	${KBS_CLIENT_SUDO} "${KBS_CLIENT}" "$@"
 }
 
 wait_for_bootstrap_secret() {
@@ -80,32 +97,32 @@ main() {
 		-o "jsonpath={.data.KBS_ADMIN_TOKEN}" | base64 -d >"${ADMIN_TOKEN_FILE}"
 
 	log "set confidential resource"
-	"${KBS_CLIENT}" --url "${KBS_URL}" config \
+	kbs_client --url "${KBS_URL}" config \
 		--admin-token-file "${ADMIN_TOKEN_FILE}" \
 		set-resource \
 		--path "${RESOURCE_PATH}" \
 		--resource-file "${TEST_RESOURCE_FILE}"
 
 	log "set resource policy (allow_all)"
-	"${KBS_CLIENT}" --url "${KBS_URL}" config \
+	kbs_client --url "${KBS_URL}" config \
 		--admin-token-file "${ADMIN_TOKEN_FILE}" \
 		set-resource-policy \
 		--allow-all
 
 	log "get resource (expect success with allow_all)"
-	"${KBS_CLIENT}" --url "${KBS_URL}" get-resource \
+	kbs_client --url "${KBS_URL}" get-resource \
 		--path "${RESOURCE_PATH}" \
 		| base64 -d >"${ROUNDTRIP_FILE}"
 	diff -u "${TEST_RESOURCE_FILE}" "${ROUNDTRIP_FILE}"
 
 	log "set resource policy (deny_all)"
-	"${KBS_CLIENT}" --url "${KBS_URL}" config \
+	kbs_client --url "${KBS_URL}" config \
 		--admin-token-file "${ADMIN_TOKEN_FILE}" \
 		set-resource-policy \
 		--deny-all
 
 	log "get resource (expect failure with deny_all)"
-	if "${KBS_CLIENT}" --url "${KBS_URL}" get-resource \
+	if kbs_client --url "${KBS_URL}" get-resource \
 		--path "${RESOURCE_PATH}" >/dev/null 2>&1; then
 		die "get-resource succeeded but should have been denied by deny_all resource policy"
 	fi
