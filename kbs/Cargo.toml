@@ -84,7 +84,7 @@ prometheus = "0.14.0"
 prost = { workspace = true, optional = true }
 regex = "1.12.4"
 regorus.workspace = true
-reqwest = { workspace = true, features = ["default-tls"] }
+reqwest = { workspace = true, features = ["default-tls", "blocking"] }
 rsa.workspace = true
 rustls = { version = "0.23", default-features = false, features = [
     "ring",
@@ -95,6 +95,7 @@ serde_json.workspace = true
 serde_with.workspace = true
 sha2.workspace = true
 shadow-rs.workspace = true
+sigstore-types = "0.10.0"
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true

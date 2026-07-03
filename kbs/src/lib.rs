@@ -10,12 +10,11 @@ pub mod attestation;
 /// KBS config
 pub mod config;
 pub use config::KbsConfig;
-pub mod token;
 
 pub mod api_server;
 pub use api_server::ApiServer;
 
-pub(crate) mod crypto;
+pub mod crypto;
 
 pub mod error;
 pub mod plugins;
@@ -26,3 +25,4 @@ pub mod http;
 pub mod jwe;
 
 pub mod prometheus;
+pub mod trust_context;
