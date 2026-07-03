@@ -12,9 +12,11 @@ use attestation_service::{
 use kbs_types::{Challenge, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use serde::Deserialize;
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::trust_context::TrustContext;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct Config {
@@ -101,6 +103,10 @@ impl Attest for BuiltInCoCoAs {
             .await
             .evaluate(verification_requests, policy_ids)
             .await
+    }
+
+    fn claims_to_trust_context(&self, claims: Value) -> Result<TrustContext> {
+        super::claims_to_trust_context(claims)
     }
 
     async fn generate_challenge(

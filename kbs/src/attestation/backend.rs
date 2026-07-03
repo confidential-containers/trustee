@@ -13,15 +13,17 @@ use key_value_storage::{KeyValueStorageType, StorageBackendConfig};
 use rsa::rand_core::{OsRng, RngCore};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
 use crate::attestation::session::{SessionMap, KBS_SESSION_ID};
+use crate::crypto::jwt::JwtVerifier;
 use crate::prometheus::{
     ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
     AUTH_ERRORS, AUTH_REQUESTS, AUTH_SUCCESSES,
 };
+use crate::trust_context::TrustContext;
 
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
@@ -94,6 +96,12 @@ pub trait Attest: Send + Sync {
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
     async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String>;
+
+    /// Convert the verified attestation token claims into a backend-agnostic
+    /// [`TrustContext`]. Each backend knows the layout of its own token and is
+    /// responsible for extracting the TEE public key, the allow/deny decision
+    /// and the issuer identity.
+    fn claims_to_trust_context(&self, claims: Value) -> anyhow::Result<TrustContext>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -273,8 +281,13 @@ impl AttestationService {
         Ok(response)
     }
 
-    pub async fn attest(&self, attestation: &[u8], request: HttpRequest) -> Result<HttpResponse> {
-        self.__attest(attestation, request)
+    pub async fn attest(
+        &self,
+        attestation: &[u8],
+        request: HttpRequest,
+        token_verifier: Arc<JwtVerifier>,
+    ) -> Result<HttpResponse> {
+        self.__attest(attestation, request, token_verifier)
             .await
             .map_err(|e| Error::RcarAttestFailed { source: e })
     }
@@ -283,6 +296,7 @@ impl AttestationService {
         &self,
         attestation: &[u8],
         request: HttpRequest,
+        token_verifier: Arc<JwtVerifier>,
     ) -> anyhow::Result<HttpResponse> {
         ATTESTATION_REQUESTS.inc();
 
@@ -313,13 +327,16 @@ impl AttestationService {
                 bail!("session expired.");
             }
 
-            if let SessionStatus::Attested { token, .. } = &session {
+            if let SessionStatus::Attested { trust_context, .. } = &session {
                 debug!(
-                    "Session {} is already attested. Skip attestation and return the old token",
+                    "Session {} is already attested. Skip attestation and return the old trust context",
                     session.id()
                 );
+                let trust_context_str = serde_json::to_string(trust_context)
+                    .inspect_err(|_| ATTESTATION_ERRORS.inc())
+                    .context("Serialize trust context failed")?;
                 let body = serde_json::to_string(&json!({
-                    "token": token,
+                    "token": trust_context_str,
                 }))
                 .inspect_err(|_| ATTESTATION_ERRORS.inc())
                 .context("Serialize token failed")?;
@@ -411,17 +428,31 @@ impl AttestationService {
             })
             .context("verify TEE evidence failed")?;
 
+        let claims = token_verifier
+            .verify(&token)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to verify attestation token from the backend Attestation Service")?;
+
+        let trust_context = self
+            .inner
+            .claims_to_trust_context(claims)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Failed to convert attestation token claims to trust context")?;
+
         ATTESTATION_SUCCESSES
             .with_label_values(&[&tee_type_label])
             .inc();
 
+        let trust_context_str = serde_json::to_string(&trust_context)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())
+            .context("Serialize trust context failed")?;
         let body = serde_json::to_string(&json!({
-            "token": token,
+            "token": trust_context_str,
         }))
         .inspect_err(|_| ATTESTATION_ERRORS.inc())
         .context("Serialize token failed")?;
 
-        session.attest(token);
+        session.attest(trust_context);
         let cookie = session.cookie();
         self.session_map.insert(session).await?;
 
@@ -431,10 +462,10 @@ impl AttestationService {
             .body(body))
     }
 
-    pub async fn get_attest_token_from_session(
+    pub async fn get_trust_context_from_session(
         &self,
         request: &HttpRequest,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<TrustContext> {
         let cookie = request
             .cookie(KBS_SESSION_ID)
             .context("KBS session cookie not found")?;
@@ -454,11 +485,11 @@ impl AttestationService {
             bail!("The session is expired");
         }
 
-        let SessionStatus::Attested { token, .. } = session else {
+        let SessionStatus::Attested { trust_context, .. } = session else {
             bail!("The session is not authorized");
         };
 
-        Ok(token.to_owned())
+        Ok(trust_context)
     }
 
     pub async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {

@@ -4,6 +4,7 @@
 
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
+use crate::trust_context::TrustContext;
 use actix_web::http::Method;
 use anyhow::{Context, Result};
 use key_value_storage::StorageBackendConfig;
@@ -30,12 +31,17 @@ pub trait ClientPlugin: Send + Sync {
     ///
     /// TODO: change body from Vec slice into Reader to apply for large
     /// body stream.
+    ///
+    /// `trust_context` carries the attestation-derived state for the caller.
+    /// It is `None` for admin-authenticated requests (which are not gated by
+    /// attestation) and `Some` for requests authorized via attestation.
     async fn handle(
         &self,
         body: &[u8],
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.

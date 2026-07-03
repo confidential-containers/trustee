@@ -24,6 +24,7 @@ use crate::plugins::plugin_manager::ClientPlugin;
 use crate::prometheus::{
     PLUGIN_ERRORS_TOTAL, PLUGIN_REQUESTS_TOTAL, PLUGIN_REQUEST_DURATION_SECONDS,
 };
+use crate::trust_context::TrustContext;
 
 mod plugin_api {
     tonic::include_proto!("kbs.plugin.v1");
@@ -387,6 +388,7 @@ impl ClientPlugin for ExternalPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        _trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>> {
         let (backend, sub_path) = self.backend_for(path)?;
         backend.handle(body, query, sub_path, method).await

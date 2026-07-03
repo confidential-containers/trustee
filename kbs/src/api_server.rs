@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{
     http::{header::Header, Method},
@@ -11,12 +11,14 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use anyhow::Context;
-use base64::Engine;
+use anyhow::{anyhow, Context};
+use base64::{prelude::BASE64_URL_SAFE, Engine};
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
 
+#[cfg(feature = "as")]
+use crate::crypto::jwt::JwtVerifier;
 use crate::{
     admin::Admin,
     config::KbsConfig,
@@ -26,7 +28,7 @@ use crate::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
-    token::TokenVerifier,
+    trust_context::{SignedTrustContext, TrustContext, TrustContextManager},
     Error, Result,
 };
 
@@ -57,34 +59,60 @@ pub struct ApiServer {
     pub policy_engine: PolicyEngine<Regorus>,
     admin: Admin,
     config: KbsConfig,
-    token_verifier: TokenVerifier,
+    #[cfg(feature = "as")]
+    token_verifier: Arc<JwtVerifier>,
+    trust_context_manager: Arc<TrustContextManager>,
 }
 
 impl ApiServer {
-    async fn get_attestation_token(&self, request: &HttpRequest) -> anyhow::Result<String> {
+    /// Resolve the [`TrustContext`] for a resource request. It is first looked
+    /// up from an attested KBS protocol session (cookie based). If that is not
+    /// available, a signed trust context presented in the `Authorization`
+    /// header (the "passport" flow) is verified against the configured keys.
+    async fn get_trust_context(&self, request: &HttpRequest) -> anyhow::Result<TrustContext> {
         #[cfg(feature = "as")]
-        if let Ok(token) = self
+        if let Ok(trust_context) = self
             .attestation_service
-            .get_attest_token_from_session(request)
+            .get_trust_context_from_session(request)
             .await
         {
-            return Ok(token);
+            return Ok(trust_context);
         }
 
         let bearer = Authorization::<Bearer>::parse(request)
             .context("parse Authorization header failed")?
             .into_scheme();
 
-        let token = bearer.token().to_string();
+        let signed_trust_context = BASE64_URL_SAFE.decode(bearer.token())?;
+        let signed_trust_context: SignedTrustContext =
+            serde_json::from_slice(&signed_trust_context)
+                .context("Failed to deserialize trust context")?;
 
-        Ok(token)
+        let trust_context = self
+            .trust_context_manager
+            .verify(signed_trust_context)
+            .context("Failed to verify trust context in header")?;
+        Ok(trust_context)
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
         let plugin_manager = PluginManager::new(config.plugins.clone(), &config.storage_backend)
             .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
-        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
+        #[cfg(feature = "as")]
+        let token_verifier = Arc::new(
+            JwtVerifier::from_config(config.attestation_token.clone())
+                .await
+                .map_err(|source| Error::TokenVerifierError { source })?,
+        );
+
+        let trust_context_manager = Arc::new(
+            TrustContextManager::new(&config.trust_context).map_err(|e| {
+                Error::TrustContextError {
+                    source: anyhow!("Failed to initialize trust context manager: {e}"),
+                }
+            })?,
+        );
 
         info!(
             "Using storage backend type: {:?}",
@@ -128,6 +156,9 @@ impl ApiServer {
             plugin_manager,
             policy_engine,
             admin,
+            trust_context_manager,
+
+            #[cfg(feature = "as")]
             token_verifier,
 
             #[cfg(feature = "as")]
@@ -254,7 +285,7 @@ pub(crate) async fn api(
         #[cfg(feature = "as")]
         "attest" if request.method() == Method::POST => core
             .attestation_service
-            .attest(&body, request)
+            .attest(&body, request, core.token_verifier.clone())
             .await
             .map_err(From::from),
         #[cfg(feature = "as")]
@@ -389,24 +420,29 @@ pub(crate) async fn api(
                 .await
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
-                // Plugin calls need to be authorized by the admin auth
+                // Plugin calls need to be authorized by the admin auth. These
+                // are not gated by attestation, so no trust context is passed.
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method(), None)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
-                // Plugin calls need to be authorized by the Token and policy
-                let token = core
-                    .get_attestation_token(&request)
-                    .await
-                    .map_err(|_| Error::TokenNotFound)?;
+                // Plugin calls need to be authorized by the trust context and policy
+                let trust_context = core.get_trust_context(&request).await.map_err(|e| {
+                    Error::TrustContextError {
+                        source: anyhow!("Failed to get trust context: {e}"),
+                    }
+                })?;
 
-                let claims = core.token_verifier.verify(token)?;
-
-                let claim_str = serde_json::to_string(&claims)?;
+                // The policy operates on a unified trust context rather than
+                // backend-specific raw attestation claims.
+                let policy_input = json!({
+                    "trust_context": trust_context,
+                });
+                let policy_input_str = policy_input.to_string();
 
                 KBS_POLICY_EVALS.inc();
                 // TODO: add policy filter support for other plugins
@@ -414,7 +450,7 @@ pub(crate) async fn api(
                     .policy_engine
                     .evaluate_rego(
                         Some(&policy_data_str),
-                        &claim_str,
+                        &policy_input_str,
                         KBS_POLICY_ID,
                         vec![KBS_POLICY_RULE],
                         vec![],
@@ -443,7 +479,13 @@ pub(crate) async fn api(
                 KBS_POLICY_APPROVALS.inc();
 
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        Some(&trust_context),
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -452,7 +494,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
-                    let public_key = core.token_verifier.extract_tee_public_key(claims)?;
+                    let public_key = trust_context.tee_pubkey;
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

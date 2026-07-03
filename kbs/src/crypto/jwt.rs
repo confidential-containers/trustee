@@ -19,11 +19,43 @@ use openssl::{
 };
 use reqwest::Url;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde_json::Value;
 use std::fs;
 use std::str::FromStr;
 
 use crate::crypto::jwk::read_jwk_from_uri;
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct TokenVerifierConfig {
+    /// File paths of trusted certificates in PEM format used to verify
+    /// the signature of the Attestation Token.
+    #[serde(default)]
+    pub trusted_certs_paths: Vec<String>,
+
+    /// URLs (file:// and https:// schemes accepted) pointing to a local JWKSet file
+    /// or to an OpenID configuration url giving a pointer to JWKSet certificates
+    /// (for "Jwk") to verify Attestation Token Signature.
+    #[serde(default)]
+    pub trusted_jwk_sets: Vec<String>,
+
+    /// Whether to skip endorsement checks for a JWK embedded in the JWT header.
+    ///
+    /// When false (default) and the token header carries a `jwk`, the key must be
+    /// backed by an `x5c` certificate chain that chains to [`Self::trusted_certs_paths`].
+    /// When true, that `jwk` is used directly to verify the signature without
+    /// checking its provenance; the signature itself is still validated.
+    ///
+    /// This only affects header-embedded `jwk` keys. Tokens that identify the
+    /// signing key via `kid` are still resolved from [`Self::trusted_jwk_sets`].
+    ///
+    /// Should only be set to true for testing: an attacker who can replace the
+    /// header `jwk` can make KBS accept tokens signed with an arbitrary key.
+    ///
+    /// Default: false
+    #[serde(default = "bool::default")]
+    pub insecure_header_jwk: bool,
+}
 
 fn path_to_file_uri(path: &str) -> Result<String> {
     let abs = std::path::Path::new(path)
@@ -175,6 +207,20 @@ impl JwtVerifier {
             trusted_pem_public_keys,
             insecure_public_key_from_jwt,
         })
+    }
+
+    /// Build a [`JwtVerifier`] from an [`TokenVerifierConfig`], used
+    /// to verify attestation result tokens issued by the backend attestation
+    /// service.
+    pub async fn from_config(config: TokenVerifierConfig) -> Result<Self> {
+        Self::new(
+            &config.trusted_jwk_sets,
+            &config.trusted_certs_paths,
+            &Vec::new(),
+            config.insecure_header_jwk,
+        )
+        .await
+        .context("Failed to initialize attestation token verifier")
     }
 
     fn verify_jwk_endorsement(&self, key: &Jwk) -> Result<()> {
