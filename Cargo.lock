@@ -4143,6 +4143,7 @@ dependencies = [
  "serial_test",
  "sha2 0.11.0",
  "shadow-rs",
+ "sigstore-types",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",
@@ -5992,6 +5993,7 @@ dependencies = [
  "bytes",
  "cookie 0.18.1",
  "cookie_store",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http 1.4.0",
@@ -6878,6 +6880,20 @@ checksum = "28d567dcbaf0049cb8ac2608a76cd95ff9e4412e1899d389ee400918ca7537f5"
 dependencies = [
  "digest 0.11.3",
  "rand_core 0.10.1",
+]
+
+[[package]]
+name = "sigstore-types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56f034e86c3b8d91b32608c83f4a18939eed32c6ca08d17d2f52b88be365aac6"
+dependencies = [
+ "base64 0.22.1",
+ "hex",
+ "pem",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
