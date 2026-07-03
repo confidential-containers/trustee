@@ -29,10 +29,28 @@ pub struct Cli {
     /// Socket that the server will listen on to accept requests.
     #[arg(short, long, default_value = "127.0.0.1:3000")]
     pub socket: SocketAddr,
+
+    /// Path to the public key cert for HTTPS. Both public key cert and
+    /// private key must be provided to enable HTTPS.
+    #[arg(short = 't', long)]
+    pub https_pubkey_cert: Option<String>,
+
+    /// Path to the private key for HTTPS. Both public key cert and
+    /// private key must be provided to enable HTTPS.
+    #[arg(short = 'k', long)]
+    pub https_prikey: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Both ring and aws-lc-rs may be compiled in (e.g. via jsonwebtoken);
+    // rustls requires an explicit default crypto provider when multiple
+    // backends are present. Install ring. `.ok()` ignores Err if a provider
+    // is already registered.
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
+
     let env_filter = match std::env::var_os("RUST_LOG") {
         Some(_) => EnvFilter::try_from_default_env().expect("RUST_LOG is present but invalid"),
         None => EnvFilter::new("warn,attestation_service=info,grpc_as=info"),
@@ -65,7 +83,12 @@ loglevel: {env_filter}
 
     let cli = Cli::parse();
 
-    let server = grpc::start(cli.socket, cli.config_file);
+    let server = grpc::start(
+        cli.socket,
+        cli.config_file,
+        cli.https_pubkey_cert,
+        cli.https_prikey,
+    );
     tokio::try_join!(server)?;
 
     Ok(())
