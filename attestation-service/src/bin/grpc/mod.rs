@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tonic::transport::Server;
+use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tonic::{Request, Response, Status};
 use tonic_health::server::health_reporter;
 use tracing::{debug, info, instrument, Span};
@@ -58,6 +58,12 @@ pub enum GrpcError {
     Service(#[from] ServiceError),
     #[error("tonic transport error: {0}")]
     TonicTransport(#[from] tonic::transport::Error),
+    #[error("failed to read HTTPS public key cert: {0}")]
+    ReadHttpsCert(#[source] std::io::Error),
+    #[error("failed to read HTTPS private key: {0}")]
+    ReadHttpsKey(#[source] std::io::Error),
+    #[error("HTTPS public key cert and private key must be provided to enable HTTPS.")]
+    HttpsConfigError,
 }
 
 pub struct AttestationServer {
@@ -310,12 +316,12 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
     }
 }
 
-pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<(), GrpcError> {
-    info!(
-        "Starting gRPC Attestation Service. Listening on socket: {}",
-        &socket
-    );
-
+pub async fn start(
+    socket: SocketAddr,
+    config_path: Option<String>,
+    https_pubkey_cert: Option<String>,
+    https_prikey: Option<String>,
+) -> Result<(), GrpcError> {
     let attestation_server = Arc::new(RwLock::new(AttestationServer::new(config_path).await?));
 
     let (health_reporter, health_service) = health_reporter();
@@ -323,7 +329,35 @@ pub async fn start(socket: SocketAddr, config_path: Option<String>) -> Result<()
         .set_serving::<AttestationServiceServer<Arc<RwLock<AttestationServer>>>>()
         .await;
 
-    Server::builder()
+    let mut builder = Server::builder();
+
+    match (https_pubkey_cert, https_prikey) {
+        (Some(pubkey_cert), Some(prikey)) => {
+            let cert = tokio::fs::read(pubkey_cert)
+                .await
+                .map_err(GrpcError::ReadHttpsCert)?;
+            let key = tokio::fs::read(prikey)
+                .await
+                .map_err(GrpcError::ReadHttpsKey)?;
+            let identity = Identity::from_pem(cert, key);
+            builder = builder.tls_config(ServerTlsConfig::new().identity(identity))?;
+            info!(
+                "Starting gRPC Attestation Service over HTTPS. Listening on socket: {}",
+                &socket
+            );
+        }
+        (None, None) => {
+            info!(
+                "Starting gRPC Attestation Service over HTTP. Listening on socket: {}",
+                &socket
+            );
+        }
+        _ => {
+            return Err(GrpcError::HttpsConfigError);
+        }
+    }
+
+    builder
         .add_service(health_service)
         .add_service(AttestationServiceServer::new(attestation_server.clone()))
         .add_service(ReferenceValueProviderServiceServer::new(attestation_server))

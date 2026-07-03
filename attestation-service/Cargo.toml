@@ -21,7 +21,7 @@ tpm-verifier = ["verifier/tpm-verifier"]
 rvps-grpc = ["prost", "tonic", "mobc"]
 
 # For building gRPC CoCo-AS binary
-grpc-bin = ["clap", "prost", "tonic", "tonic-health", "tonic-prost"]
+grpc-bin = ["clap", "prost", "tonic", "tonic-health", "tonic-prost", "rustls"]
 
 # For restful CoCo-AS binary
 restful-bin = ["actix-cors", "actix-web/openssl", "clap"]
@@ -54,6 +54,9 @@ prost = { workspace = true, optional = true }
 reference-value-provider-service.path = "../rvps"
 regorus.workspace = true
 rsa.workspace = true
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+], optional = true }
 serde.workspace = true
 serde_json.workspace = true
 serde_variant = "0.1.2"
