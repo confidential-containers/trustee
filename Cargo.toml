@@ -32,7 +32,7 @@ chrono = "0.4.45"
 clap = { version = "4", features = ["derive"] }
 config = "0.15.23"
 const_format = "0.2.36"
-educe = "0.6"
+educe = "0.7"
 ear = "0.5.0"
 hex = "0.4.3"
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "1fcebcb66a3c21b62e852819d5b55212c90eba2a", default-features = false }
