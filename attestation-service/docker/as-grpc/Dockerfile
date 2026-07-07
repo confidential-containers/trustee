@@ -42,8 +42,8 @@ ARG VERIFIER=all-verifier
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/tree/main/attestation-service"
 
-# Install Openssl Suites
-RUN apt-get update && apt-get install openssl -y && \
+# Install Openssl Suites and libcurl (required by grpc-as on all architectures)
+RUN apt-get update && apt-get install -y openssl libcurl4 && \
     apt install --reinstall ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
