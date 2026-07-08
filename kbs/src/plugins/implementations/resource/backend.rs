@@ -18,6 +18,9 @@ use crate::{
 #[cfg(feature = "aws")]
 use super::aws_kms;
 
+#[cfg(feature = "gcp")]
+use super::gcp_sm;
+
 #[cfg(feature = "vault")]
 use super::vault_kv;
 
@@ -94,6 +97,10 @@ pub enum RepositoryConfig {
     #[serde(alias = "aws")]
     Aws(aws_kms::AwsKmsBackendConfig),
 
+    #[cfg(feature = "gcp")]
+    #[serde(alias = "gcp")]
+    Gcp(gcp_sm::GcpSmBackendConfig),
+
     #[cfg(feature = "vault")]
     #[serde(alias = "vault")]
     Vault(vault_kv::VaultKvBackendConfig),
@@ -130,6 +137,13 @@ impl ResourceStorage {
             #[cfg(feature = "aws")]
             RepositoryConfig::Aws(config) => {
                 let client = aws_kms::AwsKmsBackend::new(&config).await?;
+                Ok(Self {
+                    backend: Arc::new(client),
+                })
+            }
+            #[cfg(feature = "gcp")]
+            RepositoryConfig::Gcp(config) => {
+                let client = gcp_sm::GcpSmBackend::new(&config).await?;
                 Ok(Self {
                     backend: Arc::new(client),
                 })

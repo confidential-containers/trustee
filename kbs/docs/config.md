@@ -356,7 +356,7 @@ This is also called "Repository" in old versions. The properties to be configure
 
 | Property | Type   | Description                                                   | Required | Default    |
 |----------|--------|---------------------------------------------------------------|----------|------------|
-| `type`| String | Storage type for resources: `kvstorage`, `Aliyun`, `Aws`, `Vault` | No       | `kvstorage`|
+| `type`| String | Storage type for resources: `kvstorage`, `Aliyun`, `Aws`, `Gcp`, `Vault` | No       | `kvstorage`|
 
 When `storage_backend_type = "kvstorage"` (default), the resource plugin uses the unified [storage backend](#storage-backend-configuration) with namespace `repository`. Configure storage in the `[storage_backend]` section only.
 
@@ -380,6 +380,20 @@ Credentials are resolved by the AWS default provider chain (env vars, shared
 config, IRSA, EC2/ECS instance role). The backend is read-only — provision
 secrets via AWS APIs. The KBS `tag` field maps to the Secrets Manager
 `SecretId` (name or ARN); `repo/type` are ignored.
+
+When `storage_backend_type = "Gcp"`:
+
+| Property       | Type   | Description                                                                                          | Required | Example              |
+|----------------|--------|------------------------------------------------------------------------------------------------------|----------|----------------------|
+| `project_id`   | String | GCP project id (or number) that owns the secrets.                                                     | Yes      | `my-project`         |
+| `version`      | String | Secret version to access — a version number or the alias `latest`.                                    | No       | `latest`             |
+| `endpoint_url` | String | Endpoint override. Use for a private service endpoint or a fake server in tests.                      | No       | `http://localhost:8080` |
+
+Credentials are resolved via Application Default Credentials
+(`GOOGLE_APPLICATION_CREDENTIALS`, `gcloud auth application-default login`, or the
+GCE/GKE/Cloud Run metadata server). The backend is read-only — provision secrets
+via GCP APIs. The KBS `tag` field maps to the Secret Manager secret name
+(`projects/<project_id>/secrets/<tag>/versions/<version>`); `repo/type` are ignored.
 
 When `storage_backend_type = "Vault"`:
 
