@@ -109,6 +109,38 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Or use **`scenarios/bring-your-own-keys.yaml`** (adjust Secret name / file paths in the comments there).
 
+### IBM Secure Execution (s390x)
+
+On **s390x**, the **IBM Secure Execution (SE)** verifier needs attestation materials at runtime. Because KBS talks to a **remote `coco_as_grpc` AS**, the verifier runs inside the **AS Pod**, so these materials must be mounted on **AS**, not KBS. (This differs from the builtin-AS kustomize overlay in `kbs/config/kubernetes/overlays/ibm-se`, which mounts them on KBS.)
+
+The verifier reads materials from fixed paths under **`/run/confidential-containers/ibmse/`** (overridable via `SE_*` env vars; see `deps/verifier/src/se/README.md`). The chart mounts them from a **local node path** via a PersistentVolume / PersistentVolumeClaim — set **`as.ibmse.credsDir`** to the directory on the node that contains the materials (equivalent to `IBM_SE_CREDS_DIR` used in the kustomize overlay), and **`as.ibmse.nodeName`** to the name of that node.  The chart then creates a `local`-type PV + PVC and mounts the whole directory at `/run/confidential-containers/ibmse/` on the AS Pod.
+
+| Material | Expected path under `credsDir` | Notes |
+|----------|-------------------------------|-------|
+| RSA measurement key pair | `rsa/encrypt_key.{pem,pub}` | Private key is **sensitive** — restrict node access. |
+| Signing / intermediate certs | `certs/` | **Directory**; all files are read. |
+| CRLs | `crls/` | **Directory**; all files are read. |
+| Host Key Documents (HKD) | `hkds/` | **Directory**; all files are read. |
+| SE image header | `hdr/hdr.bin` | Binary file. |
+| Root CA (optional) | `root_ca.crt` | Single file. |
+
+Set **`CERTS_OFFLINE_VERIFICATION=true`** (via `as.extraEnvVars`) to verify the HKD certificate chain offline. Do **not** set `SE_SKIP_CERTS_VERIFICATION=true` outside development — it disables HKD certificate chain verification.
+
+```bash
+# 1. Place all materials under a directory on the target s390x node, e.g.:
+#    $IBM_SE_CREDS_DIR/{rsa/,certs/,crls/,hkds/,hdr/hdr.bin}
+#    See deps/verifier/src/se/README.md for how to obtain the materials.
+
+# 2. Install, pointing the chart at the node and directory:
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/ibm-se.yaml \
+  --set as.ibmse.credsDir=$IBM_SE_CREDS_DIR \
+  --set as.ibmse.nodeName=<your-s390x-node-name>
+```
+
+Use an **s390x** AS image built with the `se-verifier` feature (`as.image.repository` / `as.image.tag`). See **`scenarios/ibm-se.yaml`** for the full override. Set the SE attestation policy afterwards as documented in `deps/verifier/src/se/README.md`.
+
 ## Testing
 
 **Inspect resources**:
@@ -163,6 +195,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 |-----|------|---------|-------------|
 | as.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for AS Pods. |
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| as.ibmse.credsDir | string | `""` | Absolute path on the target node to the directory containing IBM SE attestation materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires `as.ibmse.nodeName`. |
+| as.ibmse.nodeName | string | `""` | Kubernetes node name where the IBM SE materials directory (`as.ibmse.credsDir`) resides. Required when `as.ibmse.credsDir` is set; used in the PersistentVolume `nodeAffinity`. |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/staged-images/coco-as-grpc"` | AS container image repository. |
 | as.image.tag | string | `"latest"` | AS container image tag. |
