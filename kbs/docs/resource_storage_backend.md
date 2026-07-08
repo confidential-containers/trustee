@@ -45,6 +45,36 @@ secret ARN.
 This backend is read-only. Writes and deletes return an error — provision and
 rotate secrets via AWS APIs.
 
+### Google Cloud Secret Manager
+
+[Google Cloud Secret Manager](https://cloud.google.com/secret-manager/docs/overview)
+can also work as the KBS resource storage backend. Build KBS with the `gcp`
+feature flag enabled. Resources are stored as Secret Manager secrets and fetched
+via `AccessSecretVersion`.
+
+A resource URI of `kbs:///repo/type/tag` is translated into the Secret Manager
+version `projects/<project_id>/secrets/<tag>/versions/<version>`. The `repo/type`
+portion is ignored — matching the behavior of the AWS and Aliyun KMS backends.
+`version` defaults to `latest` and can be pinned in the config.
+
+Credentials are resolved via
+[Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)
+(ADC): the `GOOGLE_APPLICATION_CREDENTIALS` env var, `gcloud auth
+application-default login`, or the GCE/GKE/Cloud Run metadata server (workload
+identity).
+
+This backend is read-only. Writes and deletes return an error — provision and
+rotate secrets via GCP APIs.
+
+You can smoke-test it against a real project:
+
+```bash
+gcloud secrets create my-test --replication-policy=automatic
+echo -n "hello" | gcloud secrets versions add my-test --data-file=-
+# Configure KBS with storage_backend_type = "gcp" and project_id, then fetch
+# the resource kbs:///default/default/my-test
+```
+
 ### Hashicorp Vault Backend
 
 [Vault KV secrets engine backend](./vault_kv.md)

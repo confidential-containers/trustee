@@ -46,6 +46,9 @@ vault = ["vaultrs"]
 # Use AWS Secrets Manager as KBS resource backend
 aws = ["aws-config", "aws-sdk-secretsmanager"]
 
+# Use GCP Secret Manager as KBS resource backend
+gcp = ["google-cloud-secretmanager-v1"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
@@ -116,6 +119,7 @@ aws-sdk-secretsmanager = { version = "1", default-features = false, features = [
     "default-https-client",
     "rt-tokio",
 ], optional = true }
+google-cloud-secretmanager-v1 = { version = "1.10", optional = true }
 
 [target.'cfg(not(any(target_arch = "s390x", target_arch = "aarch64")))'.dependencies]
 attestation-service = { path = "../attestation-service", default-features = false, features = [
