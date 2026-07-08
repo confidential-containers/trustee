@@ -53,11 +53,8 @@ impl StorageBackend for GcpSmBackend {
             "Use GCP Secret Manager backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type
         );
-        let name = secret_version_name(
-            &self.project_id,
-            &resource_desc.resource_tag,
-            &self.version,
-        );
+        let name =
+            secret_version_name(&self.project_id, &resource_desc.resource_tag, &self.version);
 
         let response = self
             .client
