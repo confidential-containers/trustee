@@ -1,0 +1,72 @@
+name: Helm e2e Nightly
+
+# Runs the Helm Trustee e2e legs on a nightly schedule against the default
+# branch, independently of pull-request traffic. PR runs still live in
+# `test-e2e-kbs.yml`; this workflow only exercises the Helm e2e legs so the
+# nightly signal maps cleanly onto a single dashboard.
+#
+# Scheduled workflows only run on the default branch (main).
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+# Never let two nightly runs (e.g. a scheduled run and a manual dispatch)
+# overlap; the self-hosted TDX leg cannot be shared. Queue instead of cancel.
+concurrency:
+  group: helm-e2e-nightly
+  cancel-in-progress: false
+
+jobs:
+  helm-trustee-e2e-ibm-sel:
+    runs-on: s390x
+    strategy:
+      fail-fast: false
+      matrix:
+        test_title:
+          - cc-trustee-helm-e2e-tests
+    steps:
+    - name: Fetch a test result for {{ matrix.test_title }}
+      run: |
+        file_name="${TEST_TITLE}-$(date +%Y-%m-%d).log"
+        "/home/${USER}/script/handle_test_log.sh" download "$file_name"
+      env:
+        TEST_TITLE: ${{ matrix.test_title }}
+
+  # Shared kbs-client + cluster images consumed by every Helm e2e leg.
+  build-docker-e2e-materials:
+    name: Build Docker/Helm e2e materials
+    uses: ./.github/workflows/workflow-call-build-docker-e2e-materials.yml
+    permissions:
+      contents: read
+
+  # Sample TEE Helm e2e on a GitHub-hosted runner.
+  helm-trustee-e2e-amd64:
+    name: Helm Trustee e2e (amd64)
+    needs: build-docker-e2e-materials
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: amd64
+      runs-on: '["ubuntu-24.04"]'
+      client-artifact: helm-e2e-kbs-client-linux-amd64
+      self-hosted: false
+
+  # Real TDX Helm e2e on a self-hosted runner. Unlike the PR suite, nightly runs
+  # this unconditionally (no `tdx-e2e` label gate) so the hardware path is
+  # exercised every day.
+  helm-trustee-e2e-tdx:
+    name: Helm Trustee e2e (TDX)
+    needs: build-docker-e2e-materials
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: tdx
+      runs-on: '{"group":"Intel TDX"}'
+      client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
+      self-hosted: true
