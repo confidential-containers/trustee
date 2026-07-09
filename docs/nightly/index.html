@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trustee Helm e2e Nightly</title>
+  <!--
+    Static, dependency-free dashboard for the "Helm e2e Nightly" workflow.
+
+    It queries the public GitHub Actions REST API (unauthenticated) for the
+    scheduled runs of `test-e2e-helm-nightly.yml` and renders:
+      - a per-run heatmap (most recent first),
+      - a table split into the Sample and Intel TDX legs.
+
+    Owner/repo/workflow can be overridden via query string so forks can reuse
+    the same page, e.g. `?owner=my-fork&repo=trustee`.
+  -->
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --link: #58a6ff;
+      --success: #2ea043;
+      --failure: #da3633;
+      --neutral: #6e7681;
+      --running: #d29922;
+      --overcast: #db6d28;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 64px; }
+    header h1 { margin: 0 0 4px; font-size: 24px; }
+    header p { margin: 0; color: var(--muted); }
+    .cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+    .card {
+      flex: 1 1 160px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .card .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    section { margin-top: 32px; }
+    section h2 { font-size: 16px; margin: 0 0 12px; }
+    .heatmap { display: flex; flex-wrap: wrap; gap: 4px; }
+    .cell {
+      width: 16px; height: 16px; border-radius: 3px; background: var(--neutral);
+      cursor: pointer; border: 1px solid rgba(255,255,255,.06);
+    }
+    .cell.success { background: var(--success); }
+    .cell.failure { background: var(--failure); }
+    .cell.running { background: var(--running); }
+    .legend { display: flex; gap: 16px; margin-top: 12px; color: var(--muted); font-size: 12px; align-items: center; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: none; }
+    .status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--neutral); flex: none; }
+    .dot.success { background: var(--success); }
+    .dot.failure { background: var(--failure); }
+    .dot.running { background: var(--running); }
+    .status.success { color: var(--success); }
+    .status.failure { color: var(--failure); }
+    .status.running { color: var(--running); }
+    .status.neutral { color: var(--muted); }
+    .muted { color: var(--muted); }
+    .notice { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; color: var(--muted); }
+    footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+    /* Weekly weather table */
+    td.week { font-weight: 600; vertical-align: top; border-right: 1px solid var(--border); }
+    td.week .wk-range { color: var(--muted); font-weight: 400; font-size: 12px; }
+    tr.week-start td { border-top: 2px solid var(--border); }
+    .leg-name { font-weight: 600; }
+    .weather { display: inline-flex; align-items: center; gap: 8px; }
+    .weather .glyph { font-size: 20px; line-height: 1; }
+    .weather .wlabel { font-weight: 600; }
+    .weather.sunny .wlabel { color: var(--success); }
+    .weather.cloudy .wlabel { color: var(--running); }
+    .weather.overcast .wlabel { color: var(--overcast); }
+    .weather.rain .wlabel { color: var(--failure); }
+    .tally { color: var(--muted); font-size: 12px; }
+    .days { display: inline-flex; gap: 3px; }
+    .day { width: 14px; height: 14px; border-radius: 3px; background: var(--neutral); border: 1px solid rgba(255,255,255,.06); opacity: .35; }
+    .day.has { opacity: 1; }
+    .day.success { background: var(--success); }
+    .day.failure { background: var(--failure); }
+    .day.running { background: var(--running); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Trustee &mdash; Helm e2e Nightly</h1>
+      <p>Daily status of the <a id="wf-link" href="#" rel="noreferrer">Helm e2e Nightly</a> workflow (scheduled runs).</p>
+    </header>
+
+    <div class="cards" id="cards"></div>
+
+    <section>
+      <h2>Recent runs</h2>
+      <div class="heatmap" id="heatmap"></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--success)"></i> passed</span>
+        <span><i class="swatch" style="background:var(--failure)"></i> failed</span>
+        <span><i class="swatch" style="background:var(--running)"></i> running</span>
+        <span><i class="swatch" style="background:var(--neutral)"></i> other / cancelled</span>
+        <span class="muted">newest on the left</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Weekly weather by leg</h2>
+      <div class="legend">
+        <span><span style="font-size:16px">&#9728;&#65039;</span> Sunny &mdash; all passed</span>
+        <span><span style="font-size:16px">&#9925;</span> Cloudy &mdash; 1&ndash;2 failed</span>
+        <span><span style="font-size:16px">&#9729;&#65039;</span> Overcast &mdash; 3&ndash;5 failed</span>
+        <span><span style="font-size:16px">&#127783;&#65039;</span> Rainy &mdash; 6+ failed</span>
+        <span class="muted">per leg, per ISO week</span>
+      </div>
+      <div id="table-wrap" style="margin-top:12px"></div>
+    </section>
+
+    <footer id="footer"></footer>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const OWNER = params.get("owner") || "confidential-containers";
+    const REPO = params.get("repo") || "trustee";
+    const WORKFLOW = params.get("workflow") || "test-e2e-helm-nightly.yml";
+    // Which run events to show. Defaults to scheduled (nightly) runs; on a fork
+    // you can preview manually triggered runs with `?event=workflow_dispatch`
+    // (or `?event=all` for every event) before any cron run has happened.
+    const EVENT = params.get("event") || "schedule";
+    // How many recent runs to show / fetch per-leg detail for. Keep modest to
+    // stay within the anonymous GitHub API rate limit (60 req/h per IP).
+    const LIMIT = Math.min(parseInt(params.get("limit") || "30", 10) || 30, 60);
+
+    const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+    document.getElementById("wf-link").href =
+      `https://github.com/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}`;
+
+    const classFor = (run) =>
+      run.status !== "completed" ? "running"
+      : run.conclusion === "success" ? "success"
+      : run.conclusion === "failure" ? "failure"
+      : "neutral";
+
+    const labelFor = (run) =>
+      run.status !== "completed" ? (run.status || "running")
+      : (run.conclusion || "unknown");
+
+    const fmtDate = (iso) => {
+      const d = new Date(iso);
+      return d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+    };
+
+    // Match a job to its leg by name. The reusable workflow names its jobs
+    // "Helm Trustee e2e (amd64)" and "(TDX)" -- the amd64 job is the Sample /
+    // non-TEE leg. The s390x leg is the `helm-trustee-e2e-ibm-sel` job (its
+    // runs-on label "s390x" is not in the job name, so match on "ibm-sel").
+    // NOTE: `n` is lower-cased, so all needles here must be lower-case.
+    const legOfJob = (name) => {
+      const n = (name || "").toLowerCase();
+      if (n.includes("tdx")) return "tdx";
+      if (n.includes("amd64") || n.includes("sample")) return "Sample";
+      if (n.includes("ibm-sel") || n.includes("s390")) return "s390x";
+      return null;
+    };
+
+    async function getJSON(url) {
+      const res = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+      if (!res.ok) {
+        const err = new Error(`${res.status} ${res.statusText}`);
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    }
+
+    function renderCards(runs) {
+      const total = runs.length;
+      const completed = runs.filter((r) => r.status === "completed");
+      const passed = completed.filter((r) => r.conclusion === "success").length;
+      const rate = completed.length ? Math.round((passed / completed.length) * 100) : 0;
+      const last = runs[0];
+      const lastClass = last ? classFor(last) : "neutral";
+      const lastLabel = last ? labelFor(last) : "no runs";
+      const cards = [
+        { label: "Latest run", html: `<span class="status ${lastClass}"><i class="dot ${lastClass}"></i>${lastLabel}</span>` },
+        { label: `Pass rate (last ${completed.length})`, html: `${rate}%` },
+        { label: "Runs shown", html: `${total}` },
+        { label: "Last updated", html: `<span class="muted">${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC</span>` },
+      ];
+      document.getElementById("cards").innerHTML = cards
+        .map((c) => `<div class="card"><div class="label">${c.label}</div><div class="value">${c.html}</div></div>`)
+        .join("");
+    }
+
+    function renderHeatmap(runs) {
+      document.getElementById("heatmap").innerHTML = runs
+        .map((r) => `<a class="cell ${classFor(r)}" href="${r.html_url}" target="_blank" rel="noreferrer" title="#${r.run_number} · ${fmtDate(r.created_at)} · ${labelFor(r)}"></a>`)
+        .join("");
+    }
+
+    // The e2e legs we summarize, one sub-row each per week.
+    const LEGS = [
+      { id: "Sample", name: "Sample (non-TEE) on amd64" },
+      { id: "tdx", name: "Intel TDX" },
+      { id: "s390x", name: "IBM SE (s390x)" },
+    ];
+
+    // Map a week's failure count to a weather glyph. Sunny is reserved for a
+    // fully green week; anything worse degrades toward rain.
+    //   0   failed  -> Sunny
+    //   1-2 failed  -> Cloudy
+    //   3-5 failed  -> Overcast
+    //   6+  failed  -> Rainy
+    function weatherFor(failCount) {
+      if (failCount === 0) return { cls: "sunny", glyph: "\u2600\uFE0F", label: "Sunny" };
+      if (failCount <= 2) return { cls: "cloudy", glyph: "\u26C5", label: "Cloudy" };
+      if (failCount <= 5) return { cls: "overcast", glyph: "\u2601\uFE0F", label: "Overcast" };
+      return { cls: "rain", glyph: "\uD83C\uDF27\uFE0F", label: "Rainy" };
+    }
+
+    // ISO-8601 week: weeks start Monday; a week belongs to the year of its Thursday.
+    function isoWeekInfo(input) {
+      const d = new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
+      const dayNum = (d.getUTCDay() + 6) % 7; // Mon=0 .. Sun=6
+      const monday = new Date(d); monday.setUTCDate(d.getUTCDate() - dayNum);
+      const thursday = new Date(monday); thursday.setUTCDate(monday.getUTCDate() + 3);
+      const firstThu = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+      const firstThuDay = (firstThu.getUTCDay() + 6) % 7;
+      const firstMon = new Date(firstThu); firstMon.setUTCDate(firstThu.getUTCDate() - firstThuDay);
+      const weekNo = 1 + Math.round((monday - firstMon) / (7 * 86400000));
+      return { key: monday.toISOString().slice(0, 10), monday, weekNo, year: thursday.getUTCFullYear() };
+    }
+
+    const fmtMD = (d) => d.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+
+    function renderWeeks(runs, legsByRun) {
+      if (!runs.length) {
+        document.getElementById("table-wrap").innerHTML = `<div class="notice">No runs found yet.</div>`;
+        return;
+      }
+      const weeks = new Map();
+      for (const r of runs) {
+        const info = isoWeekInfo(new Date(r.created_at));
+        if (!weeks.has(info.key)) weeks.set(info.key, { info, runs: [] });
+        weeks.get(info.key).runs.push(r);
+      }
+      const ordered = [...weeks.values()].sort((a, b) => b.info.monday - a.info.monday);
+
+      let body = "";
+      for (const wk of ordered) {
+        const sunday = new Date(wk.info.monday); sunday.setUTCDate(wk.info.monday.getUTCDate() + 6);
+        const weekCell = `<td class="week" rowspan="${LEGS.length}">${wk.info.year}-W${String(wk.info.weekNo).padStart(2, "0")}<div class="wk-range">${fmtMD(wk.info.monday)} &ndash; ${fmtMD(sunday)}</div></td>`;
+
+        LEGS.forEach((leg, idx) => {
+          let fails = 0, passes = 0, total = 0;
+          const dayCells = [];
+          for (let d = 0; d < 7; d++) {
+            const day = new Date(wk.info.monday); day.setUTCDate(wk.info.monday.getUTCDate() + d);
+            const iso = day.toISOString().slice(0, 10);
+            const run = wk.runs.find((r) => r.created_at.slice(0, 10) === iso);
+            const state = run ? (legsByRun[run.id] || {})[leg.id] : null;
+            let cls = "", has = false, tip = `${iso}: no run`;
+            if (state) {
+              has = true; total++;
+              if (state.status !== "completed") { cls = "running"; tip = `${iso}: running`; }
+              else if (state.conclusion === "success") { cls = "success"; passes++; tip = `${iso}: passed`; }
+              else if (state.conclusion === "failure") { cls = "failure"; fails++; tip = `${iso}: failed`; }
+              else { tip = `${iso}: ${state.conclusion || "unknown"}`; }
+            }
+            dayCells.push(`<span class="day ${has ? "has " : ""}${cls}" title="${leg.name} \u00b7 ${tip}"></span>`);
+          }
+          const w = weatherFor(fails);
+          const tally = total ? `${passes}/${total} passed \u00b7 ${fails} failed` : "no data";
+          body += `<tr class="${idx === 0 ? "week-start" : ""}">
+            ${idx === 0 ? weekCell : ""}
+            <td class="leg-name">${leg.name}</td>
+            <td><span class="weather ${w.cls}"><span class="glyph">${w.glyph}</span><span class="wlabel">${w.label}</span></span></td>
+            <td class="tally">${tally}</td>
+            <td><span class="days">${dayCells.join("")}</span></td>
+          </tr>`;
+        });
+      }
+      document.getElementById("table-wrap").innerHTML = `<table>
+        <thead><tr><th>Week (UTC)</th><th>Leg</th><th>Weather</th><th>Tally</th><th>Mon &rarr; Sun</th></tr></thead>
+        <tbody>${body}</tbody></table>`;
+    }
+
+    // Synthetic data so the layout can be previewed before any real nightly
+    // run exists. Enable with `?demo=1`. Never hits the network.
+    function demoData() {
+      const now = Date.now();
+      const url = "https://github.com/confidential-containers/trustee/actions";
+      const runs = [];
+      const legsByRun = {};
+      for (let i = 0; i < 35; i++) {
+        const id = 1000 + i;
+        const running = i === 0; // today's run still going
+        const st = running ? "in_progress" : "completed";
+        runs.push({
+          id, run_number: 240 - i,
+          created_at: new Date(now - i * 86400000).toISOString(),
+          status: st, conclusion: running ? null : "success", html_url: url,
+        });
+        legsByRun[id] = {
+          Sample: { status: st, conclusion: running ? null : "success", html_url: url },
+          tdx: { status: running ? "queued" : "completed", conclusion: running ? null : "success", html_url: url },
+          s390x: { status: st, conclusion: running ? null : "success", html_url: url },
+        };
+      }
+      // Inject failures per ISO week so the preview shows every weather category
+      // regardless of which weekday it is viewed on.
+      const byWeek = new Map();
+      for (const r of runs) {
+        const k = isoWeekInfo(new Date(r.created_at)).key;
+        if (!byWeek.has(k)) byWeek.set(k, []);
+        byWeek.get(k).push(r);
+      }
+      const weeksDesc = [...byWeek.keys()].sort().reverse();
+      const weekRunsAsc = (idx) => (byWeek.get(weeksDesc[idx]) || [])
+        .slice().sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      const fail = (r, leg) => { if (r.status === "completed") legsByRun[r.id][leg].conclusion = "failure"; };
+      weekRunsAsc(1).slice(0, 3).forEach((r) => fail(r, "tdx"));    // last full week -> Cloudy
+      weekRunsAsc(1).slice(0, 1).forEach((r) => fail(r, "s390x"));  // -> Cloudy
+      weekRunsAsc(2).slice(0, 6).forEach((r) => fail(r, "tdx"));    // -> Overcast
+      weekRunsAsc(3).slice(0, 2).forEach((r) => fail(r, "Sample"));  // -> Cloudy
+      weekRunsAsc(3).slice(0, 7).forEach((r) => fail(r, "s390x"));  // -> Rainy
+      for (const r of runs) {
+        if (r.status !== "completed") continue;
+        const l = legsByRun[r.id];
+        r.conclusion = LEGS.some((leg) => l[leg.id] && l[leg.id].conclusion === "failure") ? "failure" : "success";
+      }
+      return { runs, legsByRun };
+    }
+
+    async function main() {
+      if (params.get("demo")) {
+        const { runs, legsByRun } = demoData();
+        renderCards(runs);
+        renderHeatmap(runs);
+        renderWeeks(runs, legsByRun);
+        document.getElementById("footer").textContent =
+          "DEMO MODE — synthetic data, no live runs. Drop ?demo=1 for real data.";
+        return;
+      }
+      let data;
+      try {
+        const eventFilter = EVENT === "all" ? "" : `event=${encodeURIComponent(EVENT)}&`;
+        data = await getJSON(`${API}/actions/workflows/${WORKFLOW}/runs?${eventFilter}per_page=${LIMIT}`);
+      } catch (e) {
+        const hint = e.status === 403
+          ? `The anonymous GitHub API is rate limited (60 req/h per IP); try again later.`
+          : `If this repository has no scheduled runs yet, the dashboard will populate after the
+             first nightly run on the default branch.`;
+        document.querySelector(".wrap").insertAdjacentHTML("beforeend",
+          `<div class="notice">Could not load workflow runs (${e.message}). ${hint}
+           <br><br><a href="?demo=1">→ Preview the layout with demo data</a> (no network required).</div>`);
+        return;
+      }
+      const runs = (data.workflow_runs || []).slice(0, LIMIT);
+      renderCards(runs);
+      renderHeatmap(runs);
+      renderWeeks(runs, {});
+      document.getElementById("footer").textContent =
+        `Source: ${OWNER}/${REPO} · workflow ${WORKFLOW} · event: ${EVENT}.`;
+
+      if (!runs.length) {
+        document.getElementById("table-wrap").innerHTML =
+          `<div class="notice">No scheduled runs found yet.</div>`;
+        return;
+      }
+
+      // Lazily enrich rows with per-leg (Sample/Intel TDX) detail. Each run costs one
+      // extra API call, so degrade gracefully if we hit the rate limit.
+      const legsByRun = {};
+      for (const r of runs) {
+        try {
+          const jobsData = await getJSON(`${API}/actions/runs/${r.id}/jobs?per_page=100`);
+          for (const job of jobsData.jobs || []) {
+            const leg = legOfJob(job.name);
+            if (leg && !legsByRun[r.id]?.[leg]) {
+              legsByRun[r.id] = legsByRun[r.id] || {};
+              legsByRun[r.id][leg] = { status: job.status, conclusion: job.conclusion, html_url: job.html_url };
+            }
+          }
+          renderWeeks(runs, legsByRun);
+        } catch (e) {
+          if (e.status === 403) break; // rate limited; keep what we have
+        }
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

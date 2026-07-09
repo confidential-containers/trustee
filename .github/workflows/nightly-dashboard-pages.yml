@@ -1,0 +1,51 @@
+name: Nightly Dashboard Pages
+
+# Publishes the static Helm e2e nightly dashboard (docs/nightly/) to GitHub
+# Pages. The page itself is client-side and reads the Actions API at view time,
+# so it only needs to be re-deployed when the page source changes.
+#
+# One-time setup by a maintainer: Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions". No secrets are required.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'docs/nightly/**'
+      - '.github/workflows/nightly-dashboard-pages.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+# Allow one concurrent deployment; let an in-progress run finish.
+concurrency:
+  group: nightly-dashboard-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy dashboard to Pages
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/nightly
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
