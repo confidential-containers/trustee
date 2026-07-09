@@ -1,0 +1,26 @@
+{{- $credsDir := (.Values.as.ibmse | default dict).credsDir | default "" -}}
+{{- if $credsDir -}}
+{{- $nodeName := required "as.ibmse.nodeName is required when as.ibmse.credsDir is set" ((.Values.as.ibmse | default dict).nodeName | default "") -}}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "coco-trustee.names.ibmse.pv" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  local:
+    path: {{ $credsDir }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - {{ $nodeName }}
+{{- end }}

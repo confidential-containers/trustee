@@ -109,6 +109,10 @@ spec:
               mountPath: /opt/confidential-containers/kbs/user-keys
             - name: data
               mountPath: /opt/confidential-containers/attestation-service
+            {{- if (.Values.as.ibmse | default dict).credsDir }}
+            - name: ibmse
+              mountPath: /run/confidential-containers/ibmse
+            {{- end }}
       volumes:
         - name: config
           configMap:
@@ -126,6 +130,11 @@ spec:
             claimName: {{ $asClaim }}
         {{- else }}
           emptyDir: {}
+        {{- end }}
+        {{- if (.Values.as.ibmse | default dict).credsDir }}
+        - name: ibmse
+          persistentVolumeClaim:
+            claimName: {{ include "coco-trustee.names.ibmse.pvc" . }}
         {{- end }}
       {{- with .Values.as.nodeSelector }}
       nodeSelector:

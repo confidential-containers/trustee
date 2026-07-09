@@ -99,6 +99,12 @@ Each helper truncates `coco-trustee.fullname` to leave room for its suffix befor
 {{- define "coco-trustee.names.postgresInitdb" -}}
 {{- printf "%s-postgres-initdb" .Chart.Name | trunc 63 | trimSuffix "-" -}}
 {{- end }}
+{{- define "coco-trustee.names.ibmse.pv" -}}
+{{- printf "%s-ibmse-pv" (include "coco-trustee.fullname" . | trunc 54 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+{{- define "coco-trustee.names.ibmse.pvc" -}}
+{{- printf "%s-ibmse-pvc" (include "coco-trustee.fullname" . | trunc 53 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 
 {{/*
 Fixed workload ports (override only via undocumented values for advanced use).

@@ -1,0 +1,59 @@
+# IBM Secure Execution (s390x): mount SE attestation materials into the AS Pod.
+#
+# The SE verifier runs inside the gRPC Attestation Service Pod (KBS talks to a
+# remote `coco_as_grpc` AS), so the materials MUST be mounted on the AS Pod, not
+# on KBS. This differs from the builtin-AS kustomize overlay in
+# kbs/config/kubernetes/overlays/ibm-se, which mounts them on KBS.
+#
+# The SE verifier reads materials from fixed paths under
+# /run/confidential-containers/ibmse/ (overridable via SE_* env vars; see
+# deps/verifier/src/se/ibmse.rs).
+#
+# 1) Place all SE materials under a single directory on the target s390x node.
+#    See deps/verifier/src/se/README.md for how to obtain the materials.
+#    The directory must contain:
+#      rsa/encrypt_key.pem   - RSA measurement encryption private key (sensitive)
+#      rsa/encrypt_key.pub   - RSA measurement encryption public key
+#      certs/                - signing / intermediate certs (directory)
+#      crls/                 - CRLs (directory)
+#      hkds/                 - Host Key Documents (directory)
+#      hdr/hdr.bin           - SE image header (binary)
+#      root_ca.crt           - root CA (optional, single file)
+#
+# 2) Install with an s390x AS image that includes the SE verifier, supplying the
+#    node name and credentials directory:
+#
+#   helm upgrade --install trustee ./deployment/helm-chart \
+#     --namespace coco-trustee --create-namespace \
+#     -f ./deployment/helm-chart/scenarios/ibm-se.yaml \
+#     --set as.ibmse.nodeName=<your-s390x-node-name> \
+#     --set as.ibmse.credsDir=<absolute-path-to-materials-dir>
+#
+# Notes:
+# - CERTS_OFFLINE_VERIFICATION: set to "true" to verify the HKD certificate chain
+#   offline (recommended for production). Defaults to "false".
+# - SE_SKIP_CERTS_VERIFICATION: set to "true" ONLY for local development to skip
+#   HKD certificate chain verification entirely. Must be "false" in production.
+# - podSecurityContext.fsGroup must match the owning GID of the files under
+#   credsDir on the node (typically 1000 for a user). Kubernetes applies a chgrp to
+#   the mounted volume so the container can read owner-restricted files even though
+#   CAP_DAC_OVERRIDE is dropped.
+
+as:
+  # Use an s390x AS image built with the se-verifier feature. The default
+  # staged coco-as-grpc image tag must match your cluster architecture (s390x).
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    tag: "latest"
+  ibmse:
+    # Set via --set as.ibmse.nodeName=<node> at install time.
+    nodeName: ""
+    # Set via --set as.ibmse.credsDir=<path> at install time.
+    credsDir: ""
+  extraEnvVars:
+    - name: CERTS_OFFLINE_VERIFICATION
+      value: "false"
+    - name: SE_SKIP_CERTS_VERIFICATION
+      value: "false"
+  podSecurityContext:
+    fsGroup: 1000
