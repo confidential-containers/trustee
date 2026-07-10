@@ -98,15 +98,7 @@ jobs:
       run: tar xzf ./test.tar.gz
 
     - name: Install dependencies and run e2e test
-      if: inputs.tee != 'az-tdx-vtpm' && inputs.tee != 'az-snp-vtpm'
       run: |
         sudo apt-get update
         sudo apt-get install -y make --no-install-recommends
         make test-kbs-e2e
-
-    - name: Run e2e test (w/ sudo, includes deps)
-      if: inputs.tee == 'az-tdx-vtpm' || inputs.tee == 'az-snp-vtpm'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y make --no-install-recommends
-        sudo -E make test-kbs-e2e
