@@ -79,3 +79,4 @@ zeroize = "1"
 
 [patch.crates-io]
 sev = { git = "https://github.com/virtee/sev", rev = "d487809188c3c92e397bc92e2cb2a85eb982c980" }
+kbs-types = { path = "deps/kbs-types" }

@@ -4169,8 +4169,6 @@ dependencies = [
 [[package]]
 name = "kbs-types"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "010924a5f65328c9609598c895ea506c723e3c72e528aeaba0a9645d8330b718"
 dependencies = [
  "base64 0.22.1",
  "ear",
@@ -8167,6 +8165,8 @@ dependencies = [
  "kbs-types",
  "key-value-storage",
  "openssl",
+ "p384",
+ "rand_core 0.6.4",
  "reqwest 0.13.4",
  "reqwest-middleware",
  "rstest",

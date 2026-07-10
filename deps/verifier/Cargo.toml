@@ -56,6 +56,7 @@ cca-verifier = ["ear", "jsonwebtoken", "veraison-apiclient", "ccatoken"]
 se-verifier = ["openssl", "pv", "serde_with", "tokio/sync"]
 nvidia-verifier = ["jsonwebtoken", "asn1-rs", "openssl", "x509-parser"]
 tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
+dpu-verifier = ["p384", "rand_core"]
 
 [dependencies]
 anyhow.workspace = true
@@ -102,6 +103,8 @@ sev = { version = "7", default-features = false, features = [
     "serde",
 ], optional = true }
 sha2.workspace = true
+p384 = { version = "0.13", features = ["ecdsa", "pem"], optional = true }
+rand_core = { version = "0.6", features = ["getrandom"], optional = true }
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
 intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.26", optional = true }
