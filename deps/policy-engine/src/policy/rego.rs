@@ -45,6 +45,31 @@ impl Regorus {
         eval_rules: Vec<&str>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
+        // Regorus evaluation is synchronous. Extensions may block on async work
+        // (e.g. RVPS queries via Handle::block_on). Run on the blocking pool so
+        // those calls do not occupy a tokio worker and starve the runtime.
+        let data = data.map(str::to_owned);
+        let input = input.to_owned();
+        let policy = policy.to_owned();
+        let eval_rules = eval_rules
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+
+        tokio::task::spawn_blocking(move || {
+            Self::evaluate_sync(data.as_deref(), &input, &policy, &eval_rules, extensions)
+        })
+        .await
+        .map_err(|e| PolicyError::EvalPolicyFailed(e.into()))?
+    }
+
+    fn evaluate_sync(
+        data: Option<&str>,
+        input: &str,
+        policy: &str,
+        eval_rules: &[String],
+        extensions: Vec<RegorusExtension>,
+    ) -> Result<EvaluationResult> {
         let mut engine = regorus::Engine::new();
 
         let policy_hash = {
@@ -89,7 +114,7 @@ impl Regorus {
         let eval_rules_result = eval_rules
             .iter()
             .map(|rule| {
-                let value = match engine.eval_rule(rule.to_string()) {
+                let value = match engine.eval_rule(rule.clone()) {
                     Ok(r) => Some(r),
                     // Extensions claim is optional.
                     Err(e) if e.to_string().contains("not a valid rule path") => {
@@ -101,19 +126,17 @@ impl Regorus {
                 if let Some(value) = value {
                     let value = serde_json::to_value(value)
                         .map_err(|e| PolicyError::JsonSerializationFailed(e.into()))?;
-                    Ok((rule.to_string(), Some(value)))
+                    Ok((rule.clone(), Some(value)))
                 } else {
-                    Ok((rule.to_string(), None))
+                    Ok((rule.clone(), None))
                 }
             })
             .collect::<Result<HashMap<String, Option<Value>>>>()?;
 
-        let res = EvaluationResult {
+        Ok(EvaluationResult {
             eval_rules_result,
             policy_hash,
-        };
-
-        Ok(res)
+        })
     }
 }
 
