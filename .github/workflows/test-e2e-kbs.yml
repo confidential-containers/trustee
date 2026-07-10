@@ -255,32 +255,3 @@ jobs:
       runs-on: '{"group":"Intel TDX"}'
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true
-
-  # Azure vTPM TEE e2e (manual trigger only)
-  tdx-e2e-test:
-    name: KBS e2e (Azure TDX vTPM)
-    needs: code-checkout
-    if: github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
-    permissions:
-      packages: write
-      contents: read
-    with:
-      runs-on-test: '["self-hosted","azure-cvm-tdx"]'
-      tee: az-tdx-vtpm
-      tarball: kbs.tar.gz
-      kbs-client-features: az-tdx-vtpm-attester
-
-  snp-e2e-test:
-    name: KBS e2e (Azure SNP vTPM)
-    needs: code-checkout
-    if: github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/workflow-call-kbs-e2e.yml
-    permissions:
-      packages: write
-      contents: read
-    with:
-      runs-on-test: '["self-hosted","azure-cvm"]'
-      tee: az-snp-vtpm
-      tarball: kbs.tar.gz
-      kbs-client-features: az-snp-vtpm-attester
