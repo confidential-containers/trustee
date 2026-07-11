@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-mod compat;
+pub(crate) mod compat;
 
 use self::compat::Evidence;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
@@ -26,6 +26,7 @@ use openssl::pkey::PKey;
 use openssl::sign::Verifier as OsslVerifier;
 use openssl::x509::X509;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sev::parser::ByteParser;
 use thiserror::Error;
@@ -37,6 +38,7 @@ use x509_parser::prelude::*;
 const HCL_VMPL_VALUE: u32 = 0;
 const INITDATA_PCR: usize = 8;
 const SNP_REPORT_SIGNATURE_OFFSET: usize = 0x2a0; // 672 bytes
+const SHA256_LEN: usize = 32;
 
 pub struct AzSnpVtpm;
 
@@ -83,6 +85,41 @@ fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
     Ok(attest.extra_data().to_vec())
 }
 
+#[derive(Deserialize, Debug)]
+struct VarDataUserData {
+    #[serde(rename = "user-data")]
+    user_data: String,
+}
+
+fn get_user_data(var_data: &[u8]) -> Result<Vec<u8>> {
+    let var_data_json: VarDataUserData =
+        serde_json::from_slice(var_data).context("Failed to parse var data as JSON")?;
+    let user_data = hex::decode(var_data_json.user_data)
+        .context("Failed to decode user_data from hex string")?;
+    Ok(user_data)
+}
+
+fn verify_report_data(hcl_report: &HclReport) -> Result<()> {
+    let var_data_hash = hcl_report.var_data_sha256();
+    let snp_report: AttestationReport = hcl_report.try_into()?;
+    if var_data_hash != snp_report.report_data[..SHA256_LEN] {
+        bail!("HCL variable data digest doesn't match SNP report data");
+    }
+    debug!("SNP report_data verification completed successfully");
+    Ok(())
+}
+
+pub(crate) fn verify_user_data(hcl_report: &HclReport, report_data: &[u8]) -> Result<()> {
+    let var_data = hcl_report.var_data();
+    let user_data = get_user_data(var_data)?;
+    let report_data_len = report_data.len();
+    if &user_data[0..report_data_len] != report_data {
+        bail!("User-data in HCL variable data doesn't match report_data");
+    }
+    debug!("HCL user-data verification completed successfully");
+    Ok(())
+}
+
 #[async_trait]
 impl Verifier for AzSnpVtpm {
     /// The following verification steps are performed:
@@ -90,9 +127,10 @@ impl Verifier for AzSnpVtpm {
     /// 2. Attestation report_data matches TPM Quote nonce
     /// 3. TPM PCRs' digest matches the digest in the Quote
     /// 4. SNP report's report_data field matches hashed HCL variable data
-    /// 5. SNP Report is genuine
-    /// 6. SNP Report has been issued in VMPL 0
-    /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
+    /// 5. User-data field in HCL variable data matches report_data
+    /// 6. SNP Report is genuine
+    /// 7. SNP Report has been issued in VMPL 0
+    /// 8. Init data hash matches TPM PCR[INITDATA_PCR]
     #[instrument(skip_all, name = "Azure vTPM SEV-SNP")]
     async fn evaluate(
         &self,
@@ -115,9 +153,11 @@ impl Verifier for AzSnpVtpm {
 
         verify_tpm_pcrs(tpm_quote)?;
 
-        let var_data_hash = hcl_report.var_data_sha256();
-        let snp_report = hcl_report.try_into()?;
-        verify_report_data(&var_data_hash, &snp_report)?;
+        verify_report_data(&hcl_report)?;
+
+        if evidence.version() >= 2 {
+            verify_user_data(&hcl_report, expected_report_data)?;
+        }
 
         let vcek_x509: X509 = match evidence.vcek()? {
             compat::Vcek::Pem(pem) => pem,
@@ -125,6 +165,7 @@ impl Verifier for AzSnpVtpm {
         };
         let vcek = Vcek(vcek_x509);
 
+        let snp_report = hcl_report.try_into()?;
         let proc_gen =
             get_processor_generation(&snp_report).context("Failed to get CPU Generation")?;
 
@@ -209,17 +250,6 @@ pub(crate) fn verify_tpm_pcrs(tpm_quote: &TpmQuote) -> Result<()> {
         bail!("Digest of PCRs does not match digest in Quote");
     }
     debug!("PCR verification completed successfully");
-    Ok(())
-}
-
-fn verify_report_data(
-    var_data_hash: &[u8; 32],
-    snp_report: &AttestationReport,
-) -> Result<(), CertError> {
-    if *var_data_hash != snp_report.report_data[..32] {
-        return Err(CertError::SnpReportMismatch);
-    }
-    debug!("SNP report_data verification completed successfully");
     Ok(())
 }
 
@@ -348,8 +378,12 @@ mod tests {
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
     const EVIDENCE_V0_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v0.json");
     const EVIDENCE_V1_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v1.json");
+    const EVIDENCE_V2_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v2.json");
     const EVIDENCE_GENOA_JSON: &str =
         include_str!("../../test_data/az-snp-vtpm/evidence-genoa.json");
+    const EVIDENCE_V2_PCR0: &str =
+        "84275b2f4312cd4fc6cbe6b152ad3c3683e513d9f1e23c34fca160c8cca7a6a7";
+    const EVIDENCE_V2_REPORT_DATA: &str = "982f5c6e45df0ed3f10b6f60b02f0c8390e281300f3805e2279c16168cd6ae9aa398f647caa2338748cd0fd9f5f819ef";
 
     fn load_tpm_quote() -> TpmQuote {
         serde_json::from_str(TPM_QUOTE_V1_JSON).unwrap()
@@ -375,6 +409,44 @@ mod tests {
         assert!(
             claims_values["tpm"]["pcr00"]
                 == "e15c44796beabf46abcec7c57e590942041e47497e4ec27571c8b7664f48dced"
+        );
+    }
+
+    #[rstest]
+    #[case::v2(EVIDENCE_V2_JSON)]
+    #[tokio::test]
+    async fn test_evaluate_v2(#[case] evidence_json: &str) {
+        let report_data_hex = EVIDENCE_V2_REPORT_DATA;
+        let tee_evidence: TeeEvidence = serde_json::from_str(evidence_json).unwrap();
+        let verifier = AzSnpVtpm;
+        let result = verifier
+            .evaluate(
+                tee_evidence,
+                &ReportData::Value(&hex::decode(report_data_hex).unwrap()),
+                &InitDataHash::NotProvided,
+            )
+            .await;
+        let claims = result.unwrap();
+        let claims_values = claims[0].0.clone();
+        assert!(claims_values["report_data"] == report_data_hex);
+        assert!(claims_values["tpm"]["pcr00"] == EVIDENCE_V2_PCR0);
+    }
+
+    #[rstest]
+    #[case::v2(EVIDENCE_V2_JSON)]
+    #[tokio::test]
+    async fn test_verify_user_data(#[case] tampered_evidence_json: &str) {
+        let report_data = hex::decode(EVIDENCE_V2_REPORT_DATA).unwrap();
+        let evidence: Evidence = serde_json::from_str(&tampered_evidence_json).unwrap();
+        let hcl_report = HclReport::new(evidence.hcl_report().into()).unwrap();
+        verify_user_data(&hcl_report, &report_data).unwrap();
+
+        let report_data = hex::decode("123abc").unwrap();
+        assert_eq!(
+            verify_user_data(&hcl_report, &report_data)
+                .unwrap_err()
+                .to_string(),
+            "User-data in HCL variable data doesn't match report_data"
         );
     }
 
@@ -483,9 +555,7 @@ mod tests {
     #[test]
     fn test_verify_report_data() {
         let hcl_report = HclReport::new(REPORT.to_vec()).unwrap();
-        let var_data_hash = hcl_report.var_data_sha256();
-        let snp_report = hcl_report.try_into().unwrap();
-        verify_report_data(&var_data_hash, &snp_report).unwrap();
+        verify_report_data(&hcl_report).unwrap();
     }
 
     #[test]
@@ -493,13 +563,9 @@ mod tests {
         let mut wrong_report = *REPORT;
         wrong_report[0x06e0] += 1;
         let hcl_report = HclReport::new(wrong_report.to_vec()).unwrap();
-        let var_data_hash = hcl_report.var_data_sha256();
-        let snp_report = hcl_report.try_into().unwrap();
         assert_eq!(
-            verify_report_data(&var_data_hash, &snp_report)
-                .unwrap_err()
-                .to_string(),
-            "SNP report report_data mismatch"
+            verify_report_data(&hcl_report).unwrap_err().to_string(),
+            "HCL variable data digest doesn't match SNP report data"
         );
     }
 
