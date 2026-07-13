@@ -3,3 +3,4 @@ self-hosted-runner:
   labels:
     - ubuntu-24.04-s390x
     - s390x-large
+    - s390x
