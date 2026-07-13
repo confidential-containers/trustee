@@ -48,30 +48,38 @@ runs:
 
     - name: Build image
       shell: bash
+      env:
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_BUILD_ARGS: ${{ inputs.build_args }}
+        INPUT_PUSH: ${{ inputs.push }}
+        INPUT_LOAD: ${{ inputs.load }}
+        INPUT_DOCKER_FILE: ${{ inputs.docker_file }}
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_CONTEXT: ${{ inputs.context }}
       run: |
         set -euo pipefail
         commit_sha="${GITHUB_SHA}"
         platform_args=()
-        if [ -n "${{ inputs.platform }}" ]; then
-          platform_args+=(--platform "${{ inputs.platform }}")
+        if [ -n "${INPUT_PLATFORM}" ]; then
+          platform_args+=(--platform "${INPUT_PLATFORM}")
         fi
 
         # Parse build args into array to avoid shell injection.
         build_args_array=()
-        if [ -n "${{ inputs.build_args }}" ]; then
-          read -r -a build_args_array <<< "${{ inputs.build_args }}"
+        if [ -n "${INPUT_BUILD_ARGS}" ]; then
+          read -r -a build_args_array <<< "${INPUT_BUILD_ARGS}"
         fi
         build_option_args=()
-        if [ "${{ inputs.push }}" = "true" ]; then
+        if [ "${INPUT_PUSH}" = "true" ]; then
           build_option_args+=(--push)
-        elif [ "${{ inputs.load }}" = "true" ]; then
+        elif [ "${INPUT_LOAD}" = "true" ]; then
           build_option_args+=(--load)
         fi
         docker buildx build --provenance false \
           "${platform_args[@]}" \
-          -f "${{ inputs.docker_file }}" \
+          -f "${INPUT_DOCKER_FILE}" \
           "${build_option_args[@]}" \
           "${build_args_array[@]}" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ inputs.tag }}:${commit_sha}-$(uname -m)" \
-          -t "ghcr.io/confidential-containers/staged-images/${{ inputs.tag }}:latest-$(uname -m)" \
-          "${{ inputs.context }}"
+          -t "ghcr.io/confidential-containers/staged-images/${INPUT_TAG}:${commit_sha}-$(uname -m)" \
+          -t "ghcr.io/confidential-containers/staged-images/${INPUT_TAG}:latest-$(uname -m)" \
+          "${INPUT_CONTEXT}"
