@@ -12,20 +12,14 @@ use google_cloud_secretmanager_v1::client::SecretManagerService;
 use serde::Deserialize;
 use tracing::info;
 
-fn default_version() -> String {
-    "latest".to_string()
-}
+// Always serve the current value, like the AWS and Aliyun backends.
+const SECRET_VERSION: &str = "latest";
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct GcpSmBackendConfig {
     /// GCP project id (or number) that owns the secrets. Required: Secret
     /// Manager resource names are `projects/<project>/secrets/<name>/versions/<version>`.
     pub project_id: String,
-
-    /// Secret version to access. Either a version number or the alias `latest`.
-    /// Defaults to `latest`.
-    #[serde(default = "default_version")]
-    pub version: String,
 
     /// Optional endpoint override. Useful for a fake server in tests or a
     /// private service endpoint. Defaults to `https://secretmanager.googleapis.com`.
@@ -36,7 +30,6 @@ pub struct GcpSmBackendConfig {
 pub struct GcpSmBackend {
     client: SecretManagerService,
     project_id: String,
-    version: String,
 }
 
 /// Build the fully-qualified Secret Manager version resource name that
@@ -53,8 +46,11 @@ impl StorageBackend for GcpSmBackend {
             "Use GCP Secret Manager backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type
         );
-        let name =
-            secret_version_name(&self.project_id, &resource_desc.resource_tag, &self.version);
+        let name = secret_version_name(
+            &self.project_id,
+            &resource_desc.resource_tag,
+            SECRET_VERSION,
+        );
 
         let response = self
             .client
@@ -100,7 +96,6 @@ impl GcpSmBackend {
         Ok(Self {
             client,
             project_id: config.project_id.clone(),
-            version: config.version.clone(),
         })
     }
 }
@@ -115,19 +110,16 @@ mod tests {
         r#"project_id = "my-project""#,
         GcpSmBackendConfig {
             project_id: "my-project".to_string(),
-            version: "latest".to_string(),
             endpoint_url: None,
         },
     )]
     #[case::full(
         r#"
             project_id = "my-project"
-            version = "3"
             endpoint_url = "http://localhost:8080"
         "#,
         GcpSmBackendConfig {
             project_id: "my-project".to_string(),
-            version: "3".to_string(),
             endpoint_url: Some("http://localhost:8080".to_string()),
         },
     )]
