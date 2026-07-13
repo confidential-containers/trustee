@@ -53,9 +53,9 @@ feature flag enabled. Resources are stored as Secret Manager secrets and fetched
 via `AccessSecretVersion`.
 
 A resource URI of `kbs:///repo/type/tag` is translated into the Secret Manager
-version `projects/<project_id>/secrets/<tag>/versions/<version>`. The `repo/type`
-portion is ignored — matching the behavior of the AWS and Aliyun KMS backends.
-`version` defaults to `latest` and can be pinned in the config.
+version `projects/<project_id>/secrets/<tag>/versions/latest`. The `repo/type`
+portion is ignored and the latest enabled version is served — matching the
+behavior of the AWS and Aliyun KMS backends.
 
 Credentials are resolved via
 [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)

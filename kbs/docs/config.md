@@ -386,14 +386,14 @@ When `storage_backend_type = "Gcp"`:
 | Property       | Type   | Description                                                                                          | Required | Example              |
 |----------------|--------|------------------------------------------------------------------------------------------------------|----------|----------------------|
 | `project_id`   | String | GCP project id (or number) that owns the secrets.                                                     | Yes      | `my-project`         |
-| `version`      | String | Secret version to access — a version number or the alias `latest`.                                    | No       | `latest`             |
 | `endpoint_url` | String | Endpoint override. Use for a private service endpoint or a fake server in tests.                      | No       | `http://localhost:8080` |
 
 Credentials are resolved via Application Default Credentials
 (`GOOGLE_APPLICATION_CREDENTIALS`, `gcloud auth application-default login`, or the
 GCE/GKE/Cloud Run metadata server). The backend is read-only — provision secrets
-via GCP APIs. The KBS `tag` field maps to the Secret Manager secret name
-(`projects/<project_id>/secrets/<tag>/versions/<version>`); `repo/type` are ignored.
+via GCP APIs. The KBS `tag` field maps to the Secret Manager secret name and the
+latest enabled version is served
+(`projects/<project_id>/secrets/<tag>/versions/latest`); `repo/type` are ignored.
 
 When `storage_backend_type = "Vault"`:
 
