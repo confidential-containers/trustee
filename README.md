@@ -2,7 +2,7 @@
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs?ref=badge_shield)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/confidential-containers/trustee/badge)](https://scorecard.dev/viewer/?uri=github.com/confidential-containers/trustee)
-[![Helm e2e Nightly](https://github.com/confidential-containers/trustee/actions/workflows/test-e2e-helm-nightly.yml/badge.svg?event=schedule)](https://confidential-containers.github.io/trustee/nightly/)
+[![Helm e2e Nightly](https://github.com/confidential-containers/trustee/actions/workflows/test-e2e-helm-nightly.yml/badge.svg?event=schedule)](https://confidential-containers.github.io/trustee/)
 
 This repository contains tools and components for attesting confidential guests and providing secrets to them.
 Collectively, these components are known as Trustee.
