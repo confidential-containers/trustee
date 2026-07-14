@@ -4,6 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "cargo"
     directory: "/"
@@ -12,6 +14,8 @@ updates:
     open-pull-requests-limit: 3
     allow:
       - dependency-type: direct
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -21,3 +25,5 @@ updates:
       github-actions:
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
