@@ -26,8 +26,8 @@
 #   helm upgrade --install trustee ./deployment/helm-chart \
 #     --namespace coco-trustee --create-namespace \
 #     -f ./deployment/helm-chart/scenarios/ibm-se.yaml \
-#     --set as.ibmse.nodeName=<your-s390x-node-name> \
-#     --set as.ibmse.credsDir=<absolute-path-to-materials-dir>
+#     --set as.verifier.se.nodeName=<your-s390x-node-name> \
+#     --set as.verifier.se.credsDir=<absolute-path-to-materials-dir>
 #
 # Notes:
 # - CERTS_OFFLINE_VERIFICATION: set to "true" to verify the HKD certificate chain
@@ -45,11 +45,12 @@ as:
   image:
     repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
     tag: "latest"
-  ibmse:
-    # Set via --set as.ibmse.nodeName=<node> at install time.
-    nodeName: ""
-    # Set via --set as.ibmse.credsDir=<path> at install time.
-    credsDir: ""
+  verifier:
+    se:
+      # Set via --set as.verifier.se.nodeName=<node> at install time.
+      nodeName: ""
+      # Set via --set as.verifier.se.credsDir=<path> at install time.
+      credsDir: ""
   extraEnvVars:
     - name: CERTS_OFFLINE_VERIFICATION
       value: "false"
