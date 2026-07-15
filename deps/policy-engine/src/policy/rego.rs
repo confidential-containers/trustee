@@ -96,7 +96,7 @@ impl Regorus {
             }
 
             let eval_rules_result = eval_rules
-                .iter()
+                .into_iter()
                 .map(|rule| {
                     let value = match engine.eval_rule(rule.clone()) {
                         Ok(r) => Some(r),
@@ -110,9 +110,9 @@ impl Regorus {
                     if let Some(value) = value {
                         let value = serde_json::to_value(value)
                             .map_err(|e| PolicyError::JsonSerializationFailed(e.into()))?;
-                        Ok((rule.clone(), Some(value)))
+                        Ok((rule, Some(value)))
                     } else {
-                        Ok((rule.clone(), None))
+                        Ok((rule, None))
                     }
                 })
                 .collect::<Result<HashMap<String, Option<Value>>>>()?;
