@@ -250,7 +250,7 @@ make test-helm-e2e
 - **Local preloaded images**: `trustee-e2e/*:e2e`, `pullPolicy: Never` (not GHCR `:latest`)
 - **CI images**: reuses `docker-e2e-images-linux-amd64` from `workflow-call-build-docker-e2e-materials.yml` as `ghcr.io/confidential-containers/staged-images/*:latest`
 - **Storage**: bundled Postgres KV backend (`storageBackend.type: Postgres`)
-- **KBS sessions**: `sessionStorageType: Memory`
+- **KBS sessions**: bundled Valkey (`sessionStorageType: Redis`)
 
 Steps:
 
