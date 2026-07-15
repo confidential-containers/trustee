@@ -13,7 +13,7 @@ log_level: info
 # -- When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`.
 dnsHostAliasWorkaround: false
 
-# -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`.
+# -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, `Postgres`, or `Redis`. When empty, follows `storageBackend.type`. `Redis` speaks the Redis protocol and is served by the bundled Valkey subchart (or an external Redis-compatible service).
 sessionStorageType: "Memory"
 
 # -- Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
@@ -47,6 +47,14 @@ storageBackend:
     internal:
       # -- When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`.
       initKvTables: true
+  redis:
+    # -- Redis-protocol source: `internal` (Bitnami Valkey subchart) or `external` (pre-created Secret with a Redis URL).
+    mode: internal
+    external:
+      # -- Required when `mode` is `external`: Secret containing the Redis URL (e.g. `redis://:password@redis.example.com:6379`).
+      existingSecretName: ""
+      # -- Required when `mode` is `external`: Secret key name for the Redis URL.
+      existingSecretKey: ""
 
 # -- [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql) subchart. Set `enabled: true` when bundled Postgres is required (`storageBackend.postgres.mode=internal` and Postgres storage is needed; see `scenarios/postgres-backend.yaml`). Additional subchart keys (image, metrics, replication, and so on) are supported; see upstream docs.
 postgresql:
@@ -86,6 +94,46 @@ postgresql:
     ports:
       # -- Bundled Postgres Service port (used in `POSTGRES_URL`).
       postgresql: 5432
+
+# -- [Bitnami Valkey](https://artifacthub.io/packages/helm/bitnami/valkey) subchart, a Redis-protocol-compatible store used for the KBS `Redis` session backend (Valkey is BSD-licensed; it replaces Redis, whose license is no longer OSI-approved). Set `enabled: true` when the bundled store is required (`storageBackend.redis.mode=internal` and `sessionStorageType` or `storageBackend.type` is `Redis`; see `scenarios/valkey-sessions.yaml`). Additional subchart keys (metrics, replication, TLS, and so on) are supported; see upstream docs.
+valkey:
+  # -- Enable the Bitnami Valkey subchart. Must be `true` when `storageBackend.redis.mode=internal` and Redis storage is required.
+  enabled: false
+  # -- Subchart name override; the primary Service becomes `{Helm release}-valkey-primary`.
+  nameOverride: valkey
+  # -- Single Valkey primary; sessions do not need replicas. Set `replication` plus `replica.*` keys for HA (see upstream docs).
+  architecture: standalone
+  # -- Bundled Valkey container image. The default comes from `docker.io`, where anonymous pulls are rate-limited; point `registry`/`repository` at a private mirror to avoid pull failures (a chart-wide `global.imageRegistry` is also honored by the subchart).
+  image:
+    # -- Valkey image registry; override with a mirror to avoid docker.io rate limits.
+    registry: registry-1.docker.io
+    # -- Valkey image repository.
+    repository: bitnami/valkey
+    # -- Valkey image tag.
+    tag: latest
+    # -- Valkey image pull policy.
+    pullPolicy: IfNotPresent
+  auth:
+    # -- Require a password for the bundled Valkey (also used for the Trustee `REDIS_URL` Secret).
+    enabled: true
+    # -- Bundled Valkey password (also used for the Trustee `REDIS_URL` Secret).
+    password: trustee
+  primary:
+    persistence:
+      # -- KBS sessions are short-lived, so the bundled Valkey defaults to no PVC; set `true` (plus optional `storageClass`/`size`) to persist sessions across Pod restarts.
+      enabled: false
+    # -- CPU/memory requests and limits for the bundled Valkey primary.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    service:
+      ports:
+        # -- Bundled Valkey Service port (used in `REDIS_URL`).
+        valkey: 6379
 
 kbs:
   # -- Number of KBS Pod replicas.
