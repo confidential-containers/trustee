@@ -107,6 +107,10 @@ impl KeyValueStorageStructConfig {
                         })?;
                 Ok(Arc::new(postgres::PostgresClient::new(config.clone(), namespace).await?) as _)
             }
+            #[cfg(not(feature = "postgres"))]
+            KeyValueStorageType::Postgres => Err(KeyValueStorageError::InvalidConfiguration {
+                message: "PostgreSQL storage support is not enabled".to_string(),
+            }),
             #[cfg(feature = "redis")]
             KeyValueStorageType::Redis => {
                 let config =
@@ -117,6 +121,10 @@ impl KeyValueStorageStructConfig {
                         })?;
                 Ok(Arc::new(redis::RedisClient::new(config.clone(), namespace).await?) as _)
             }
+            #[cfg(not(feature = "redis"))]
+            KeyValueStorageType::Redis => Err(KeyValueStorageError::InvalidConfiguration {
+                message: "Redis storage support is not enabled".to_string(),
+            }),
             KeyValueStorageType::LocalJson => {
                 let config =
                     self.local_json
