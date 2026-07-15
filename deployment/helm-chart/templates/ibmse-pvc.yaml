@@ -1,4 +1,4 @@
-{{- $credsDir := (.Values.as.ibmse | default dict).credsDir | default "" -}}
+{{- $credsDir := ((.Values.as.verifier | default dict).se | default dict).credsDir | default "" -}}
 {{- if $credsDir -}}
 apiVersion: v1
 kind: PersistentVolumeClaim

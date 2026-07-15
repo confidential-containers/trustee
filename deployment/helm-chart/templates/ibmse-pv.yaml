@@ -1,6 +1,6 @@
-{{- $credsDir := (.Values.as.ibmse | default dict).credsDir | default "" -}}
+{{- $credsDir := ((.Values.as.verifier | default dict).se | default dict).credsDir | default "" -}}
 {{- if $credsDir -}}
-{{- $nodeName := required "as.ibmse.nodeName is required when as.ibmse.credsDir is set" ((.Values.as.ibmse | default dict).nodeName | default "") -}}
+{{- $nodeName := required "as.verifier.se.nodeName is required when as.verifier.se.credsDir is set" (((.Values.as.verifier | default dict).se | default dict).nodeName | default "") -}}
 apiVersion: v1
 kind: PersistentVolume
 metadata:
