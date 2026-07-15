@@ -28,6 +28,10 @@ It stores each key-value pair as a string key on the remote server. Values are s
 
 If `url` is not specified, the default URL above will be used. The URL scheme follows the usual Redis client convention (`redis://` or `rediss://` for TLS).
 
+### Environment Variable
+
+If the `REDIS_URL` environment variable is set, it takes precedence over the `url` from the configuration file (mirroring the `POSTGRES_URL` behavior of the PostgreSQL backend). This allows a connection URL that embeds credentials to be injected from a secret store (e.g. a Kubernetes Secret) instead of being written into a config file.
+
 ## Implementation Details
 
 ### Storage Format
