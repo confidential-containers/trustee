@@ -1,12 +1,14 @@
-# Helm e2e scenario: Postgres KV + Memory KBS sessions.
+# Helm e2e scenario: Postgres KV + Valkey (Redis-protocol) KBS sessions.
 # Used by `make e2e-test` (see deployment/helm-chart/Makefile). The Makefile injects
 # image repositories, tags, and pullPolicy so local runs and CI can share this scenario.
 
-sessionStorageType: Memory
+sessionStorageType: Redis
 
 storageBackend:
   type: Postgres
   postgres:
+    mode: internal
+  redis:
     mode: internal
 
 postgresql:
@@ -18,3 +20,6 @@ postgresql:
       enabled: false
       existingClaim: ""
       storageClass: ""
+
+valkey:
+  enabled: true
