@@ -45,75 +45,89 @@ impl Regorus {
         eval_rules: Vec<&str>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
-        let mut engine = regorus::Engine::new();
+        let data = data.map(str::to_owned);
+        let input = input.to_owned();
+        let policy = policy.to_owned();
+        let eval_rules = eval_rules
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
 
-        let policy_hash = {
-            use sha2::Digest;
-            let mut hasher = sha2::Sha384::new();
-            hasher.update(policy);
-            let hex = hasher.finalize().to_vec();
-            hex::encode(hex)
-        };
+        tokio::task::spawn_blocking(move || {
+            let mut engine = regorus::Engine::new();
 
-        // Add policy as data
-        // Note that the first parameter is named "path", which is used to identify the policy
-        // in a same regorus::Engine instance. Now we only have one policy support thus we do not
-        // need to specify different paths for different policies. Thus we use an empty string here.
-        engine
-            .add_policy("".to_string(), policy.to_string())
-            .map_err(PolicyError::LoadPolicyFailed)?;
+            let policy_hash = {
+                use sha2::Digest;
+                let mut hasher = sha2::Sha384::new();
+                hasher.update(&policy);
+                let hex = hasher.finalize().to_vec();
+                hex::encode(hex)
+            };
 
-        if let Some(data) = data {
-            let data = regorus::Value::from_json_str(data)
-                .map_err(PolicyError::JsonSerializationFailed)?;
+            // Add policy as data
+            // Note that the first parameter is named "path", which is used to identify the policy
+            // in a same regorus::Engine instance. Now we only have one policy support thus we do not
+            // need to specify different paths for different policies. Thus we use an empty string here.
+            engine
+                .add_policy("".to_string(), policy)
+                .map_err(PolicyError::LoadPolicyFailed)?;
+
+            if let Some(data) = data {
+                let data = regorus::Value::from_json_str(&data)
+                    .map_err(PolicyError::JsonSerializationFailed)?;
+
+                engine
+                    .add_data(data)
+                    .map_err(PolicyError::LoadReferenceDataFailed)?;
+            }
 
             engine
-                .add_data(data)
-                .map_err(PolicyError::LoadReferenceDataFailed)?;
-        }
+                .set_input_json(&input)
+                .map_err(PolicyError::SetInputDataFailed)?;
 
-        engine
-            .set_input_json(input)
-            .map_err(PolicyError::SetInputDataFailed)?;
+            for extension in extensions {
+                engine
+                    .add_extension(extension.name.clone(), extension.id, extension.extension)
+                    .map_err(|e| PolicyError::AddRegorusExtensionFailed {
+                        name: extension.name,
+                        id: extension.id,
+                        source: e,
+                    })?;
+            }
 
-        for extension in extensions {
-            engine
-                .add_extension(extension.name.clone(), extension.id, extension.extension)
-                .map_err(|e| PolicyError::AddRegorusExtensionFailed {
-                    name: extension.name,
-                    id: extension.id,
-                    source: e,
-                })?;
-        }
-
-        let eval_rules_result = eval_rules
-            .iter()
-            .map(|rule| {
-                let value = match engine.eval_rule(rule.to_string()) {
-                    Ok(r) => Some(r),
-                    // Extensions claim is optional.
-                    Err(e) if e.to_string().contains("not a valid rule path") => {
-                        info!("No claim {rule} found in policy.");
-                        None
+            let eval_rules_result = eval_rules
+                .iter()
+                .map(|rule| {
+                    let value = match engine.eval_rule(rule.clone()) {
+                        Ok(r) => Some(r),
+                        // Extensions claim is optional.
+                        Err(e) if e.to_string().contains("not a valid rule path") => {
+                            info!("No claim {rule} found in policy.");
+                            None
+                        }
+                        Err(e) => return Err(PolicyError::EvalPolicyFailed(e)),
+                    };
+                    if let Some(value) = value {
+                        let value = serde_json::to_value(value)
+                            .map_err(|e| PolicyError::JsonSerializationFailed(e.into()))?;
+                        Ok((rule.clone(), Some(value)))
+                    } else {
+                        Ok((rule.clone(), None))
                     }
-                    Err(e) => return Err(PolicyError::EvalPolicyFailed(e)),
-                };
-                if let Some(value) = value {
-                    let value = serde_json::to_value(value)
-                        .map_err(|e| PolicyError::JsonSerializationFailed(e.into()))?;
-                    Ok((rule.to_string(), Some(value)))
-                } else {
-                    Ok((rule.to_string(), None))
-                }
+                })
+                .collect::<Result<HashMap<String, Option<Value>>>>()?;
+
+            Ok(EvaluationResult {
+                eval_rules_result,
+                policy_hash,
             })
-            .collect::<Result<HashMap<String, Option<Value>>>>()?;
-
-        let res = EvaluationResult {
-            eval_rules_result,
-            policy_hash,
-        };
-
-        Ok(res)
+        })
+        .await
+        .map_err(|e| {
+            PolicyError::EvalPolicyFailed(anyhow::anyhow!(
+                "failed to join blocking rego evaluation task: {e}"
+            ))
+        })?
     }
 }
 
