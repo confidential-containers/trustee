@@ -25,8 +25,8 @@ use crate::integration_tests::common::{
     KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin,
     true
 )]
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
     init_tracing();
 
@@ -109,8 +109,8 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
     KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin,
     true
 )]
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 async fn set_attestation_policy(
     #[case] test_config: KbsConfigType,
     #[case] valid_key: bool,
@@ -204,8 +204,8 @@ default executables = 97
     KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin,
     true
 )]
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool) -> Result<()> {
     init_tracing();
 

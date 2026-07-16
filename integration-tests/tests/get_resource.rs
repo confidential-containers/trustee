@@ -94,8 +94,8 @@ const SECRET_PATH: &str = "default/test/secret";
     Some(EAR_DEVICE_RV_ATTESTATION_POLICY),
     Result::Ok(SECRET_BYTES)
 )]
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 async fn run_test(
     #[case] test_parameter_type: KbsConfigType,
     #[case] policy: PolicyType,

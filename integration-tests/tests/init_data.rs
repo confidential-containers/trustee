@@ -15,8 +15,8 @@ use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
 
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 // Check if we can set a policy that expects a particular init-data hash
 // and get a resource.
 async fn get_resource_with_init_data_hash() -> Result<()> {
@@ -81,8 +81,8 @@ allow if {
 }
 ";
 
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 // Use a policy that checks a particular field of the CDH/AA config.
 async fn get_resource_with_init_data_config() -> Result<()> {
     init_tracing();
@@ -193,8 +193,8 @@ YXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl
 '''
 ";
 
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 // Check for a particular field in the kata agent policy claims
 async fn get_resource_with_policy_init_data() -> Result<()> {
     init_tracing();
@@ -240,8 +240,8 @@ allow if {
 }
 ";
 
+#[serial(integration_ports)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[serial]
 // Check if using initrd with a policy will result in the expected
 // validated identifiers.
 async fn check_validated_identifiers() -> Result<()> {

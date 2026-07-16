@@ -22,7 +22,6 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
-use std::thread;
 use std::time::Duration;
 use time::{Duration as TimeDuration, OffsetDateTime};
 use tracing::{debug, info, warn};
@@ -181,53 +180,37 @@ impl EarAttestationTokenBroker {
                             .context("query_reference_value extension parameter must be a string")?
                             .to_string();
                         debug!("query reference value from RVPS: {id}");
-                        let fut = async |rvps_client: RvpsClient,
-                                         reference_value_id: String|
-                               -> Result<_> {
-                            let rv = rvps_client
-                                .lock()
-                                .await
-                                .query_reference_value(&reference_value_id)
-                                .await?;
-                            Ok(rv)
-                        };
-
                         let rvps_client = rvps_client.clone();
                         let reference_value_id = params[0].as_string()?.to_string();
-                        // Capture the current (main) runtime handle *before* spawning
-                        // the thread. Using the main runtime's handle ensures that
-                        // pool.get() and the tonic I/O operations run in the same
-                        // runtime context where the mobc pool and gRPC channels were
-                        // created. Creating a new isolated runtime here causes pool
-                        // futures and I/O wakeups to be delivered on the wrong reactor,
-                        // making pool.get() hang indefinitely.
-                        let rt_handle = tokio::runtime::Handle::current();
-                        let handle = thread::spawn(move || {
-                            rt_handle.block_on(async move {
-                                tokio::time::timeout(
-                                    Duration::from_secs(10),
-                                    fut(rvps_client, reference_value_id),
-                                )
+                        // Policy evaluation runs on tokio's blocking pool, so it is
+                        // safe to block_on the RVPS query here without starving
+                        // runtime workers that drive the gRPC connection pool.
+                        let result = tokio::runtime::Handle::current()
+                            .block_on(async move {
+                                tokio::time::timeout(Duration::from_secs(10), async {
+                                    rvps_client
+                                        .lock()
+                                        .await
+                                        .query_reference_value(&reference_value_id)
+                                        .await
+                                })
                                 .await
                                 .map_err(|e| {
                                     anyhow!("Get Reference Value from RVPS timeout: {e:?}")
                                 })?
                             })
-                        });
+                            .map_err(|e| anyhow!("Get Reference Value from RVPS failed: {e:?}"))?;
 
-                        match handle.join().map_err(|e| {
-                            anyhow!("RVPS query reference value thread join failed: {e:?}")
-                        })? {
-                            Ok(Some(v)) => {
+                        match result {
+                            Some(v) => {
                                 let json_value = serde_json::to_value(v)?;
                                 let value: regorus::Value = serde_json::from_value(json_value)?;
                                 Ok(value)
                             }
-                            Ok(None) => {
+                            None => {
                                 warn!("No reference value found for the given id: {id}, use NULL as the returned value");
                                 Ok(regorus::Value::Null)
                             }
-                            Err(e) => bail!("Get Reference Value from RVPS failed: {e:?}"),
                         }
                     }),
                 };
@@ -239,9 +222,9 @@ impl EarAttestationTokenBroker {
                 .policy_engine
                 .evaluate_rego(
                     None,
-                    &tcb_claims_json,
+                    tcb_claims_json,
                     &policy_id,
-                    vec![TRUST_CLAIMS_RULE, EXTENSIONS_RULE],
+                    vec![TRUST_CLAIMS_RULE.to_string(), EXTENSIONS_RULE.to_string()],
                     extensions,
                 )
                 .await?;

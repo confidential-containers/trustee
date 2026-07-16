@@ -417,10 +417,10 @@ pub(crate) async fn api(
                 if !core
                     .policy_engine
                     .evaluate_rego(
-                        Some(&policy_data_str),
-                        &claim_str,
+                        Some(policy_data_str),
+                        claim_str,
                         KBS_POLICY_ID,
-                        vec![KBS_POLICY_RULE],
+                        vec![KBS_POLICY_RULE.to_string()],
                         vec![],
                     )
                     .await
