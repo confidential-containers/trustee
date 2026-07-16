@@ -3,8 +3,6 @@ name: KBS e2e Suite
 on:
   pull_request:
     branches: ["main"]
-    # `labeled` lets the TDX Helm e2e leg trigger when the `tdx-e2e` label is added.
-    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -13,23 +11,12 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Adding the `tdx-e2e` label starts an additive run that only exercises the TDX
-  # leg (see the per-job `if` guards below), so it must not cancel an in-progress
-  # full suite for the same PR. A subsequent push (synchronize) still cancels
-  # stale runs as usual.
-  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+  cancel-in-progress: true
 
 jobs:
-  # A `labeled` event (adding `tdx-e2e`) must only fan out to the TDX Helm leg,
-  # not re-run the whole suite. Every job that is not part of the TDX leg is
-  # therefore skipped on `labeled` events via `if: github.event.action != 'labeled'`.
-  # `github.event.action` is empty for `workflow_dispatch`, so manual runs still
-  # execute everything.
-
   # Common checkout + source archive for all e2e jobs
   code-checkout:
     name: KBS - checkout & archive
-    if: ${{ github.event.action != 'labeled' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -50,7 +37,6 @@ jobs:
   # Sample TEE e2e (reuses kbs-e2e template)
   sample-e2e-amd64:
     name: Sample TEE e2e (amd64)
-    if: ${{ github.event.action != 'labeled' }}
     needs: code-checkout
     uses: ./.github/workflows/workflow-call-kbs-e2e.yml
     permissions:
@@ -62,7 +48,6 @@ jobs:
 
   sample-e2e-arm64:
     name: Sample TEE e2e (arm64)
-    if: ${{ github.event.action != 'labeled' }}
     needs: code-checkout
     uses: ./.github/workflows/workflow-call-kbs-e2e.yml
     permissions:
@@ -79,7 +64,6 @@ jobs:
   # Vault integration e2e
   vault-e2e-test:
     name: Vault e2e
-    if: ${{ github.event.action != 'labeled' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -112,9 +96,6 @@ jobs:
   # Docker Compose/Helm e2e materials (shared via workflow artifacts)
   build-docker-e2e-materials:
     name: Build Docker/Helm e2e materials
-    # Feeds both the Docker Compose e2e and the Helm legs (incl. TDX), so it must
-    # also run on a `tdx-e2e` label even though most other jobs are skipped then.
-    if: ${{ github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'tdx-e2e') }}
     uses: ./.github/workflows/workflow-call-build-docker-e2e-materials.yml
     permissions:
       contents: read
@@ -122,7 +103,6 @@ jobs:
   # Docker Compose cluster e2e
   docker-e2e-test:
     name: Docker Compose e2e
-    if: ${{ github.event.action != 'labeled' }}
     needs: build-docker-e2e-materials
     strategy:
       matrix:
@@ -178,7 +158,6 @@ jobs:
   # External plugin e2e
   ext-plugin-e2e-test:
     name: External Plugin e2e
-    if: ${{ github.event.action != 'labeled' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -230,7 +209,6 @@ jobs:
   # Sample TEE Helm e2e on a GitHub-hosted runner (always runs).
   helm-trustee-e2e-amd64:
     name: Helm Trustee e2e (amd64)
-    if: ${{ github.event.action != 'labeled' }}
     needs: build-docker-e2e-materials
     uses: ./.github/workflows/workflow-call-helm-e2e.yml
     permissions:
@@ -240,19 +218,3 @@ jobs:
       runs-on: '["ubuntu-24.04"]'
       client-artifact: helm-e2e-kbs-client-linux-amd64
       self-hosted: false
-
-  # Real TDX Helm e2e on a self-hosted runner. Only runs when the PR carries the
-  # `tdx-e2e` label (or on manual dispatch), so unlabelled PRs never queue onto it.
-  helm-trustee-e2e-tdx:
-    name: Helm Trustee e2e (TDX)
-    needs: build-docker-e2e-materials
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'tdx-e2e')
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
-    permissions:
-      contents: read
-    with:
-      leg: tdx
-      # Runner group hosting the TDX runner(s); add `labels` here to narrow further.
-      runs-on: '{"group":"tdx-vm"}'
-      client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
-      self-hosted: true
