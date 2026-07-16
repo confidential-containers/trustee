@@ -39,20 +39,12 @@ impl Regorus {
     #[instrument(skip_all, name = "Regorus")]
     pub async fn evaluate(
         &self,
-        data: Option<&str>,
-        input: &str,
-        policy: &str,
-        eval_rules: Vec<&str>,
+        data: Option<String>,
+        input: String,
+        policy: String,
+        eval_rules: Vec<String>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
-        let data = data.map(str::to_owned);
-        let input = input.to_owned();
-        let policy = policy.to_owned();
-        let eval_rules = eval_rules
-            .into_iter()
-            .map(str::to_owned)
-            .collect::<Vec<_>>();
-
         tokio::task::spawn_blocking(move || {
             let mut engine = regorus::Engine::new();
 
@@ -139,15 +131,15 @@ impl PolicyEngine<Regorus> {
 
     pub async fn evaluate_rego(
         &self,
-        data: Option<&str>,
-        input: &str,
+        data: Option<String>,
+        input: String,
         policy_id: &str,
-        eval_rules: Vec<&str>,
+        eval_rules: Vec<String>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
         let policy = self.get_policy(policy_id).await?;
         self.engine
-            .evaluate(data, input, &policy, eval_rules, extensions)
+            .evaluate(data, input, policy, eval_rules, extensions)
             .await
     }
 }
@@ -315,10 +307,10 @@ mod tests {
         let engine = Regorus::default();
         let result = engine
             .evaluate(
-                Some(&data),
-                &input,
-                &policy,
-                vec!["data.policy.allow"],
+                Some(data),
+                input,
+                policy,
+                vec!["data.policy.allow".to_string()],
                 vec![],
             )
             .await
