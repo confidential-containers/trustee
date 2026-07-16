@@ -1,0 +1,43 @@
+name: KBS HW TEE e2e
+
+# Runs hardware TEE Helm e2e legs on self-hosted runners when a PR carries the
+# `tee-e2e` label.
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+
+jobs:
+  build-docker-e2e-materials:
+    name: Build Docker/Helm e2e materials
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'tee-e2e')
+    uses: ./.github/workflows/workflow-call-build-docker-e2e-materials.yml
+    permissions:
+      contents: read
+
+  helm-trustee-e2e-tdx:
+    name: Helm Trustee e2e (TDX)
+    needs: build-docker-e2e-materials
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'tee-e2e')
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: tdx
+      runs-on: '{"group":"tdx-vm"}'
+      client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
+      self-hosted: true

@@ -57,7 +57,7 @@ jobs:
       self-hosted: false
 
   # Real TDX Helm e2e on a self-hosted runner. Unlike the PR suite, nightly runs
-  # this unconditionally (no `tdx-e2e` label gate) so the hardware path is
+  # this unconditionally (no `tee-e2e` label gate) so the hardware path is
   # exercised every day.
   helm-trustee-e2e-tdx:
     name: Helm Trustee e2e (TDX)
