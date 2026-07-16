@@ -207,8 +207,8 @@ jobs:
       run: make e2e-ext-plugin
 
   # Sample TEE Helm e2e on a GitHub-hosted runner (always runs).
-  helm-trustee-e2e-amd64:
-    name: Helm Trustee e2e (amd64)
+  helm-trustee-e2e-amd64-sample:
+    name: Helm Trustee e2e (amd64 sample tee)
     needs: build-docker-e2e-materials
     uses: ./.github/workflows/workflow-call-helm-e2e.yml
     permissions:
