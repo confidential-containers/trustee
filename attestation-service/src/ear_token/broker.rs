@@ -222,9 +222,9 @@ impl EarAttestationTokenBroker {
                 .policy_engine
                 .evaluate_rego(
                     None,
-                    &tcb_claims_json,
+                    tcb_claims_json,
                     &policy_id,
-                    vec![TRUST_CLAIMS_RULE, EXTENSIONS_RULE],
+                    vec![TRUST_CLAIMS_RULE.to_string(), EXTENSIONS_RULE.to_string()],
                     extensions,
                 )
                 .await?;

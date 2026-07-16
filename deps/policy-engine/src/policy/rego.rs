@@ -39,35 +39,28 @@ impl Regorus {
     #[instrument(skip_all, name = "Regorus")]
     pub async fn evaluate(
         &self,
-        data: Option<&str>,
-        input: &str,
-        policy: &str,
-        eval_rules: Vec<&str>,
+        data: Option<String>,
+        input: String,
+        policy: String,
+        eval_rules: Vec<String>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
         // Regorus evaluation is synchronous. Extensions may block on async work
         // (e.g. RVPS queries via Handle::block_on). Run on the blocking pool so
         // those calls do not occupy a tokio worker and starve the runtime.
-        let data = data.map(str::to_owned);
-        let input = input.to_owned();
-        let policy = policy.to_owned();
-        let eval_rules = eval_rules
-            .into_iter()
-            .map(str::to_owned)
-            .collect::<Vec<_>>();
 
         tokio::task::spawn_blocking(move || {
-            Self::evaluate_sync(data.as_deref(), &input, &policy, &eval_rules, extensions)
+            Self::evaluate_sync(data, input, policy, eval_rules, extensions)
         })
         .await
         .map_err(|e| PolicyError::EvalPolicyFailed(e.into()))?
     }
 
     fn evaluate_sync(
-        data: Option<&str>,
-        input: &str,
-        policy: &str,
-        eval_rules: &[String],
+        data: Option<String>,
+        input: String,
+        policy: String,
+        eval_rules: Vec<String>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
         let mut engine = regorus::Engine::new();
@@ -75,7 +68,7 @@ impl Regorus {
         let policy_hash = {
             use sha2::Digest;
             let mut hasher = sha2::Sha384::new();
-            hasher.update(policy);
+            hasher.update(&policy);
             let hex = hasher.finalize().to_vec();
             hex::encode(hex)
         };
@@ -85,11 +78,11 @@ impl Regorus {
         // in a same regorus::Engine instance. Now we only have one policy support thus we do not
         // need to specify different paths for different policies. Thus we use an empty string here.
         engine
-            .add_policy("".to_string(), policy.to_string())
+            .add_policy("".to_string(), policy)
             .map_err(PolicyError::LoadPolicyFailed)?;
 
         if let Some(data) = data {
-            let data = regorus::Value::from_json_str(data)
+            let data = regorus::Value::from_json_str(&data)
                 .map_err(PolicyError::JsonSerializationFailed)?;
 
             engine
@@ -98,7 +91,7 @@ impl Regorus {
         }
 
         engine
-            .set_input_json(input)
+            .set_input_json(&input)
             .map_err(PolicyError::SetInputDataFailed)?;
 
         for extension in extensions {
@@ -148,15 +141,15 @@ impl PolicyEngine<Regorus> {
 
     pub async fn evaluate_rego(
         &self,
-        data: Option<&str>,
-        input: &str,
+        data: Option<String>,
+        input: String,
         policy_id: &str,
-        eval_rules: Vec<&str>,
+        eval_rules: Vec<String>,
         extensions: Vec<RegorusExtension>,
     ) -> Result<EvaluationResult> {
         let policy = self.get_policy(policy_id).await?;
         self.engine
-            .evaluate(data, input, &policy, eval_rules, extensions)
+            .evaluate(data, input, policy, eval_rules, extensions)
             .await
     }
 }
@@ -324,10 +317,10 @@ mod tests {
         let engine = Regorus::default();
         let result = engine
             .evaluate(
-                Some(&data),
-                &input,
-                &policy,
-                vec!["data.policy.allow"],
+                Some(data),
+                input,
+                policy,
+                vec!["data.policy.allow".to_string()],
                 vec![],
             )
             .await
