@@ -8,7 +8,7 @@ mod compat;
 use self::compat::Evidence;
 use super::az_snp_vtpm::{
     extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs, verify_tpm_signature,
-    TpmQuote,
+    verify_user_data, TpmQuote,
 };
 use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
 use super::intel_dcap::{
@@ -44,7 +44,8 @@ impl Verifier for AzTdxVtpm {
     /// 3. TPM PCRs' digest matches the digest in the Quote
     /// 4. TD Quote is genuine
     /// 5. TD Report's report_data field matches hashed HCL variable data
-    /// 6. Init data hash matches TPM PCR[INITDATA_PCR]
+    /// 6. User-data field in HCL variable data matches report_data
+    /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
     #[instrument(skip_all, name = "Azure vTPM TDX")]
     async fn evaluate(
         &self,
@@ -87,6 +88,10 @@ impl Verifier for AzTdxVtpm {
         let custom_claims = ecdsa_quote_verification(evidence.td_quote(), Some(collateral))?;
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
+
+        if evidence.version() >= 2 {
+            verify_user_data(&hcl_report, expected_report_data)?;
+        }
 
         let pcrs = get_pcrs(&tpm_quote)?;
         let pcr_refs: Vec<&[u8; 32]> = pcrs.iter().collect();
