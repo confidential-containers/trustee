@@ -44,8 +44,8 @@ jobs:
       contents: read
 
   # Sample TEE Helm e2e on a GitHub-hosted runner.
-  helm-trustee-e2e-amd64:
-    name: Helm Trustee e2e (amd64)
+  helm-trustee-e2e-sample:
+    name: Helm Trustee e2e (sample-tee on amd64)
     needs: build-docker-e2e-materials
     uses: ./.github/workflows/workflow-call-helm-e2e.yml
     permissions:
