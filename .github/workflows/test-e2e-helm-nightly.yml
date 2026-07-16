@@ -67,6 +67,6 @@ jobs:
       contents: read
     with:
       leg: tdx
-      runs-on: '{"group":"Intel TDX"}'
+      runs-on: '{"group":"tdx-vm"}'
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true

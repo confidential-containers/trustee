@@ -252,6 +252,6 @@ jobs:
     with:
       leg: tdx
       # Runner group hosting the TDX runner(s); add `labels` here to narrow further.
-      runs-on: '{"group":"Intel TDX"}'
+      runs-on: '{"group":"tdx-vm"}'
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true
