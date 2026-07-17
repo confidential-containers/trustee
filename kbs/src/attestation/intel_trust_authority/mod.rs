@@ -449,6 +449,7 @@ impl IntelTrustAuthority {
             &trusted_certs_paths,
             &trusted_pem_public_keys,
             true,
+            false,
         )
         .await
         .context("Failed to initialize token verifier")?;
