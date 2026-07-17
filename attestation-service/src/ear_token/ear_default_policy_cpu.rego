@@ -103,17 +103,17 @@ executables := 3 if {
 	input.snp
 
 	# In the future, we might calculate this measurement here various components
-	input.snp.measurement in query_reference_value("snp_launch_measurement")
+	input.snp.evidence.measurement in query_reference_value("snp_launch_measurement")
 }
 
 hardware := 2 if {
 	input.snp
 
 	# Check the reported TCB to validate the ASP FW
-	input.snp.reported_tcb_bootloader in query_reference_value("snp_bootloader")
-	input.snp.reported_tcb_microcode in query_reference_value("snp_microcode")
-	input.snp.reported_tcb_snp in query_reference_value("snp_snp_svn")
-	input.snp.reported_tcb_tee in query_reference_value("snp_tee_svn")
+	input.snp.evidence.reported_tcb.bootloader in query_reference_value("snp_bootloader")
+	input.snp.evidence.reported_tcb.microcode in query_reference_value("snp_microcode")
+	input.snp.evidence.reported_tcb.snp in query_reference_value("snp_snp_svn")
+	input.snp.evidence.reported_tcb.tee in query_reference_value("snp_tee_svn")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -123,14 +123,14 @@ hardware := 2 if {
 configuration := 2 if {
 	input.snp
 
-	input.snp.policy_debug_allowed == false
-	input.snp.policy_migrate_ma == false
-	input.snp.platform_smt_enabled == query_reference_value("snp_smt_enabled")
-	input.snp.platform_tsme_enabled == query_reference_value("snp_tsme_enabled")
-	input.snp.policy_abi_major == query_reference_value("snp_guest_abi_major")
-	input.snp.policy_abi_minor == query_reference_value("snp_guest_abi_minor")
-	input.snp.policy_single_socket == query_reference_value("snp_single_socket")
-	input.snp.policy_smt_allowed == query_reference_value("snp_smt_allowed")
+	input.snp.evidence.policy.debug_allowed == false
+	input.snp.evidence.policy.migrate_ma_allowed == false
+	input.snp.evidence.plat_info.smt_enabled == query_reference_value("snp_smt_enabled")
+	input.snp.evidence.plat_info.tsme_enabled == query_reference_value("snp_tsme_enabled")
+	input.snp.evidence.policy.abi_major == query_reference_value("snp_guest_abi_major")
+	input.snp.evidence.policy.abi_minor == query_reference_value("snp_guest_abi_minor")
+	input.snp.evidence.policy.single_socket_required == query_reference_value("snp_single_socket")
+	input.snp.evidence.policy.smt_allowed == query_reference_value("snp_smt_allowed")
 }
 
 # For the `configuration` trust claim 3 stands for
@@ -143,8 +143,8 @@ configuration := 2 if {
 else := 3 if {
 	input.snp
 
-	input.snp.policy_debug_allowed == false
-	input.snp.policy_migrate_ma == false
+	input.snp.evidence.policy.debug_allowed == false
+	input.snp.evidence.policy.migrate_ma_allowed == false
 }
 
 ##### TDX

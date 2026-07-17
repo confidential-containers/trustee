@@ -225,27 +225,97 @@ along with the full set of detached claims.
 
 ## AMD SEV-SNP
 
-- `snp.measurement` Launch Digest covering initial guest memory
-- `snp.platform_smt_enabled`:  Whether Simultaneous Multithreading is enabled on the system
-- `snp.platform_tsme_enabled`: Whether Transparent SME is enabled on the system
-- `snp.policy_abi_major`: Minimum ABI major version allowed for guest
-- `snp.policy_abi_minor`: Minimum ABI minor version allowed for guest
-- `snp.policy_debug_allowed`: Whether SNP debug features are allowed for guest
-- `snp.policy_migrate_ma`: Whether migration agent can be connected to guest
-- `snp.policy_single_socket`: Whether guest can be activated only on one socket
-- `snp.policy_smt_allowed`: Whether guest can run on a system with SMT enabled
-- `snp.reported_tcb_bootloader`: Reported SVN of ASP bootloader
-- `snp.reported_tcb_microcode`: Reported microcode version
-- `snp.reported_tcb_snp`: Reported SVN of SNP Firmware
-- `snp.reported_tcb_tee`: Reported SVN of ASP OS
+Existing flat SNP claims are preserved for policy compatibility. New detailed claims are additive under `snp.evidence`. When a flat claim and a detailed claim describe the same value, both paths are listed on the same line below.
 
-The claims map only includes the reported TCB version.
-An SEV-SNP Attestation Report contains four sets of TCB version information.
-Often all four values are the same, but sometimes the reported TCB might lag
-behind the true firmware version. This is done to minimize churn of policies
-and certificates while the provider updates to provisional firmware.
-The actual firmware must always be newer than or equal to the reported TCB.
-Generally, policies should be evaluated against the reported TCB.
+- `snp.generation`: string. Processor generation derived from the attestation report. One of `milan` (3rd Gen EPYC), `genoa` (4th Gen EPYC), or `turin` (5th Gen EPYC).
+
+### Guest policy
+
+The guest policy is set by the guest owner at launch and cannot be changed for the lifetime of the guest.
+
+- `snp.policy_abi_major` / `snp.evidence.policy.abi_major`: u64. Minimum SNP firmware ABI major version required for this guest.
+- `snp.policy_abi_minor` / `snp.evidence.policy.abi_minor`: u64. Minimum SNP firmware ABI minor version required for this guest.
+- `snp.policy_smt_allowed` / `snp.evidence.policy.smt_allowed`: Boolean. Whether the guest may run on a host with SMT enabled.
+- `snp.policy_migrate_ma` / `snp.evidence.policy.migrate_ma_allowed`: Boolean. Whether the guest may be associated with a migration agent.
+- `snp.policy_debug_allowed` / `snp.evidence.policy.debug_allowed`: Boolean. Whether SNP debug features are allowed for the guest.
+- `snp.policy_single_socket` / `snp.evidence.policy.single_socket_required`: Boolean. Whether the guest may be activated on multiple sockets.
+- `snp.evidence.policy.cxl_allowed`: Boolean. Whether CXL may be populated with devices or memory.
+- `snp.evidence.policy.mem_aes_256_xts`: Boolean. Memory encryption mode requirement. `false`: AES-128-XEX or AES-256-XTS is allowed; `true`: AES-256-XTS is required.
+- `snp.evidence.policy.rapl_dis`: Boolean. Running Average Power Limit (RAPL) requirement.
+- `snp.evidence.policy.ciphertext_hiding`: Boolean. Ciphertext hiding requirement.
+- `snp.evidence.policy.page_swap_disabled`: Boolean. Guest access to page-move/swap commands. `false`: SNP page-move/swap commands are allowed; `true`: guest access to `SNP_PAGE_MOVE`, `SNP_SWAP_OUT`, and `SNP_SWAP_IN` is disabled.
+
+### Platform info
+
+- `snp.platform_smt_enabled` / `snp.evidence.plat_info.smt_enabled`: Boolean. Whether Simultaneous Multithreading is enabled on the host.
+- `snp.platform_tsme_enabled` / `snp.evidence.plat_info.tsme_enabled`: Boolean. Whether Transparent SME is enabled on the host.
+- `snp.evidence.plat_info.ecc_enabled`: Boolean. Whether the platform is currently using ECC memory.
+- `snp.evidence.plat_info.rapl_disabled`: Boolean. Whether the RAPL feature is disabled on the platform.
+- `snp.evidence.plat_info.ciphertext_hiding_enabled`: Boolean. Whether ciphertext hiding is enabled on the platform.
+- `snp.evidence.plat_info.alias_check_complete`: Boolean. Whether alias detection has completed since the last system reset with no aliasing addresses found.
+- `snp.evidence.plat_info.tio_enabled`: Boolean. Whether SEV-TIO is enabled on the platform.
+
+### Key info (`snp.evidence.key_info`)
+
+- `snp.evidence.key_info.author_key_en`: Boolean. Whether the author key digest is present in `author_key_digest`. `true`: digest is present; `false`: digest is zero.
+- `snp.evidence.key_info.mask_chip_key`: Boolean. Whether the report signature is masked. `false`: firmware signs with VCEK or VLEK; `true`: the signature field is zeroed instead of signing.
+- `snp.evidence.key_info.signing_key`: u32. Key used to sign this report. `0`: VCEK; `1`: VLEK; `7`: none (unsigned report).
+
+### TCB versions
+
+Four TCB sets are exposed. Each is an object with the subfields below. The same subfields and types exist on `current_tcb`, `reported_tcb`, `committed_tcb`, and `launch_tcb`.
+
+- `snp.evidence.current_tcb`: object. Current platform TCB at report generation time.
+- `snp.evidence.reported_tcb`: object. TCB version used to derive the VCEK/VLEK that signed this report. **Policies should generally evaluate against this set.**
+- `snp.reported_tcb_bootloader` / `snp.evidence.reported_tcb.bootloader`: u8. Reported PSP bootloader SVN.
+- `snp.reported_tcb_tee` / `snp.evidence.reported_tcb.tee`: u8. Reported PSP operating-system SVN.
+- `snp.reported_tcb_snp` / `snp.evidence.reported_tcb.snp`: u8. Reported SNP firmware SVN.
+- `snp.reported_tcb_microcode` / `snp.evidence.reported_tcb.microcode`: u8. Reported microcode patch level.
+- `snp.evidence.committed_tcb`: object. Committed TCB version.
+- `snp.evidence.launch_tcb`: object. Platform TCB at guest launch or import time.
+
+Each TCB object contains the following fields (SVN / patch level):
+
+- `fmc`: u8 | null. FMC firmware SVN. Present on Turin (`generation` = `turin`); `null` on Milan and Genoa.
+- `bootloader`: u8. PSP bootloader SVN.
+- `tee`: u8. PSP operating-system SVN.
+- `snp`: u8. SNP firmware SVN.
+- `microcode`: u8. Lowest current microcode patch level across all cores.
+
+Often all four TCB values are the same, but the reported TCB may lag behind the true firmware version to minimize churn of policies and certificates while the provider updates to provisional firmware. The actual firmware must always be newer than or equal to the reported TCB.
+
+Firmware version objects:
+
+- `snp.evidence.current`: object. Current SNP firmware version.
+- `snp.evidence.current.major`: u8. Major version component.
+- `snp.evidence.current.minor`: u8. Minor version component.
+- `snp.evidence.current.build`: u8. Build version component.
+- `snp.evidence.committed`: object. Committed SNP firmware version.
+- `snp.evidence.committed.major`: u8. Major version component.
+- `snp.evidence.committed.minor`: u8. Minor version component.
+- `snp.evidence.committed.build`: u8. Build version component.
+
+### Measurements and identifiers
+
+- `snp.evidence.version`: u32. Attestation report format version. Supported values are 3 through 5.
+- `snp.evidence.guest_svn`: u32. Guest security version number provided at launch.
+- `snp.evidence.family_id`: string (hex). Family ID provided at launch.
+- `snp.evidence.image_id`: string (hex). Image ID provided at launch.
+- `snp.evidence.vmpl`: u32. Requested VMPL for the attestation report. Guest attestation expects `0`.
+- `snp.evidence.sig_algo`: u32. Signature algorithm identifier. `1`: ECDSA P-384 with SHA-384.
+- `snp.measurement` / `snp.evidence.measurement`: string (hex). Launch digest covering initial guest memory (48 bytes).
+- `snp.evidence.report_data`: string (hex). Guest-provided report data from the attestation report (64 bytes). Also available at the policy root as `report_data`.
+- `snp.evidence.host_data`: string (hex). Hypervisor-provided host data from launch (32 bytes). Also available at the policy root as `init_data`.
+- `snp.evidence.id_key_digest`: string (hex). SHA-384 digest of the ID public key that signed the ID block.
+- `snp.evidence.author_key_digest`: string (hex). SHA-384 digest of the author public key that certified the ID key. Zero when `key_info.author_key_en` is `false`.
+- `snp.evidence.report_id`: string (hex). Report ID of this guest.
+- `snp.evidence.report_id_ma`: string (hex). Report ID of this guest's migration agent, if applicable.
+- `snp.evidence.chip_id`: string (hex). Unique chip identifier (64 bytes). Zero when `key_info.mask_chip_key` is `true`.
+- `snp.evidence.cpu_id_fam_id`: u8 | null. CPUID family ID (combined extended family and family). Present in report version 3+; `null` on older reports.
+- `snp.evidence.cpu_id_mod_id`: u8 | null. CPUID model ID (combined extended model and model). Present in report version 3+; `null` on older reports.
+- `snp.evidence.cpu_id_step`: u8 | null. CPUID stepping. Present in report version 3+; `null` on older reports.
+- `snp.evidence.launch_mit_vector`: u64 | null. Verified mitigation vector at guest launch. Present in report version 5+; `null` on older reports.
+- `snp.evidence.current_mit_vector`: u64 | null. Current verified mitigation vector. Present in report version 5+; `null` on older reports.
 
 ## TPM
 

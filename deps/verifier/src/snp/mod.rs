@@ -145,10 +145,10 @@ impl Snp {
         for source in &self.verifier_config.vcek_sources {
             let result = match source {
                 VCEKSource::OfflineStore { path } => {
-                    self.fetch_vcek_from_offline_store(att_report, &proc_gen, path.clone())
+                    self.fetch_vcek_from_offline_store(att_report, proc_gen, path.clone())
                 }
                 VCEKSource::KDS { base_url } => {
-                    self.fetch_vcek_from_kds(att_report, &proc_gen, base_url.clone())
+                    self.fetch_vcek_from_kds(att_report, proc_gen, base_url.clone())
                         .await
                 }
             };
@@ -169,12 +169,12 @@ impl Snp {
     fn fetch_vcek_from_offline_store(
         &self,
         att_report: AttestationReport,
-        proc_gen: &ProcessorGeneration,
+        proc_gen: ProcessorGeneration,
         path: Option<String>,
     ) -> Result<Vec<u8>> {
         // default dir should contain the /vcek segment
         let path = path.unwrap_or(KDS_OFFLINE_STORE_PATH.to_string());
-        let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen.clone());
+        let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen);
         let vcek_path = format!("{}/vcek/{}/vcek.der", path, hw_id);
         let vcek_bytes = std::fs::read(&vcek_path)
             .with_context(|| format!("Failed to read VCEK from offline store at {}", vcek_path))?;
@@ -200,7 +200,7 @@ impl Snp {
     async fn fetch_vcek_from_kds(
         &self,
         att_report: AttestationReport,
-        proc_gen: &ProcessorGeneration,
+        proc_gen: ProcessorGeneration,
         kds_url: Option<String>,
     ) -> Result<Vec<u8>> {
         // Use attestation report to get data for URL
@@ -208,7 +208,7 @@ impl Snp {
             bail!("Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request VCEK from KDS.");
         }
 
-        let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen.clone());
+        let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen);
 
         // Request VCEK from KDS
         let vcek_url: String = match proc_gen {
@@ -320,7 +320,8 @@ pub(crate) struct VendorCertificates {
     pub(crate) asvk: Certificate,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display, EnumIter, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display, EnumIter, Hash, Serialize, Copy)]
+#[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "PascalCase", ascii_case_insensitive)]
 pub(crate) enum ProcessorGeneration {
     /// 3rd Gen AMD EPYC Processor (Standard)
@@ -438,7 +439,7 @@ impl Verifier for Snp {
             _ => {
                 // Get VCEK from configured sources (tries each in order)
                 let vcek_buf = self
-                    .fetch_vcek(report, proc_gen.clone())
+                    .fetch_vcek(report, proc_gen)
                     .await
                     .context("Failed to fetch VCEK from any configured source")?;
                 let vcek = Certificate::from_bytes(&vcek_buf)
@@ -499,7 +500,7 @@ impl Verifier for Snp {
             }
         }
 
-        let claims_map = parse_tee_evidence(&report);
+        let claims_map = parse_tee_evidence(&report, proc_gen);
         let json = json!(claims_map);
         Ok(vec![(json, "cpu".to_string())])
     }
@@ -597,33 +598,125 @@ pub(crate) fn verify_report_tcb(
 /// Parses the attestation report and extracts the TEE evidence claims.
 /// Returns a JSON-formatted map of parsed claims.
 /// Note: Uses hex encoding for consistency with other verifiers (TDX, SGX, vTPM).
-pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
-    let claims_map = json!({
-        // policy fields
+pub(crate) fn parse_tee_evidence(
+    report: &AttestationReport,
+    proc_gen: ProcessorGeneration,
+) -> TeeEvidenceParsedClaim {
+    let policy = json!({
+        "abi_major": report.policy.abi_major(),
+        "abi_minor": report.policy.abi_minor(),
+        "smt_allowed": report.policy.smt_allowed(),
+        "migrate_ma_allowed": report.policy.migrate_ma_allowed(),
+        "debug_allowed": report.policy.debug_allowed(),
+        "single_socket_required": report.policy.single_socket_required(),
+        "cxl_allowed": report.policy.cxl_allowed(),
+        "mem_aes_256_xts": report.policy.mem_aes_256_xts(),
+        "rapl_dis": report.policy.rapl_dis(),
+        "ciphertext_hiding": report.policy.ciphertext_hiding(),
+        "page_swap_disabled": report.policy.page_swap_disabled(),
+    });
+    let current_tcb = json!({
+        "fmc": report.current_tcb.fmc,
+        "bootloader": report.current_tcb.bootloader,
+        "tee": report.current_tcb.tee,
+        "snp": report.current_tcb.snp,
+        "microcode": report.current_tcb.microcode,
+    });
+    let plat_info = json!({
+        "smt_enabled": report.plat_info.smt_enabled(),
+        "tsme_enabled": report.plat_info.tsme_enabled(),
+        "ecc_enabled": report.plat_info.ecc_enabled(),
+        "rapl_disabled": report.plat_info.rapl_disabled(),
+        "ciphertext_hiding_enabled": report.plat_info.ciphertext_hiding_enabled(),
+        "alias_check_complete": report.plat_info.alias_check_complete(),
+        "tio_enabled": report.plat_info.tio_enabled(),
+    });
+    let key_info = json!({
+        "author_key_en": report.key_info.author_key_en(),
+        "mask_chip_key": report.key_info.mask_chip_key(),
+        "signing_key": report.key_info.signing_key(),
+    });
+    let reported_tcb = json!({
+        "fmc": report.reported_tcb.fmc,
+        "bootloader": report.reported_tcb.bootloader,
+        "tee": report.reported_tcb.tee,
+        "snp": report.reported_tcb.snp,
+        "microcode": report.reported_tcb.microcode,
+    });
+    let committed_tcb = json!({
+        "fmc": report.committed_tcb.fmc,
+        "bootloader": report.committed_tcb.bootloader,
+        "tee": report.committed_tcb.tee,
+        "snp": report.committed_tcb.snp,
+        "microcode": report.committed_tcb.microcode,
+    });
+    let current = json!({
+        "major": report.current.major,
+        "minor": report.current.minor,
+        "build": report.current.build,
+    });
+    let committed = json!({
+        "major": report.committed.major,
+        "minor": report.committed.minor,
+        "build": report.committed.build,
+    });
+    let launch_tcb = json!({
+        "fmc": report.launch_tcb.fmc,
+        "bootloader": report.launch_tcb.bootloader,
+        "tee": report.launch_tcb.tee,
+        "snp": report.launch_tcb.snp,
+        "microcode": report.launch_tcb.microcode,
+    });
+    let evidence = json!({
+        "version": report.version,
+        "guest_svn": report.guest_svn,
+        "policy": policy,
+        "family_id": hex::encode(report.family_id),
+        "image_id": hex::encode(report.image_id),
+        "vmpl": report.vmpl,
+        "sig_algo": report.sig_algo,
+        "current_tcb": current_tcb,
+        "plat_info": plat_info,
+        "key_info": key_info,
+        "measurement": hex::encode(report.measurement),
+        "report_data": hex::encode(report.report_data),
+        "host_data": hex::encode(report.host_data),
+        "id_key_digest": hex::encode(report.id_key_digest),
+        "author_key_digest": hex::encode(report.author_key_digest),
+        "report_id": hex::encode(report.report_id),
+        "report_id_ma": hex::encode(report.report_id_ma),
+        "reported_tcb": reported_tcb,
+        "cpu_id_fam_id": report.cpuid_fam_id,
+        "cpu_id_mod_id": report.cpuid_mod_id,
+        "cpu_id_step": report.cpuid_step,
+        "chip_id": hex::encode(report.chip_id),
+        "committed_tcb": committed_tcb,
+        "current": current,
+        "committed": committed,
+        "launch_tcb": launch_tcb,
+        "launch_mit_vector": report.launch_mit_vector,
+        "current_mit_vector": report.current_mit_vector,
+    });
+
+    json!({
+        "init_data": hex::encode(report.host_data),
+        "report_data": hex::encode(report.report_data),
+        "measurement": hex::encode(report.measurement),
         "policy_abi_major": report.policy.abi_major(),
         "policy_abi_minor": report.policy.abi_minor(),
         "policy_smt_allowed": report.policy.smt_allowed(),
         "policy_migrate_ma": report.policy.migrate_ma_allowed(),
         "policy_debug_allowed": report.policy.debug_allowed(),
         "policy_single_socket": report.policy.single_socket_required(),
-
-        // versioning info
         "reported_tcb_bootloader": report.reported_tcb.bootloader,
         "reported_tcb_tee": report.reported_tcb.tee,
         "reported_tcb_snp": report.reported_tcb.snp,
         "reported_tcb_microcode": report.reported_tcb.microcode,
-
-        // platform info
         "platform_tsme_enabled": report.plat_info.tsme_enabled(),
         "platform_smt_enabled": report.plat_info.smt_enabled(),
-
-        // measurements
-        "measurement": hex::encode(report.measurement),
-        "report_data": hex::encode(report.report_data),
-        "init_data": hex::encode(report.host_data),
-    });
-
-    claims_map as TeeEvidenceParsedClaim
+        "generation": proc_gen,
+        "evidence": evidence,
+    }) as TeeEvidenceParsedClaim
 }
 
 /// Extracts the common name (CN) from the subject name of a certificate.
@@ -995,12 +1088,22 @@ mod tests {
         let attestation_report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
 
         // Generate parsed claims
-        let claims = parse_tee_evidence(&attestation_report);
+        let claims = parse_tee_evidence(&attestation_report, ProcessorGeneration::Milan);
 
         // Extract the three key fields that should be hex-encoded
         let measurement = claims.get("measurement").and_then(|v| v.as_str()).unwrap();
-        let report_data = claims.get("report_data").and_then(|v| v.as_str()).unwrap();
-        let init_data = claims.get("init_data").and_then(|v| v.as_str()).unwrap();
+        let evidence_measurement = claims
+            .pointer("/evidence/measurement")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        let report_data = claims
+            .pointer("/report_data")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        let init_data = claims
+            .pointer("/init_data")
+            .and_then(|v| v.as_str())
+            .unwrap();
 
         // Verify they are valid hex strings by checking:
         // 1. All characters are valid hex digits (0-9, a-f)
@@ -1016,6 +1119,33 @@ mod tests {
             measurement.chars().all(|c| c.is_ascii_hexdigit()),
             "measurement should only contain hex digits"
         );
+        assert_eq!(
+            measurement, evidence_measurement,
+            "legacy and detailed measurement claims should match"
+        );
+        for (legacy_claim, detailed_claim) in [
+            ("policy_debug_allowed", "/evidence/policy/debug_allowed"),
+            ("policy_migrate_ma", "/evidence/policy/migrate_ma_allowed"),
+            (
+                "policy_single_socket",
+                "/evidence/policy/single_socket_required",
+            ),
+            ("platform_smt_enabled", "/evidence/plat_info/smt_enabled"),
+            ("platform_tsme_enabled", "/evidence/plat_info/tsme_enabled"),
+            (
+                "reported_tcb_bootloader",
+                "/evidence/reported_tcb/bootloader",
+            ),
+            ("reported_tcb_tee", "/evidence/reported_tcb/tee"),
+            ("reported_tcb_snp", "/evidence/reported_tcb/snp"),
+            ("reported_tcb_microcode", "/evidence/reported_tcb/microcode"),
+        ] {
+            assert_eq!(
+                claims.get(legacy_claim),
+                claims.pointer(detailed_claim),
+                "{legacy_claim} should match {detailed_claim}"
+            );
+        }
 
         // report_data is 64 bytes -> 128 hex chars
         assert_eq!(
