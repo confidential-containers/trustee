@@ -1,4 +1,4 @@
-# Offline AMD VCEK Caching Guide
+# Offline AMD VCEK Store Guide
 
 This document describes the process to pre-load VCEKs (Versioned Chip
 Endorsement Keys) into the trustee environment to allow normal attestation
@@ -40,27 +40,47 @@ Update the attestation configuration file to use a predefined vcek store:
 ```
 
 With the `OfflineStore` configuration specified, Trustee will inspect the
-configured directory for VCEK values following the following format:
+configured directory for VCEK values.
 
+Given an attestation report, trustee will search first:
 ```
+# Preferred (TCB-based filename, when present):
+/opt/confidential-containers/attestation-service/kds-store/vcek/{hwid}/{tcb_prefix}_vcek.der
+```
+
+And if that lookup fails, the legacy flat format will be searched:
+```
+# Fallback (legacy flat layout):
 /opt/confidential-containers/attestation-service/kds-store/vcek/{hwid}/vcek.der
 ```
 
-Where `{hwid}` is the hardware ID of the AMD EPYC server in lowercase hexadecimal.
+Where:
+- `{hwid}` is the hardware ID of the AMD EPYC server in lowercase hexadecimal
+- `{tcb_prefix}` is a TCB-parameter-based filename prefix in the format:
+  - For non-Turin processors: `bl{BL}_tee{TEE}_snp{SNP}_ucode{UCODE}`
+  - For Turin processors: the above with `_fmc{FMC}` appended
+
+  Each parameter is zero-padded to 2 digits (e.g., `bl02_tee00_snp06_ucode21`)
 
 ### 2. Create and Populate VCEK directory
 
-Create a `vcek` directory populated with the following structure:
+Create a `vcek` directory populated with one of the following structures per
+hardware ID. The TCB-prefixed filename is recommended, to allow loading multiple VCEKs per host.
 
 ```
 vcek/
 ├── <Hex hardware ID>/ (ID must be lowercase)
-│   └── vcek.der (cert pre-downloaded from kdsintf.amd.com)
+│   ├── vcek.der                          # flat layout (fallback)
+│   └── <TCB prefix>_vcek.der             # optional, preferred when present
 ├── <Hex hardware ID>/
 │   └── vcek.der
-├── <Hex hardware ID>/
-    └── vcek.der
+└── <Hex hardware ID>/
+    └── <TCB prefix>_vcek.der
 ```
+
+The `<TCB prefix>` is derived from the certificate's TCB parameters and follows
+the format `bl{BL}_tee{TEE}_snp{SNP}_ucode{UCODE}` (with `_fmc{FMC}` appended for Turin
+processors). For example: `bl02_tee00_snp06_ucode21_vcek.der`
 
 Trustee requires one unique certificate per physical AMD EPYC server that the
 KBS will be servicing. The server's hardware ID and certificate's URL can be
@@ -77,10 +97,20 @@ https://kdsintf.amd.com/vcek/{version}/{machine}/{product_name}/{hwid}?{params}
 ```
 
 You may download it from a browser by pasting that URL, or you can run
-the following command on any server with network access to AMD's KDS.
+the following command on the SNP host itself (it derives the URL from the
+local firmware). Requires network access to AMD's KDS.
 ```
-sudo snphost fetch vcek der .
+sudo snphost fetch vek der .
 ```
+
+To fetch from a different machine (e.g. a build box), pass the URL explicitly
+so the cert matches the originating host's firmware rather than the local one:
+```
+sudo snphost fetch vek der . "<vcek-url>"
+```
+
+> [!Note]
+> Older versions of `snphost` use `snphost fetch vcek` instead of `vek`. However it's recommended to update to the latest version of `snphost`.
 
 > [!IMPORTANT]
 > - Note that the VCEK URL is specific to the hardware AMD firmware of the
@@ -94,7 +124,7 @@ sudo snphost fetch vcek der .
 
 Use docker commands to copy your `vcek` folder into the configured directory:
 ```
-sudo docker exec -it trustee-as-1 mkdir -p /opt/confidential-containers/attestation-service/kds-store/
+sudo docker exec trustee-as-1 mkdir -p /opt/confidential-containers/attestation-service/kds-store/
 sudo docker cp ./vcek/ trustee-as-1:/opt/confidential-containers/attestation-service/kds-store/vcek/
 ```
 
@@ -120,27 +150,39 @@ ssh privileged-user@epyc-host "sudo snphost show vcek-url" >> urls.txt
 
 On a system with network access to AMD KDS:
 ```bash
-
-# Create the vcek folder that will be copied to trustee
 mkdir vcek
+# qval <tcb-key> <query-string>: extract the SPL value for a TCB key
+qval() { grep -oP "$1SPL=\K[0-9]+" <<<"$2"; }
 
-# Fetch certificates using the above URLs file
-# There should be one line for each EPYC host that kds will service
-cat urls.txt | while read line; do
-  hwid="$(echo "$line" | cut -d/ -f7 | cut -d'?' -f1 | tr '[:upper:]' '[:lower:]')"
-  mkdir vcek/$hwid
-  cd vcek/$hwid
-  sudo snphost fetch vcek der .
-  cd ../..
-done
+# url_hwid <vcek-url>: derive the lowercase hardware ID from the URL path
+url_hwid() { tr '[:upper:]' '[:lower:]' <<<"${1##*/}" | cut -d'?' -f1; }
 
-# Copy the archive to your air-gapped trustee attestation-service deployment
+while read -r url; do
+  hwid=$(url_hwid "$url")
+  query="${url#*\?}"  # If no '?', yields whole URL; produces flat layout below
+
+  tcb_prefix=""
+  for key in bl tee snp ucode fmc; do
+    val=$(qval "$key" "$query") || continue
+    tcb_prefix+="${tcb_prefix:+_}${key}$(printf '%02d' "$((10#$val))")"
+  done
+
+  mkdir -p "vcek/$hwid"
+  # snphost writes to vcek.der in the given directory; rename to the
+  # TCB-prefixed filename. If no TCB params were parsed, keep the flat name.
+  (
+    cd "vcek/$hwid" || exit 1
+    sudo snphost fetch vek der . "$url"
+    [ -n "$tcb_prefix" ] && mv vcek.der "${tcb_prefix}_vcek.der"
+  )
+done < urls.txt
+
 scp -r vcek user@target-host:/path/to/trustee
 ```
 
 On the air-gapped trustee attestation-service host:
 ```bash
-# Update as-config.json to enable Disk Caching
+# Update as-config.json to enable the offline VCEK store
 cd /path/to/trustee
 vi kbs/config/docker-compose/as-config.json
 # Update the verifier_config section to:
@@ -158,7 +200,7 @@ vi kbs/config/docker-compose/as-config.json
 docker compose up -d
 
 # Copy the vcek store into the running attestation service container
-sudo docker exec -it trustee-as-1 mkdir -p /opt/confidential-containers/attestation-service/kds-store/
+sudo docker exec trustee-as-1 mkdir -p /opt/confidential-containers/attestation-service/kds-store/
 sudo docker cp ./vcek/ trustee-as-1:/opt/confidential-containers/attestation-service/kds-store/vcek/
 
 # Alternative to docker copy would be to add the following shared mount to
