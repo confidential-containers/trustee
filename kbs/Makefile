@@ -2,6 +2,7 @@ AS_TYPE ?= coco-as
 ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= true
+GCP ?= false
 EXTERNAL_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
@@ -59,6 +60,10 @@ endif
 
 ifeq ($(VAULT), true)
   override FEATURES := $(FEATURES),vault
+endif
+
+ifeq ($(GCP), true)
+  override FEATURES := $(FEATURES),gcp
 endif
 
 ifeq ($(EXTERNAL_PLUGIN), true)

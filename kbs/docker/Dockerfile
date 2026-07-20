@@ -5,6 +5,7 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} \
 ARG ARCH=x86_64
 ARG ALIYUN=false
 ARG VAULT=true
+ARG GCP=false
 ARG EXTERNAL_PLUGIN=false
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -46,7 +47,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/trustee
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
     make ARCH=${ARCH} install-kbs
 
 # ubuntu:24.04
