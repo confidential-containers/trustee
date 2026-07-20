@@ -27,6 +27,10 @@ jobs:
           - name: tdx
             features: "--features tdx-attester"
             artifact: helm-e2e-kbs-client-tdx-linux-amd64
+          - name: snp
+            features: "--features snp-attester"
+            artifact: helm-e2e-kbs-client-snp-linux-amd64
+
     env:
       OS_VERSION: ubuntu-24.04
     steps:
