@@ -41,3 +41,18 @@ jobs:
       runs-on: '{"group":"tdx-vm"}'
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true
+
+  helm-trustee-e2e-snp:
+    name: Helm Trustee e2e (SNP)
+    needs: build-docker-e2e-materials
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'tee-e2e')
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: snp
+      runs-on: '{"group":"snp-vm"}'
+      client-artifact: helm-e2e-kbs-client-snp-linux-amd64
+      self-hosted: true
