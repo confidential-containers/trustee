@@ -3,6 +3,7 @@ ALIYUN ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= true
 GCP ?= false
+AWS ?= false
 EXTERNAL_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
@@ -64,6 +65,10 @@ endif
 
 ifeq ($(GCP), true)
   override FEATURES := $(FEATURES),gcp
+endif
+
+ifeq ($(AWS), true)
+  override FEATURES := $(FEATURES),aws
 endif
 
 ifeq ($(EXTERNAL_PLUGIN), true)
