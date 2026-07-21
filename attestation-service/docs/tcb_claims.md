@@ -223,6 +223,20 @@ The remote verifier exports the claims that come from NRAS, which are listed [he
 Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
 along with the full set of detached claims.
 
+## NVIDIA DPU (DICE)
+
+The NVIDIA DPU verifier validates attestation evidence using the TCG DICE
+(Device Identifier Composition Engine) certificate chain from BlueField DPUs.
+
+- `nvidia-dpu.device_serial`: Device serial number from DeviceID certificate
+- `nvidia-dpu.device_class`: Device class identifier (e.g. "bluefield3") from Subject CN
+- `nvidia-dpu.firmware_layers_count`: Number of FWID entries in TCG DICE TcbInfo extension
+- `nvidia-dpu.accumulated_fwid`: SHA-384 hash of concatenated firmware layer digests (hex-encoded)
+- `nvidia-dpu.alias_timestamp`: Alias certificate issuance timestamp (unix seconds)
+
+Note: `FirmwareLayer.name` and `FirmwareLayer.version` are informational only —
+not covered by TBS nor report_data_signature, thus not integrity-protected.
+
 ## AMD SEV-SNP
 
 - `snp.measurement` Launch Digest covering initial guest memory
