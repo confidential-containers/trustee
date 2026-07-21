@@ -47,6 +47,9 @@ pub(crate) mod intel_dcap;
 #[cfg(feature = "tpm-verifier")]
 pub mod tpm;
 
+#[cfg(feature = "nvidia-dpu-verifier")]
+pub mod nvidia_dpu;
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct VerifierConfig {
     #[cfg(feature = "nvidia-verifier")]
@@ -64,6 +67,9 @@ pub struct VerifierConfig {
         feature = "az-tdx-vtpm-verifier"
     ))]
     dcap_verifier: Option<intel_dcap::QcnlConfig>,
+
+    #[cfg(feature = "nvidia-dpu-verifier")]
+    nvidia_dpu_verifier: Option<nvidia_dpu::NvidiaDpuVerifierConfig>,
 }
 
 /// Build the [`Verifier`] for `tee`.
@@ -189,6 +195,18 @@ pub async fn to_verifier(
                     Ok(Box::<tpm::TpmVerifier>::default() as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `tpm-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
+
+        Tee::NvidiaDpu => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "nvidia-dpu-verifier")] {
+                    let config = _config.and_then(|c| c.nvidia_dpu_verifier)
+                        .context("nvidia_dpu_verifier config is required")?;
+                    Ok(Box::new(nvidia_dpu::NvidiaDpuVerifier::new(config)?) as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `nvidia-dpu-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
