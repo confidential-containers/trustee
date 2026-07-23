@@ -22,6 +22,12 @@ KBS_URL="http://127.0.0.1:8080"
 TEST_RESOURCE_FILE="${SCRIPT_DIR}/fixtures/test-resource.txt"
 RESOURCE_PATH="helm-e2e/test-repo/test-secret"
 
+# When set, additionally assert that the attestation evidence was produced by
+# this TEE type (e.g. "tdx", "snp", "sample"). This is what turns the leg into a
+# real end-to-end check of the hardware path rather than just a KBS round-trip.
+# Left empty by default so local runs and non-TEE callers keep working.
+EXPECTED_TEE="${EXPECTED_TEE:-}"
+
 WORK_DIR="$(mktemp -d)"
 ADMIN_TOKEN_FILE="${WORK_DIR}/admin-token"
 ROUNDTRIP_FILE="${WORK_DIR}/roundtrip.txt"
@@ -52,6 +58,25 @@ kbs_client() {
 	${KBS_CLIENT_SUDO} "${KBS_CLIENT}" "$@"
 }
 
+# Emit a resource policy that only releases resources when the attestation
+# evidence was produced by ${1}. The AS records each device's evidence under its
+# lowercase TEE name inside "ear.veraison.annotated-evidence", so requiring that
+# key to be present asserts the requester really attested as that TEE type.
+write_require_tee_policy() {
+	local tee="$1" out="$2"
+	cat >"${out}" <<EOF
+package policy
+import rego.v1
+
+default allow = false
+
+allow if {
+	some _, submod in input.submods
+	submod["ear.veraison.annotated-evidence"]["${tee}"]
+}
+EOF
+}
+
 wait_for_bootstrap_secret() {
 	local secret_name="trustee-e2e-bootstrap-user-keys"
 	local i
@@ -79,6 +104,43 @@ start_port_forward() {
 		sleep 1
 	done
 	die "KBS not reachable on 127.0.0.1:8080 after port-forward"
+}
+
+# Confirm the attester really runs on ${EXPECTED_TEE}. A positive check requires
+# the matching TEE type (resource must be released) and a negative check requires
+# a mismatched TEE type (resource must be denied), so we know the policy engine is
+# actually evaluating the evidence rather than releasing unconditionally.
+check_tee_type() {
+	local match_policy="${WORK_DIR}/require-tee.rego"
+	local mismatch_policy="${WORK_DIR}/require-wrong-tee.rego"
+
+	local mismatch_tee="noexist"
+
+	log "set resource policy (require TEE type: ${EXPECTED_TEE})"
+	write_require_tee_policy "${EXPECTED_TEE}" "${match_policy}"
+	kbs_client --url "${KBS_URL}" config \
+		--admin-token-file "${ADMIN_TOKEN_FILE}" \
+		set-resource-policy \
+		--policy-file "${match_policy}"
+
+	log "get resource (expect success: evidence is ${EXPECTED_TEE})"
+	kbs_client --url "${KBS_URL}" get-resource \
+		--path "${RESOURCE_PATH}" \
+		| base64 -d >"${ROUNDTRIP_FILE}"
+	diff -u "${TEST_RESOURCE_FILE}" "${ROUNDTRIP_FILE}"
+
+	log "set resource policy (require mismatched TEE type: ${mismatch_tee})"
+	write_require_tee_policy "${mismatch_tee}" "${mismatch_policy}"
+	kbs_client --url "${KBS_URL}" config \
+		--admin-token-file "${ADMIN_TOKEN_FILE}" \
+		set-resource-policy \
+		--policy-file "${mismatch_policy}"
+
+	log "get resource (expect failure: evidence is not ${mismatch_tee})"
+	if kbs_client --url "${KBS_URL}" get-resource \
+		--path "${RESOURCE_PATH}" >/dev/null 2>&1; then
+		die "get-resource succeeded but evidence should not match TEE type ${mismatch_tee}"
+	fi
 }
 
 main() {
@@ -114,6 +176,10 @@ main() {
 		--path "${RESOURCE_PATH}" \
 		| base64 -d >"${ROUNDTRIP_FILE}"
 	diff -u "${TEST_RESOURCE_FILE}" "${ROUNDTRIP_FILE}"
+
+	if [[ -n "${EXPECTED_TEE}" ]]; then
+		check_tee_type
+	fi
 
 	log "set resource policy (deny_all)"
 	kbs_client --url "${KBS_URL}" config \

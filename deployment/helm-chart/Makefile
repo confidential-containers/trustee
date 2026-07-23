@@ -9,6 +9,11 @@ REPO_ROOT := $(abspath ../..)
 CHART_DIR := $(abspath .)
 KBS_CLIENT ?= $(REPO_ROOT)/target/release/kbs-client
 
+# When set (e.g. EXPECTED_TEE=tdx), the e2e client additionally asserts that the
+# attestation evidence was produced by this TEE type, turning the leg into a real
+# hardware-path check. Empty by default so non-TEE / local runs are unaffected.
+EXPECTED_TEE ?=
+
 E2E_IMAGE_PREFIX ?= trustee-e2e
 E2E_IMAGE_TAG ?= e2e
 
@@ -35,6 +40,7 @@ HELM_E2E_IMAGE_ARGS := \
 	--set-string rvps.image.pullPolicy='Never'
 
 export KBS_CLIENT
+export EXPECTED_TEE
 
 .PHONY: e2e-test deploy undeploy test-client check-tools wait-ready \
 	check-docker helm-dependency-build helm-lint load-e2e-images-into-kind
