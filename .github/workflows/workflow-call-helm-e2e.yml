@@ -9,7 +9,11 @@ on:
       leg:
         type: string
         required: true
-        description: Leg name, used in the concurrency group and kind cluster name.
+        description: >-
+          Leg name, used in the concurrency group and kind cluster name. It must
+          be the lowercase TEE type of the leg (e.g. `tdx`, `snp`, `sample`): the
+          e2e client asserts that the attestation evidence was produced by this
+          TEE type, so the leg exercises the real hardware path.
       runs-on:
         type: string
         required: true
@@ -95,11 +99,14 @@ jobs:
             E2E_IMAGE_TAG=latest
 
       - name: Run Helm Trustee e2e
+        env:
+          EXPECTED_TEE: ${{ inputs.leg }}
         run: |
           make -C deployment/helm-chart e2e-test \
             E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
             E2E_IMAGE_TAG=latest \
-            KBS_CLIENT="${{ runner.temp }}/helm-e2e-kbs-client/kbs-client"
+            KBS_CLIENT="${{ runner.temp }}/helm-e2e-kbs-client/kbs-client" \
+            EXPECTED_TEE="${EXPECTED_TEE}"
 
       # Self-hosted cleanup so the runner is left in a known-good state.
       - name: Cleanup kind cluster
