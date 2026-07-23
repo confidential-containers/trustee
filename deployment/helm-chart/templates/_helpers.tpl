@@ -96,6 +96,13 @@ Each helper truncates `coco-trustee.fullname` to leave room for its suffix befor
 {{- define "coco-trustee.names.postgres" -}}
 {{- printf "%s-postgres" .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end }}
+{{/*
+Primary Service created by the Bitnami Valkey subchart (`<subchart fullname>-primary`,
+with `valkey.nameOverride: valkey` => `<release>-valkey-primary`).
+*/}}
+{{- define "coco-trustee.names.valkey" -}}
+{{- printf "%s-valkey-primary" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 {{- define "coco-trustee.names.postgresInitdb" -}}
 {{- printf "%s-postgres-initdb" .Chart.Name | trunc 63 | trimSuffix "-" -}}
 {{- end }}
@@ -123,6 +130,11 @@ Fixed workload ports (override only via undocumented values for advanced use).
 {{- $ports := dig "service" "ports" dict $pg }}
 {{- $gport := dig "postgresql" "service" "ports" "postgresql" "" (.Values.global | default dict) }}
 {{- default 5432 (coalesce $gport $ports.postgresql) }}
+{{- end }}
+{{- define "coco-trustee.port.valkey" -}}
+{{- $vk := (.Values.valkey | default dict) }}
+{{- $port := dig "primary" "service" "ports" "valkey" "" $vk }}
+{{- default 6379 $port }}
 {{- end }}
 
 {{/*
@@ -190,6 +202,37 @@ Unified storage backend type (single source: `storageBackend.type`).
 {{- $st := include "coco-trustee.storage.type" . | trim }}
 {{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
 {{- if or (eq $st "Postgres") (eq $st "postgres") (eq $sst "Postgres") (eq $sst "postgres") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.storage.storageBackendIsRedis" -}}
+{{- $st := include "coco-trustee.storage.type" . | trim }}
+{{- if or (eq $st "Redis") (eq $st "redis") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.kbs.sessionStorageIsRedis" -}}
+{{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+{{- if or (eq $sst "Redis") (eq $sst "redis") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.storage.needsRedis" -}}
+{{- $st := include "coco-trustee.storage.type" . | trim }}
+{{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
+{{- if or (eq $st "Redis") (eq $st "redis") (eq $sst "Redis") (eq $sst "redis") }}true{{- end }}
+{{- end }}
+
+{{- define "coco-trustee.redis.mode" -}}
+{{- $rd := ((.Values.storageBackend | default dict).redis | default dict) }}
+{{- $mode := default "internal" $rd.mode }}
+{{- lower $mode }}
+{{- end }}
+
+{{/*
+True when the Bitnami Valkey subchart should be used (in-cluster, non-external).
+*/}}
+{{- define "coco-trustee.valkey.useBitnami" -}}
+{{- $needsRedis := include "coco-trustee.storage.needsRedis" . | trim }}
+{{- $mode := include "coco-trustee.redis.mode" . | trim }}
+{{- if and (eq $needsRedis "true") (ne $mode "external") }}true{{- end }}
 {{- end }}
 
 {{- define "coco-trustee.postgres.mode" -}}
@@ -270,6 +313,9 @@ Fixed on-disk paths for LocalFs / LocalJson (match Trustee images and `key-value
 {{- define "coco-trustee.svc.postgres" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "coco-trustee.names.postgres" .) .Release.Namespace -}}
 {{- end }}
+{{- define "coco-trustee.svc.valkey" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "coco-trustee.names.valkey" .) .Release.Namespace -}}
+{{- end }}
 
 {{- define "coco-trustee.postgres.internalSecretName" -}}
 {{- printf "%s-postgres-auth" (include "coco-trustee.fullname" . | trunc 48 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
@@ -314,6 +360,52 @@ POSTGRES_URL
 {{- end }}
 
 {{/*
+Bundled Valkey credentials (mirror the Bitnami subchart `auth.*` keys, honoring `global.valkey.password`).
+*/}}
+{{- define "coco-trustee.valkey.internalSecretName" -}}
+{{- printf "%s-valkey-url" (include "coco-trustee.fullname" . | trunc 52 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+{{- define "coco-trustee.valkey.authEnabled" -}}
+{{- $auth := dig "auth" dict (.Values.valkey | default dict) }}
+{{- if (ternary $auth.enabled true (hasKey $auth "enabled")) }}true{{- end }}
+{{- end }}
+{{- define "coco-trustee.valkey.internalPassword" -}}
+{{- $auth := dig "auth" dict (.Values.valkey | default dict) }}
+{{- $gpassword := dig "valkey" "password" "" (.Values.global | default dict) }}
+{{- default "trustee" (coalesce $gpassword $auth.password) }}
+{{- end }}
+{{- define "coco-trustee.valkey.internalUrl" -}}
+{{- if eq (include "coco-trustee.valkey.authEnabled" . | trim) "true" -}}
+{{- printf "redis://:%s@%s:%s" (include "coco-trustee.valkey.internalPassword" .) (include "coco-trustee.svc.valkey" .) (include "coco-trustee.port.valkey" .) -}}
+{{- else -}}
+{{- printf "redis://%s:%s" (include "coco-trustee.svc.valkey" .) (include "coco-trustee.port.valkey" .) -}}
+{{- end -}}
+{{- end }}
+
+{{- define "coco-trustee.redisUrlSecretName" -}}
+{{- $rd := ((.Values.storageBackend | default dict).redis | default dict) }}
+{{- $ext := ($rd.external | default dict) }}
+{{- $mode := include "coco-trustee.redis.mode" . | trim }}
+{{- $needsRedis := include "coco-trustee.storage.needsRedis" . | trim }}
+{{- if and (eq $mode "external") (eq $needsRedis "true") -}}
+{{ required "storageBackend.redis.external.existingSecretName must be set when storageBackend.redis.mode=external" (trim (default "" $ext.existingSecretName)) }}
+{{- else -}}
+{{ include "coco-trustee.valkey.internalSecretName" . }}
+{{- end -}}
+{{- end }}
+
+{{- define "coco-trustee.redisUrlSecretKey" -}}
+{{- $rd := ((.Values.storageBackend | default dict).redis | default dict) }}
+{{- $ext := ($rd.external | default dict) }}
+{{- $mode := include "coco-trustee.redis.mode" . | trim }}
+{{- if eq $mode "external" -}}
+{{ required "storageBackend.redis.external.existingSecretKey must be set when storageBackend.redis.mode=external" (trim (default "" $ext.existingSecretKey)) }}
+{{- else -}}
+REDIS_URL
+{{- end -}}
+{{- end }}
+
+{{/*
 KBS session storage.
 */}}
 {{- define "coco-trustee.kbs.sessionStorageType" -}}
@@ -329,11 +421,14 @@ nothing (e.g. first dry-run), this block is omitted; run helm upgrade again afte
 {{- if .Values.dnsHostAliasWorkaround }}
 {{- $ns := .Release.Namespace }}
 {{- $pg := lookup "v1" "Service" $ns (include "coco-trustee.names.postgres" .) }}
+{{- $vk := lookup "v1" "Service" $ns (include "coco-trustee.names.valkey" .) }}
 {{- $rv := lookup "v1" "Service" $ns (include "coco-trustee.names.rvps" .) }}
 {{- $as := lookup "v1" "Service" $ns (include "coco-trustee.names.as" .) }}
 {{- $kbs := lookup "v1" "Service" $ns (include "coco-trustee.names.kbs" .) }}
 {{- $pgip := "" }}
 {{- if $pg }}{{ $pgip = default "" $pg.spec.clusterIP }}{{- end }}
+{{- $vkip := "" }}
+{{- if $vk }}{{ $vkip = default "" $vk.spec.clusterIP }}{{- end }}
 {{- $rvip := "" }}
 {{- if $rv }}{{ $rvip = default "" $rv.spec.clusterIP }}{{- end }}
 {{- $asip := "" }}
@@ -347,6 +442,12 @@ hostAliases:
     hostnames:
       - {{ include "coco-trustee.names.postgres" . | quote }}
       - {{ include "coco-trustee.svc.postgres" . | quote }}
+  {{- end }}
+  {{- if and $vk $vkip (ne $vkip "None") (eq (include "coco-trustee.valkey.useBitnami" . | trim) "true") }}
+  - ip: {{ $vkip | quote }}
+    hostnames:
+      - {{ include "coco-trustee.names.valkey" . | quote }}
+      - {{ include "coco-trustee.svc.valkey" . | quote }}
   {{- end }}
   - ip: {{ $rvip | quote }}
     hostnames:

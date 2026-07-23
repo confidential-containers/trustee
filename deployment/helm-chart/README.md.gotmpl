@@ -1,6 +1,6 @@
 # Trustee Helm Chart
 
-Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
+Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)) and **Valkey** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/valkey), a Redis-protocol store for KBS sessions). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
 
 ## Install
 
@@ -66,6 +66,50 @@ helm upgrade --install trustee ./deployment/helm-chart \
 ```
 
 When `storageBackend.postgres.mode=external`, the chart does **NOT** deploy the Bitnami subchart (`postgresql.enabled` stays `false`), even if Postgres is required by `storageBackend.type` or `sessionStorageType`.
+
+### Valkey (Redis protocol) for KBS sessions
+
+The KBS **`Redis`** session backend speaks the Redis wire protocol. The chart bundles **Valkey** (BSD-licensed) instead of Redis, whose license is no longer OSI-approved; any Redis-protocol-compatible service works. Storing sessions outside the KBS Pod allows running several KBS replicas.
+
+```bash
+helm dependency update ./deployment/helm-chart
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml
+```
+
+This enables the **Bitnami Valkey** subchart (`valkey.enabled: true`) and sets **`sessionStorageType: Redis`**. The chart writes the connection URL into a release-scoped Secret and injects it into KBS as **`REDIS_URL`**. The demo password defaults to `trustee` (override via `valkey.auth.password`). Sessions are short-lived, so the bundled Valkey runs `standalone` without a PVC by default (`valkey.primary.persistence.enabled: false`).
+
+The default Valkey image is pulled from **docker.io**, where anonymous pulls are rate-limited. Override the image source to use a private mirror:
+
+```bash
+helm upgrade --install trustee ./deployment/helm-chart ... \
+  -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml \
+  --set valkey.image.registry=mirror.example.com \
+  --set valkey.image.repository=bitnami/valkey \
+  --set valkey.image.tag=9.1.0
+```
+
+(A chart-wide `global.imageRegistry` is also honored by the Bitnami subcharts.)
+
+### External Redis-compatible service
+
+When an external Redis-compatible service is used, set **`storageBackend.redis.mode=external`**, pre-create a Secret with the connection URL, and point the chart at it:
+
+```bash
+kubectl create secret generic trustee-external-redis -n coco-trustee \
+  --from-literal=REDIS_URL='redis://:password@redis.example.com:6379'
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set sessionStorageType=Redis \
+  --set storageBackend.redis.mode=external \
+  --set storageBackend.redis.external.existingSecretName=trustee-external-redis \
+  --set storageBackend.redis.external.existingSecretKey=REDIS_URL
+```
+
+When `storageBackend.redis.mode=external`, the chart does **NOT** deploy the Valkey subchart (`valkey.enabled` stays `false`).
 
 ### Bring your own keys (BYOK)
 
@@ -206,7 +250,7 @@ make test-helm-e2e
 - **Local preloaded images**: `trustee-e2e/*:e2e`, `pullPolicy: Never` (not GHCR `:latest`)
 - **CI images**: reuses `docker-e2e-images-linux-amd64` from `workflow-call-build-docker-e2e-materials.yml` as `ghcr.io/confidential-containers/staged-images/*:latest`
 - **Storage**: bundled Postgres KV backend (`storageBackend.type: Postgres`)
-- **KBS sessions**: `sessionStorageType: Memory`
+- **KBS sessions**: bundled Valkey (`sessionStorageType: Redis`)
 
 Steps:
 

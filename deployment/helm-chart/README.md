@@ -1,6 +1,6 @@
 # Trustee Helm Chart
 
-Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
+Helm chart for [Confidential Containers](https://github.com/confidential-containers) **Trustee** on Kubernetes: **KBS**, **gRPC AS**, and **RVPS**, with optional bundled **PostgreSQL** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/postgresql)) and **Valkey** ([Bitnami chart](https://artifacthub.io/packages/helm/bitnami/valkey), a Redis-protocol store for KBS sessions). KBS is wired to remote **`coco_as_grpc`** Attestation Service.
 
 ## Install
 
@@ -66,6 +66,50 @@ helm upgrade --install trustee ./deployment/helm-chart \
 ```
 
 When `storageBackend.postgres.mode=external`, the chart does **NOT** deploy the Bitnami subchart (`postgresql.enabled` stays `false`), even if Postgres is required by `storageBackend.type` or `sessionStorageType`.
+
+### Valkey (Redis protocol) for KBS sessions
+
+The KBS **`Redis`** session backend speaks the Redis wire protocol. The chart bundles **Valkey** (BSD-licensed) instead of Redis, whose license is no longer OSI-approved; any Redis-protocol-compatible service works. Storing sessions outside the KBS Pod allows running several KBS replicas.
+
+```bash
+helm dependency update ./deployment/helm-chart
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml
+```
+
+This enables the **Bitnami Valkey** subchart (`valkey.enabled: true`) and sets **`sessionStorageType: Redis`**. The chart writes the connection URL into a release-scoped Secret and injects it into KBS as **`REDIS_URL`**. The demo password defaults to `trustee` (override via `valkey.auth.password`). Sessions are short-lived, so the bundled Valkey runs `standalone` without a PVC by default (`valkey.primary.persistence.enabled: false`).
+
+The default Valkey image is pulled from **docker.io**, where anonymous pulls are rate-limited. Override the image source to use a private mirror:
+
+```bash
+helm upgrade --install trustee ./deployment/helm-chart ... \
+  -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml \
+  --set valkey.image.registry=mirror.example.com \
+  --set valkey.image.repository=bitnami/valkey \
+  --set valkey.image.tag=9.1.0
+```
+
+(A chart-wide `global.imageRegistry` is also honored by the Bitnami subcharts.)
+
+### External Redis-compatible service
+
+When an external Redis-compatible service is used, set **`storageBackend.redis.mode=external`**, pre-create a Secret with the connection URL, and point the chart at it:
+
+```bash
+kubectl create secret generic trustee-external-redis -n coco-trustee \
+  --from-literal=REDIS_URL='redis://:password@redis.example.com:6379'
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set sessionStorageType=Redis \
+  --set storageBackend.redis.mode=external \
+  --set storageBackend.redis.external.existingSecretName=trustee-external-redis \
+  --set storageBackend.redis.external.existingSecretKey=REDIS_URL
+```
+
+When `storageBackend.redis.mode=external`, the chart does **NOT** deploy the Valkey subchart (`valkey.enabled` stays `false`).
 
 ### Bring your own keys (BYOK)
 
@@ -290,8 +334,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | rvps.tolerations | list | `[]` | Tolerations for scheduling RVPS Pods onto tainted nodes. |
 | secrets.existingSecretName | string | `""` | Required when `useEphemeralGeneratedKeys=false`. Secret must contain `KBS_ADMIN_PRIVATE_KEY`, `KBS_ADMIN_PUBKEY`, `AS_TOKEN_SIGNING_PRIVATE_KEY`, and `AS_TOKEN_VERIFICATION_PUBLIC_KEY_CERT_CHAIN`. Optionally include `KBS_ADMIN_TOKEN` (see `kbs/config/docker-compose/setup.sh` for claim layout). |
 | secrets.useEphemeralGeneratedKeys | bool | `true` | When `true`, a pre-install/pre-upgrade hook generates demo keys into a release-scoped Secret; when `false`, you must pre-create a Secret and set `existingSecretName`. |
-| sessionStorageType | string | `"Memory"` | KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`. |
-| storageBackend | object | `{"localFs":{"persistence":{"as":"","kbs":"","rvps":""}},"localJson":{"persistence":{"as":"","kbs":"","rvps":""}},"postgres":{"external":{"existingSecretKey":"","existingSecretName":""},"internal":{"initKvTables":true},"mode":"internal"},"type":"LocalFs"}` | Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config). |
+| sessionStorageType | string | `"Memory"` | KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, `Postgres`, or `Redis`. When empty, follows `storageBackend.type`. `Redis` speaks the Redis protocol and is served by the bundled Valkey subchart (or an external Redis-compatible service). |
+| storageBackend | object | `{"localFs":{"persistence":{"as":"","kbs":"","rvps":""}},"localJson":{"persistence":{"as":"","kbs":"","rvps":""}},"postgres":{"external":{"existingSecretKey":"","existingSecretName":""},"internal":{"initKvTables":true},"mode":"internal"},"redis":{"external":{"existingSecretKey":"","existingSecretName":""},"mode":"internal"},"type":"LocalFs"}` | Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config). |
 | storageBackend.localFs.persistence.as | string | `""` | PVC claim name for AS local storage; empty uses `emptyDir`. |
 | storageBackend.localFs.persistence.kbs | string | `""` | PVC claim name for KBS local storage; empty uses `emptyDir`. |
 | storageBackend.localFs.persistence.rvps | string | `""` | PVC claim name for RVPS local storage; empty uses `emptyDir`. |
@@ -302,7 +346,24 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | storageBackend.postgres.external.existingSecretName | string | `""` | Required when `mode` is `external`: Secret containing the Postgres URL. |
 | storageBackend.postgres.internal.initKvTables | bool | `true` | When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`. |
 | storageBackend.postgres.mode | string | `"internal"` | Postgres source: `internal` (Bitnami subchart) or `external` (pre-created Secret). |
+| storageBackend.redis.external.existingSecretKey | string | `""` | Required when `mode` is `external`: Secret key name for the Redis URL. |
+| storageBackend.redis.external.existingSecretName | string | `""` | Required when `mode` is `external`: Secret containing the Redis URL (e.g. `redis://:password@redis.example.com:6379`). |
+| storageBackend.redis.mode | string | `"internal"` | Redis-protocol source: `internal` (Bitnami Valkey subchart) or `external` (pre-created Secret with a Redis URL). |
 | storageBackend.type | string | `"LocalFs"` | Backend type: `LocalFs`, `LocalJson`, `Postgres`, or `Memory`. When `Postgres` (or `sessionStorageType` is `Postgres`), the chart injects `POSTGRES_URL`. Only settings for the selected type take effect. |
+| valkey | object | `{"architecture":"standalone","auth":{"enabled":true,"password":"trustee"},"enabled":false,"image":{"pullPolicy":"IfNotPresent","registry":"registry-1.docker.io","repository":"bitnami/valkey","tag":"latest"},"nameOverride":"valkey","primary":{"persistence":{"enabled":false},"resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"service":{"ports":{"valkey":6379}}}}` | [Bitnami Valkey](https://artifacthub.io/packages/helm/bitnami/valkey) subchart, a Redis-protocol-compatible store used for the KBS `Redis` session backend (Valkey is BSD-licensed; it replaces Redis, whose license is no longer OSI-approved). Set `enabled: true` when the bundled store is required (`storageBackend.redis.mode=internal` and `sessionStorageType` or `storageBackend.type` is `Redis`; see `scenarios/valkey-sessions.yaml`). Additional subchart keys (metrics, replication, TLS, and so on) are supported; see upstream docs. |
+| valkey.architecture | string | `"standalone"` | Single Valkey primary; sessions do not need replicas. Set `replication` plus `replica.*` keys for HA (see upstream docs). |
+| valkey.auth.enabled | bool | `true` | Require a password for the bundled Valkey (also used for the Trustee `REDIS_URL` Secret). |
+| valkey.auth.password | string | `"trustee"` | Bundled Valkey password (also used for the Trustee `REDIS_URL` Secret). |
+| valkey.enabled | bool | `false` | Enable the Bitnami Valkey subchart. Must be `true` when `storageBackend.redis.mode=internal` and Redis storage is required. |
+| valkey.image | object | `{"pullPolicy":"IfNotPresent","registry":"registry-1.docker.io","repository":"bitnami/valkey","tag":"latest"}` | Bundled Valkey container image. The default comes from `docker.io`, where anonymous pulls are rate-limited; point `registry`/`repository` at a private mirror to avoid pull failures (a chart-wide `global.imageRegistry` is also honored by the subchart). |
+| valkey.image.pullPolicy | string | `"IfNotPresent"` | Valkey image pull policy. |
+| valkey.image.registry | string | `"registry-1.docker.io"` | Valkey image registry; override with a mirror to avoid docker.io rate limits. |
+| valkey.image.repository | string | `"bitnami/valkey"` | Valkey image repository. |
+| valkey.image.tag | string | `"latest"` | Valkey image tag. |
+| valkey.nameOverride | string | `"valkey"` | Subchart name override; the primary Service becomes `{Helm release}-valkey-primary`. |
+| valkey.primary.persistence.enabled | bool | `false` | KBS sessions are short-lived, so the bundled Valkey defaults to no PVC; set `true` (plus optional `storageClass`/`size`) to persist sessions across Pod restarts. |
+| valkey.primary.resources | object | `{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | CPU/memory requests and limits for the bundled Valkey primary. |
+| valkey.primary.service.ports.valkey | int | `6379` | Bundled Valkey Service port (used in `REDIS_URL`). |
 
 ## End-to-end test
 
@@ -319,7 +380,7 @@ make test-helm-e2e
 - **Local preloaded images**: `trustee-e2e/*:e2e`, `pullPolicy: Never` (not GHCR `:latest`)
 - **CI images**: reuses `docker-e2e-images-linux-amd64` from `workflow-call-build-docker-e2e-materials.yml` as `ghcr.io/confidential-containers/staged-images/*:latest`
 - **Storage**: bundled Postgres KV backend (`storageBackend.type: Postgres`)
-- **KBS sessions**: `sessionStorageType: Memory`
+- **KBS sessions**: bundled Valkey (`sessionStorageType: Redis`)
 
 Steps:
 

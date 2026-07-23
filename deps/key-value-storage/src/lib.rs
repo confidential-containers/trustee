@@ -146,6 +146,11 @@ impl KeyValueStorageStructConfig {
             KeyValueStorageType::Memory => {
                 Ok(Arc::new(memory::MemoryKeyValueStorage::default()) as _)
             }
+            // Reachable only when a backend's cargo feature is disabled.
+            #[allow(unreachable_patterns)]
+            other => Err(KeyValueStorageError::InvalidConfiguration {
+                message: format!("storage type {other:?} is not enabled in this build"),
+            }),
         }
     }
 

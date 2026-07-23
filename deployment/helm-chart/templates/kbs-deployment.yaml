@@ -73,6 +73,13 @@ spec:
                   name: {{ $pgurl }}
                   key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
             {{- end }}
+            {{- if eq (include "coco-trustee.storage.needsRedis" . | trim) "true" }}
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.redisUrlSecretName" . | trim }}
+                  key: {{ include "coco-trustee.redisUrlSecretKey" . }}
+            {{- end }}
             {{- with .Values.kbs.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
