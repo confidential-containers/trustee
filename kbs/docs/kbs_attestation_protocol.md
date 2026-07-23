@@ -727,6 +727,29 @@ format is used for that purpose:
   "detail": "$detail"
 }
 ```
+> **Note:** the `type` field is an identifier string, not a functioning
+> hyperlink. The URL is not resolvable; it exists to namespace the error
+> type and follows RFC 7807 convention.
+
+`<problem-type>` is one of the following values, defined in
+[`kbs/src/error.rs`](https://github.com/confidential-containers/trustee/blob/main/kbs/src/error.rs):
+
+| Error type                      | HTTP status | Description                                                          |
+| -------------------------------- | ----------- | ---------------------------------------------------------------------|
+| `AdminAuth`                     | 401         | Admin authentication failed for an administrative API endpoint.      |
+| `AttestationError`              | 401         | An error occurred during the attestation process.                    |
+| `HTTPFailed`                    | 401         | The HTTP server failed to initialize.                                |
+| `HTTPSFailed`                   | 401         | The HTTPS server failed to initialize.                                |
+| `InvalidRequestPath`            | 404         | The request path does not correspond to a valid resource.            |
+| `JweError`                      | 401         | Failed to build the JWE-encrypted resource response.                 |
+| `PluginManagerInitialization`   | 401         | The plugin manager failed to initialize.                             |
+| `PluginNotFound`                | 404         | The requested plugin was not found.                                  |
+| `PluginInternalError`           | 401         | An internal error occurred inside a plugin.                          |
+| `PolicyDeny`                    | 401         | Access was denied by the attestation or resource policy.             |
+| `PolicyEngine`                  | 401         | An error occurred in the policy engine.                              |
+| `SerdeError`                    | 401         | Failed to serialize or deserialize a JSON payload.                   |
+| `TokenNotFound`                 | 401         | No attestation token was found in the request.                       |
+| `TokenVerifierError`            | 401         | The provided attestation token failed verification.                  |
 
 ## OpenAPI Description
 
