@@ -342,6 +342,9 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
             (P521_CURVE, ECDH_ES_A256KW) => ecdh_es_a256kw_p521(x, y, payload_data),
             (crv, alg) => bail!("curve {crv} and algorithm {alg} is not supported"),
         },
+        TeePubKey::AKP { alg, .. } => {
+            bail!("AKP key type (algorithm {alg}) is not yet supported for JWE key wrapping")
+        }
     }
 }
 
