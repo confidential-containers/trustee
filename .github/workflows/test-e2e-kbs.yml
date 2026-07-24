@@ -214,7 +214,7 @@ jobs:
     permissions:
       contents: read
     with:
-      leg: amd64
+      leg: sample
       runs-on: '["ubuntu-24.04"]'
       client-artifact: helm-e2e-kbs-client-linux-amd64
       self-hosted: false
