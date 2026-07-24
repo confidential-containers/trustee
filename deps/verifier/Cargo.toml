@@ -56,6 +56,7 @@ cca-verifier = ["ear", "jsonwebtoken", "veraison-apiclient", "ccatoken"]
 se-verifier = ["openssl", "pv", "serde_with", "tokio/sync"]
 nvidia-verifier = ["jsonwebtoken", "asn1-rs", "openssl", "x509-parser"]
 tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
+nvidia-dpu-verifier = ["p384", "serde_with", "x509-parser"]
 
 [dependencies]
 anyhow.workspace = true
@@ -86,6 +87,7 @@ key-value-storage = { path = "../key-value-storage", default-features = false }
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 openssl = { workspace = true, optional = true }
+p384 = { version = "0.13", features = ["ecdsa", "pem"], optional = true }
 pv = { version = "0.12.0", package = "s390_pv", optional = true }
 scroll = { version = "0.13.0", default-features = false, features = [
     "derive",

@@ -601,7 +601,7 @@ dependencies = [
  "const_format",
  "crypto",
  "hex",
- "kbs-types",
+ "kbs-types 0.15.0",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -630,7 +630,7 @@ dependencies = [
  "ear",
  "hex",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.17.0",
  "key-value-storage",
  "mobc",
  "openssl",
@@ -684,7 +684,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
  "iocuddle 0.2.0",
- "kbs-types",
+ "kbs-types 0.15.0",
  "num-traits",
  "nv-attestation-sdk",
  "occlum_dcap",
@@ -2117,7 +2117,7 @@ dependencies = [
  "base64 0.22.1",
  "concat-kdf",
  "ctr 0.10.1",
- "kbs-types",
+ "kbs-types 0.15.0",
  "openssl",
  "p256",
  "p521",
@@ -4319,7 +4319,7 @@ dependencies = [
  "hex",
  "josekit",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.17.0",
  "key-value-storage",
  "kms",
  "mobc",
@@ -4394,6 +4394,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbs-types"
+version = "0.17.0"
+source = "git+https://github.com/confidential-containers/kbs-types?rev=b26f44e#b26f44e60a9d542290571c7354ed1855b279ee16"
+dependencies = [
+ "base64 0.22.1",
+ "ear",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sm3 0.4.2",
+ "strum 0.27.2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "kbs_protocol"
 version = "0.1.0"
 source = "git+https://github.com/confidential-containers/guest-components.git?rev=da8d93f2797088a5f0636c8c1eeb31da73784fe8#da8d93f2797088a5f0636c8c1eeb31da73784fe8"
@@ -4404,7 +4419,7 @@ dependencies = [
  "base64 0.22.1",
  "crypto",
  "jwt-simple",
- "kbs-types",
+ "kbs-types 0.15.0",
  "reqwest 0.13.4",
  "resource_uri",
  "serde",
@@ -8451,9 +8466,10 @@ dependencies = [
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
  "jsonwebtoken",
- "kbs-types",
+ "kbs-types 0.17.0",
  "key-value-storage",
  "openssl",
+ "p384",
  "reqwest 0.13.4",
  "reqwest-middleware",
  "rstest",
