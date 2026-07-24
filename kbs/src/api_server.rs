@@ -457,6 +457,7 @@ pub(crate) async fn api(
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
+
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

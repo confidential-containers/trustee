@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - instance: ubuntu-24.04
-            test_features: "pkcs11"
+            test_features: "pkcs11,pqc-experimental"
           - instance: ubuntu-24.04-arm
             test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester,pkcs11"
           - instance: s390x-large
