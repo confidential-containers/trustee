@@ -22,6 +22,8 @@ pub(crate) enum JwksGetError {
         #[source]
         source: anyhow::Error,
     },
+    #[error("HTTP source is not allowed when `insecure_public_key_uri` is false")]
+    HttpNotAllowed,
 }
 
 #[derive(Deserialize)]
@@ -32,10 +34,16 @@ pub(crate) struct OpenIDConfig {
 /// Load a JWK set from a configured source.
 ///
 /// - `file://` and local paths: JWKS JSON file, read directly.
-/// - `https://`: remote source. KBS tries to load JWKS from the configured URL directly; if that
+/// - `https://` and `http://`: remote source. KBS tries to load JWKS from the configured URL directly; if that
 ///   fails or returns no keys, it falls back to OpenID discovery at
 ///   `{uri}/.well-known/openid-configuration` and loads the returned `jwks_uri`.
-pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
+///
+/// Plaintext `http://` is rejected unless `insecure_public_key_uri` is true. This applies
+/// to the configured URL and any `jwks_uri` returned by OpenID discovery.
+pub async fn read_jwk_from_uri(
+    uri: &str,
+    insecure_public_key_uri: bool,
+) -> Result<JwkSet, JwksGetError> {
     let url = Url::parse(uri).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
         "file" => {
@@ -45,7 +53,10 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
                 source: Into::<anyhow::Error>::into(e).context("failed to deserialize JWK set"),
             })
         }
-        "https" => {
+        "https" | "http" => {
+            if url.scheme() == "http" && !insecure_public_key_uri {
+                return Err(JwksGetError::HttpNotAllowed);
+            }
             // Try to load a JWK set directly from the configured URL first.
             match get(uri)
                 .await
@@ -100,7 +111,7 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             Ok(jwks)
         }
         scheme => Err(JwksGetError::InvalidSourcePath(format!(
-            "unsupported scheme {scheme} (must be either file or https)"
+            "unsupported scheme {scheme} (must be either file or https or http)"
         ))),
     }
 }
@@ -134,7 +145,10 @@ mod tests {
     #[case("/does/not/exist/keys.jwks", true)]
     #[tokio::test]
     async fn test_source_path_validation(#[case] source_path: &str, #[case] expect_error: bool) {
-        assert_eq!(expect_error, read_jwk_from_uri(source_path).await.is_err())
+        assert_eq!(
+            expect_error,
+            read_jwk_from_uri(source_path, false).await.is_err()
+        )
     }
 
     #[rstest]
@@ -154,7 +168,7 @@ mod tests {
         std::fs::write(&jwks_file, json).expect("to get testdata written to tmpdir");
 
         let p = "file://".to_owned() + jwks_file.to_str().expect("to get path as str");
-        let jwtks = read_jwk_from_uri(&p).await.expect("to get jwks");
+        let jwtks = read_jwk_from_uri(&p, false).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
     }
