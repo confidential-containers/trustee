@@ -25,6 +25,10 @@ pub const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms"
 /// JSON key for selected hash algorithm in extra parameters
 pub const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 
+/// JSON key with which a client selects attestation policies in the extra
+/// parameters of an RCAR `Request`
+pub const POLICY_SELECTOR_JSON_KEY: &str = "policy-selector";
+
 /// Generate extra parameters for TEE hash algorithm negotiation.
 ///
 /// This function checks if the provided TEE parameters contain supported hash algorithms
