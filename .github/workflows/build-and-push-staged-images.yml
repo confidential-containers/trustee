@@ -25,7 +25,7 @@ jobs:
     name: Build staged images (all) [push]
     if: github.event_name == 'push'
     permissions:
-      packages: write
+      packages: write  # push container images to GHCR
       contents: read
     uses: ./.github/workflows/workflow-call-build-staged-images-push.yml
     with:
@@ -38,7 +38,7 @@ jobs:
     needs: build_staged_images_push
     if: github.event_name == 'push'
     permissions:
-      packages: write
+      packages: write  # push multi-arch manifests to GHCR
       contents: read
     uses: ./.github/workflows/workflow-call-publish-staged-manifests.yml
     with:

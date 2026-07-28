@@ -18,6 +18,7 @@ permissions: {}
 
 jobs:
   kbs:
+    name: Build KBS image
     if: inputs.image_group == 'kbs' || inputs.image_group == 'all'
     permissions:
       contents: read
@@ -84,6 +85,7 @@ jobs:
           push: false
 
   as:
+    name: Build AS image
     if: inputs.image_group == 'as' || inputs.image_group == 'all'
     permissions:
       contents: read
@@ -132,6 +134,7 @@ jobs:
           push: false
 
   rvps:
+    name: Build RVPS image
     if: inputs.image_group == 'rvps' || inputs.image_group == 'all'
     permissions:
       contents: read
@@ -162,6 +165,7 @@ jobs:
           push: false
 
   kbs-client:
+    name: Build kbs-client image
     if: inputs.image_group == 'kbs-client' || inputs.image_group == 'all'
     permissions:
       contents: read

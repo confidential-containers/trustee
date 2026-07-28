@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      pages: write
-      id-token: write
+      pages: write      # deploy to GitHub Pages
+      id-token: write   # authenticate with GitHub Pages OIDC
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

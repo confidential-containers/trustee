@@ -35,10 +35,11 @@ defaults:
 
 jobs:
   build-binaries:
+    name: Build e2e binaries
     runs-on: ${{ fromJSON(inputs.runs-on-build) }}
     permissions:
       contents: read
-      packages: write
+      packages: write  # push e2e test images to GHCR
     env:
       OS_VERSION: ubuntu-24.04
     steps:
@@ -85,6 +86,7 @@ jobs:
         name: artifacts-${{ inputs.tee }}-${{ inputs.arch}}
 
   e2e-test:
+    name: Run e2e test
     needs: build-binaries
     runs-on: ${{ fromJSON(inputs.runs-on-test) }}
     env:
