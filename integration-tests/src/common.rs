@@ -31,6 +31,7 @@ use base64::{
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use openssl::pkey::PKey;
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::{Arc, Once};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
@@ -332,6 +333,7 @@ impl TestHarness {
                 extra_teekey_paths: vec![],
             },
             attestation_service: AttestationConfig {
+                policy_id_map: HashMap::new(),
                 attestation_service: AttestationServiceConfig::CoCoASBuiltIn(
                     kbs::attestation::coco::builtin::Config {
                         rvps_config,
