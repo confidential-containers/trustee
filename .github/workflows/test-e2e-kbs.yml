@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
+      packages: write  # upload source archive as workflow artifact
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -41,7 +41,7 @@ jobs:
     uses: ./.github/workflows/workflow-call-kbs-e2e.yml
     permissions:
       contents: read
-      packages: write
+      packages: write  # push e2e test images to GHCR
     with:
       tee: sample
       tarball: kbs.tar.gz
@@ -52,7 +52,7 @@ jobs:
     uses: ./.github/workflows/workflow-call-kbs-e2e.yml
     permissions:
       contents: read
-      packages: write
+      packages: write  # push e2e test images to GHCR
     with:
       tee: sample
       arch: aarch64
@@ -132,7 +132,7 @@ jobs:
           path: ${{ runner.temp }}/docker-e2e-images
 
       - name: Load images
-        run: docker load --input "${{ runner.temp }}/docker-e2e-images/images.tar"
+        run: docker load --input "${RUNNER_TEMP}/docker-e2e-images/images.tar"
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0

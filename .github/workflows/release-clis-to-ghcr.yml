@@ -7,40 +7,51 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_and_push:
+    name: Build and push ${{ matrix.component }} on ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
         include:
           # kbs-client
           - component: kbs-client
+            arch: x86_64
             instance: ubuntu-24.04
             dockerfile: kbs/docker/kbs-client/Dockerfile
             output_path: kbs-client
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
           - component: kbs-client
+            arch: s390x
             instance: ubuntu-24.04-s390x
             dockerfile: kbs/docker/kbs-client/Dockerfile
             output_path: kbs-client
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
           - component: kbs-client
+            arch: aarch64
             instance: ubuntu-24.04-arm
             dockerfile: kbs/docker/kbs-client/Dockerfile
             output_path: kbs-client
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
           # trustee-cli
           - component: trustee-cli
+            arch: x86_64
             instance: ubuntu-24.04
             dockerfile: tools/trustee-cli/Dockerfile
             output_path: ./usr/local/bin/trustee
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli
           - component: trustee-cli
+            arch: s390x
             instance: ubuntu-24.04-s390x
             dockerfile: tools/trustee-cli/Dockerfile
             output_path: ./usr/local/bin/trustee
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli
           - component: trustee-cli
+            arch: aarch64
             instance: ubuntu-24.04-arm
             dockerfile: tools/trustee-cli/Dockerfile
             output_path: ./usr/local/bin/trustee
@@ -48,7 +59,7 @@ jobs:
     runs-on: ${{ matrix.instance }}
     permissions:
       contents: read
-      packages: write
+      packages: write  # push CLI artifacts to GHCR
 
     steps:
     - name: Install ORAS
@@ -72,18 +83,24 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build ${{ matrix.component }}
+      env:
+        MATRIX_DOCKERFILE: ${{ matrix.dockerfile }}
       run: |
-        docker buildx build -f "${{ matrix.dockerfile }}" \
+        docker buildx build -f "${MATRIX_DOCKERFILE}" \
           --build-arg ARCH="$(uname -m)" --output ./ .
 
     - name: Push ${{ matrix.component }} to ghcr.io
+      env:
+        MATRIX_REPO: ${{ matrix.repo }}
+        MATRIX_OUTPUT_PATH: ${{ matrix.output_path }}
+        MATRIX_COMPONENT: ${{ matrix.component }}
       run: |
-        commit_sha=${{ github.sha }}
+        commit_sha="${GITHUB_SHA}"
         arch="$(uname -m)"
-        repo='${{ matrix.repo }}'
-        artifact='${{ matrix.output_path }}'
+        repo="${MATRIX_REPO}"
+        artifact="${MATRIX_OUTPUT_PATH}"
 
-        if [ '${{ matrix.component }}' = 'kbs-client' ]; then
+        if [ "${MATRIX_COMPONENT}" = 'kbs-client' ]; then
           oras push \
             "${repo}:sample_only-${commit_sha}-${arch},latest-${arch}" \
             "${artifact}"

@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   helm-trustee-e2e-ibm-sel:
+    name: Helm Trustee e2e (IBM SEL)
     runs-on: s390x
     strategy:
       fail-fast: false

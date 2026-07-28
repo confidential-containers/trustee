@@ -56,7 +56,11 @@ jobs:
           key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-kbs-client-${{ matrix.name }}-${{ hashFiles('./Cargo.lock') }}
 
       - name: Build kbs-client
-        run: cargo build -p kbs-client --release ${{ matrix.features }}
+        env:
+          MATRIX_FEATURES: ${{ matrix.features }}
+        run: |
+          # shellcheck disable=SC2086
+          cargo build -p kbs-client --release ${MATRIX_FEATURES}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -135,17 +139,21 @@ jobs:
           load: true
 
       - name: Tag image for docker compose
+        env:
+          MATRIX_TAG: ${{ matrix.tag }}
         run: |
           set -euo pipefail
-          docker tag "${IMAGE_PREFIX}/${{ matrix.tag }}:latest-$(uname -m)" \
-            "${IMAGE_PREFIX}/${{ matrix.tag }}:latest"
+          docker tag "${IMAGE_PREFIX}/${MATRIX_TAG}:latest-$(uname -m)" \
+            "${IMAGE_PREFIX}/${MATRIX_TAG}:latest"
 
       - name: Save image
+        env:
+          MATRIX_TAG: ${{ matrix.tag }}
         run: |
           set -euo pipefail
-          mkdir -p "${{ runner.temp }}/docker-e2e-image"
-          docker save -o "${{ runner.temp }}/docker-e2e-image/${{ matrix.tag }}.tar" \
-            "${IMAGE_PREFIX}/${{ matrix.tag }}:latest"
+          mkdir -p "${RUNNER_TEMP}/docker-e2e-image"
+          docker save -o "${RUNNER_TEMP}/docker-e2e-image/${MATRIX_TAG}.tar" \
+            "${IMAGE_PREFIX}/${MATRIX_TAG}:latest"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -183,7 +191,7 @@ jobs:
       - name: Load and repackage image artifacts
         run: |
           set -euo pipefail
-          mapfile -t image_tars < <(find "${{ runner.temp }}/docker-e2e-images" -name '*.tar' -type f)
+          mapfile -t image_tars < <(find "${RUNNER_TEMP}/docker-e2e-images" -name '*.tar' -type f)
           if [ "${#image_tars[@]}" -ne 3 ]; then
             echo "Expected 3 image tarballs, found ${#image_tars[@]}:" "${image_tars[@]}"
             exit 1
@@ -192,8 +200,8 @@ jobs:
             docker load --input "$tar"
           done
           docker image ls "${IMAGE_PREFIX}/"*
-          mkdir -p "${{ runner.temp }}/docker-e2e-bundle"
-          docker save -o "${{ runner.temp }}/docker-e2e-bundle/images.tar" \
+          mkdir -p "${RUNNER_TEMP}/docker-e2e-bundle"
+          docker save -o "${RUNNER_TEMP}/docker-e2e-bundle/images.tar" \
             "${IMAGE_PREFIX}/kbs-grpc-as:latest" \
             "${IMAGE_PREFIX}/coco-as-grpc:latest" \
             "${IMAGE_PREFIX}/rvps:latest"

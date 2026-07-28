@@ -30,9 +30,9 @@ jobs:
     name: Analyze
     runs-on: ubuntu-24.04
     permissions:
-      actions: read
+      actions: read           # read workflow run info for CodeQL
       contents: read
-      security-events: write
+      security-events: write  # upload CodeQL results to code-scanning dashboard
 
     strategy:
       fail-fast: false

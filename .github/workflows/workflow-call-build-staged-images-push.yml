@@ -17,10 +17,11 @@ permissions: {}
 
 jobs:
   kbs-push:
+    name: Build and push KBS image
     if: (inputs.image_group == 'kbs' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push KBS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -99,10 +100,11 @@ jobs:
           push: true
 
   as-push:
+    name: Build and push AS image
     if: (inputs.image_group == 'as' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push AS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -161,10 +163,11 @@ jobs:
           push: true
 
   rvps-push:
+    name: Build and push RVPS image
     if: (inputs.image_group == 'rvps' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push RVPS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -204,10 +207,11 @@ jobs:
           push: true
 
   kbs-client-push:
+    name: Build and push kbs-client image
     if: (inputs.image_group == 'kbs-client' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push kbs-client images to GHCR
     strategy:
       fail-fast: false
       matrix:

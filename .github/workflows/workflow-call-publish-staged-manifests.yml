@@ -21,9 +21,10 @@ permissions: {}
 
 jobs:
   publish:
+    name: Publish multi-arch manifest
     runs-on: ubuntu-24.04
     permissions:
-      packages: write
+      packages: write  # push multi-arch manifests to GHCR
     strategy:
       fail-fast: false
       matrix:
