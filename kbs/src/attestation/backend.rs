@@ -93,7 +93,15 @@ pub trait Attest: Send + Sync {
 
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String>;
+    ///
+    /// `policy_ids` are the policies resolved from the policy-selector
+    /// selected by the client, or `None` to apply the default of this
+    /// Attestation Service.
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> anyhow::Result<String>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -405,7 +413,7 @@ impl AttestationService {
 
         let token = self
             .inner
-            .verify(evidence_to_verify)
+            .verify(evidence_to_verify, None)
             .await
             .inspect_err(|_| {
                 ATTESTATION_FAILURES
