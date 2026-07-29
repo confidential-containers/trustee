@@ -14,6 +14,7 @@ use std::{
 use dirs::home_dir;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 mod keygen;
+mod policy;
 mod run;
 
 #[derive(Debug, Parser)]
@@ -43,6 +44,27 @@ pub(crate) enum Commands {
         /// If neither this nor a policy file is provided, the default policy is to deny all.
         #[arg(long)]
         allow_all: bool,
+    },
+    /// Validate a Rego policy file offline, without a running Trustee instance
+    Policy {
+        #[command(subcommand)]
+        action: PolicyCommands,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub(crate) enum PolicyCommands {
+    /// Check that a policy file compiles and evaluate it against sample input
+    Validate {
+        /// Path to the .rego policy file
+        file: PathBuf,
+        /// Path to a JSON file to use as evaluation input (uses a built-in
+        /// sample if not provided)
+        #[arg(long)]
+        input: Option<PathBuf>,
+        /// Rule to evaluate
+        #[arg(long, default_value = "data.policy.allow")]
+        rule: String,
     },
 }
 
@@ -83,6 +105,11 @@ async fn main() -> Result<()> {
             config_file,
             allow_all,
         } => run::trustee_run(&cli.home, config_file, allow_all).await,
+        Commands::Policy { action } => match action {
+            PolicyCommands::Validate { file, input, rule } => {
+                policy::validate(file, input, rule).await
+            }
+        },
     }
 }
 

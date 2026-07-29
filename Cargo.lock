@@ -8151,6 +8151,7 @@ dependencies = [
  "kbs",
  "nix",
  "openssl",
+ "policy-engine",
  "reference-value-provider-service",
  "serde",
  "tokio",
