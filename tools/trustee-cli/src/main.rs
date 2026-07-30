@@ -65,6 +65,11 @@ pub(crate) enum PolicyCommands {
         /// Rule to evaluate
         #[arg(long, default_value = "data.policy.allow")]
         rule: String,
+        /// Also validate AS/EAR-specific semantics: that
+        /// data.policy.trust_claims uses only valid AR4SI claim names
+        /// and in-range values, and data.policy.extensions is well-formed
+        #[arg(long)]
+        ear: bool,
     },
 }
 
@@ -106,9 +111,12 @@ async fn main() -> Result<()> {
             allow_all,
         } => run::trustee_run(&cli.home, config_file, allow_all).await,
         Commands::Policy { action } => match action {
-            PolicyCommands::Validate { file, input, rule } => {
-                policy::validate(file, input, rule).await
-            }
+            PolicyCommands::Validate {
+                file,
+                input,
+                rule,
+                ear,
+            } => policy::validate(file, input, rule, ear).await,
         },
     }
 }
