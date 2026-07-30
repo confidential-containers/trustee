@@ -151,6 +151,11 @@ kbs:
       poolSize: 200
       # -- Request timeout in seconds for the KBS -> gRPC AS client (`timeout` in `files/kbs-config.toml.template`).
       timeout: 30
+  tls:
+    # -- Enable native HTTPS on the KBS listener. Requires `secretName`; the chart does not generate endpoint identity material.
+    enabled: false
+    # -- Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`.
+    secretName: ""
   image:
     # -- KBS container image repository.
     repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as

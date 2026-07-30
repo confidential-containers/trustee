@@ -18,7 +18,7 @@ KBS_CLIENT="${KBS_CLIENT:-${REPO_ROOT}/target/release/kbs-client}"
 # Override with `KBS_CLIENT_SUDO=` to disable (e.g. local dev without
 # passwordless sudo, or when already running as root).
 KBS_CLIENT_SUDO="${KBS_CLIENT_SUDO:-sudo -E}"
-KBS_URL="http://127.0.0.1:8080"
+KBS_URL="https://127.0.0.1:8080"
 TEST_RESOURCE_FILE="${SCRIPT_DIR}/fixtures/test-resource.txt"
 RESOURCE_PATH="helm-e2e/test-repo/test-secret"
 
@@ -30,6 +30,7 @@ EXPECTED_TEE="${EXPECTED_TEE:-}"
 
 WORK_DIR="$(mktemp -d)"
 ADMIN_TOKEN_FILE="${WORK_DIR}/admin-token"
+KBS_CERT_FILE="${WORK_DIR}/kbs-tls.crt"
 ROUNDTRIP_FILE="${WORK_DIR}/roundtrip.txt"
 PORT_FORWARD_PID=""
 
@@ -55,7 +56,7 @@ require_cmd() {
 # elevated; kubectl/helm keep running as the current user (their kubeconfig is
 # user-scoped). ${KBS_CLIENT_SUDO} is intentionally left unquoted for word split.
 kbs_client() {
-	${KBS_CLIENT_SUDO} "${KBS_CLIENT}" "$@"
+	${KBS_CLIENT_SUDO} "${KBS_CLIENT}" --cert-file "${KBS_CERT_FILE}" "$@"
 }
 
 # Emit a resource policy that only releases resources when the attestation
@@ -153,6 +154,12 @@ main() {
 
 	wait_for_bootstrap_secret
 	start_port_forward
+
+	kubectl get secret trustee-e2e-kbs-tls -n coco-trustee-e2e \
+		-o "jsonpath={.data.tls\\.crt}" \
+		| base64 -d >"${KBS_CERT_FILE}"
+	[[ -s "${KBS_CERT_FILE}" ]] ||
+		die "certificate data key tls.crt is empty in Secret trustee-e2e-kbs-tls"
 
 	kubectl get secret trustee-e2e-bootstrap-user-keys -n coco-trustee-e2e \
 		-o "jsonpath={.data.KBS_ADMIN_TOKEN}" | base64 -d >"${ADMIN_TOKEN_FILE}"

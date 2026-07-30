@@ -1,6 +1,6 @@
 # Helm chart end-to-end tests (Trustee deploy + kbs-client + undeploy).
 #
-# Prerequisites: helm, kubectl, base64, diff, and a pre-built kbs-client.
+# Prerequisites: helm, kubectl, base64, diff, openssl, and a pre-built kbs-client.
 # A Kubernetes cluster must already exist (kind recommended). Cluster creation is out of band.
 #
 # Images must already be loaded into the target Kubernetes cluster before running e2e-test.
@@ -43,7 +43,8 @@ export KBS_CLIENT
 export EXPECTED_TEE
 
 .PHONY: e2e-test deploy undeploy test-client check-tools wait-ready \
-	check-docker helm-dependency-build helm-lint load-e2e-images-into-kind dump-logs
+	check-docker helm-dependency-build helm-lint \
+	load-e2e-images-into-kind prepare-e2e-tls dump-logs
 
 check-tools:
 	@command -v helm >/dev/null || (echo "missing: helm" >&2; exit 1)
@@ -58,7 +59,9 @@ helm-dependency-build: check-tools
 	helm dependency build '$(CHART_DIR)'
 
 helm-lint: helm-dependency-build
+	helm lint '$(CHART_DIR)'
 	helm lint '$(CHART_DIR)' -f '$(CHART_DIR)/scenarios/e2e-local-images.yaml' $(HELM_E2E_IMAGE_ARGS)
+	helm lint '$(CHART_DIR)' -f '$(CHART_DIR)/scenarios/native-tls.yaml'
 
 load-e2e-images-into-kind: check-docker
 	@command -v kind >/dev/null || (echo "missing: kind (required to load local images)" >&2; exit 1)
@@ -66,7 +69,25 @@ load-e2e-images-into-kind: check-docker
 	kind load docker-image --name '$(KIND_CLUSTER)' \
 		'$(E2E_KBS_IMAGE)' '$(E2E_AS_IMAGE)' '$(E2E_RVPS_IMAGE)'
 
-deploy: helm-lint
+prepare-e2e-tls: check-tools
+	@command -v openssl >/dev/null || (echo "missing: openssl" >&2; exit 1)
+	@work_dir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$work_dir"' EXIT; \
+	kubectl create namespace coco-trustee-e2e \
+		--dry-run=client -o yaml | kubectl apply -f -; \
+	openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 1 \
+		-keyout "$$work_dir/tls.key" \
+		-out "$$work_dir/tls.crt" \
+		-subj '/CN=127.0.0.1' \
+		-addext 'subjectAltName=IP:127.0.0.1,DNS:localhost' \
+		-addext 'basicConstraints=CA:FALSE' >/dev/null 2>&1; \
+	kubectl create secret tls trustee-e2e-kbs-tls \
+		--namespace coco-trustee-e2e \
+		--key "$$work_dir/tls.key" \
+		--cert "$$work_dir/tls.crt" \
+		--dry-run=client -o yaml | kubectl apply -f -
+
+deploy: helm-lint prepare-e2e-tls
 	helm upgrade --install trustee-e2e '$(CHART_DIR)' \
 		--namespace coco-trustee-e2e \
 		--create-namespace \

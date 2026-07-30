@@ -153,6 +153,39 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Or use **`scenarios/bring-your-own-keys.yaml`** (adjust Secret name / file paths in the comments there).
 
+### Native KBS HTTPS
+
+The default KBS listener uses plaintext HTTP. For a KBS endpoint that clients or
+confidential guests reach directly, enable native HTTPS and provide an existing
+Secret containing the endpoint private key and certificate chain. The chart does
+not generate this identity material because its certificate SAN must match the
+address used by KBS clients.
+
+```bash
+kubectl create namespace coco-trustee
+kubectl create secret tls trustee-kbs-tls \
+  --namespace coco-trustee \
+  --key ./kbs.key \
+  --cert ./kbs.crt
+
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee \
+  -f ./deployment/helm-chart/scenarios/native-tls.yaml
+```
+
+With `kbs.tls.enabled=true`, the chart leaves `insecure_http` at its secure
+default (`false`), mounts the standard `tls.key` and `tls.crt` data keys from the
+selected Kubernetes TLS Secret, and changes the KBS health probes to HTTPS.
+
+KBS does not reload endpoint identity material dynamically, so restart the KBS
+Deployment after replacing the TLS Secret contents.
+
+Ingress TLS termination is a separate mode: leave native KBS TLS disabled and
+configure `ingress.tls` when the Ingress controller should serve HTTPS and
+forward plaintext HTTP to KBS. Do not combine native KBS TLS with Ingress unless
+the chosen Ingress controller is explicitly configured to use HTTPS for its
+backend connection.
+
 ### IBM Secure Execution (s390x)
 
 On **s390x**, the **IBM Secure Execution (SE)** verifier needs attestation materials at runtime. Because KBS talks to a **remote `coco_as_grpc` AS**, the verifier runs inside the **AS Pod**, so these materials must be mounted on **AS**, not KBS. (This differs from the builtin-AS kustomize overlay in `kbs/config/kubernetes/overlays/ibm-se`, which mounts them on KBS.)
@@ -296,6 +329,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.service.exposeLoadBalancer | bool | `false` | When `true`, create an additional external `LoadBalancer` Service (`<fullname>-kbs-lb`). The primary KBS Service (`<fullname>-kbs`) is always internal `ClusterIP`. |
 | kbs.service.loadBalancerAnnotations | object | `{}` | Annotations applied to the optional KBS `LoadBalancer` Service when `exposeLoadBalancer=true`. |
 | kbs.service.port | int | `8080` | Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service. |
+| kbs.tls.enabled | bool | `false` | Enable native HTTPS on the KBS listener. Requires `secretName`; the chart does not generate endpoint identity material. |
+| kbs.tls.secretName | string | `""` | Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`. |
 | kbs.tolerations | list | `[]` | Tolerations for scheduling KBS Pods onto tainted nodes. |
 | log_level | string | `"info"` | Container `RUST_LOG` for KBS, AS, and RVPS (`info`, `debug`, `warn`, `error`). |
 | nameOverride | string | `""` | Override the chart name used in labels and resource names. |
@@ -381,21 +416,24 @@ make test-helm-e2e
 - **CI images**: reuses `docker-e2e-images-linux-amd64` from `workflow-call-build-docker-e2e-materials.yml` as `ghcr.io/confidential-containers/staged-images/*:latest`
 - **Storage**: bundled Postgres KV backend (`storageBackend.type: Postgres`)
 - **KBS sessions**: bundled Valkey (`sessionStorageType: Redis`)
+- **KBS endpoint**: native HTTPS using an ephemeral, test-only certificate
 
 Steps:
 
 1. **`helm-dependency-build`**
-2. **`helm-lint`**
-3. **`deploy`**
-4. **`test-client`** — [e2e/test.sh](./e2e/test.sh)
-5. **`dump-logs`** — on failure only: pod status, events, describe, and container logs (current + previous), while the namespace still exists
-6. **`undeploy`** — always attempted, even after failures
+2. **`helm-lint`** — validates the default HTTP, e2e, and native-HTTPS configurations
+3. **`prepare-e2e-tls`** — creates a test Kubernetes TLS Secret
+4. **`deploy`**
+5. **`test-client`** — [e2e/test.sh](./e2e/test.sh) validates the certificate and exercises KBS over HTTPS
+6. **`dump-logs`** — on failure only: pod status, events, describe, and container logs (current + previous), while the namespace still exists
+7. **`undeploy`** — always attempted, even after failures
 
 Debug individually:
 
 ```bash
 make -C deployment/helm-chart load-e2e-images-into-kind
 make -C deployment/helm-chart helm-lint
+make -C deployment/helm-chart prepare-e2e-tls
 make -C deployment/helm-chart deploy
 make -C deployment/helm-chart test-client
 make -C deployment/helm-chart dump-logs
