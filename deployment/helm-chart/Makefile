@@ -43,7 +43,7 @@ export KBS_CLIENT
 export EXPECTED_TEE
 
 .PHONY: e2e-test deploy undeploy test-client check-tools wait-ready \
-	check-docker helm-dependency-build helm-lint load-e2e-images-into-kind
+	check-docker helm-dependency-build helm-lint load-e2e-images-into-kind dump-logs
 
 check-tools:
 	@command -v helm >/dev/null || (echo "missing: helm" >&2; exit 1)
@@ -84,11 +84,33 @@ undeploy: check-tools
 	helm uninstall trustee-e2e -n coco-trustee-e2e 2>/dev/null || true
 	kubectl delete namespace coco-trustee-e2e --ignore-not-found --timeout=120s 2>/dev/null || true
 
+# Print pod/cluster diagnostics before teardown so CI failures are actionable.
+# Must run while the namespace still exists (before undeploy).
+dump-logs: check-tools
+	@echo "==> cluster state (namespace coco-trustee-e2e)"
+	-kubectl get pods,jobs,deploy,svc -n coco-trustee-e2e -o wide 2>&1 || true
+	-kubectl get events -n coco-trustee-e2e --sort-by='.lastTimestamp' 2>&1 || true
+	@echo "==> pod descriptions"
+	-kubectl describe pods -n coco-trustee-e2e 2>&1 || true
+	@echo "==> container logs"
+	@pods=$$(kubectl get pods -n coco-trustee-e2e -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true); \
+	if [ -z "$$pods" ]; then \
+		echo "(no pods found in coco-trustee-e2e)"; \
+	else \
+		for pod in $$pods; do \
+			echo "---- logs: $$pod (current) ----"; \
+			kubectl logs -n coco-trustee-e2e "$$pod" --all-containers --prefix --timestamps 2>&1 || true; \
+			echo "---- logs: $$pod (previous) ----"; \
+			kubectl logs -n coco-trustee-e2e "$$pod" --all-containers --prefix --timestamps --previous 2>&1 || true; \
+		done; \
+	fi
+
 test-client: check-tools wait-ready
 	@chmod +x '$(CHART_DIR)/e2e/test.sh'
 	@'$(CHART_DIR)/e2e/test.sh'
 
 # Deploy, test, then always undeploy. Images must already be present in the cluster.
+# On failure, dump container logs before undeploy so they appear in CI output.
 e2e-test: check-tools
 	@status=0; \
 	if [ $$status -eq 0 ]; then \
@@ -96,6 +118,9 @@ e2e-test: check-tools
 	fi; \
 	if [ $$status -eq 0 ]; then \
 		$(MAKE) test-client || status=$$?; \
+	fi; \
+	if [ $$status -ne 0 ]; then \
+		$(MAKE) dump-logs || true; \
 	fi; \
 	$(MAKE) undeploy || true; \
 	exit $$status
