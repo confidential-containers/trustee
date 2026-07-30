@@ -327,7 +327,8 @@ Steps:
 2. **`helm-lint`**
 3. **`deploy`**
 4. **`test-client`** — [e2e/test.sh](./e2e/test.sh)
-5. **`undeploy`** — always attempted, even after failures
+5. **`dump-logs`** — on failure only: pod status, events, describe, and container logs (current + previous), while the namespace still exists
+6. **`undeploy`** — always attempted, even after failures
 
 Debug individually:
 
@@ -336,6 +337,7 @@ make -C deployment/helm-chart load-e2e-images-into-kind
 make -C deployment/helm-chart helm-lint
 make -C deployment/helm-chart deploy
 make -C deployment/helm-chart test-client
+make -C deployment/helm-chart dump-logs
 make -C deployment/helm-chart undeploy
 ```
 
