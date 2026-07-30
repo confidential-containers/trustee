@@ -507,6 +507,21 @@ KBS admin JWT settings (bootstrap token + kbs-config.toml).
 {{- end }}
 
 {{/*
+KBS HTTPS settings. TLS material is supplied separately from the admin and
+attestation-token keys because it represents the externally visible KBS identity.
+*/}}
+{{- define "coco-trustee.kbs.tlsEnabled" -}}
+{{- $tls := ((.Values.kbs | default dict).tls | default dict) -}}
+{{- if ($tls.enabled | default false) }}true{{- end -}}
+{{- end }}
+{{- define "coco-trustee.kbs.tlsSecretName" -}}
+{{- $tls := ((.Values.kbs | default dict).tls | default dict) -}}
+{{- if ($tls.enabled | default false) -}}
+{{- required "kbs.tls.secretName must be set when kbs.tls.enabled is true" (trim (default "" $tls.secretName)) -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Secret name for KBS + AS user-keys volume. Ephemeral path uses hook-created Secret; otherwise secrets.existingSecretName.
 */}}
 {{- define "coco-trustee.userKeysSecretNameResolved" -}}

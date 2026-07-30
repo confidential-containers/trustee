@@ -2,9 +2,15 @@
 session_storage_type = "{{ include "coco-trustee.kbs.sessionStorageType" . }}"
 {{- end }}
 
+{{- $tlsEnabled := eq (include "coco-trustee.kbs.tlsEnabled" . | trim) "true" }}
 [http_server]
 sockets = ["0.0.0.0:{{ include "coco-trustee.port.kbs" . }}"]
+{{- if $tlsEnabled }}
+private_key = "/etc/kbs/tls/tls.key"
+certificate = "/etc/kbs/tls/tls.crt"
+{{- else }}
 insecure_http = true
+{{- end }}
 
 [attestation_token]
 trusted_certs_paths = ["/opt/confidential-containers/kbs/user-keys/token-cert-chain.pem"]

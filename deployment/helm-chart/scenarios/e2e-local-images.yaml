@@ -4,6 +4,11 @@
 
 sessionStorageType: Redis
 
+kbs:
+  tls:
+    enabled: true
+    secretName: trustee-e2e-kbs-tls
+
 storageBackend:
   type: Postgres
   postgres:
