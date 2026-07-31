@@ -33,47 +33,25 @@ trust_claims := {
 	"sourced-data": sourced_data,
 }
 
-# GPUs verified by NRAS
+# GPUs verified by the NVIDIA remote (NRAS) verifier.
 hardware := 2 if {
-	input.nvidia
-
-	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
-	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain"]["x-nvidia-cert-status"] == "valid"
-
-	input.nvidia["x-nvidia-gpu-attestation-report-cert-chain-fwid-match"]
-	input.nvidia["x-nvidia-gpu-attestation-report-parsed"]
-	input.nvidia["x-nvidia-gpu-attestation-report-signature-verified"]
-
-	input.nvidia["x-nvidia-gpu-arch-check"]
+	input.nvidia.verifier == "remote"
 }
 
 configuration := 2 if {
+	input.nvidia.verifier == "remote"
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
-	input.nvidia["x-nvidia-gpu-vbios-version"] in query_reference_value("allowed_vbios_versions")
-	input.nvidia["x-nvidia-gpu-driver-version"] in query_reference_value("allowed_driver_versions")
-} 
+	input.nvidia.vbios_version in query_reference_value("allowed_vbios_versions")
+	input.nvidia.driver_version in query_reference_value("allowed_driver_versions")
+}
 
 else := 3 if {
+	input.nvidia.verifier == "remote"
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
 }
 
 executables := 3 if {
-	input.nvidia["x-nvidia-gpu-vbios-rim-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
-	input.nvidia["x-nvidia-gpu-vbios-rim-cert-chain"]["x-nvidia-cert-status"] == "valid"
-
-	input.nvidia["x-nvidia-gpu-driver-rim-fetched"]
-	input.nvidia["x-nvidia-gpu-driver-rim-measurements-available"]
-	input.nvidia["x-nvidia-gpu-driver-rim-schema-validated"]
-	input.nvidia["x-nvidia-gpu-driver-rim-signature-verified"]
-	input.nvidia["x-nvidia-gpu-driver-rim-version-match"]
-
-	input.nvidia["x-nvidia-gpu-vbios-rim-fetched"]
-	input.nvidia["x-nvidia-gpu-vbios-rim-measurements-available"]
-	input.nvidia["x-nvidia-gpu-vbios-rim-schema-validated"]
-	input.nvidia["x-nvidia-gpu-vbios-rim-signature-verified"]
-	input.nvidia["x-nvidia-gpu-vbios-rim-version-match"]
-
-	input.nvidia.measres == "success"
+	input.nvidia.verifier == "remote"
 }
