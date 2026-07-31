@@ -201,29 +201,76 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 
 ## NVIDIA
 
-The local verifier only supports Hopper and returns the following claims.
+NVIDIA attestation has two verifier modes (`local` and `remote`). Both emit claims under `nvidia`, discriminated by `nvidia.verifier`.
+The claim sets differ by mode; GPU also shares a small common set across modes.
 
-- `arch`: Device architecture. Only `Hopper` is supported
-- `measurements`: List of measurements and its respective index
-- `uuid`: Device UUID
-- `config.board_id`: Board ID
-- `config.chip_sku`: Chip SKU (Stock Keeping Unit)
-- `config.chip_sku_mod`: Chip SKU mod
-- `config.cpr_info`: Compute Protected Region info
-- `config.driver_version`: NVIDIA driver version
-- `config.fwid`: Firmware ID. Found in the report and the signing certificate
-- `config.gpu_info`: GPU information
-- `config.measurement_count`: One measurement_count for each entry in `measurements`. Each measurement_count indicates how many times the respective measurement was extended to get to its current value
-- `config.nvdec0_status`: NVIDIA decoder status
-- `config.project`: Project
-- `config.project_sku`: Project SKU
-- `config.project_sku_mod`: Project SKU mod
-- `config.protected_pcie_status`: Protected PCIe status
-- `config.vbios_version`: Device VBIOS version
+### GPU — common (local and remote)
 
-The remote verifier exports the claims that come from NRAS, which are listed [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
-Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
-along with the full set of detached claims.
+- `nvidia.verifier`: `local` or `remote`
+- `nvidia.driver_version`: GPU driver version (e.g. `550.90.07`)
+- `nvidia.vbios_version`: GPU vBIOS version (e.g. `96.00.9F.00.01`)
+
+### GPU — local only
+
+The local verifier only supports Hopper and additionally returns:
+
+- `nvidia.arch`: Device architecture (`Hopper`)
+- `nvidia.uuid`: Device UUID
+- `nvidia.measurements`: Map of measurement index → hex digest
+- `nvidia.config.board_id`: Board ID
+- `nvidia.config.chip_sku`: Chip SKU (Stock Keeping Unit)
+- `nvidia.config.chip_sku_mod`: Chip SKU mod
+- `nvidia.config.cpr_info`: Compute Protected Region info
+- `nvidia.config.fwid`: Firmware ID (report and signing certificate)
+- `nvidia.config.gpu_info`: GPU information
+- `nvidia.config.measurement_count`: Extend counts keyed like `measurements`
+- `nvidia.config.nvdec0_status`: NVIDIA decoder status
+- `nvidia.config.project`: Project
+- `nvidia.config.project_sku`: Project SKU
+- `nvidia.config.project_sku_mod`: Project SKU mod
+- `nvidia.config.protected_pcie_status`: Protected PCIe status
+
+### GPU — remote only (NRAS GPU Claims v3.0)
+
+The remote verifier validates evidence with NRAS, then runs built-in checks on detached claims
+(certificate chains / OCSP, report and RIM signatures, RIM fetch/schema/version-match, measurement comparison, nonce match, arch check, secure boot enabled, debug disabled, ...).
+Those fixed pass/fail flags are **not** exported to policy.
+
+In addition to the common GPU fields, remote GPU claims include:
+
+- `nvidia.hwmodel`: GPU hardware model
+- `nvidia.ueid`: Universal Entity Id
+- `nvidia.oemid`: Firmware manufacturer id
+- `nvidia.iss`: EAT token issuer
+- `nvidia.secboot`: Whether Secure Boot is enabled (`true` / `false`; also enforced by built-in verify)
+- `nvidia.dbgstat`: Whether GPU debug facilities are enabled (`enabled` / `disabled`; also enforced by built-in verify)
+- `nvidia["x-nvidia-gpu-switch-pdis"]`: Unique physical data interfaces from GPUs to NVSwitches (optional; PPCIE)
+- `nvidia.eat_nonce`: Nonce used for the attestation process
+
+See `NvidiaGpuEvidenceClaims` / `NvidiaGpuCommonClaims` in
+`deps/verifier/src/nvidia/claims.rs`.
+
+Full GPU NRAS claim definitions:
+<https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html>
+
+### nvSwitch — remote only (NRAS nvSwitch Claims v3.0)
+
+There is no local nvSwitch verifier path. Remote switch claims use
+`NvidiaSwitchEvidenceClaims` (`nvidia.verifier == "remote"`):
+
+- `nvidia["x-nvidia-switch-bios-version"]`: Switch BIOS version (e.g. `96.00.9F.00.01`)
+- `nvidia.hwmodel`: Switch hardware model
+- `nvidia.ueid`: Universal Entity Id
+- `nvidia.oemid`: Firmware manufacturer id
+- `nvidia.iss`: EAT token issuer
+- `nvidia["x-nvidia-switch-pdi"]`: NVSwitch physical data interface ID (optional; PPCIE)
+- `nvidia["x-nvidia-switch-gpu-pdis"]`: Unique physical data interfaces from NVSwitches to GPUs (optional; PPCIE)
+- `nvidia.eat_nonce`: Nonce used for the attestation process
+
+Full nvSwitch NRAS claim definitions:
+<https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/nvswitch_claims.html>
+
+Claims version 3.0 is used for NRAS.
 
 ## NVIDIA DPU (DICE)
 

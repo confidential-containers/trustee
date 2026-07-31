@@ -33,40 +33,29 @@ trust_claims := {
 	"sourced-data": sourced_data,
 }
 
-# Switches verified by NRAS
+# Switches verified by the NVIDIA remote (NRAS) verifier.
+#
+# Certificate chains, report/RIM signatures, measurement comparison, nonce
+# match, arch check, and similar fixed checks are already enforced inside the
+# verifier. This policy only evaluates variable claims (configuration /
+# allowlists). See deps/verifier/src/nvidia/claims.rs.
 hardware := 2 if {
-	input.nvidia
-
-	input.nvidia["x-nvidia-switch-attestation-report-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
-	input.nvidia["x-nvidia-switch-attestation-report-cert-chain"]["x-nvidia-cert-status"] == "valid"
-
-	input.nvidia["x-nvidia-switch-attestation-report-cert-chain-fwid-match"]
-	input.nvidia["x-nvidia-switch-attestation-report-parsed"]
-	input.nvidia["x-nvidia-switch-attestation-report-signature-verified"]
-
-	input.nvidia["x-nvidia-switch-arch-check"]
+	input.nvidia.verifier == "remote"
 }
 
 configuration := 2 if {
+	input.nvidia.verifier == "remote"
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
 	input.nvidia["x-nvidia-switch-bios-version"] in query_reference_value("allowed_switch_bios_versions")
-} 
+}
 
 else := 3 if {
+	input.nvidia.verifier == "remote"
 	input.nvidia.secboot
 	input.nvidia.dbgstat == "disabled"
 }
 
 executables := 3 if {
-	input.nvidia["x-nvidia-switch-bios-rim-cert-chain"]["x-nvidia-cert-ocsp-status"] == "good"
-	input.nvidia["x-nvidia-switch-bios-rim-cert-chain"]["x-nvidia-cert-status"] == "valid"
-
-	input.nvidia["x-nvidia-switch-bios-rim-fetched"]
-	input.nvidia["x-nvidia-switch-bios-rim-measurements-available"]
-	input.nvidia["x-nvidia-switch-bios-rim-schema-validated"]
-	input.nvidia["x-nvidia-switch-bios-rim-signature-verified"]
-	input.nvidia["x-nvidia-switch-bios-rim-version-match"]
-
-	input.nvidia.measres == "success"
+	input.nvidia.verifier == "remote"
 }
