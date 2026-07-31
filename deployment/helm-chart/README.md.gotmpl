@@ -293,7 +293,8 @@ Steps:
 3. **`prepare-e2e-tls`** — creates a test Kubernetes TLS Secret
 4. **`deploy`**
 5. **`test-client`** — [e2e/test.sh](./e2e/test.sh) validates the certificate and exercises KBS over HTTPS
-6. **`undeploy`** — always attempted, even after failures
+6. **`dump-logs`** — on failure only: pod status, events, describe, and container logs (current + previous), while the namespace still exists
+7. **`undeploy`** — always attempted, even after failures
 
 Debug individually:
 
@@ -303,6 +304,7 @@ make -C deployment/helm-chart helm-lint
 make -C deployment/helm-chart prepare-e2e-tls
 make -C deployment/helm-chart deploy
 make -C deployment/helm-chart test-client
+make -C deployment/helm-chart dump-logs
 make -C deployment/helm-chart undeploy
 ```
 
