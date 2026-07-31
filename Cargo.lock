@@ -624,7 +624,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "cfg-if",
  "clap",
  "ear",
@@ -1289,6 +1289,12 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "base64"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b25655df2c3cdd83c5e5b293b88acd880332b2ddadd7c30ac43144fdc0033da9"
 
 [[package]]
 name = "base64-simd"
@@ -2791,7 +2797,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
- "base64 0.22.1",
+ "base64 0.23.0",
  "hex",
  "rstest",
  "scroll",
@@ -3982,7 +3988,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "attestation-service",
- "base64 0.22.1",
+ "base64 0.23.0",
  "const_format",
  "jsonwebtoken",
  "kbs",
@@ -4310,7 +4316,7 @@ dependencies = [
  "aws-sdk-secretsmanager",
  "az-cvm-vtpm",
  "backon",
- "base64 0.22.1",
+ "base64 0.23.0",
  "cfg-if",
  "chrono",
  "clap",
@@ -4368,7 +4374,7 @@ name = "kbs-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.0",
  "clap",
  "jsonwebtoken",
  "kbs_protocol",
@@ -4438,7 +4444,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.0",
  "educe",
  "pg-connection-string",
  "redis",
@@ -5530,7 +5536,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.0",
  "hex",
  "key-value-storage",
  "regorus",
@@ -6052,7 +6058,7 @@ dependencies = [
  "anyhow",
  "assert-json-diff",
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.0",
  "chrono",
  "ciborium",
  "clap",
@@ -8450,7 +8456,7 @@ dependencies = [
  "az-cvm-vtpm",
  "az-snp-vtpm",
  "az-tdx-vtpm",
- "base64 0.22.1",
+ "base64 0.23.0",
  "bitflags 2.13.1",
  "ccatoken",
  "cfg-if",
