@@ -47,8 +47,7 @@ const NRAS_ATTESTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_
 
 #[derive(Default, Debug)]
 pub struct Nvidia {
-    verifier_type: NvidiaVerifierType,
-    nras_jwks: Option<NrasJwks>,
+    verifier_type: NvidiaVerifierTypeInternal,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -65,6 +64,16 @@ pub enum NvidiaVerifierType {
     Local,
     #[serde(alias = "remote")]
     Remote(NvidiaRemoteVerifierConfig),
+}
+
+#[derive(Default, Debug)]
+enum NvidiaVerifierTypeInternal {
+    Remote {
+        config: NvidiaRemoteVerifierConfig,
+        jwks: NrasJwks,
+    },
+    #[default]
+    Local,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -217,16 +226,15 @@ impl Nvidia {
         let verifier_type = config
             .map(|c| c.verifier)
             .unwrap_or(NvidiaVerifierType::Local);
-
-        let nras_jwks = match verifier_type {
-            NvidiaVerifierType::Remote(_) => Some(NrasJwks::new().await?),
-            _ => None,
+        let verifier_type = match verifier_type {
+            NvidiaVerifierType::Remote(config) => NvidiaVerifierTypeInternal::Remote {
+                config,
+                jwks: NrasJwks::new().await?,
+            },
+            _ => NvidiaVerifierTypeInternal::Local,
         };
 
-        Ok(Nvidia {
-            verifier_type,
-            nras_jwks,
-        })
+        Ok(Nvidia { verifier_type })
     }
 
     /// Evaluate an NVIDIA device using NRAS
@@ -235,6 +243,7 @@ impl Nvidia {
         device: NvDeviceReportAndCert,
         expected_nonce_vec: Vec<u8>,
         config: &NvidiaRemoteVerifierConfig,
+        jwks: &NrasJwks,
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
@@ -288,11 +297,7 @@ impl Nvidia {
         };
 
         let response = NrasResponse::from_str(&res.text().await?)?;
-        if let Some(jwks) = &self.nras_jwks {
-            response.validate(jwks)?;
-        } else {
-            bail!("JWKs not available.");
-        }
+        response.validate(jwks)?;
 
         let claims = response.claims()?;
 
@@ -375,11 +380,11 @@ impl Verifier for Nvidia {
 
         for device in devices.device_evidence_list {
             let claims = match &self.verifier_type {
-                NvidiaVerifierType::Local => {
+                NvidiaVerifierTypeInternal::Local => {
                     self.evaluate_device_locally(device, expected_nonce_vec.clone())?
                 }
-                NvidiaVerifierType::Remote(config) => {
-                    self.evaluate_device_nras(device, expected_nonce_vec.clone(), config)
+                NvidiaVerifierTypeInternal::Remote { config, jwks } => {
+                    self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
                         .await?
                 }
             };
