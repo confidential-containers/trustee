@@ -13,13 +13,20 @@ use std::str::FromStr;
 use super::TeeEvidenceParsedClaim;
 use crate::nvidia::NrasJwks;
 
-// Internal struct for deserializing the NRAS Payload
+/// Internal struct for deserializing the NRAS Payload
+/// The first element is a slice with two fields:
+/// - The first field is "JWT" string
+/// - The second field is the base64 encoded primary JWT
+///
+/// The second element is a HashMap with the device name as the
+///   key and base64 encoded Individual JWTs as the value.
+///
+/// See the following link for more details
+/// https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/introduction.html
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
-struct NrasResponseInternal {
-    jwt: Vec<String>,
-    eat: HashMap<String, String>,
-}
+struct NrasResponseInternal(Vec<String>, HashMap<String, String>);
 
+/// Formatted Nras Response
 pub struct NrasResponse {
     jwt: String,
     eat: String,
@@ -31,18 +38,18 @@ impl FromStr for NrasResponse {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let response: NrasResponseInternal = serde_json::from_str(s)?;
 
-        if response.jwt.len() != 2 {
+        if response.1.len() != 2 {
             bail!("Unexpected Payload Format");
         };
-        let jwt = response.jwt[1].clone();
+        let jwt = response.0[1].clone();
 
         // For now, there should only be one EAT.
-        if response.eat.len() != 1 {
+        if response.1.len() != 1 {
             bail!("Unexpected submod count.");
         };
 
         let eat = response
-            .eat
+            .1
             .values()
             .next()
             .ok_or_else(|| anyhow!("Could not find EAT"))?
