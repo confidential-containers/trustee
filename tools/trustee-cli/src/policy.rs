@@ -113,3 +113,76 @@ fn check_ear_semantics(results: &std::collections::HashMap<String, Option<Value>
         anyhow::bail!("{} EAR semantic error(s) found", errors.len());
     }
 }
+
+pub async fn check_references(file: PathBuf, addr: String) -> Result<()> {
+    let policy = fs::read_to_string(&file)
+        .with_context(|| format!("failed to read policy file: {}", file.display()))?;
+
+    let keys = extract_reference_value_keys(&policy);
+
+    if keys.is_empty() {
+        println!("No query_reference_value(...) calls found in this policy.");
+        return Ok(());
+    }
+
+    println!(
+        "Found {} reference value key(s) referenced by this policy:\n",
+        keys.len()
+    );
+
+    let mut missing = Vec::new();
+    for key in &keys {
+        match reference_value_provider_service::client::query(addr.clone(), key.clone()).await {
+            Ok(Some(value)) => {
+                let preview: String = value.chars().take(60).collect();
+                println!(
+                    "  OK    {key} = {preview}{}",
+                    if value.len() > 60 { "..." } else { "" }
+                );
+            }
+            Ok(None) => {
+                println!("  MISSING {key} (not registered in RVPS)");
+                missing.push(key.clone());
+            }
+            Err(e) => {
+                anyhow::bail!("failed to query RVPS at {addr} for '{key}': {e}");
+            }
+        }
+    }
+
+    if missing.is_empty() {
+        println!("\nAll referenced keys are registered in RVPS.");
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "{} referenced key(s) not found in RVPS: {}",
+            missing.len(),
+            missing.join(", ")
+        );
+    }
+}
+
+/// Extract the string-literal argument of every query_reference_value("...")
+/// call in a Rego policy's source text.
+fn extract_reference_value_keys(policy: &str) -> Vec<String> {
+    let marker = "query_reference_value(";
+    let mut keys = Vec::new();
+    let mut rest = policy;
+    while let Some(pos) = rest.find(marker) {
+        rest = &rest[pos + marker.len()..];
+        // Expect a quoted string as the argument, e.g. "pcr11"
+        if let Some(start) = rest.find('"') {
+            let after_quote = &rest[start + 1..];
+            if let Some(end) = after_quote.find('"') {
+                let key = &after_quote[..end];
+                if !keys.contains(&key.to_string()) {
+                    keys.push(key.to_string());
+                }
+                rest = &after_quote[end + 1..];
+                continue;
+            }
+        }
+        break;
+    }
+    keys
+}

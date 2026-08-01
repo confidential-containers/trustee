@@ -71,6 +71,14 @@ pub(crate) enum PolicyCommands {
         #[arg(long)]
         ear: bool,
     },
+    /// Check that all reference values a policy queries are registered in RVPS
+    CheckReferences {
+        /// Path to the .rego policy file
+        file: PathBuf,
+        /// Address of the running RVPS instance
+        #[arg(long, default_value = "http://127.0.0.1:50003")]
+        addr: String,
+    },
 }
 
 /// default_home calculates a default home folder for trustee according to the current user.
@@ -117,6 +125,9 @@ async fn main() -> Result<()> {
                 rule,
                 ear,
             } => policy::validate(file, input, rule, ear).await,
+            PolicyCommands::CheckReferences { file, addr } => {
+                policy::check_references(file, addr).await
+            }
         },
     }
 }
