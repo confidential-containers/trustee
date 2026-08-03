@@ -301,7 +301,7 @@ Each ACL entry:
 | `role` | String | JWT `role` value to match | Yes |
 | `allowed_endpoints` | String | Regex of allowed request paths | Yes |
 
-`allowed_endpoints` must start with `^/kbs` and end with `$`.
+`allowed_endpoints` must start with `^/` and end with `$`.
 
 ### Storage Backend Configuration
 
