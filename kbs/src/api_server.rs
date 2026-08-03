@@ -476,9 +476,15 @@ pub(crate) async fn api(
 }
 
 pub(crate) async fn prometheus_metrics_handler(
-    _request: HttpRequest,
-    _core: web::Data<ApiServer>,
+    request: HttpRequest,
+    core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
+    core.admin
+        .check_admin_access(&request)
+        .map_err(|e| Error::AdminAuthAccess {
+            source: e,
+            endpoint: "metrics".to_string(),
+        })?;
     let report =
         crate::prometheus::export_metrics().map_err(|e| Error::PrometheusError { source: e })?;
     Ok(HttpResponse::Ok().body(report))
