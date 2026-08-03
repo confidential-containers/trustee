@@ -475,12 +475,16 @@ pub(crate) async fn prometheus_metrics_handler(
     request: HttpRequest,
     core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
-    core.admin
-        .check_admin_access(&request)
-        .map_err(|e| Error::AdminAuthAccess {
-            source: e,
-            endpoint: "metrics".to_string(),
-        })?;
+    // The `/metrics` endpoint may optionally be protected by admin auth to prevent
+    // unauthenticated disclosure of sensitive label values (resource paths, TEE types).
+    if core.config.http_server.require_admin_auth_metrics {
+        core.admin
+            .check_admin_access(&request)
+            .map_err(|e| Error::AdminAuthAccess {
+                source: e,
+                endpoint: "metrics".to_string(),
+            })?;
+    }
     let report =
         crate::prometheus::export_metrics().map_err(|e| Error::PrometheusError { source: e })?;
     Ok(HttpResponse::Ok().body(report))
