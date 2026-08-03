@@ -10,7 +10,7 @@ use tracing::info;
 
 extern crate integration_tests;
 use crate::integration_tests::common::{
-    init_tracing, KbsConfigType, PolicyType, TestHarness, ADMIN_ROLE,
+    init_tracing, KbsConfigType, PolicyType, TestHarness, TestParameters, ADMIN_ROLE,
 };
 
 //
@@ -193,9 +193,9 @@ default executables = 97
 ";
 
 //
-// The /metrics endpoint must be protected by admin authentication:
-// no token is denied, a valid token is allowed, and disabled/restricted
-// admin backends deny even authenticated requests.
+// The /metrics endpoint can be protected by admin authentication (opt-in via
+// http_server.require_admin_auth_metrics): no token is denied, a valid token is
+// allowed, and disabled/restricted admin backends deny even authenticated requests.
 //
 #[rstest]
 #[case::metrics_no_token(KbsConfigType::EarTokenBuiltInRvps, false)]
@@ -216,7 +216,9 @@ async fn metrics_requires_admin_auth(
     let deny_all = test_config == KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin;
     let restricted = test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin;
 
-    let harness = TestHarness::new(test_config.into()).await?;
+    let mut params = TestParameters::from(test_config);
+    params.require_admin_auth_metrics = true;
+    let harness = TestHarness::new(params).await?;
     harness.wait().await?;
 
     let token = provide_token.then(|| harness.sign_admin_token().expect("admin token"));
@@ -260,6 +262,37 @@ async fn metrics_requires_admin_auth(
             "metrics must be denied without an admin token"
         );
     }
+
+    Ok(())
+}
+
+//
+// With http_server.require_admin_auth_metrics disabled (the default), /metrics is
+// served without any authentication, preserving backward compatibility.
+//
+#[rstest]
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn metrics_unprotected_by_default() -> Result<()> {
+    init_tracing();
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    harness.wait().await?;
+
+    let res = harness.get_metrics(None).await?;
+
+    harness.cleanup().await?;
+
+    assert_eq!(
+        res.status(),
+        reqwest::StatusCode::OK,
+        "metrics must be reachable without an admin token when protection is off"
+    );
+    let body = res.text().await?;
+    assert!(
+        body.contains("kbs_build_info"),
+        "expected metrics body to contain kbs_build_info, got: {body}"
+    );
 
     Ok(())
 }

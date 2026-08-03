@@ -102,18 +102,22 @@ impl From<KbsConfigType> for TestParameters {
             KbsConfigType::EarTokenBuiltInRvps => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::Simple,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenRemoteRvps => TestParameters {
                 rvps_type: RvpsType::Remote,
                 admin_type: AdminType::Simple,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::DenyAll,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::SimpleRestricted,
+                require_admin_auth_metrics: false,
             },
         }
     }
@@ -123,6 +127,7 @@ impl From<KbsConfigType> for TestParameters {
 pub struct TestParameters {
     pub rvps_type: RvpsType,
     pub admin_type: AdminType,
+    pub require_admin_auth_metrics: bool,
 }
 
 /// Internal state of tests
@@ -349,6 +354,7 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
+                require_admin_auth_metrics: test_parameters.require_admin_auth_metrics,
                 tls: TlsConfig::default(),
             },
             admin: admin_config,
