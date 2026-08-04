@@ -655,6 +655,9 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "measurement": hex::encode(report.measurement),
         "report_data": hex::encode(report.report_data),
         "init_data": hex::encode(report.host_data),
+
+        // platform identity
+        "chip_id": hex::encode(report.chip_id),
     });
 
     claims_map as TeeEvidenceParsedClaim
@@ -1066,10 +1069,11 @@ mod tests {
         // Generate parsed claims
         let claims = parse_tee_evidence(&attestation_report);
 
-        // Extract the three key fields that should be hex-encoded
+        // Extract the key fields that should be hex-encoded
         let measurement = claims.get("measurement").and_then(|v| v.as_str()).unwrap();
         let report_data = claims.get("report_data").and_then(|v| v.as_str()).unwrap();
         let init_data = claims.get("init_data").and_then(|v| v.as_str()).unwrap();
+        let chip_id = claims.get("chip_id").and_then(|v| v.as_str()).unwrap();
 
         // Verify they are valid hex strings by checking:
         // 1. All characters are valid hex digits (0-9, a-f)
@@ -1104,10 +1108,18 @@ mod tests {
             "init_data should only contain hex digits"
         );
 
+        // chip_id is 64 bytes -> 128 hex chars
+        assert_eq!(chip_id.len(), 128, "chip_id should be 128 hex characters");
+        assert!(
+            chip_id.chars().all(|c| c.is_ascii_hexdigit()),
+            "chip_id should only contain hex digits"
+        );
+
         // Verify we can decode them back to bytes (confirms valid hex encoding)
         hex::decode(measurement).expect("measurement should be valid hex");
         hex::decode(report_data).expect("report_data should be valid hex");
         hex::decode(init_data).expect("init_data should be valid hex");
+        hex::decode(chip_id).expect("chip_id should be valid hex");
     }
 
     #[test]

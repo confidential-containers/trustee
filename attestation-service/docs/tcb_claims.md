@@ -225,6 +225,7 @@ along with the full set of detached claims.
 
 ## AMD SEV-SNP
 
+- `snp.chip_id`: Unique identifier for platform instance (field may be zero if masked)
 - `snp.measurement` Launch Digest covering initial guest memory
 - `snp.platform_smt_enabled`:  Whether Simultaneous Multithreading is enabled on the system
 - `snp.platform_tsme_enabled`: Whether Transparent SME is enabled on the system
