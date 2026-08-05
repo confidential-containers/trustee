@@ -8,6 +8,7 @@ use actix_web::http::Method;
 use anyhow::{Context, Result};
 use key_value_storage::StorageProvider;
 use serde::Deserialize;
+use serde_json::Value;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
 
@@ -36,6 +37,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        init_data: Option<&Value>,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
