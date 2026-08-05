@@ -90,7 +90,7 @@ dependencies = [
  "mime",
  "percent-encoding",
  "pin-project-lite",
- "rand 0.10.1",
+ "rand 0.10.2",
  "sha1 0.11.0",
  "smallvec",
  "tokio",
@@ -2127,7 +2127,7 @@ dependencies = [
  "openssl",
  "p256",
  "p521",
- "rand 0.10.1",
+ "rand 0.10.2",
  "rand 0.8.6",
  "rsa",
  "serde",
@@ -3179,7 +3179,7 @@ dependencies = [
  "google-cloud-wkt",
  "http 1.4.0",
  "pin-project",
- "rand 0.10.1",
+ "rand 0.10.2",
  "serde",
  "serde_json",
  "thiserror 2.0.19",
@@ -4346,6 +4346,7 @@ dependencies = [
  "polyval 0.6.2",
  "prometheus",
  "prost",
+ "rand 0.10.2",
  "reference-value-provider-service",
  "regex",
  "regorus",
@@ -4517,7 +4518,7 @@ dependencies = [
  "openssl",
  "prost",
  "protos",
- "rand 0.10.1",
+ "rand 0.10.2",
  "reqwest 0.13.4",
  "resource_uri",
  "serde",
@@ -5935,9 +5936,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
 dependencies = [
  "chacha20",
  "getrandom 0.4.2",
@@ -6187,7 +6188,7 @@ dependencies = [
  "num-bigint 0.5.1",
  "num-traits",
  "parking_lot 0.12.5",
- "rand 0.10.1",
+ "rand 0.10.2",
  "regex",
  "serde",
  "serde_json",
@@ -8461,6 +8462,7 @@ dependencies = [
  "getrandom 0.4.2",
  "js-sys",
  "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 
