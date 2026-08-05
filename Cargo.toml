@@ -53,6 +53,7 @@ regorus = { version = "0.11.0", default-features = false, features = [
     "time",
     "std",
 ] }
+rand = "0.10.2"
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
 rstest = "0.26.1"
 serde = { version = "1.0", features = ["derive"] }
@@ -74,7 +75,7 @@ rsa = { version = "0.9.10", features = ["sha2"] }
 time = { version = "0.3.47", features = ["std"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-uuid = { version = "1.23.3", features = ["v4"] }
+uuid = { version = "1.23.3", features = ["v4", "v5"] }
 zeroize = "1"
 
 [patch.crates-io]
