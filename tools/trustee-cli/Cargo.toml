@@ -24,3 +24,6 @@ reference-value-provider-service = { path = "../../rvps" }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+policy-engine = { path = "../../deps/policy-engine" }
+ear.workspace = true
+serde_json.workspace = true

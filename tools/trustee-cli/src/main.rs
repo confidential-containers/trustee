@@ -14,6 +14,7 @@ use std::{
 use dirs::home_dir;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 mod keygen;
+mod policy;
 mod run;
 
 #[derive(Debug, Parser)]
@@ -43,6 +44,40 @@ pub(crate) enum Commands {
         /// If neither this nor a policy file is provided, the default policy is to deny all.
         #[arg(long)]
         allow_all: bool,
+    },
+    /// Validate a Rego policy file offline, without a running Trustee instance
+    Policy {
+        #[command(subcommand)]
+        action: PolicyCommands,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub(crate) enum PolicyCommands {
+    /// Check that a policy file compiles and evaluate it against sample input
+    Validate {
+        /// Path to the .rego policy file
+        file: PathBuf,
+        /// Path to a JSON file to use as evaluation input (uses a built-in
+        /// sample if not provided)
+        #[arg(long)]
+        input: Option<PathBuf>,
+        /// Rule to evaluate
+        #[arg(long, default_value = "data.policy.allow")]
+        rule: String,
+        /// Also validate AS/EAR-specific semantics: that
+        /// data.policy.trust_claims uses only valid AR4SI claim names
+        /// and in-range values, and data.policy.extensions is well-formed
+        #[arg(long)]
+        ear: bool,
+    },
+    /// Check that all reference values a policy queries are registered in RVPS
+    CheckReferences {
+        /// Path to the .rego policy file
+        file: PathBuf,
+        /// Address of the running RVPS instance
+        #[arg(long, default_value = "http://127.0.0.1:50003")]
+        addr: String,
     },
 }
 
@@ -83,6 +118,17 @@ async fn main() -> Result<()> {
             config_file,
             allow_all,
         } => run::trustee_run(&cli.home, config_file, allow_all).await,
+        Commands::Policy { action } => match action {
+            PolicyCommands::Validate {
+                file,
+                input,
+                rule,
+                ear,
+            } => policy::validate(file, input, rule, ear).await,
+            PolicyCommands::CheckReferences { file, addr } => {
+                policy::check_references(file, addr).await
+            }
+        },
     }
 }
 
