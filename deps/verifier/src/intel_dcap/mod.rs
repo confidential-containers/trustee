@@ -84,12 +84,17 @@ pub(crate) fn ecdsa_quote_verification(
         }
     });
 
-    let (_, supp_size) = tee_get_supplemental_data_version_and_size(quote).map_err(|e| {
+    let (version, supp_size) = tee_get_supplemental_data_version_and_size(quote).map_err(|e| {
         anyhow!(
             "tee_get_supplemental_data_version_and_size failed: {}",
             describe_error(e)
         )
     })?;
+    // `version` packs major_version in the low 16 bits and minor_version in
+    // the high 16 bits (see `supp_ver_t` in the DCAP headers), matching the
+    // layout the QVL also writes into `sgx_ql_qv_supplemental_t`'s version
+    // union when it populates `supp_data` below.
+    let minor_version = (version >> 16) as u16;
 
     // `sgx_ql_qv_supplemental_t` only ever appends fields for a new minor
     // version, so a runtime QVL older than this build reports a `supp_size`
@@ -145,6 +150,7 @@ pub(crate) fn ecdsa_quote_verification(
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
             prepare_custom_claims_map(
                 &mut supp_data,
+                minor_version,
                 collateral_expiration_status,
                 quote_verification_result,
             )

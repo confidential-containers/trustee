@@ -119,6 +119,11 @@ The following fields always exist.
   - `TDRelaunchAdvised` - The platform firmware and software are at the latest security patching level but the TD was launched prior to the application of new TDX TCB components using a TD Preserving update. Re-launching the TD will change the attestation result.
   - `TDRelaunchAdvisedConfigurationNeeded` - The platform firmware and software are at the latest security patching level but there are platform hardware configurations that may expose the TD to vulnerabilities. Re-launching the TD will change the attestation result.
 
+The following fields report the TD's current TCB level, as opposed to the level it originally launched at (reflected by `tdx.tcb_date`/`tdx.tcb_status`/`tdx.advisory_ids` above). They differ from the launch-time fields only for a TD that has undergone a TD Preserving update. _Note: these fields are only provided when the installed DCAP quote verification library reports supplemental data minor_version 5 or later (DCAP 1.27+); an older library omits them entirely._
+- `tdx.tcb_date_current`: String. Date time value in RFC3339 format - TCB date for the current TCB level.
+- `tdx.tcb_status_current`: String. TCB Level Status for the current TCB level. Same set of values as `tdx.tcb_status`.
+- `tdx.advisory_ids_current`: String List. Intel® Product Security Center Advisories applicable to the current TCB level.
+
 ## Intel SGX
 
 - `sgx.header`: Object. SGX quote header.
