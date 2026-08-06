@@ -37,6 +37,7 @@ impl SgxQlQvResultWrapper {
 
 pub(crate) fn prepare_custom_claims_map(
     supp_data: &mut sgx_ql_qv_supplemental_t,
+    minor_version: u16,
     collateral_expiration_status: u32,
     quote_verification_result: sgx_ql_qv_result_t,
 ) -> anyhow::Result<Map<String, Value>> {
@@ -112,6 +113,26 @@ pub(crate) fn prepare_custom_claims_map(
         Value::String(collateral_expiration_status.to_string()),
     );
     claims_map.insert("advisory_ids".to_string(), get_sa_list(&supp_data.sa_list));
+
+    // `tcb_date_current`/`tcb_status_current`/`sa_list_current` were appended
+    // in supplemental data minor_version 5 (DCAP 1.27); a runtime QVL older
+    // than that leaves them zeroed, so only surface them once the QVL has
+    // confirmed it actually populated them.
+    if minor_version >= 5 {
+        claims_map.insert(
+            "tcb_date_current".to_string(),
+            Value::String(format_rfc3339(supp_data.tcb_date_current)?),
+        );
+        claims_map.insert(
+            "tcb_status_current".to_string(),
+            SgxQlQvResultWrapper(supp_data.tcb_status_current).as_str(),
+        );
+        claims_map.insert(
+            "advisory_ids_current".to_string(),
+            get_sa_list(&supp_data.sa_list_current),
+        );
+    }
+
     Ok(claims_map)
 }
 
@@ -153,7 +174,7 @@ mod tests {
         let mut supp = deserialize_supp_data(&supplemental_data);
 
         let claims =
-            prepare_custom_claims_map(&mut supp, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK)
+            prepare_custom_claims_map(&mut supp, 0, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK)
                 .expect("failed to prepare custom claims map");
 
         let expected = json!({
@@ -176,6 +197,39 @@ mod tests {
         });
 
         assert_json_eq!(expected, claims);
+    }
+
+    #[test]
+    fn parse_supplemental_data_minor_version_5() {
+        let mut supp = create_supp_data_v5();
+
+        let claims =
+            prepare_custom_claims_map(&mut supp, 5, 0, sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OK)
+                .expect("failed to prepare custom claims map");
+
+        assert_eq!(
+            claims.get("tcb_date_current").and_then(|v| v.as_str()),
+            Some("2024-03-14T00:00:00Z")
+        );
+        assert_eq!(
+            claims.get("tcb_status_current").and_then(|v| v.as_str()),
+            Some("OutOfDate")
+        );
+        assert_eq!(
+            claims.get("advisory_ids_current"),
+            Some(&json!(["INTEL-SA-1234"]))
+        );
+    }
+
+    fn create_supp_data_v5() -> sgx_ql_qv_supplemental_t {
+        let mut supp: sgx_ql_qv_supplemental_t = Default::default();
+        supp.tcb_date_current = 1710374400;
+        supp.tcb_status_current = sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE;
+        let advisory = b"INTEL-SA-1234\0";
+        for (dst, &b) in supp.sa_list_current.iter_mut().zip(advisory) {
+            *dst = b as std::os::raw::c_char;
+        }
+        supp
     }
 
     fn deserialize_supp_data(encoded: &str) -> sgx_ql_qv_supplemental_t {
