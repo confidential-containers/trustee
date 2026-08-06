@@ -14,6 +14,8 @@ updates:
     open-pull-requests-limit: 3
     allow:
       - dependency-type: direct
+    ignore:
+      - dependency-name: "intel-tee-quote-verification-rs"
     cooldown:
       default-days: 7
 
