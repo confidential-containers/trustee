@@ -91,11 +91,15 @@ pub(crate) fn ecdsa_quote_verification(
         )
     })?;
 
-    let expected_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
-    if supp_size != expected_size {
-        bail!(
-            "Supplemental data size mismatch: QVL returned {supp_size}, expected {expected_size}"
-        );
+    // `sgx_ql_qv_supplemental_t` only ever appends fields for a new minor
+    // version, so a runtime QVL older than this build reports a `supp_size`
+    // smaller than `size_of::<sgx_ql_qv_supplemental_t>()`; the unwritten
+    // tail stays at its `Default` (zeroed) value. Only a *larger* report is
+    // unsupported, since that would mean the installed QVL is newer than
+    // this build and expects a bigger buffer than we can provide.
+    let max_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
+    if supp_size > max_size {
+        bail!("Supplemental data size unsupported: runtime QVL version requires {supp_size} bytes, but this build only supports up to {max_size}");
     }
 
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
