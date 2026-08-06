@@ -41,88 +41,75 @@ Minimal example:
 ## Sample
 
 **This is only a test verifier**.
-- `sample.svn`: version of the quote.
-- `sample.report_data`: report data when generating the evidence.
-- `sample.init_data`: init data hash.
-- `sample.launch_digest`: dummy launch digest used for policy testing.
-- `sample.platform_version.major`: sample platform major version.
-- `sample.platform_version.minor`: sample platform minor version.
-- `sample.debug`: sample debug flag (always false in sample verifier).
+- `sample.svn`: String. Version information of the sample evidence.
+- `sample.report_data`: String (Base64 Standard). Report data when generating the evidence.
+- `sample.init_data`: String (Base64 Standard). Init data hash.
+- `sample.launch_digest`: String. dummy launch digest used for policy testing. Always `abcde`.
+- `sample.platform_version.major`: Number. Sample platform major version. Always `1`.
+- `sample.platform_version.minor`: Number. Sample platform minor version. Always `4`.
+- `sample.debug`: Boolean. Sample debug flag (always false in sample verifier). Always `false`.
 
 ## Sample Device
 
 **This is only a test verifier for device-class attestation**.
-- `sampledevice.svn`: version of the quote-like sample evidence.
+- `sampledevice.svn`: String. Version information of the sample device evidence.
+- `sampledevice.report_data`: String (Base64 Standard). Report data when generating the evidence.
 
 ## Intel TDX
 
-The following fields are optional. Whether they appear depends on whether there is CCEL.
-- `tdx.uefi_event_logs` list of objects parsed from ccel log file. Each event can be accessed using fields described below.
-
-UEFI event log entry contains below fields:
-- `tdx.uefi_event_logs[0].index`: Measurement registry index.
-- `tdx.uefi_event_logs[0].event_type`: Name of the measurement event from [TCG PC Client Platform Firmware Profile Specification Section 10.4.1](https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v22_02dec2020.pdf).
-- `tdx.uefi_event_logs[0].digest_matches_event`: Boolean result of comparison between digest array and event data. List of events (`EV_EFI_ACTION`, `EV_SEPARATOR`, `EV_EFI_VARIABLE_AUTHORITY`, `EV_EFI_GPT_EVENT`, `EV_EVENT_TAG`, `EV_EFI_VARIABLE_DRIVER_CONFIG`) which can be checked in policy against being protected.
-- `tdx.uefi_event_logs[0].digests[0].alg`: Hash algorithm (`RSA`, `TDES`, `SHA-1`, `SHA-256`, `SHA-384`, `SHA-512`).
-- `tdx.uefi_event_logs[0].digests[0].digest`: Digest value calculated for hash defined in previous field.
-- `tdx.uefi_event_logs[0].event`: Base64 encoded raw event data.
-- `tdx.uefi_event_logs[0].details`: List of attributes parsed from event data. All details properties are optional.
-- `tdx.uefi_event_logs[0].details.string`: Parsed UTF-8 value.
-- `tdx.uefi_event_logs[0].details.unicode_name`: Parsed Unicode name of the measurement event.
-- `tdx.uefi_event_logs[0].details.unicode_name_length`: Unicode name length of the measurement event.
-- `tdx.uefi_event_logs[0].details.variable_data`: Base64 encoded event variable data.
-- `tdx.uefi_event_logs[0].details.variable_data_length`: Length of the variable data.
-- `tdx.uefi_event_logs[0].details.variable_name`: Variable name.
-- `tdx.uefi_event_logs[0].details.device_paths`: List of parsed device paths.
-- `tdx.uefi_event_logs[0].details.data`: Additional information processed from the event.
+- `tdx.uefi_event_logs`: **Optional**. list of objects parsed from ccel log file. Whether they appear depends on whether there is CCEL. See [UEFI Eventlog](#uefi-eventlog) for structure and definitions.
 
 The following fields always exist.
-- `tdx.quote.header.version`: The quote format version. Now supports 4 and 5.
-- `tdx.quote.header.att_key_type`: Enum of the algorithm used in signature.
-- `tdx.quote.header.tee_type`: TDX is always 0x81.
-- `tdx.quote.header.reserved`: Reserved.
-- `tdx.quote.header.vendor_id`: UID of QE Vendor. QE is a signed software component inside TEE to help to generate tdx quote.
-- `tdx.quote.header.user_data`: Custom attestation key owner data.
-- `tdx.quote.body.mr_config_id`: Software-defined ID for non-owner-defined configuration of the guest TD – e.g., run-time or OS configuration.
-- `tdx.quote.body.mr_owner`: Software-defined ID for the guest TD’s owner.
-- `tdx.quote.body.mr_owner_config`: Software-defined ID for owner-defined configuration of the guest TD – e.g., specific to the workload rather than the run-time or OS.
-- `tdx.quote.body.mr_td`: Measurement of the initial contents of the TD.
-- `tdx.quote.body.mrsigner_seam`: Measurement of a 3rd party tdx-module's signer (SHA384 hash). If it is 0, the tdx-module is from Intel.
-- `tdx.quote.body.report_data`: Software defined ID for non-owner-defined configuration on the guest TD.
-- `tdx.quote.body.seam_attributes`: For tdx1.0, must be 0.
-- `tdx.quote.body.td_attributes`: TD's attributes.
-- `tdx.quote.body.mr_seam`: Measurement of the SEAM module.
-- `tdx.quote.body.tcb_svn`: TEE hardware tcb version, defined and meaningful to Intel. everytime firmware updates this field will change.
-- `tdx.quote.body.xfam`: TD's XFAM.
-- `tdx.quote.body.rtmr_0`: Runtime extendable measurement register 0.
-- `tdx.quote.body.rtmr_1`: Runtime extendable measurement register 1.
-- `tdx.quote.body.rtmr_2`: Runtime extendable measurement register 2.
-- `tdx.quote.body.rtmr_3`: Runtime extendable measurement register 3.
-- `tdx.quote.type`: Indicating quote v5 type. 2 means TDX 1.0 quote and 3 means TDX 1.5 quote. Only quote format V5 contains this field.
-- `tdx.quote.size`: Quote body length. Only quote format V5 contains this field.
-- `tdx.quote.body.tee_tcb_svn2`: Array of TEE TCB SVNs (for TD preserving).
-- `tdx.quote.body.mr_servicetd`: If there is one or more bound or pre-bound service TDs, this field is the SHA384 hash of the `TDINFO`s of those service TDs bound. Else, this field is 0.
-- `tdx.td_attributes.debug`: A boolean value that indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
-- `tdx.td_attributes.key_locker`: A boolean value that indicates whether the TD is allowed to use Key Locker.
-- `tdx.td_attributes.perfmon`: A boolean value that indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
-- `tdx.td_attributes.protection_keys`: A boolean value that indicates whether the TD is allowed to use Supervisor Protection Keys.
-- `tdx.td_attributes.septve_disable`: A boolean value that determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
-- `tdx.advisory_ids`: List of Intel® Product Security Center Advisories.
-- `tdx.collateral_expiration_status`: Expected 0, if none of the inputted collateral has expired as compared to the inputted expiration_check_date.
-- `tdx.earliest_expiration_date`: Date time value in RFC3339 format - The earliest nextUpdate value, or expiration date, among all collaterals.
-- `tdx.earliest_issue_date`: Date time value in RFC3339 format - The earliest issueDate among all collaterals.
-- `tdx.is_cached_keys`: A boolean value that indicates whether platform root keys are cached by SGX Registration Backend. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
-- `tdx.is_dynamic_platform`: A boolean value that indicates whether a platform can be extended with additional packages. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
-- `tdx.is_smt_enabled`: A boolean value that indicates whether a platform has SMT (simultaneous multithreading) enabled. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
-- `tdx.latest_issue_date`: Date time value in RFC3339 format - The latest issueDate value among all collaterals.
-- `tdx.pck_crl_num`: Indication of the freshness of the PCK cert used.
-- `tdx.platform_provider_id`: The Platform Provisioning ID.
-- `tdx.root_ca_crl_num`: Indication of the freshness of the Root CA cert used.
-- `tdx.root_key_id`: ID of the collateral’s root signer (hash of Root CA’s public key SHA-384).
-- `tdx.sgx_type`: The type of memory used in SGX. Can be one of (`Standard`, `Scalable`, `Scalable with Integrity`).
-- `tdx.tcb_date`: Date time value in RFC3339 format - Earliest date between tcbInfo and qeIdentity.
-- `tdx.tcb_eval_num`: Indication of the freshness of the reference values used.
-- `tdx.tcb_status`: TCB Level Status can have any one of the following values:
+- `tdx.quote.header`: Object. TDX Quote Header.
+  - `tdx.quote.header.version`: String (hex). The quote format version. Now supports `0400` (V4 version quote format) and `0500` (V5 version quote format).
+  - `tdx.quote.header.att_key_type`: String (hex for 2 bytes). Enum of the algorithm used in signature.
+  - `tdx.quote.header.tee_type`: String (hex for 4 bytes). TDX is always `81000000`.
+  - `tdx.quote.header.reserved`: String (hex for 4 bytes). Reserved.
+  - `tdx.quote.header.vendor_id`: String (hex for 16 bytes). UID of QE Vendor. QE is a signed software component inside TEE to help to generate tdx quote.
+  - `tdx.quote.header.user_data`: String (hex for 20 bytes). Custom attestation key owner data.
+- `tdx.quote.body`: Object. TDX Quote Body.
+  - `tdx.quote.body.mr_config_id`: String (hex for 48 bytes). Software-defined ID for non-owner-defined configuration of the guest TD – e.g., run-time or OS configuration.
+  - `tdx.quote.body.mr_owner`: String (hex for 48 bytes). Software-defined ID for the guest TD’s owner.
+  - `tdx.quote.body.mr_owner_config`: String (hex for 48 bytes). Software-defined ID for owner-defined configuration of the guest TD – e.g., specific to the workload rather than the run-time or OS.
+  - `tdx.quote.body.mr_td`: String (hex for 48 bytes). Measurement of the initial contents of the TD.
+  - `tdx.quote.body.mrsigner_seam`: String (hex for 48 bytes). Measurement of a 3rd party tdx-module's signer (SHA384 hash). If it is 0, the tdx-module is from Intel.
+  - `tdx.quote.body.report_data`: String (hex for 64 bytes). Software defined ID for non-owner-defined configuration on the guest TD.
+  - `tdx.quote.body.seam_attributes`: String (hex for 8 bytes). For tdx 1.0, must be `000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000`.
+  - `tdx.quote.body.td_attributes`: String (hex for 8 bytes). TD's attributes. See `tdx.td_attributes` also.
+  - `tdx.quote.body.mr_seam`: String (hex for 48 bytes). Measurement of the SEAM module.
+  - `tdx.quote.body.tcb_svn`: String (hex for 16 bytes). TEE hardware tcb version, defined and meaningful to Intel. everytime firmware updates this field will change.
+  - `tdx.quote.body.xfam`: String (hex for 8 bytes). TD's XFAM.
+  - `tdx.quote.body.rtmr_0`: String (hex for 48 bytes). Runtime extendable measurement register 0.
+  - `tdx.quote.body.rtmr_1`: String (hex for 48 bytes). Runtime extendable measurement register 1.
+  - `tdx.quote.body.rtmr_2`: String (hex for 48 bytes). Runtime extendable measurement register 2.
+  - `tdx.quote.body.rtmr_3`: String (hex for 48 bytes). Runtime extendable measurement register 3.
+  - `tdx.quote.body.tee_tcb_svn2`: String (hex for 16 bytes). Array of TEE TCB SVNs (for TD preserving).
+  - `tdx.quote.body.mr_servicetd`: String (hex for 48 bytes). If there is one or more bound or pre-bound service TDs, this field is the SHA384 hash of the `TDINFO`s of those service TDs bound. Else, this field is 0.
+- `tdx.quote.type`: **Optional**. String (hex for 2 bytes). Indicating quote v5 type. `0200` means TDX 1.0 quote and `0300` means TDX 1.5 quote. Only quote format V5 contains this field.
+- `tdx.quote.size`: **Optional**. String (hex for 4 bytes). Quote body length. Only quote format V5 contains this field.
+- `tdx.td_attributes`: Object. Translated flags for `tdx.quote.body.td_attributes`.
+  - `tdx.td_attributes.debug`: Boolean. Indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
+  - `tdx.td_attributes.key_locker`: Boolean. Indicates whether the TD is allowed to use Key Locker.
+  - `tdx.td_attributes.perfmon`: Boolean. Indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
+  - `tdx.td_attributes.protection_keys`: Boolean. Indicates whether the TD is allowed to use Supervisor Protection Keys.
+  - `tdx.td_attributes.septve_disable`: Boolean. Determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+- `tdx.advisory_ids`: String List. Intel® Product Security Center Advisories.
+- `tdx.collateral_expiration_status`: String. If none of the inputted collateral has expired as compared to the inputted `expiration_check_date`, it should be `"0"`.
+- `tdx.earliest_expiration_date`: String. Date time value in RFC3339 format - The earliest nextUpdate value, or expiration date, among all collaterals.
+- `tdx.earliest_issue_date`: String. Date time value in RFC3339 format - The earliest issueDate among all collaterals.
+- `tdx.is_cached_keys`: Boolean. Indicates whether platform root keys are cached by SGX Registration Backend. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.is_dynamic_platform`: Boolean. Indicates whether a platform can be extended with additional packages. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.is_smt_enabled`: Boolean. Indicates whether a platform has SMT (simultaneous multithreading) enabled. _Note: this field is only provided if sgx_type is set to either "scalable" or "Scalable with Integrity"._
+- `tdx.latest_issue_date`: String. Date time value in RFC3339 format - The latest issueDate value among all collaterals.
+- `tdx.pck_crl_num`: Number. Indication of the freshness of the PCK cert used.
+- `tdx.platform_instance_id`: **Optional**. String (hex for 16 bytes). Present only when certificates issued by PCK Platform CA; absent when certificates issued by PCK Processor CA. The certificates are PCK certs that link the platform's unique hardware identification to its TCB.
+- `tdx.platform_provider_id`: String (hex for 16 bytes). The Platform Provisioning ID (PPID).
+- `tdx.root_ca_crl_num`: Number. Indication of the freshness of the Root CA cert used.
+- `tdx.root_key_id`: String (hex for 48 bytes). ID of the collateral’s root signer (hash of Root CA’s public key SHA-384).
+- `tdx.sgx_type`: String. The type of memory used in SGX. Can be one of (`Standard`, `Scalable`, `Scalable with Integrity`).
+- `tdx.tcb_date`: String. Date time value in RFC3339 format - Earliest date between tcbInfo and qeIdentity.
+- `tdx.tcb_eval_num`: Number. Indication of the freshness of the reference values used.
+- `tdx.tcb_status`: String. TCB Level Status can have any one of the following values:
   - `UpToDate` - The attesting platform is patched with the latest firmware and software and no known security advisories apply.
   - `SWHardeningNeeded` - The platform firmware and software are at the latest security patching level but there are vulnerabilities that can only be mitigated by software changes to the enclave or TD.
   - `ConfigurationNeeded` - The platform firmware and software are at the latest security patching level but there are platform hardware configurations required to mitigate vulnerabilities.
@@ -134,68 +121,78 @@ The following fields always exist.
 
 ## Intel SGX
 
-- `sgx.header.version`: The version this quote structure.
-- `sgx.header.att_key_type`: sgx_attestation_algorithm_id_t.  Describes the type of signature.
-- `sgx.header.att_key_data_0`: Optionally stores additional data associated with the att_key_type.
-- `sgx.header.qe_svn`: The ISV_SVN of the Quoting Enclave when the quote was generated.
-- `sgx.header.pce_svn`: The ISV_SVN of the PCE when the quote was generated.
-- `sgx.header.vendor_id`: Unique identifier of QE Vendor.
-- `sgx.header.user_data`: Custom attestation key owner data.
-- `sgx.body.cpu_svn`: Security Version of the CPU.
-- `sgx.body.misc_select`:  Which fields defined in SSA.MISC.
-- `sgx.body.reserved1`: Reserved.
-- `sgx.body.isv_ext_prod_id`:  ISV assigned Extended Product ID.
-- `sgx.body.attributes.flags`: special Capabilities the Enclave possess.
-- `sgx.body.attributes.xfrm`: XFRM the Enclave possess
-- `sgx.body.mr_enclave`: The value of the enclave's ENCLAVE measurement.
-- `sgx.body.reserved2`: Reserved.
-- `sgx.body.mr_signer`: The value of the enclave's SIGNER measurement.
-- `sgx.body.reserved3`: Reserved.
-- `sgx.body.config_id`: CONFIGID of the enclave.
-- `sgx.body.isv_prod_id`: Product ID of the Enclave.
-- `sgx.body.isv_svn`: Security Version of the Enclave.
-- `sgx.body.config_svn`: CONFIGSVN of the enclave.
-- `sgx.body.reserved4`: Reserved.
-- `sgx.body.isv_family_id`: ISV assigned Family ID.
-- `sgx.body.report_data`: Data provided by the user.
+- `sgx.header`: Object. SGX quote header.
+  - `sgx.header.version`: String (hex for 2 bytes). The version this quote structure.
+  - `sgx.header.att_key_type`: String (hex for 2 bytes). sgx_attestation_algorithm_id_t.  Describes the type of signature.
+  - `sgx.header.att_key_data_0`: String (hex for 4 bytes). Type of Trusted Execution Environment. Always `00000000` for SGX.
+  - `sgx.header.qe_svn`: String (hex for 2 bytes). The ISV_SVN of the Quoting Enclave when the quote was generated.
+  - `sgx.header.pce_svn`: String (hex for 2 bytes). The ISV_SVN of the PCE when the quote was generated.
+  - `sgx.header.vendor_id`: String (hex for 16 bytes). Unique identifier of QE Vendor.
+  - `sgx.header.user_data`: String (hex for 20 bytes).  Custom attestation key owner data.
+- `sgx.body`: Object. SGX quote body.
+  - `sgx.body.cpu_svn`: String (hex for 16 bytes). Security Version of the CPU.
+  - `sgx.body.misc_select`:  String (hex for 4 bytes). Which fields defined in SSA.MISC.
+  - `sgx.body.reserved1`: String (hex for 12 bytes). Reserved.
+  - `sgx.body.isv_ext_prod_id`:  String (hex for 16 bytes). ISV assigned Extended Product ID.
+  - `sgx.body.attributes.flags`: String (hex for 8 bytes). special Capabilities the Enclave possess.
+  - `sgx.body.attributes.xfrm`: String (hex for 8 bytes). XFRM the Enclave possess
+  - `sgx.body.mr_enclave`: String (hex for 32 bytes). The value of the enclave's ENCLAVE measurement.
+  - `sgx.body.reserved2`: String (hex for 32 bytes). Reserved.
+  - `sgx.body.mr_signer`: String (hex for 32 bytes). The value of the enclave's SIGNER measurement.
+  - `sgx.body.reserved3`: String (hex for 32 bytes). Reserved.
+  - `sgx.body.config_id`: String (hex for 64 bytes). CONFIGID of the enclave.
+  - `sgx.body.isv_prod_id`: String (hex for 2 bytes). Product ID of the Enclave.
+  - `sgx.body.isv_svn`: String (hex for 2 bytes). Security Version of the Enclave.
+  - `sgx.body.config_svn`: String (hex for 2 bytes). CONFIGSVN of the enclave.
+  - `sgx.body.reserved4`: String (hex for 42 bytes). Reserved.
+  - `sgx.body.isv_family_id`: String (hex for 16 bytes). ISV assigned Family ID.
+  - `sgx.body.report_data`: String (hex for 64 bytes). Data provided by the user.
+- `sgx.platform_instance_id`: **Optional**. String (hex for 16 bytes). Present only when certificates issued by PCK Platform CA; absent when certificates issued by PCK Processor CA. The certificates are PCK certs that link the platform's unique hardware identification to its TCB.
 
 ## Azure TDX Confidential VM (az-tdx-vtpm)
 
-Under the top-level key `az-tdx-vtpm`, claims inherit the fields from the TDX layout with an additional `tpm` hierarchy in which the TEE's PCR values are stored:
+- `["az-tdx-vtpm"].*`: claims inherit the fields from the [TDX layout](#intel-tdx).
+- `["az-tdx-vtpm"].tpm`: Object. TPM PCR values.
+  - `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: String (hex). SHA256 PCR registers for the TEE's vTPM quote.
+  - `["az-tdx-vtpm"].tpm.init_data`: **Optional**. String (hex). The register used as initdata digest (PCR 8).
 
-- `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
-
-Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
+> [!NOTE]
+> The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
 ## Azure SEV-SNP Confidential VM (az-snp-vtpm)
 
-Under the top-level key `az-snp-vtpm`, claims inherit the fields from the SEV-SNP layout with an additional `tpm` hierarchy in which the TEE's PCR values are stored:
-
-- `["az-snp-vtpm"].tpm.pcr{01,..,n}`: SHA256 PCR registers for the TEE's vTPM quote.
+- `["az-snp-vtpm"].*`: claims inherit the fields from the [SEV-SNP](#amd-sev-snp) layout.
+- `["az-tdx-vtpm"].tpm`: Object. TPM PCR values.
+  - `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: String (hex). SHA256 PCR registers for the TEE's vTPM quote.
+  - `["az-tdx-vtpm"].tpm.init_data`: **Optional**. String (hex). The register used as initdata digest (PCR 8).
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
 ## IBM Secure Execution for Linux (SEL)
-- `se.version`: The version this quote structure.
-- `se.cuid`: The unique ID of the attested guest (configuration uniqe ID).
-- `se.tag`: SE header tag.
-- `se.image_phkh`: SE image public host key hash
-- `se.attestation_phkh`: SE attestation public host key hash
-- `se.user_data`: Optional custom attestation owner data collected on guest (e.g., `runtime_data_digest`)
+
+- `se.version`: Number. The version this quote structure.
+- `se.cuid`: String (hex for 16 bytes). The unique ID of the attested guest (configuration uniqe ID).
+- `se.tag`: String (hex for 16 bytes). SE header tag.
+- `se.image_phkh`: String (hex). SE image public host key hash
+- `se.attestation_phkh`: String (hex). SE attestation public host key hash
+- `se.report_data`: String (hex for 64 bytes). Data provided by the user.
 
 ## Arm CCA
 
 CCA claims are grouped into `cca.realm` and `cca.platform`:
 
-- `cca.realm.cca_realm_personalization_value`: Per Realm defined personalized value.
-- `cca.realm.cca_realm_initial_measurement`: The initial measurement of the Realm.
-- `cca.realm.cca_realm_extensible_measurements`: The extensible measurements of the Realm.
-- `cca.realm.cca_realm_hash_algo_id`: RMI hash algorithm.
-- `cca.realm.cca_realm_challenge`: The challenge to do the attestation.
-- `cca.platform.cca_platform_instance_id`: Hardware platform instance ID.
-- `cca.platform.cca_platform_implementation_id`: Hardware implementation ID.
-- `cca.report_data`: report data derived from realm challenge
-- `cca.init_data`: init data derived from realm personalization value
+- `cca.realm`: Object. CCA Realm token claims.
+  - `cca.realm.cca_realm_personalization_value`: String (Base64 Standard). Per Realm defined personalized value.
+  - `cca.realm.cca_realm_initial_measurement`: String (Base64 Standard). The initial measurement of the Realm.
+  - `cca.realm.cca_realm_extensible_measurements`: String list. The extensible measurements of the Realm.
+    - `cca.realm.cca_realm_extensible_measurements[i]`: String (Base64 Standard). The i-th extensible measurement of the Realm.
+  - `cca.realm.cca_realm_hash_algo_id`: String (Base64 Standard). RMI hash algorithm.
+  - `cca.realm.cca_realm_challenge`: String (Base64 Standard). The challenge to do the attestation.
+- `cca.platform`: Object. CCA Platform token claims.
+  - `cca.platform.cca_platform_instance_id`: String (Base64 Standard). Hardware platform instance ID.
+  - `cca.platform.cca_platform_implementation_id`: String (Base64 Standard). Hardware implementation ID.
+- `cca.report_data`: String (Base64 Standard). report data derived from realm challenge
+- `cca.init_data`: String (Base64 Standard). init data digest field, the same as `cca.realm.cca_realm_personalization_value`.
 
 ## NVIDIA
 
@@ -250,58 +247,131 @@ Generally, policies should be evaluated against the reported TCB.
 
 ## TPM
 
-- `tpm.init_data`: SHA256 PCR[08] value (hex)
-- `tpm.report_data`: nonce from quote (hex)
-- `tpm.pcr00` ... `tpm.pcr23`: SHA256 PCR values (hex; index count depends on quote)
-- `tpm.ak_public`: AK (Attestation Key) public key in PEM format (base64-encoded DER)
+- `tpm.init_data`: String (hex). SHA256 PCR[08] value (hex)
+- `tpm.report_data`: String (hex). nonce from quote (hex)
+- `tpm.pcr00` ... `tpm.pcr23`: String (hex). SHA256 PCR values (hex; index count depends on quote)
+- `tpm.ak_public`: String (Base64 Standard). AK (Attestation Key) public key in PEM format (base64-encoded DER)
 
 ## Hygon DCU
 
 Each attestation report produces one set of claims under `hygondcu`. Multiple DCUs are evaluated separately (EAR token submods `dcu0`, `dcu1`, ... in evidence list order):
 
-- `hygondcu.body.version`: Firmware version.
-- `hygondcu.body.chip_id`: DCU chip ID.
-- `hygondcu.body.user_data`: The challenge data for the attestation.
-- `hygondcu.body.measure`: measurement of the firmware.
-- `hygondcu.body.reserved`: Reserved field.
-- `hygondcu.body.sig_usage`: The usage of the signature.
-- `hygondcu.body.sig_algo`: The algorithm of the signature.
-- `hygondcu.report_data` (same value as `body.user_data`)
+- `hygondcu.body`: Object. The report body of Hygon DCU.
+  - `hygondcu.body.version`: Number. Firmware version.
+  - `hygondcu.body.chip_id`: String (hex for 16 bytes). DCU chip ID.
+  - `hygondcu.body.user_data`: String (hex for 64 bytes). The challenge data for the attestation.
+  - `hygondcu.body.measure`: String (hex for 32 bytes). measurement of the firmware.
+  - `hygondcu.body.reserved`: String (hex for 128 bytes). Reserved field.
+  - `hygondcu.body.sig_usage`: String (hex). The usage of the signature.
+  - `hygondcu.body.sig_algo`: String (hex). The algorithm of the signature.
+- `hygondcu.report_data`: String (hex for 64 bytes). Same value as `body.user_data`.
 
 ## Hygon CSV
 
-- `csv.version`: The version of the quote. Now only `1` and `2` is legal.
-- `csv.policy.nodbg`: Debugging of the guest is disallowed.
-- `csv.policy.noks`: Sharing keys with other guests is disallowed.
-- `csv.policy.es`: CSV2 is required when set.
-- `csv.policy.nosend`: Sending the guest to another platform is disallowed.
-- `csv.policy.domain`: The guest must not be transmitted to another platform that is not in the domain.
-- `csv.policy.csv`: The guest must not be transmitted to another platform that is not CSV capable.
-- `csv.policy.csv3`: CSV3 is required.
-- `csv.policy.asid_reuse`: Sharing asids with other guests owned by same user is allowed.
-- `csv.policy.hsk_version`: The guest must not be transmitted to another platform with a lower HSK version.
-- `csv.policy.cek_version`: The guest must not be transmitted to another platform with a lower CEK version.
-- `csv.policy.api_major`: The guest must not be transmitted to another platform with a lower platform version.
-- `csv.policy.api_minor`: The guest must not be transmitted to another platform with a lower platform version.
-- `csv.user_pubkey_digest`: Pubkey digest of the session used to secure communication between user/hypervisor and PSP.
-- `csv.vm_id`:  The identifier of the VM custommized by the guest owner.
-- `csv.vm_version`:  The version info of the VM customized by the guest owner.
-- `csv.report_data`: The challenge data for the attestation.
-- `csv.mnonce`: The random nonce generated by user to protect struct TeeInfoSigner.
-- `csv.measure`: The launch digest of the VM.
-- `csv.anonce`: The signature for the fields above.
-- `csv.sig_usage`: The usage of the signature.
-- `csv.sig_algo`: The algorithm of the signature.
-- `csv.serial_number`: CPU serial number.
+- `csv.version`: String. The version of the quote. Now only `1` and `2` is legal.
+- `csv.policy`: Object. CSV Guest policy.
+  - `csv.policy.nodbg`: Number. Debugging of the guest is disallowed.
+  - `csv.policy.noks`: Number. Sharing keys with other guests is disallowed.
+  - `csv.policy.es`: Number. CSV2 is required when set.
+  - `csv.policy.nosend`: Number. Sending the guest to another platform is disallowed.
+  - `csv.policy.domain`: Number. The guest must not be transmitted to another platform that is not in the domain.
+  - `csv.policy.csv`: Number. The guest must not be transmitted to another platform that is not CSV capable.
+  - `csv.policy.csv3`: Number. CSV3 is required.
+  - `csv.policy.asid_reuse`: Number. Sharing asids with other guests owned by same user is allowed.
+  - `csv.policy.hsk_version`: Number. The guest must not be transmitted to another platform with a lower HSK version.
+  - `csv.policy.cek_version`: Number. The guest must not be transmitted to another platform with a lower CEK version.
+  - `csv.policy.api_major`: Number. The guest must not be transmitted to another platform with a lower platform version.
+  - `csv.policy.api_minor`: Number. The guest must not be transmitted to another platform with a lower platform version.
+- `csv.user_pubkey_digest`: String (hex for 32 bytes). Pubkey digest of the session used to secure communication between user/hypervisor and PSP.
+- `csv.vm_id`: String (hex for 16 bytes). The identifier of the VM custommized by the guest owner.
+- `csv.vm_version`: String (hex for 16 bytes). The version info of the VM customized by the guest owner.
+- `csv.report_data`: String (hex for 64 bytes). The challenge data for the attestation.
+- `csv.mnonce`: String (hex for 16 bytes). The random nonce generated by user to protect struct TeeInfoSigner.
+- `csv.measure`: String (hex for 32 bytes). The launch digest of the VM.
+- `csv.anonce`:  String (hex for 4 bytes). The signature for the fields above.
+- `csv.sig_usage`:  String (hex for 4 bytes). The usage of the signature.
+- `csv.sig_algo`:  String (hex for 4 bytes). The algorithm of the signature.
+- `csv.serial_number`: String. CPU serial number.
 
 If the quote version is `2`, it will have the following extra fiels.
 
-- `csv.build`: The version of the firmware's build.
-- `csv.rtmr_version`: The version of the VM's rtmr.
-- `csv.reserved0`: A reserved field, for future use.
-- `csv.rtmr0`: The rtmr register 0, it's always equals to @measure field.
-- `csv.rtmr1`: The rtmr register 1.
-- `csv.rtmr2`: The rtmr register 2.
-- `csv.rtmr3`: The rtmr register 3.
-- `csv.rtmr4`: The rtmr register 4.
-- `csv.reserved1`: A reserved field, for future use.
+- `csv.build`: Number. The version of the firmware's build.
+- `csv.rtmr_version`: Number. The version of the VM's rtmr.
+- `csv.reserved0`: String (hex for 14 bytes). A reserved field, for future use.
+- `csv.rtmr0`: String (hex for 32 bytes). The rtmr register 0, it's always equals to @measure field.
+- `csv.rtmr1`: String (hex for 32 bytes). The rtmr register 1.
+- `csv.rtmr2`: String (hex for 32 bytes). The rtmr register 2.
+- `csv.rtmr3`: String (hex for 32 bytes). The rtmr register 3.
+- `csv.rtmr4`: String (hex for 32 bytes). The rtmr register 4.
+- `csv.reserved1`: String (hex for 656 bytes). A reserved field, for future use.
+
+## Appendix
+
+### UEFI Eventlog
+
+#### UEFI Eventlog Claims
+
+UEFI event log is a list of event entries. Different event entry can be indexed by `[]` operator.
+Each entry contains below fields:
+
+- `uefi_event_logs[i]`: Object. The i-th eventlog entry.
+- `uefi_event_logs[i].index`: Number. Measurement registry index.
+- `uefi_event_logs[i].event_type`: String. See [Event Types](#event-types) section.
+- `uefi_event_logs[i].digest_matches_event`: Boolean. Result of comparison between digest array and event data. List of events (`EV_EFI_ACTION`, `EV_SEPARATOR`, `EV_EFI_VARIABLE_AUTHORITY`, `EV_EFI_GPT_EVENT`, `EV_EVENT_TAG`, `EV_EFI_VARIABLE_DRIVER_CONFIG`) which can be checked in policy against being protected.
+- `uefi_event_logs[i].digests[j]`: Object. The j-th digest array of the event.
+  - `uefi_event_logs[i].digests[j].alg`: Hash algorithm (`RSA`, `TDES`, `SHA-1`, `SHA-256`, `SHA-384`, `SHA-512`, `SM3`).
+  - `uefi_event_logs[i].digests[j].digest`: String (hex). Digest value calculated for hash defined in previous field.
+- `uefi_event_logs[i].event`: String (Base64 Standard). Raw event data.
+- `uefi_event_logs[i].details`: Object. List of attributes parsed from event data.
+  - `uefi_event_logs[i].details.string`: **Optional**. String. Parsed UTF-8 value.
+  - `uefi_event_logs[i].details.unicode_name`: **Optional**. String. Parsed Unicode name of the measurement event.
+  - `uefi_event_logs[i].details.unicode_name_length`: **Optional**. Number. Unicode name length of the measurement event.
+  - `uefi_event_logs[i].details.variable_data`: **Optional**. String (Base64 Standard). Event variable data.
+  - `uefi_event_logs[i].details.variable_data_length`: **Optional**. Number. Length of the variable data.
+  - `uefi_event_logs[i].details.variable_name`: **Optional**. String. Variable name.
+  - `uefi_event_logs[i].details.device_paths`: **Optional**. String list. List of parsed device paths.
+    - `uefi_event_logs[i].details.device_paths[j]`: String. The j-th parsed device path.
+  - `uefi_event_logs[i].details.data`: **Optional**. Additional information processed from the event. Now it's only used in `EV_EVENT_TAG` event type for [AAEL](../../kbs/docs/confidential-containers-eventlog.md) entry.
+    - `uefi_event_logs[i].details.data.domain`: String. The AAEL event domain name.
+    - `uefi_event_logs[i].details.data.operation`: String. The AAEL event operation name.
+    - `uefi_event_logs[i].details.data.content`: String or Object. The AAEL event content. AS will try to parse the original content field as JSON format. If succeed, the `content` field here will be a JSON Object. If failed, it will be a JSON String.
+
+#### Event Types
+
+Name of the measurement event from [TCG PC Client Platform Firmware Profile Specification Section 10.4.1](https://trustedcomputinggroup.org/wp-content/uploads/TCG_PCClient_PFP_r1p05_v22_02dec2020.pdf). Now we have the following event types
+- `EV_PREBOOT_CERT`
+- `EV_POST_CODE`
+- `EV_UNUSED`
+- `EV_NO_ACTION`
+- `EV_SEPARATOR`
+- `EV_ACTION`
+- `EV_EVENT_TAG`
+- `EV_S_CRTM_CONTENTS`
+- `EV_S_CRTM_VERSION`
+- `EV_CPU_MICROCODE`
+- `EV_PLATFORM_CONFIG_FLAGS`
+- `EV_TABLE_OF_DEVICES`
+- `EV_COMPACT_HASH`
+- `EV_IPL`
+- `EV_IPL_PARTITION_DATA`
+- `EV_NONHOST_CODE`
+- `EV_NONHOST_CONFIG`
+- `EV_NONHOST_INFO`
+- `EV_OMIT_BOOT_DEVICE_EVENTS`
+- `EV_EFI_EVENT_BASE`
+- `EV_EFI_VARIABLE_DRIVER_CONFIG`
+- `EV_EFI_VARIABLE_BOOT`
+- `EV_EFI_BOOT_SERVICES_APPLICATION`
+- `EV_EFI_BOOT_SERVICES_DRIVER`
+- `EV_EFI_RUNTIME_SERVICES_DRIVER`
+- `EV_EFI_GPT_EVENT`
+- `EV_EFI_ACTION`
+- `EV_EFI_PLATFORM_FIRMWARE_BLOB`
+- `EV_EFI_HANDOFF_TABLES`
+- `EV_EFI_PLATFORM_FIRMWARE_BLOB2`
+- `EV_EFI_HANDOFF_TABLES2`
+- `EV_EFI_VARIABLE_BOOT2`
+- `EV_EFI_HCRTM_EVENT`
+- `EV_EFI_VARIABLE_AUTHORITY`
+- `EV_EFI_SPDM_FIRMWARE_BLOB`
+- `EV_EFI_SPDM_FIRMWARE_CONFIG`
