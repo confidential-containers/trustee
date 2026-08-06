@@ -112,13 +112,20 @@ pub(crate) fn ecdsa_quote_verification(
         .as_secs() as i64;
 
     // call DCAP quote verify library for quote verification
-    let (collateral_expiration_status, quote_verification_result) = tee_verify_quote(
-        quote,
-        collateral.as_ref(),
-        current_time,
-        None,
-        Some(&mut supp_data_desc),
-    )
+    //
+    // Safety: `supp_data_desc.p_data` points to `supp_data`, a live
+    // `sgx_ql_qv_supplemental_t` on the stack, and `data_size` was set to
+    // `supp_size`, matching that struct's size, so the descriptor upholds
+    // tee_verify_quote's size/validity precondition.
+    let (collateral_expiration_status, quote_verification_result) = unsafe {
+        tee_verify_quote(
+            quote,
+            collateral.as_ref(),
+            current_time,
+            None,
+            Some(&mut supp_data_desc),
+        )
+    }
     .map_err(|e| anyhow!("tee_verify_quote failed: {}", describe_error(e)))?;
 
     debug!("tee_verify_quote successfully returned.");
@@ -141,9 +148,8 @@ pub(crate) fn ecdsa_quote_verification(
         }
         terminal_result => {
             bail!(
-                "Verification completed with Terminal result: {:?} ({:#04x})",
-                terminal_result,
-                terminal_result as u32
+                "Verification completed with Terminal result: {:#04x}",
+                terminal_result.0
             );
         }
     }
