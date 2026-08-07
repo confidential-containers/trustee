@@ -396,7 +396,7 @@ pub(crate) async fn api(
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method(), None)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -446,8 +446,11 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
+                let init_data = claims
+                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method(), init_data)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
