@@ -1,0 +1,876 @@
+// Copyright (c) 2025 by IBM Corporation
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+use actix_web::http::Method;
+use anyhow::{anyhow, bail, Error, Result};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
+
+use openssl::asn1::Asn1Time;
+use openssl::bn::BigNum;
+use openssl::ec::{EcGroup, EcKey};
+use openssl::hash::MessageDigest;
+use openssl::nid::Nid;
+use openssl::pkey::{PKey, Private};
+use openssl::rsa::Rsa;
+use openssl::x509::{
+    extension::{AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectKeyIdentifier},
+    X509Builder, X509Name, X509NameBuilder, X509,
+};
+use serde::{Deserialize, Serialize};
+
+use super::super::plugin_manager::ClientPlugin;
+
+/// Default values used when certificate fields are not set in the plugin config.
+pub const DEFAULT_COUNTRY: &str = "AA";
+pub const DEFAULT_STATE: &str = "Default State";
+pub const DEFAULT_LOCALITY: &str = "Default City";
+pub const DEFAULT_ORGANIZATION: &str = "Default Organization";
+pub const DEFAULT_ORG_UNIT: &str = "Default Unit";
+pub const DEFAULT_CA_VALIDITY_DAYS: u32 = 3650;
+
+// ---- Config types -------------------------------------------------------
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct SecretProvPluginConfig {
+    #[serde(default)]
+    pub secretprov: SecretProvSection,
+}
+
+/// Controls how incoming query strings are interpreted.
+///
+/// `required` lists the params whose values are joined (with `_`) to form the
+/// per-identity store key.  For example, `["name", "ns"]` with a request of
+/// `?name=pod-abc&ns=default` produces the key `"pod-abc_default"`.
+///
+/// `spec_required` gates whether `secret_name` and `secret_type` must appear
+/// on every request (default: true).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct QueryConfig {
+    /// Identity params joined with `_` to build the store lookup key.
+    #[serde(default)]
+    pub required: Vec<String>,
+
+    /// When `true`, both `secret_name` and `secret_type` must be present.
+    #[serde(default = "default_true")]
+    pub spec_required: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Resource limits applied during secret generation.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct LimitsConfig {
+    /// Length of generated symmetric keys in bytes.
+    pub symmetric_key_size: usize,
+    /// Bit length for generated RSA key pairs.
+    pub rsa_bits: usize,
+    /// Allowlist of secret types. Requests for any other type are rejected.
+    pub supported_types: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Default)]
+pub struct SecretProvSection {
+    #[serde(default)]
+    pub ca: TlsCertDetails,
+
+    #[serde(default)]
+    pub query: QueryConfig,
+
+    #[serde(default)]
+    pub limits: LimitsConfig,
+}
+
+// ---- SecretType ---------------------------------------------------------
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SecretType {
+    Tls,
+    Symmetric,
+    Ed25519,
+    Rsa,
+    P256,
+}
+
+impl SecretType {
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "tls" => Ok(SecretType::Tls),
+            "symmetric" => Ok(SecretType::Symmetric),
+            "ed25519" => Ok(SecretType::Ed25519),
+            "rsa" => Ok(SecretType::Rsa),
+            "p256" => Ok(SecretType::P256),
+            other => Err(anyhow!("Unknown secret type: {}", other)),
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            SecretType::Tls => "tls",
+            SecretType::Symmetric => "symmetric",
+            SecretType::Ed25519 => "ed25519",
+            SecretType::Rsa => "rsa",
+            SecretType::P256 => "p256",
+        }
+    }
+}
+
+// ---- TLS cert helpers ---------------------------------------------------
+
+#[derive(Deserialize)]
+struct CertDetailsWrapper {
+    client: Option<TlsCertDetails>,
+    server: Option<TlsCertDetails>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct TlsCertDetails {
+    pub country: String,
+    pub state: String,
+    pub locality: String,
+    pub organization: String,
+    pub org_unit: String,
+    pub common_name: String,
+    pub validity_days: u32,
+}
+
+impl Default for TlsCertDetails {
+    fn default() -> Self {
+        Self {
+            country: DEFAULT_COUNTRY.to_string(),
+            state: DEFAULT_STATE.to_string(),
+            locality: DEFAULT_LOCALITY.to_string(),
+            organization: DEFAULT_ORGANIZATION.to_string(),
+            org_unit: DEFAULT_ORG_UNIT.to_string(),
+            common_name: "NOT_SET".to_string(),
+            validity_days: DEFAULT_CA_VALIDITY_DAYS,
+        }
+    }
+}
+
+impl TlsCertDetails {
+    pub fn builder() -> Self {
+        Default::default()
+    }
+
+    pub fn common_name(mut self, name: impl Into<String>) -> Self {
+        self.common_name = name.into();
+        self
+    }
+}
+
+// ---- Default impls ------------------------------------------------------
+
+impl Default for QueryConfig {
+    fn default() -> Self {
+        Self {
+            required: vec!["name".to_string(), "ns".to_string()],
+            spec_required: true,
+        }
+    }
+}
+
+impl Default for LimitsConfig {
+    fn default() -> Self {
+        Self {
+            symmetric_key_size: 32,
+            rsa_bits: 2048,
+            supported_types: vec![
+                "tls".to_string(),
+                "symmetric".to_string(),
+                "ed25519".to_string(),
+                "rsa".to_string(),
+                "p256".to_string(),
+            ],
+        }
+    }
+}
+
+// ---- SecretProvCA ----------------------------------------------------------
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SecretProvCA {
+    pub key: Vec<u8>,
+    pub cert: Vec<u8>,
+}
+
+impl SecretProvCA {
+    pub fn new(cert_details: &TlsCertDetails) -> Result<Self> {
+        let key = PKey::generate_ed25519()?;
+        let cert = Self::generate_ca_cert(&key, cert_details)?;
+
+        Ok(Self {
+            key: key.private_key_to_pem_pkcs8()?,
+            cert: cert.to_pem()?,
+        })
+    }
+
+    /// Construct a `SecretProvCA` from an already-existing PEM key and certificate.
+    /// Both values are validated by parsing them before being stored.
+    pub fn init(key: Vec<u8>, cert: Vec<u8>) -> Result<Self> {
+        let _ = PKey::private_key_from_pem(&key)?;
+        let _ = X509::from_pem(&cert)?;
+
+        Ok(Self { key, cert })
+    }
+
+    /// Generate a fresh Ed25519 key pair and a certificate signed by this CA.
+    fn generate_credentials(
+        &self,
+        ca_cert: &X509,
+        ca_private_key: &PKey<Private>,
+        cert_details: &TlsCertDetails,
+    ) -> Result<(PKey<Private>, X509)> {
+        let key = PKey::generate_ed25519()?;
+        let cert = Self::generate_signed_cert(&key, ca_cert, ca_private_key, cert_details)?;
+        Ok((key, cert))
+    }
+
+    /// Build an X.509 v3 end-entity certificate signed by the given CA.
+    fn generate_signed_cert(
+        private_key: &PKey<Private>,
+        ca_cert: &X509,
+        ca_private_key: &PKey<Private>,
+        cert_details: &TlsCertDetails,
+    ) -> Result<X509> {
+        let name = Self::build_x509_name(
+            &cert_details.common_name,
+            &cert_details.country,
+            &cert_details.state,
+            &cert_details.locality,
+            &cert_details.organization,
+            &cert_details.org_unit,
+        )?;
+
+        let mut x509_builder = X509Builder::new()?;
+        x509_builder.set_version(2)?;
+        x509_builder.set_subject_name(&name)?;
+        x509_builder.set_issuer_name(ca_cert.subject_name())?;
+        x509_builder.set_pubkey(private_key)?;
+
+        // Use a random 8-byte serial to satisfy RFC 5280 s.4.1.2.2 uniqueness.
+        let mut serial_bytes = [0u8; 8];
+        openssl::rand::rand_bytes(&mut serial_bytes)?;
+        let serial_bn = BigNum::from_slice(&serial_bytes)?;
+        let serial_asn1 = serial_bn.to_asn1_integer()?;
+        x509_builder.set_serial_number(&serial_asn1)?;
+
+        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
+        x509_builder
+            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
+
+        x509_builder.append_extension(BasicConstraints::new().critical().build()?)?;
+        x509_builder.append_extension(
+            KeyUsage::new()
+                .digital_signature()
+                .key_encipherment()
+                .build()?,
+        )?;
+        x509_builder.append_extension(
+            SubjectKeyIdentifier::new().build(&x509_builder.x509v3_context(None, None))?,
+        )?;
+        x509_builder.append_extension(
+            AuthorityKeyIdentifier::new()
+                .keyid(false)
+                .issuer(false)
+                .build(&x509_builder.x509v3_context(Some(ca_cert), None))?,
+        )?;
+
+        x509_builder.sign(ca_private_key, MessageDigest::null())?;
+        Ok(x509_builder.build())
+    }
+
+    /// Build a self-signed X.509 v3 CA certificate.
+    fn generate_ca_cert(
+        ca_private_key: &PKey<Private>,
+        cert_details: &TlsCertDetails,
+    ) -> Result<X509> {
+        let name = Self::build_x509_name(
+            &cert_details.common_name,
+            &cert_details.country,
+            &cert_details.state,
+            &cert_details.locality,
+            &cert_details.organization,
+            &cert_details.org_unit,
+        )?;
+
+        let mut x509_builder = X509Builder::new()?;
+        x509_builder.set_version(2)?;
+        x509_builder.set_subject_name(&name)?;
+        x509_builder.set_issuer_name(&name)?;
+        x509_builder.set_pubkey(ca_private_key)?;
+
+        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
+        x509_builder
+            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
+
+        x509_builder.sign(ca_private_key, MessageDigest::null())?;
+        Ok(x509_builder.build())
+    }
+
+    /// Build a self-signed X.509 v3 certificate for a P-256 (ECDSA) key.
+    pub fn generate_p256_self_signed_cert(
+        key: &PKey<Private>,
+        cert_details: &TlsCertDetails,
+    ) -> Result<X509> {
+        let name = Self::build_x509_name(
+            &cert_details.common_name,
+            &cert_details.country,
+            &cert_details.state,
+            &cert_details.locality,
+            &cert_details.organization,
+            &cert_details.org_unit,
+        )?;
+
+        let mut x509_builder = X509Builder::new()?;
+        x509_builder.set_version(2)?;
+        x509_builder.set_subject_name(&name)?;
+        x509_builder.set_issuer_name(&name)?;
+        x509_builder.set_pubkey(key)?;
+
+        let serial_number = BigNum::from_u32(1)?.to_asn1_integer()?;
+        x509_builder.set_serial_number(&serial_number)?;
+        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
+        x509_builder
+            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
+
+        x509_builder.append_extension(BasicConstraints::new().critical().build()?)?;
+        x509_builder.append_extension(KeyUsage::new().critical().digital_signature().build()?)?;
+
+        // Ed25519 uses MessageDigest::null() because the hash is built into
+        // the algorithm, but ECDSA (P-256) requires an explicit digest.
+        x509_builder.sign(key, MessageDigest::sha256())?;
+        Ok(x509_builder.build())
+    }
+
+    fn build_x509_name(
+        common_name: &str,
+        country: &str,
+        state: &str,
+        locality: &str,
+        organization: &str,
+        org_unit: &str,
+    ) -> Result<X509Name> {
+        let mut name_builder = X509NameBuilder::new()?;
+        name_builder.append_entry_by_text("C", country)?;
+        name_builder.append_entry_by_text("ST", state)?;
+        name_builder.append_entry_by_text("L", locality)?;
+        name_builder.append_entry_by_text("O", organization)?;
+        name_builder.append_entry_by_text("OU", org_unit)?;
+        name_builder.append_entry_by_text("CN", common_name)?;
+        Ok(name_builder.build())
+    }
+}
+
+// ---- Store types --------------------------------------------------------
+
+/// Public-side material retained in the store after the server response is sent.
+///
+/// Private keys are intentionally never stored: once the TEE-encrypted server
+/// response has been built the private half is no longer needed by this plugin.
+/// The only exception is the TLS CA key, which is kept so that a fresh
+/// client certificate can be signed on demand by `build_client_response`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum SecretProvEntry {
+    Tls {
+        /// CA key and cert retained so a client cert can be signed on demand.
+        ca_key: Vec<u8>,
+        ca_cert: Vec<u8>,
+    },
+    Symmetric {
+        /// Shared key; both server and client receive the same bytes.
+        key: Vec<u8>,
+    },
+    Ed25519 {
+        /// Public key delivered to the owner via `client_creds`.
+        public_key: Vec<u8>,
+    },
+    Rsa {
+        /// Public key delivered to the owner via `client_creds`.
+        public_key: Vec<u8>,
+    },
+    P256 {
+        /// Self-signed cert delivered to the owner via `client_creds`.
+        cert_pem: Vec<u8>,
+    },
+}
+
+/// Response payload for the confidential VM (server side).
+/// Contains private key material and is TEE-encrypted before transmission.
+#[derive(Debug, Serialize)]
+pub struct ServerSecret {
+    pub secret_name: String,
+    pub secret_type: String,
+    #[serde(flatten)]
+    pub material: ServerMaterial,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "material_type")]
+pub enum ServerMaterial {
+    Tls {
+        private_key: Vec<u8>,
+        cert: Vec<u8>,
+        ca_cert: Vec<u8>,
+    },
+    Symmetric {
+        key: Vec<u8>,
+    },
+    Ed25519 {
+        private_key: Vec<u8>,
+    },
+    Rsa {
+        private_key: Vec<u8>,
+    },
+    P256 {
+        private_key: Vec<u8>,
+    },
+}
+
+/// Response payload for the workload owner (client side).
+/// Contains only public material and is transmitted in plaintext.
+#[derive(Debug, Serialize)]
+pub struct ClientSecret {
+    pub secret_name: String,
+    pub secret_type: String,
+    #[serde(flatten)]
+    pub material: ClientMaterial,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "material_type")]
+pub enum ClientMaterial {
+    Tls {
+        /// Freshly-issued client private key, cert, and the shared CA cert.
+        private_key: Vec<u8>,
+        cert: Vec<u8>,
+        ca_cert: Vec<u8>,
+    },
+    Symmetric {
+        /// Shared symmetric key; identical to the value delivered to the server.
+        key: Vec<u8>,
+    },
+    Ed25519 {
+        public_key: Vec<u8>,
+    },
+    Rsa {
+        public_key: Vec<u8>,
+    },
+    P256 {
+        cert_pem: Vec<u8>,
+    },
+}
+
+// ---- Plugin struct ------------------------------------------------------
+
+impl TryFrom<SecretProvPluginConfig> for SecretProvPlugin {
+    type Error = Error;
+
+    fn try_from(config: SecretProvPluginConfig) -> Result<Self> {
+        Ok(SecretProvPlugin {
+            ca_config: config.secretprov.ca,
+            query_config: config.secretprov.query,
+            limits_config: config.secretprov.limits,
+
+            // Outer key: identity string built from query.required params (e.g. "pod-abc_default")
+            // Inner key: spec sub-key built from secret_name:secret_type (e.g. "grpc:tls")
+            store: Arc::new(RwLock::new(HashMap::new())),
+
+            server_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
+            client_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
+        })
+    }
+}
+
+/// Generates and delivers cryptographic secrets for a confidential VM (server)
+/// and its workload owner (client).
+///
+/// # Request shape
+///
+/// Identity params (configured via `query.required`, default `["name", "ns"]`)
+/// are joined with `_` to build the store key:
+///   `?name=pod-abc&ns=default`  =>  identity key `"pod-abc_default"`
+///
+/// Spec params (`secret_name` and `secret_type`) identify the individual secret:
+///   `?secret_name=grpc&secret_type=tls`  =>  spec sub-key `"grpc:tls"`
+pub struct SecretProvPlugin {
+    pub ca_config: TlsCertDetails,
+    pub query_config: QueryConfig,
+    pub limits_config: LimitsConfig,
+
+    /// `identity-key => spec-sub-key => SecretProvEntry`
+    pub store: Arc<RwLock<HashMap<String, HashMap<String, SecretProvEntry>>>>,
+
+    pub server_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
+    pub client_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
+}
+
+impl SecretProvPlugin {
+    // ---- Query helpers --------------------------------------------------
+
+    /// Build the identity store key from the required query params.
+    /// Must only be called after `validate_query` has confirmed all params are present.
+    fn identity_key(&self, params: &HashMap<String, String>) -> String {
+        self.query_config
+            .required
+            .iter()
+            .map(|k| params.get(k).map(String::as_str).unwrap_or_default())
+            .collect::<Vec<_>>()
+            .join("_")
+    }
+
+    /// Validate that all identity params are present and non-empty.
+    fn validate_query(&self, query: &HashMap<String, String>) -> Result<()> {
+        for key in &self.query_config.required {
+            if !query.contains_key(key) {
+                bail!("Missing required query parameter: {}", key);
+            }
+            if query.get(key).map(|v| v.trim().is_empty()).unwrap_or(true) {
+                bail!("Query parameter '{}' cannot be empty", key);
+            }
+        }
+        Ok(())
+    }
+
+    /// Extract and validate the spec params (`secret_name` + `secret_type`).
+    /// Returns `(secret_name, SecretType, spec_sub_key)`.
+    fn parse_spec_params(
+        &self,
+        query: &HashMap<String, String>,
+    ) -> Result<(String, SecretType, String)> {
+        if !self.query_config.spec_required {
+            bail!("`spec_required` is false but parse_spec_params was called");
+        }
+
+        let secret_name = query
+            .get("secret_name")
+            .filter(|v| !v.trim().is_empty())
+            .ok_or_else(|| anyhow!("Missing or empty query parameter: secret_name"))?
+            .clone();
+
+        let type_str = query
+            .get("secret_type")
+            .filter(|v| !v.trim().is_empty())
+            .ok_or_else(|| anyhow!("Missing or empty query parameter: secret_type"))?;
+
+        // Reject early if the requested type is not in the configured allowlist.
+        if !self
+            .limits_config
+            .supported_types
+            .iter()
+            .any(|t| t == type_str)
+        {
+            bail!(
+                "secret_type '{}' is not in supported_types {:?}",
+                type_str,
+                self.limits_config.supported_types
+            );
+        }
+
+        let secret_type = SecretType::from_str(type_str)?;
+        let spec_sub_key = format!("{}:{}", secret_name, type_str);
+
+        Ok((secret_name, secret_type, spec_sub_key))
+    }
+
+    // ---- Endpoint handlers ----------------------------------------------
+
+    /// Handles `GET /credentials`.
+    ///
+    /// Generates a fresh key pair on every call and overwrites any previously
+    /// stored public material for the same (identity-key, spec-sub-key) pair.
+    /// The `client_creds` endpoint will always return the public half of the
+    /// most recently generated secret.
+    async fn build_server_response(&self, query: &HashMap<String, String>) -> Result<Vec<u8>> {
+        self.validate_query(query)?;
+        let id_key = self.identity_key(query);
+        let (secret_name, secret_type, spec_key) = self.parse_spec_params(query)?;
+
+        let (entry, server_material) = match secret_type {
+            SecretType::Tls => {
+                let ca = SecretProvCA::new(&self.ca_config)?;
+                let ca_cert = X509::from_pem(&ca.cert)?;
+                let ca_key = PKey::private_key_from_pem(&ca.key)?;
+
+                let server_config = self
+                    .server_cert_config_store
+                    .read()
+                    .await
+                    .get(&id_key)
+                    .cloned()
+                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server"));
+
+                let (key, cert) = ca.generate_credentials(&ca_cert, &ca_key, &server_config)?;
+
+                let server_private_key = key.private_key_to_pem_pkcs8()?;
+                let server_cert = cert.to_pem()?;
+
+                // Store only the CA material; enough to sign a client cert on demand.
+                // The server private key and cert were delivered to the TEE and are
+                // not needed beyond this point.
+                let entry = SecretProvEntry::Tls {
+                    ca_key: ca.key.clone(),
+                    ca_cert: ca.cert.clone(),
+                };
+                let material = ServerMaterial::Tls {
+                    private_key: server_private_key,
+                    cert: server_cert,
+                    ca_cert: ca.cert,
+                };
+                (entry, material)
+            }
+
+            SecretType::Symmetric => {
+                let size = self.limits_config.symmetric_key_size;
+                let mut key = vec![0u8; size];
+                openssl::rand::rand_bytes(&mut key)?;
+
+                let entry = SecretProvEntry::Symmetric { key: key.clone() };
+                let material = ServerMaterial::Symmetric { key };
+                (entry, material)
+            }
+
+            SecretType::Ed25519 => {
+                let key = PKey::generate_ed25519()?;
+                let private_key = key.private_key_to_pem_pkcs8()?;
+                let public_key = key.public_key_to_pem()?;
+
+                // Store only the public key; private key is not needed after delivery.
+                let entry = SecretProvEntry::Ed25519 { public_key };
+                let material = ServerMaterial::Ed25519 { private_key };
+                (entry, material)
+            }
+
+            SecretType::Rsa => {
+                let bits = self.limits_config.rsa_bits as u32;
+                let rsa = Rsa::generate(bits)?;
+                let key = PKey::from_rsa(rsa)?;
+                let private_key = key.private_key_to_pem_pkcs8()?;
+                let public_key = key.public_key_to_pem()?;
+
+                // Store only the public key; private key is not needed after delivery.
+                let entry = SecretProvEntry::Rsa { public_key };
+                let material = ServerMaterial::Rsa { private_key };
+                (entry, material)
+            }
+
+            SecretType::P256 => {
+                let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)?;
+                let ec_key = EcKey::generate(&group)?;
+                let key = PKey::from_ec_key(ec_key)?;
+                let private_key = key.private_key_to_pem_pkcs8()?;
+
+                let cert_details = self
+                    .server_cert_config_store
+                    .read()
+                    .await
+                    .get(&id_key)
+                    .cloned()
+                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server"));
+                let cert = SecretProvCA::generate_p256_self_signed_cert(&key, &cert_details)?;
+                let cert_pem = cert.to_pem()?;
+
+                // Store only the cert (public material); private key is not needed after delivery.
+                let entry = SecretProvEntry::P256 { cert_pem };
+                let material = ServerMaterial::P256 { private_key };
+                (entry, material)
+            }
+        };
+
+        self.store
+            .write()
+            .await
+            .entry(id_key.to_string())
+            .or_default()
+            .insert(spec_key.to_string(), entry);
+
+        let response = ServerSecret {
+            secret_name,
+            secret_type: secret_type.as_str().to_string(),
+            material: server_material,
+        };
+        Ok(serde_json::to_vec(&response)?)
+    }
+
+    /// Handles `POST /client_creds`.
+    ///
+    /// Returns the public-side material for a secret that was previously generated
+    /// by a `GET /credentials` call from the confidential VM.
+    /// For TLS, a fresh client certificate is issued using the stored CA.
+    async fn build_client_response(&self, query: &HashMap<String, String>) -> Result<Vec<u8>> {
+        self.validate_query(query)?;
+        let id_key = self.identity_key(query);
+        let (secret_name, secret_type, spec_key) = self.parse_spec_params(query)?;
+
+        // Read the client cert config before taking the store lock so that
+        // two RwLock guards are never held at the same time.
+        let client_config = self
+            .client_cert_config_store
+            .read()
+            .await
+            .get(&id_key)
+            .cloned()
+            .unwrap_or_else(|| TlsCertDetails::builder().common_name("Client"));
+
+        // Build the response material from the stored public-side entry.
+        let client_material: ClientMaterial = {
+            let store = self.store.read().await;
+            let entry = store
+                .get(&id_key)
+                .and_then(|inner| inner.get(&spec_key))
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No secret '{}' found for identity '{}'. \
+                         The server must request credentials first.",
+                        spec_key,
+                        id_key
+                    )
+                })?;
+
+            match entry {
+                SecretProvEntry::Tls {
+                    ca_key, ca_cert, ..
+                } => {
+                    // Issue a fresh client cert signed by the CA that was
+                    // created when the server requested its credentials.
+                    let ca = SecretProvCA::init(ca_key.clone(), ca_cert.clone())?;
+                    let ca_cert_obj = X509::from_pem(&ca.cert)?;
+                    let ca_key_obj = PKey::private_key_from_pem(&ca.key)?;
+
+                    let (key, cert) =
+                        ca.generate_credentials(&ca_cert_obj, &ca_key_obj, &client_config)?;
+
+                    ClientMaterial::Tls {
+                        private_key: key.private_key_to_pem_pkcs8()?,
+                        cert: cert.to_pem()?,
+                        ca_cert: ca.cert.clone(),
+                    }
+                }
+                SecretProvEntry::Symmetric { key } => {
+                    ClientMaterial::Symmetric { key: key.clone() }
+                }
+                SecretProvEntry::Ed25519 { public_key, .. } => ClientMaterial::Ed25519 {
+                    public_key: public_key.clone(),
+                },
+                SecretProvEntry::Rsa { public_key, .. } => ClientMaterial::Rsa {
+                    public_key: public_key.clone(),
+                },
+                SecretProvEntry::P256 { cert_pem, .. } => ClientMaterial::P256 {
+                    cert_pem: cert_pem.clone(),
+                },
+            }
+        };
+
+        let response = ClientSecret {
+            secret_name,
+            secret_type: secret_type.as_str().to_string(),
+            material: client_material,
+        };
+        Ok(serde_json::to_vec(&response)?)
+    }
+
+    /// Handles `POST /list_pods`.
+    ///
+    /// Returns a JSON array of all identity keys currently held in the store.
+    async fn list_pods(&self) -> Result<Vec<u8>> {
+        let keys: Vec<String> = self.store.read().await.keys().cloned().collect();
+        Ok(serde_json::to_vec(&keys)?)
+    }
+
+    /// Handles `POST /update_cert`.
+    ///
+    /// Stores custom X.509 certificate details (subject fields, validity) for a
+    /// given identity. These are applied the next time `GET /credentials` is called
+    /// for that identity. The request body must be a JSON object with optional
+    /// `"server"` and `"client"` keys, each containing a `TlsCertDetails` object.
+    async fn update_cert_details(
+        &self,
+        query: &HashMap<String, String>,
+        data: &[u8],
+    ) -> Result<()> {
+        self.validate_query(query)?;
+        let id_key = self.identity_key(query);
+
+        let wrapper: CertDetailsWrapper = serde_json::from_slice(data)
+            .map_err(|e| anyhow!("Failed to deserialize JSON: {}", e))?;
+
+        if let Some(updates) = wrapper.server {
+            let mut store = self.server_cert_config_store.write().await;
+            store.insert(id_key.clone(), updates);
+        }
+
+        if let Some(updates) = wrapper.client {
+            let mut store = self.client_cert_config_store.write().await;
+            store.insert(id_key, updates);
+        }
+
+        Ok(())
+    }
+}
+
+// ---- ClientPlugin impl --------------------------------------------------
+
+#[async_trait::async_trait]
+impl ClientPlugin for SecretProvPlugin {
+    async fn handle(
+        &self,
+        body: &[u8],
+        query: &HashMap<String, String>,
+        path: &[&str],
+        method: &Method,
+    ) -> Result<Vec<u8>> {
+        if path.len() != 1 {
+            bail!("Illegal path. Only one path segment is supported");
+        }
+
+        match method.as_str() {
+            "GET" => match path[0] {
+                "credentials" => self.build_server_response(query).await,
+                _ => Err(anyhow!("{} not supported", path[0])),
+            },
+            "POST" => match path[0] {
+                "list_pods" => self.list_pods().await,
+                "client_creds" => self.build_client_response(query).await,
+                "update_cert" => {
+                    self.update_cert_details(query, body).await?;
+                    Ok(vec![])
+                }
+                _ => Err(anyhow!("{} not supported", path[0])),
+            },
+            _ => bail!("Illegal HTTP method. Only GET and POST are supported"),
+        }
+    }
+
+    /// Returns `true` for POST requests, which triggers admin auth validation
+    /// in the KBS routing layer before the request reaches `handle`.
+    /// GET requests (server credential delivery) are authenticated via attestation
+    /// token and policy instead.
+    async fn validate_auth(
+        &self,
+        _body: &[u8],
+        _query: &HashMap<String, String>,
+        _path: &[&str],
+        method: &Method,
+    ) -> Result<bool> {
+        Ok(method.as_str() != "GET")
+    }
+
+    /// Returns `true` for GET requests so the KBS layer wraps the response in
+    /// a JWE envelope using the TEE public key. POST responses carry only public
+    /// material and do not need encryption.
+    async fn encrypted(
+        &self,
+        _body: &[u8],
+        _query: &HashMap<String, String>,
+        _path: &[&str],
+        method: &Method,
+    ) -> Result<bool> {
+        Ok(method.as_str() == "GET")
+    }
+}

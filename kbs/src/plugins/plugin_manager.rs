@@ -20,6 +20,9 @@ use super::{Pkcs11Backend, Pkcs11Config};
 #[cfg(feature = "external-plugin")]
 use super::{ExternalPlugin, ExternalPluginConfig};
 
+#[cfg(feature = "secretprov-plugin")]
+use super::{SecretProvPlugin, SecretProvPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -81,6 +84,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "external-plugin")]
     #[serde(alias = "external")]
     ExternalPlugin(ExternalPluginConfig),
+
+    #[cfg(feature = "secretprov-plugin")]
+    #[serde(alias = "secretprov")]
+    SecretProvPlugin(SecretProvPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -94,6 +101,8 @@ impl Display for PluginsConfig {
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
+            #[cfg(feature = "secretprov-plugin")]
+            PluginsConfig::SecretProvPlugin(_) => f.write_str("secretprov"),
         }
     }
 }
@@ -134,6 +143,12 @@ impl PluginsConfig {
                     .await
                     .context("Initialize 'external' plugin failed")?;
                 Arc::new(external_plugin) as _
+            }
+            #[cfg(feature = "secretprov-plugin")]
+            PluginsConfig::SecretProvPlugin(config) => {
+                let plugin = SecretProvPlugin::try_from(config)
+                    .context("Initialize 'secretprov' plugin failed")?;
+                Arc::new(plugin) as _
             }
         };
 
