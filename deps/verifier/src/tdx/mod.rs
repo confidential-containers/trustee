@@ -137,21 +137,25 @@ async fn verify_evidence(
                     index: 1,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_0().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 2,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_1().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 3,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_2().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 4,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_3().to_vec(),
+                    initial_value: vec![],
                 },
             ];
 

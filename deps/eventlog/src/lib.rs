@@ -81,6 +81,11 @@ pub struct ReferenceMeasurement {
     pub index: u32,
     pub algorithm: TcgAlgorithm,
     pub reference: Vec<u8>,
+    /// Value to seed the replay accumulator with, instead of an all-zero
+    /// buffer. Some measurement registers (e.g. a vTPM DRTM PCR) reset to a
+    /// non-zero value before any event extends them. Leave empty to fall
+    /// back to an all-zero seed of the algorithm's digest size.
+    pub initial_value: Vec<u8>,
 }
 
 impl EventDetails {
@@ -123,7 +128,8 @@ impl CcEventLog {
         let digest_map = collect_digests_by_index(&self.log);
 
         for item in data.iter() {
-            let calculated_ccel_ccmr = replay(&digest_map, item.index, item.algorithm)?;
+            let calculated_ccel_ccmr =
+                replay(&digest_map, item.index, item.algorithm, &item.initial_value)?;
             if calculated_ccel_ccmr != item.reference {
                 bail!(
                     "Eventlog does not pass measurement replay CC Event Log Measurement Register [index = {}]. Calculated value: {}, Given value: {}",
@@ -154,9 +160,24 @@ fn replay(
     digest_map: &HashMap<u32, Vec<ElDigest>>,
     index: u32,
     alg: TcgAlgorithm,
+    initial_value: &[u8],
 ) -> Result<Vec<u8>> {
     let digest_size = alg.get_digest_size(alg)?;
-    let mut materials = vec![0u8; digest_size];
+    
+    if !initial_value.is_empty() && initial_value.len() != digest_size {
+        bail!(
+            "initial_value length {} does not match {:?} digest size {}",
+            initial_value.len(),
+            alg,
+            digest_size
+        );
+    }
+
+    let mut materials = if initial_value.is_empty() {
+        vec![0u8; digest_size]
+    } else {
+        initial_value.to_vec()
+    };
 
     if let Some(digests) = digest_map.get(&index) {
         for digest in digests.iter().filter(|d| d.alg == alg) {
@@ -455,21 +476,25 @@ mod tests {
                 index: 1,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr0).unwrap(),
+                initial_value: vec![],
             },
             ReferenceMeasurement {
                 index: 2,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr1).unwrap(),
+                initial_value: vec![],
             },
             ReferenceMeasurement {
                 index: 3,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr2).unwrap(),
+                initial_value: vec![],
             },
             ReferenceMeasurement {
                 index: 4,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr3).unwrap(),
+                initial_value: vec![],
             },
         ];
 
@@ -508,11 +533,13 @@ mod tests {
                 index: 1,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr0).unwrap(),
+                initial_value: vec![],
             },
             ReferenceMeasurement {
                 index: 2,
                 algorithm: TcgAlgorithm::Sha384,
                 reference: hex::decode(rtmr1).unwrap(),
+                initial_value: vec![],
             },
         ];
 
