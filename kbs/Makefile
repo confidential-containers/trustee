@@ -60,8 +60,8 @@ ifeq ($(NEBULA_CA_PLUGIN), true)
   override FEATURES := $(FEATURES),nebula-ca-plugin
 endif
 
-ifeq ($(KEYFLUX_PLUGIN), true)
-  override FEATURES := $(FEATURES),keyflux-plugin
+ifeq ($(SECRETPROV_PLUGIN), true)
+  override FEATURES := $(FEATURES),secretprov-plugin
 endif
 
 ifeq ($(VAULT), true)

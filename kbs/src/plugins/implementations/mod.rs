@@ -6,10 +6,10 @@
 pub mod nebula_ca;
 #[cfg(feature = "pkcs11")]
 pub mod pkcs11;
-#[cfg(feature = "keyflux-plugin")]
-pub mod keyflux;
 pub mod resource;
 pub mod sample;
+#[cfg(feature = "secretprov-plugin")]
+pub mod secretprov;
 
 #[cfg(feature = "external-plugin")]
 pub mod external_plugin;
@@ -24,5 +24,5 @@ pub use sample::{Sample, SampleConfig};
 #[cfg(feature = "external-plugin")]
 pub use external_plugin::{BackendConfig, ExternalPlugin, ExternalPluginConfig, TlsMode};
 
-#[cfg(feature = "keyflux-plugin")]
-pub use keyflux::{KeyFluxPlugin, KeyFluxPluginConfig};
+#[cfg(feature = "secretprov-plugin")]
+pub use secretprov::{SecretProvPlugin, SecretProvPluginConfig};

@@ -20,8 +20,8 @@ use super::{Pkcs11Backend, Pkcs11Config};
 #[cfg(feature = "external-plugin")]
 use super::{ExternalPlugin, ExternalPluginConfig};
 
-#[cfg(feature = "keyflux-plugin")]
-use super::{KeyFluxPlugin, KeyFluxPluginConfig};
+#[cfg(feature = "secretprov-plugin")]
+use super::{SecretProvPlugin, SecretProvPluginConfig};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
@@ -85,9 +85,9 @@ pub enum PluginsConfig {
     #[serde(alias = "external")]
     ExternalPlugin(ExternalPluginConfig),
 
-    #[cfg(feature = "keyflux-plugin")]
-    #[serde(alias = "keyflux")]
-    KeyFluxPlugin(KeyFluxPluginConfig),
+    #[cfg(feature = "secretprov-plugin")]
+    #[serde(alias = "secretprov")]
+    SecretProvPlugin(SecretProvPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -101,8 +101,8 @@ impl Display for PluginsConfig {
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
-            #[cfg(feature = "keyflux-plugin")]
-            PluginsConfig::KeyFluxPlugin(_) => f.write_str("keyflux"),
+            #[cfg(feature = "secretprov-plugin")]
+            PluginsConfig::SecretProvPlugin(_) => f.write_str("secretprov"),
         }
     }
 }
@@ -144,11 +144,11 @@ impl PluginsConfig {
                     .context("Initialize 'external' plugin failed")?;
                 Arc::new(external_plugin) as _
             }
-            #[cfg(feature = "keyflux-plugin")]
-            PluginsConfig::KeyFluxPlugin(pkivault_config) => {
-                let pkivault_plugin = KeyFluxPlugin::try_from(pkivault_config)
-                    .context("Initialize 'keyflux' plugin failed")?;
-                Arc::new(pkivault_plugin) as _
+            #[cfg(feature = "secretprov-plugin")]
+            PluginsConfig::SecretProvPlugin(config) => {
+                let plugin = SecretProvPlugin::try_from(config)
+                    .context("Initialize 'secretprov' plugin failed")?;
+                Arc::new(plugin) as _
             }
         };
 

@@ -40,9 +40,9 @@ pkcs11 = ["cryptoki"]
 # that want to join a Nebula overlay network
 nebula-ca-plugin = []
 
-# Use PKI Vault plugin to provide credentials for mutual TLS communication
-# between a server running in the sandbox (pod) and a client (admin or owner)
-keyflux-plugin = []
+# Use SecretProv plugin to ephemerally provision cryptographic credentials
+# for a confidential VM (server) and its workload owner (client)
+secretprov-plugin = []
 
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
