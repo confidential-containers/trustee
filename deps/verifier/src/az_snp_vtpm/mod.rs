@@ -12,7 +12,7 @@ use crate::snp::{
     LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
 };
 use crate::{InitDataHash, ReportData};
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek};
 use az_snp_vtpm::hcl::HclReport;
@@ -21,6 +21,7 @@ use az_snp_vtpm::vtpm::QuoteError;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 pub(crate) use compat::TpmQuote;
+use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Verifier as OsslVerifier;
@@ -30,7 +31,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use sev::parser::ByteParser;
 use thiserror::Error;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 use tss_esapi::structures::{Attest, AttestInfo};
 use tss_esapi::traits::UnMarshall;
 use x509_parser::prelude::*;
@@ -39,6 +40,13 @@ const HCL_VMPL_VALUE: u32 = 0;
 const INITDATA_PCR: usize = 8;
 const SNP_REPORT_SIGNATURE_OFFSET: usize = 0x2a0; // 672 bytes
 const SHA256_LEN: usize = 32;
+
+/// vTPM register the AA writes AAEL runtime measurement events to.
+/// See `DEFAULT_PCR_INDEX` in guest-components' attestation-agent config.
+const AAEL_PCR: usize = 17;
+/// DRTM PCRs (such as PCR17) reset to all-0xFF, not all-zero, before any
+/// event extends them; seed the replay accumulator accordingly.
+const AAEL_PCR_DRTM_SEED: [u8; 32] = [0xFF; 32];
 
 pub struct AzSnpVtpm;
 
@@ -83,6 +91,47 @@ pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, tpm_quote: &TpmQu
 fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
     let attest = Attest::unmarshall(message).context("Failed to parse TPM quote message")?;
     Ok(attest.extra_data().to_vec())
+}
+
+/// Decode and replay the AAEL runtime eventlog (if present) against PCR17,
+/// and insert the parsed per-event log as a claim analogous to the CSV/TDX
+/// verifiers' `uefi_event_logs` claim.
+fn extend_eventlog_claim(
+    claim: &mut TeeEvidenceParsedClaim,
+    cc_eventlog: Option<&str>,
+    tpm_quote: &TpmQuote,
+) -> Result<()> {
+    let Some(el) = cc_eventlog.filter(|el| !el.is_empty()) else {
+        warn!("No AAEL eventlog included inside the az-snp-vtpm evidence, skipping replay.");
+        return Ok(());
+    };
+
+    let ccel_data = STANDARD
+        .decode(el)
+        .context("Failed to base64-decode cc_eventlog")?;
+    let ccel = CcEventLog::try_from(ccel_data)
+        .map_err(|e| anyhow!("Failed to parse AAEL eventlog: {:?}", e))?;
+
+    let pcr17 = tpm_quote
+        .pcrs
+        .get(AAEL_PCR)
+        .context("TPM quote does not contain PCR17")?;
+
+    let compare_obj = vec![ReferenceMeasurement {
+        index: AAEL_PCR as u32,
+        algorithm: TcgAlgorithm::Sha256,
+        reference: pcr17.clone(),
+        initial_value: AAEL_PCR_DRTM_SEED.to_vec(),
+    }];
+    ccel.replay_and_match(compare_obj)?;
+    debug!("AAEL eventlog replay against PCR17 succeeded");
+
+    let Value::Object(ref mut map) = claim else {
+        bail!("failed to extend the claim, not an object");
+    };
+    map.insert("uefi_event_logs".to_string(), serde_json::to_value(ccel.log)?);
+
+    Ok(())
 }
 
 #[derive(Deserialize, Debug)]
@@ -192,6 +241,7 @@ impl Verifier for AzSnpVtpm {
 
         let mut claim = parse_tee_evidence_az(&snp_report);
         extend_claim(&mut claim, tpm_quote)?;
+        extend_eventlog_claim(&mut claim, evidence.cc_eventlog(), tpm_quote)?;
 
         Ok(vec![(claim, "cpu".to_string())])
     }
@@ -372,6 +422,7 @@ mod tests {
     use super::*;
     use rstest::rstest;
     use serde_json::json;
+    use sha2::{Digest, Sha256};
 
     const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
     const TPM_QUOTE_V1_JSON: &str = include_str!("../../test_data/az-snp-vtpm/tpm-quote-v1.json");
@@ -686,5 +737,96 @@ mod tests {
         assert_eq!(init_data, hex::encode(&tpm_quote.pcrs[INITDATA_PCR]));
         let report_data = map.get("report_data").unwrap().as_str().unwrap();
         assert_eq!(report_data, hex::encode(REPORT_DATA));
+    }
+
+    // Mirrors guest-components' `EL_HEADER` (attestation-agent/attester/src/utils.rs):
+    // a TCG_PCR_EVENT `EV_NO_ACTION` entry whose TCG_EfiSpecIDEvent declares
+    // SHA-256 (0x000B, 32 bytes), SHA-384 (0x000C, 48 bytes) and SM3 (0x0012, 32 bytes).
+    #[rustfmt::skip]
+    const TEST_EL_HEADER: [u8; 73] = [
+        0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+        0x0B, 0x00, 0x20, 0x00, 0x0C, 0x00, 0x30, 0x00, 0x12, 0x00,
+        0x20, 0x00, 0x00,
+    ];
+
+    // Builds a TCG_PCR_EVENT2 entry (single SHA-256 digest) for `target_mr`.
+    // `EV_IPL` (0xd) is used as a generic, parser-agnostic event type, same
+    // as guest-components' own eventlog unit tests.
+    fn make_sha256_event(target_mr: u32, event_data: &[u8], digest: [u8; 32]) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(&target_mr.to_le_bytes());
+        v.extend_from_slice(&0x0000000du32.to_le_bytes());
+        v.extend_from_slice(&1u32.to_le_bytes());
+        v.extend_from_slice(&0x000Bu16.to_le_bytes());
+        v.extend_from_slice(&digest);
+        v.extend_from_slice(&(event_data.len() as u32).to_le_bytes());
+        v.extend_from_slice(event_data);
+        v
+    }
+
+    fn make_aael(target_mr: u32, event_data: &[u8]) -> (Vec<u8>, [u8; 32]) {
+        let digest: [u8; 32] = Sha256::digest(event_data).into();
+        let mut ccel = TEST_EL_HEADER.to_vec();
+        ccel.extend_from_slice(&make_sha256_event(target_mr, event_data, digest));
+        ccel.extend_from_slice(&[0xFFu8; 8]); // end flag
+        (ccel, digest)
+    }
+
+    #[test]
+    fn test_extend_eventlog_claim_none_is_noop() {
+        let mut claim = json!({});
+        let tpm_quote = load_tpm_quote();
+        extend_eventlog_claim(&mut claim, None, &tpm_quote).unwrap();
+        assert!(claim.as_object().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_extend_eventlog_claim_replays_pcr17_from_drtm_seed() {
+        let (ccel_bytes, event_digest) = make_aael(AAEL_PCR as u32, b"pull-image-event");
+
+        // PCR17 = SHA256(0xFF-repeated seed || event_digest), per the vTPM DRTM reset value.
+        let mut hasher = Sha256::new();
+        hasher.update(AAEL_PCR_DRTM_SEED);
+        hasher.update(event_digest);
+        let expected_pcr17: Vec<u8> = hasher.finalize().to_vec();
+
+        let mut tpm_quote = load_tpm_quote();
+        tpm_quote.pcrs[AAEL_PCR] = expected_pcr17;
+
+        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let mut claim = json!({});
+        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+
+        let events = claim
+            .as_object()
+            .unwrap()
+            .get("uefi_event_logs")
+            .expect("claim should contain uefi_event_logs")
+            .as_array()
+            .unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn test_extend_eventlog_claim_zero_seed_fails() {
+        let (ccel_bytes, event_digest) = make_aael(AAEL_PCR as u32, b"pull-image-event");
+
+        // Wrong: seeding from all-zero (the old, pre-fix behaviour) instead of the DRTM value.
+        let mut hasher = Sha256::new();
+        hasher.update([0u8; 32]);
+        hasher.update(event_digest);
+        let zero_seeded_pcr17: Vec<u8> = hasher.finalize().to_vec();
+
+        let mut tpm_quote = load_tpm_quote();
+        tpm_quote.pcrs[AAEL_PCR] = zero_seeded_pcr17;
+
+        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let mut claim = json!({});
+        assert!(extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).is_err());
     }
 }
