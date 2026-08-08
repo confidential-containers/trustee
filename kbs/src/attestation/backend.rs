@@ -26,7 +26,7 @@ use crate::prometheus::{
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
     session::SessionStatus,
-    Error, Result,
+    Error, Result, POLICY_SELECTOR_JSON_KEY,
 };
 
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
@@ -93,7 +93,15 @@ pub trait Attest: Send + Sync {
 
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String>;
+    ///
+    /// `policy_ids` are the policies resolved from the policy-selector
+    /// selected by the client, or `None` to apply the default of this
+    /// Attestation Service.
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> anyhow::Result<String>;
 
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
@@ -122,6 +130,32 @@ pub trait Attest: Send + Sync {
     }
 }
 
+/// Resolve the policy-selector that a client optionally selected in an RCAR
+/// `Request` into the Attestation Service policies to evaluate its evidence
+/// with.
+///
+/// Selecting no policy-selector leaves the Attestation Service default in
+/// place. An unknown policy-selector is rejected instead of silently falling
+/// back, so a client can only reach policies that an administrator declared.
+fn resolve_policy_ids(
+    policy_id_map: &HashMap<String, Vec<String>>,
+    extra_params: &serde_json::Value,
+) -> anyhow::Result<Option<Vec<String>>> {
+    let Some(policy_selector) = extra_params.get(POLICY_SELECTOR_JSON_KEY) else {
+        return Ok(None);
+    };
+
+    let policy_selector = policy_selector
+        .as_str()
+        .context("policy-selector is not a string")?;
+
+    policy_id_map
+        .get(policy_selector)
+        .cloned()
+        .map(Some)
+        .context("policy-selector is not configured")
+}
+
 /// Attestation Service
 #[derive(Clone)]
 pub struct AttestationService {
@@ -133,6 +167,9 @@ pub struct AttestationService {
 
     /// Maximum session expiration time.
     timeout: i64,
+
+    /// Policies a client is allowed to select, keyed by policy-selector
+    policy_id_map: HashMap<String, Vec<String>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -148,6 +185,18 @@ impl AttestationService {
         storage_backend_config: &StorageBackendConfig,
         storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
+        // A policy-selector without any policy would leave the evidence
+        // unevaluated, which some Attestation Services accept silently.
+        for (policy_selector, policy_ids) in &config.policy_id_map {
+            if policy_ids.is_empty() {
+                return Err(Error::AttestationServiceInitialization {
+                    source: anyhow!(
+                        "no attestation policy is mapped to policy-selector {policy_selector}"
+                    ),
+                });
+            }
+        }
+
         let inner = match config.attestation_service {
             #[cfg(any(feature = "coco-as-builtin", feature = "coco-as-builtin-no-verifier"))]
             AttestationServiceConfig::CoCoASBuiltIn(cfg) => {
@@ -217,6 +266,7 @@ impl AttestationService {
             inner,
             timeout: config.timeout,
             session_map,
+            policy_id_map: config.policy_id_map,
         })
     }
 
@@ -254,6 +304,14 @@ impl AttestationService {
                 *VERSION_REQ,
                 request.version
             );
+        }
+
+        // Resolve eagerly so that an unusable ID is reported here instead of
+        // surfacing as an attestation failure later on.
+        if let Some(policy_ids) = resolve_policy_ids(&self.policy_id_map, &request.extra_params)
+            .inspect_err(|_| AUTH_ERRORS.inc())?
+        {
+            debug!("Selected attestation policies: {policy_ids:?}");
         }
 
         let challenge = self
@@ -403,9 +461,12 @@ impl AttestationService {
             .trim_end_matches('"')
             .to_owned();
 
+        let policy_ids = resolve_policy_ids(&self.policy_id_map, &session.request().extra_params)
+            .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
+
         let token = self
             .inner
-            .verify(evidence_to_verify)
+            .verify(evidence_to_verify, policy_ids.as_deref())
             .await
             .inspect_err(|_| {
                 ATTESTATION_FAILURES
@@ -486,6 +547,58 @@ impl AttestationService {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn policy_id_map() -> HashMap<String, Vec<String>> {
+        HashMap::from([
+            ("alice".to_string(), vec!["alice-strict".to_string()]),
+            (
+                "bob".to_string(),
+                vec!["bob-cpu".to_string(), "bob-gpu".to_string()],
+            ),
+        ])
+    }
+
+    #[rstest::rstest]
+    // No policy-selector selected: the Attestation Service default applies.
+    #[case(json!({}), Some(None))]
+    #[case(json!(""), Some(None))]
+    #[case(json!({"selected-hash-algorithm": "sha384"}), Some(None))]
+    // A declared policy-selector resolves to every policy it is mapped to.
+    #[case(json!({"policy-selector": "alice"}), Some(Some(vec!["alice-strict"])))]
+    #[case(json!({"policy-selector": "bob"}), Some(Some(vec!["bob-cpu", "bob-gpu"])))]
+    // Anything else is rejected rather than downgraded to the default.
+    #[case(json!({"policy-selector": "alice-strict"}), None)]
+    #[case(json!({"policy-selector": "../escape"}), None)]
+    #[case(json!({"policy-selector": ""}), None)]
+    #[case(json!({"policy-selector": 1}), None)]
+    fn test_resolve_policy_ids(
+        #[case] extra_params: serde_json::Value,
+        #[case] expected: Option<Option<Vec<&str>>>,
+    ) {
+        let resolved = resolve_policy_ids(&policy_id_map(), &extra_params);
+
+        let expected = expected.map(|policy_ids| {
+            policy_ids
+                .map(|policy_ids| policy_ids.into_iter().map(String::from).collect::<Vec<_>>())
+        });
+
+        match expected {
+            Some(policy_ids) => assert_eq!(resolved.unwrap(), policy_ids),
+            None => assert!(resolved.is_err()),
+        }
+    }
+
+    #[test]
+    fn test_resolve_policy_ids_without_map() {
+        let policy_id_map = HashMap::new();
+
+        assert!(resolve_policy_ids(&policy_id_map, &json!({}))
+            .unwrap()
+            .is_none());
+        assert!(
+            resolve_policy_ids(&policy_id_map, &json!({"policy-selector": "alice"})).is_err()
+        );
+    }
 
     #[tokio::test]
     async fn test_make_nonce() {

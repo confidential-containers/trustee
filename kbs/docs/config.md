@@ -154,6 +154,15 @@ Concrete attestation service can be set via `type` field. Supported attestation 
 
 Due to different `type` field, properties are different.
 
+`timeout` and `policy_id_map` apply to every type. The latter is a table mapping
+each policy-selector a client may select to one or more policy IDs:
+
+```toml
+[attestation_service.policy_id_map]
+alice = ["alice-strict"]
+bob = ["bob-cpu", "bob-gpu"]
+```
+
 #### Built-In CoCo AS
 
 When `type` is set to `coco_as_builtin`, the following properties can be set.
@@ -164,6 +173,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | Property                   | Type                        | Description                                              | Default                                                                                                       |
 |----------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | `timeout`                  | Integer                     | The maximum time (in minutes) of the attestation session | 5                                                                                                             |
+| `policy_id_map`            | Map of String array         | AS policies selectable by a client, keyed by policy-selector. See [RCAR `Request`][ps]| `{}`                                                          |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                       | See [RVPSConfiguration][2]                                                                                    |
 | `attestation_token_broker` | [AttestationTokenBroker][1] | Attestation result token configuration.                  | See [AttestationTokenBroker][1]                                                                               |
 | `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM)| See [Verifier Configuration][vcfg]                                                                            |
@@ -173,6 +183,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 [3]: #keyvaluestorage
 [4]: #tokensignerconfig
 [vcfg]: ../../attestation-service/docs/config.md#verifier-configuration
+[ps]: ./kbs_attestation_protocol.md#request
 
 ##### AttestationTokenBroker
 
@@ -234,6 +245,7 @@ The following properties can be set.
 | Property    | Type    | Description                                                                                                                   | Default                  |
 |-------------|---------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
 | `timeout`   | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests                                           | 5                        |
+| `policy_id_map` | Map of String array | AS policies selectable by a client, keyed by policy-selector. See [RCAR `Request`][ps]                    | `{}`                     |
 | `as_addr`   | String  | The URL of the remote CoCoAS                                                                                                  | `http://127.0.0.1:50004` |
 | `pool_size` | Integer | The connections between KBS and CoCoAS are maintained in a conenction pool. This property determines the max size of the pool | `100`                    |
 
@@ -251,6 +263,7 @@ The following properties can be set.
 | `api_key`                | String       | Intel Trust Authority API key.                                                                         | Yes      | -       |
 | `certs_file`             | String       | URL to an Intel Trust Authority portal or path to JWKS file used for token verification.               | Yes      | -       |
 | `policy_ids`             | String array | Quoted and comma-separated list of policy IDs defined in ITA portal.                                   | No       | `[]`    |
+| `policy_id_map`          | Map of String array | Policies selectable by a client, keyed by policy-selector. A selected policy-selector replaces `policy_ids`. See [RCAR `Request`][ps] | No       | `{}`    |
 | `allow_unmatched_policy` | Boolean      | Whether policy matching is required. If no `policy_ids` are specified, policy matching is not checked. | No       | false   |
 
 Detailed [documentation](https://docs.trustauthority.intel.com).
