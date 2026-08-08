@@ -101,18 +101,22 @@ impl From<KbsConfigType> for TestParameters {
             KbsConfigType::EarTokenBuiltInRvps => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::Simple,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenRemoteRvps => TestParameters {
                 rvps_type: RvpsType::Remote,
                 admin_type: AdminType::Simple,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::DenyAll,
+                require_admin_auth_metrics: false,
             },
             KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin => TestParameters {
                 rvps_type: RvpsType::Builtin,
                 admin_type: AdminType::SimpleRestricted,
+                require_admin_auth_metrics: false,
             },
         }
     }
@@ -122,6 +126,7 @@ impl From<KbsConfigType> for TestParameters {
 pub struct TestParameters {
     pub rvps_type: RvpsType,
     pub admin_type: AdminType,
+    pub require_admin_auth_metrics: bool,
 }
 
 /// Internal state of tests
@@ -184,7 +189,7 @@ async fn wait_for_reference_value(url: &str, key: &str) -> Result<()> {
 }
 
 impl TestHarness {
-    fn sign_admin_token(&self) -> Result<String> {
+    pub fn sign_admin_token(&self) -> Result<String> {
         let encoding_key = EncodingKey::from_ed_pem(self.auth_privkey.as_bytes())?;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -287,7 +292,7 @@ impl TestHarness {
                     "regex_acl": {
                         "acls": [{
                             "role": ADMIN_ROLE,
-                            "allowed_endpoints": "^/kbs/v0/.*$"
+                            "allowed_endpoints": "^/(kbs/v0/.*|metrics)$"
                         }]
                     }
                 },
@@ -347,6 +352,7 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
+                require_admin_auth_metrics: test_parameters.require_admin_auth_metrics,
                 tls: TlsConfig::default(),
             },
             admin: admin_config,
@@ -501,6 +507,15 @@ impl TestHarness {
         let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)?;
 
         Ok(payload)
+    }
+
+    pub async fn get_metrics(&self, admin_token: Option<String>) -> Result<reqwest::Response> {
+        info!("TEST: Getting metrics");
+        let mut request = reqwest::Client::new().get(format!("{KBS_URL}/metrics"));
+        if let Some(token) = admin_token {
+            request = request.bearer_auth(token);
+        }
+        Ok(request.send().await?)
     }
 }
 

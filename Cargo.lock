@@ -3995,6 +3995,7 @@ dependencies = [
  "openssl",
  "policy-engine",
  "reference-value-provider-service",
+ "reqwest 0.13.4",
  "rstest",
  "serde_json",
  "serial_test",
