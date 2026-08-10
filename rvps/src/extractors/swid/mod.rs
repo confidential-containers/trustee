@@ -84,13 +84,9 @@ impl Extractor for SwidExtractor {
             let mut measurement_value = vec![];
 
             let mut hash_index = 0;
-            loop {
-                let Some(hash) =
-                    resource.attribute((HASH_NS, format!("Hash{hash_index}").as_str()))
-                else {
-                    break;
-                };
-
+            while let Some(hash) =
+                resource.attribute((HASH_NS, format!("Hash{hash_index}").as_str()))
+            {
                 // If the hash only contains '0', move onto the next resource.
                 // This could mean that the RIM is attesting that the hash should
                 // be '0', but more commonly it means that there is no measurement
