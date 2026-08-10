@@ -6,6 +6,7 @@ VAULT ?= true
 GCP ?= false
 AWS ?= false
 EXTERNAL_PLUGIN ?= false
+KEYFLUX_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -58,6 +59,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   override FEATURES := $(FEATURES),nebula-ca-plugin
+endif
+
+ifeq ($(SECRETPROV_PLUGIN), true)
+  override FEATURES := $(FEATURES),secretprov-plugin
 endif
 
 ifeq ($(VAULT), true)
