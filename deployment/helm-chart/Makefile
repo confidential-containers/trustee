@@ -16,6 +16,13 @@ EXPECTED_TEE ?=
 
 E2E_IMAGE_PREFIX ?= trustee-e2e
 E2E_IMAGE_TAG ?= e2e
+E2E_IMAGE_PULL_POLICY ?= Never
+
+# Base e2e scenario file. Override this to switch scenario per run.
+E2E_BASE_SCENARIO ?= $(CHART_DIR)/scenarios/e2e-local-images.yaml
+
+# Optional extra Helm args for scenario-specific runtime settings.
+HELM_E2E_EXTRA_ARGS ?=
 
 # kind cluster used by load-e2e-images-into-kind (override for parallel/self-hosted runs).
 KIND_CLUSTER ?= kind
@@ -31,13 +38,16 @@ E2E_RVPS_IMAGE := $(E2E_RVPS_IMAGE_REPOSITORY):$(E2E_IMAGE_TAG)
 HELM_E2E_IMAGE_ARGS := \
 	--set-string kbs.image.repository='$(E2E_KBS_IMAGE_REPOSITORY)' \
 	--set-string kbs.image.tag='$(E2E_IMAGE_TAG)' \
-	--set-string kbs.image.pullPolicy='Never' \
+	--set-string kbs.image.pullPolicy='$(E2E_IMAGE_PULL_POLICY)' \
 	--set-string as.image.repository='$(E2E_AS_IMAGE_REPOSITORY)' \
 	--set-string as.image.tag='$(E2E_IMAGE_TAG)' \
-	--set-string as.image.pullPolicy='Never' \
+	--set-string as.image.pullPolicy='$(E2E_IMAGE_PULL_POLICY)' \
 	--set-string rvps.image.repository='$(E2E_RVPS_IMAGE_REPOSITORY)' \
 	--set-string rvps.image.tag='$(E2E_IMAGE_TAG)' \
-	--set-string rvps.image.pullPolicy='Never'
+	--set-string rvps.image.pullPolicy='$(E2E_IMAGE_PULL_POLICY)' \
+	$(HELM_E2E_EXTRA_ARGS)
+
+HELM_E2E_SCENARIO_YAML := -f '$(E2E_BASE_SCENARIO)'
 
 export KBS_CLIENT
 export EXPECTED_TEE
@@ -60,7 +70,7 @@ helm-dependency-build: check-tools
 
 helm-lint: helm-dependency-build
 	helm lint '$(CHART_DIR)'
-	helm lint '$(CHART_DIR)' -f '$(CHART_DIR)/scenarios/e2e-local-images.yaml' $(HELM_E2E_IMAGE_ARGS)
+	helm lint '$(CHART_DIR)' $(HELM_E2E_SCENARIO_YAML) $(HELM_E2E_IMAGE_ARGS)
 	helm lint '$(CHART_DIR)' -f '$(CHART_DIR)/scenarios/native-tls.yaml'
 
 load-e2e-images-into-kind: check-docker
@@ -91,7 +101,7 @@ deploy: helm-lint prepare-e2e-tls
 	helm upgrade --install trustee-e2e '$(CHART_DIR)' \
 		--namespace coco-trustee-e2e \
 		--create-namespace \
-		-f '$(CHART_DIR)/scenarios/e2e-local-images.yaml' \
+		$(HELM_E2E_SCENARIO_YAML) \
 		$(HELM_E2E_IMAGE_ARGS) \
 		--wait \
 		--timeout 20m
