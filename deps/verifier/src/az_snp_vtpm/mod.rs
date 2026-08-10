@@ -41,12 +41,28 @@ const INITDATA_PCR: usize = 8;
 const SNP_REPORT_SIGNATURE_OFFSET: usize = 0x2a0; // 672 bytes
 const SHA256_LEN: usize = 32;
 
-/// vTPM register the AA writes AAEL runtime measurement events to.
-/// See `DEFAULT_PCR_INDEX` in guest-components' attestation-agent config.
-const AAEL_PCR: usize = 17;
-/// DRTM PCRs (such as PCR17) reset to all-0xFF, not all-zero, before any
-/// event extends them; seed the replay accumulator accordingly.
-const AAEL_PCR_DRTM_SEED: [u8; 32] = [0xFF; 32];
+/// vTPM DRTM measurement registers (PCR17-22, per the TCG PC Client
+/// Platform Firmware Profile). These reset to all-0xFF, not all-zero,
+/// before any event extends them -- unlike general-purpose registers
+/// (e.g. PCR23) AAEL events may target instead. Azure's vTPM additionally
+/// rejects locality-0 extends on this range, so real AAEL events land
+/// elsewhere in practice; the eventlog records which register each event
+/// actually targeted, so the replay seeds per-register from this class
+/// rather than assuming a single fixed PCR/seed pair.
+const DRTM_PCR_MIN: u32 = 17;
+const DRTM_PCR_MAX: u32 = 22;
+const DRTM_SEED: [u8; 32] = [0xFF; 32];
+
+/// Seed to replay a register's AAEL events from: the DRTM reset value for
+/// DRTM PCRs, or empty (zero-fill, the `eventlog` crate's default) for any
+/// other register.
+fn initial_seed_for_pcr(index: u32) -> Vec<u8> {
+    if (DRTM_PCR_MIN..=DRTM_PCR_MAX).contains(&index) {
+        DRTM_SEED.to_vec()
+    } else {
+        Vec::new()
+    }
+}
 
 pub struct AzSnpVtpm;
 
@@ -93,9 +109,10 @@ fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
     Ok(attest.extra_data().to_vec())
 }
 
-/// Decode and replay the AAEL runtime eventlog (if present) against PCR17,
-/// and insert the parsed per-event log as a claim analogous to the CSV/TDX
-/// verifiers' `uefi_event_logs` claim.
+/// Decode and replay the AAEL runtime eventlog (if present) -- one register
+/// per distinct PCR index the log's events actually target, each seeded
+/// per `initial_seed_for_pcr` -- and insert the parsed per-event log as a
+/// claim analogous to the CSV/TDX verifiers' `uefi_event_logs` claim.
 fn extend_eventlog_claim(
     claim: &mut TeeEvidenceParsedClaim,
     cc_eventlog: Option<&str>,
@@ -112,24 +129,37 @@ fn extend_eventlog_claim(
     let ccel = CcEventLog::try_from(ccel_data)
         .map_err(|e| anyhow!("Failed to parse AAEL eventlog: {:?}", e))?;
 
-    let pcr17 = tpm_quote
-        .pcrs
-        .get(AAEL_PCR)
-        .context("TPM quote does not contain PCR17")?;
+    let mut targeted_pcrs: Vec<u32> = ccel.log.iter().map(|entry| entry.index).collect();
+    targeted_pcrs.sort_unstable();
+    targeted_pcrs.dedup();
 
-    let compare_obj = vec![ReferenceMeasurement {
-        index: AAEL_PCR as u32,
-        algorithm: TcgAlgorithm::Sha256,
-        reference: pcr17.clone(),
-        initial_value: AAEL_PCR_DRTM_SEED.to_vec(),
-    }];
+    let compare_obj = targeted_pcrs
+        .iter()
+        .map(|&index| {
+            let reference = tpm_quote
+                .pcrs
+                .get(index as usize)
+                .with_context(|| format!("TPM quote does not contain PCR{index}"))?
+                .clone();
+            Ok(ReferenceMeasurement {
+                index,
+                algorithm: TcgAlgorithm::Sha256,
+                reference,
+                initial_value: initial_seed_for_pcr(index),
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+
     ccel.replay_and_match(compare_obj)?;
-    debug!("AAEL eventlog replay against PCR17 succeeded");
+    debug!("AAEL eventlog replay succeeded for registers {targeted_pcrs:?}");
 
     let Value::Object(ref mut map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
-    map.insert("uefi_event_logs".to_string(), serde_json::to_value(ccel.log)?);
+    map.insert(
+        "uefi_event_logs".to_string(),
+        serde_json::to_value(ccel.log)?,
+    );
 
     Ok(())
 }
@@ -777,6 +807,20 @@ mod tests {
         (ccel, digest)
     }
 
+    /// Like `make_aael`, but with one event per `(target_mr, event_data)` pair
+    /// in the same log -- for exercising replay against multiple registers.
+    fn make_aael_multi(events: &[(u32, &[u8])]) -> (Vec<u8>, Vec<[u8; 32]>) {
+        let mut ccel = TEST_EL_HEADER.to_vec();
+        let mut digests = Vec::new();
+        for &(target_mr, event_data) in events {
+            let digest: [u8; 32] = Sha256::digest(event_data).into();
+            ccel.extend_from_slice(&make_sha256_event(target_mr, event_data, digest));
+            digests.push(digest);
+        }
+        ccel.extend_from_slice(&[0xFFu8; 8]); // end flag
+        (ccel, digests)
+    }
+
     #[test]
     fn test_extend_eventlog_claim_none_is_noop() {
         let mut claim = json!({});
@@ -785,18 +829,60 @@ mod tests {
         assert!(claim.as_object().unwrap().is_empty());
     }
 
+    /// An example DRTM PCR (see `DRTM_PCR_MIN..=DRTM_PCR_MAX`) used across
+    /// these tests to build events against.
+    const DRTM_TEST_PCR: u32 = 17;
+
     #[test]
     fn test_extend_eventlog_claim_replays_pcr17_from_drtm_seed() {
-        let (ccel_bytes, event_digest) = make_aael(AAEL_PCR as u32, b"pull-image-event");
+        let (ccel_bytes, event_digest) = make_aael(DRTM_TEST_PCR, b"pull-image-event");
 
         // PCR17 = SHA256(0xFF-repeated seed || event_digest), per the vTPM DRTM reset value.
         let mut hasher = Sha256::new();
-        hasher.update(AAEL_PCR_DRTM_SEED);
+        hasher.update(DRTM_SEED);
         hasher.update(event_digest);
         let expected_pcr17: Vec<u8> = hasher.finalize().to_vec();
 
         let mut tpm_quote = load_tpm_quote();
-        tpm_quote.pcrs[AAEL_PCR] = expected_pcr17;
+        tpm_quote.pcrs[DRTM_TEST_PCR as usize] = expected_pcr17;
+
+        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let mut claim = json!({});
+        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+
+        let events = claim
+            .as_object()
+            .unwrap()
+            .get("uefi_event_logs")
+            .expect("claim should contain uefi_event_logs")
+            .as_array()
+            .unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    /// PCR 23 ("application support") is a general-purpose, locality-0
+    /// extendable register that resets to all-zero — unlike PCR17's DRTM
+    /// reset value. Azure's vTPM rejects locality-0 extends on PCR17, so
+    /// real deployments target PCR23 instead; the replay must seed from
+    /// zero for it, not the DRTM 0xFF constant.
+    const APP_SUPPORT_PCR: u32 = 23;
+
+    #[test]
+    fn test_extend_eventlog_claim_replays_pcr23_from_zero_seed() {
+        let (ccel_bytes, event_digest) = make_aael(APP_SUPPORT_PCR, b"pull-image-event");
+
+        let mut hasher = Sha256::new();
+        hasher.update([0u8; 32]);
+        hasher.update(event_digest);
+        let expected_pcr23: Vec<u8> = hasher.finalize().to_vec();
+
+        let mut tpm_quote = load_tpm_quote();
+        // The fixture's PCR17 already sits at the DRTM baseline (0xFF-repeated,
+        // unextended), which would coincidentally satisfy a check still
+        // hardcoded to index 17 with the 0xFF seed. Corrupt it so this test
+        // actually fails unless the code reads the event's real index (23).
+        tpm_quote.pcrs[DRTM_TEST_PCR as usize] = vec![0u8; 32];
+        tpm_quote.pcrs[APP_SUPPORT_PCR as usize] = expected_pcr23;
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
         let mut claim = json!({});
@@ -813,8 +899,46 @@ mod tests {
     }
 
     #[test]
+    fn test_extend_eventlog_claim_replays_multiple_registers_with_correct_seeds() {
+        let (ccel_bytes, digests) = make_aael_multi(&[
+            (DRTM_TEST_PCR, b"drtm-event"),
+            (APP_SUPPORT_PCR, b"app-support-event"),
+        ]);
+        let [drtm_digest, app_support_digest] = digests[..] else {
+            panic!("expected exactly 2 digests");
+        };
+
+        let mut drtm_hasher = Sha256::new();
+        drtm_hasher.update(DRTM_SEED);
+        drtm_hasher.update(drtm_digest);
+        let expected_drtm_pcr: Vec<u8> = drtm_hasher.finalize().to_vec();
+
+        let mut app_support_hasher = Sha256::new();
+        app_support_hasher.update([0u8; 32]);
+        app_support_hasher.update(app_support_digest);
+        let expected_app_support_pcr: Vec<u8> = app_support_hasher.finalize().to_vec();
+
+        let mut tpm_quote = load_tpm_quote();
+        tpm_quote.pcrs[DRTM_TEST_PCR as usize] = expected_drtm_pcr;
+        tpm_quote.pcrs[APP_SUPPORT_PCR as usize] = expected_app_support_pcr;
+
+        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let mut claim = json!({});
+        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+
+        let events = claim
+            .as_object()
+            .unwrap()
+            .get("uefi_event_logs")
+            .expect("claim should contain uefi_event_logs")
+            .as_array()
+            .unwrap();
+        assert_eq!(events.len(), 2);
+    }
+
+    #[test]
     fn test_extend_eventlog_claim_zero_seed_fails() {
-        let (ccel_bytes, event_digest) = make_aael(AAEL_PCR as u32, b"pull-image-event");
+        let (ccel_bytes, event_digest) = make_aael(DRTM_TEST_PCR, b"pull-image-event");
 
         // Wrong: seeding from all-zero (the old, pre-fix behaviour) instead of the DRTM value.
         let mut hasher = Sha256::new();
@@ -823,7 +947,7 @@ mod tests {
         let zero_seeded_pcr17: Vec<u8> = hasher.finalize().to_vec();
 
         let mut tpm_quote = load_tpm_quote();
-        tpm_quote.pcrs[AAEL_PCR] = zero_seeded_pcr17;
+        tpm_quote.pcrs[DRTM_TEST_PCR as usize] = zero_seeded_pcr17;
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
         let mut claim = json!({});
