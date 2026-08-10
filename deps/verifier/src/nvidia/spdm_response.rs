@@ -311,12 +311,10 @@ impl OpaqueData {
             bail!("OpaqueDataType is not multiple of {}", MSR_COUNT_SIZE)
         }
         let mut values: Map<String, Value> = Map::new();
-        let mut index: u8 = 1;
-        for chunk in bytes.chunks(MSR_COUNT_SIZE) {
+        for (index, chunk) in (1_u8..).zip(bytes.chunks(MSR_COUNT_SIZE)) {
             let array: [u8; MSR_COUNT_SIZE] = chunk.try_into()?;
             let num: u32 = u32::from_le_bytes(array);
             values.insert(index.to_string(), Value::Number(num.into()));
-            index += 1;
         }
 
         Ok(Value::Object(values))
