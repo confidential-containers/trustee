@@ -338,6 +338,36 @@ configuration := 2 if {
 	input.se
 }
 
+##### Arm CCA
+# CCA evidence (RMM signing chain, platform and realm certificate chain) is fully
+# cryptographically verified by the verifier before this policy runs, so hardware,
+# instance identity, and runtime opacity are implied by a successful appraisal.
+hardware := 2 if {
+	input.cca
+}
+
+instance_identity := 2 if {
+	input.cca
+}
+
+runtime_opaque := 2 if {
+	input.cca
+}
+
+# For the `executables` trust claim, the value 3 stands for
+# "Only a recognized genuine set of approved executables have
+#  been loaded during the boot process."
+# the RIM (realm initial measurement) must match
+executables := 3 if {
+	input.cca
+
+	input.cca.realm["cca-realm-initial-measurement"] in query_reference_value("cca.rim/digests")
+}
+
+configuration := 0 if {
+	input.cca
+}
+
 #################################
 # EXTENSIONS
 #
