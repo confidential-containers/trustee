@@ -145,7 +145,7 @@ impl EarAttestationTokenBroker {
             bail!("No policy is given for EAR token generation.");
         }
 
-        let mut tee_class_indices: HashMap<String, u8> = HashMap::new();
+        let mut tee_class_indices: HashMap<String, usize> = HashMap::new();
         let mut submods = BTreeMap::new();
 
         // Create an appraisal for each device
@@ -287,18 +287,13 @@ impl EarAttestationTokenBroker {
             appraisal.policy_id = Some(policy_ids[0].clone());
             appraisal.update_status_from_trust_vector();
 
-            if let Some(index) = tee_class_indices.get_mut(&tee_claims.tee_class) {
-                *index += 1;
-            } else {
-                tee_class_indices.insert(tee_claims.tee_class.clone(), 0);
-            }
-
-            let submod_name = format!(
-                "{}{}",
-                tee_claims.tee_class,
-                // We know this key will exist because of the logic above.
-                tee_class_indices.get(&tee_claims.tee_class).unwrap()
-            );
+            let index = tee_class_indices
+                .entry(tee_claims.tee_class.clone())
+                .or_default();
+            let submod_name = format!("{}{}", tee_claims.tee_class, index);
+            *index = index
+                .checked_add(1)
+                .ok_or_else(|| anyhow!("Too many devices in TEE class {}", tee_claims.tee_class))?;
             submods.insert(submod_name, appraisal);
         }
 
