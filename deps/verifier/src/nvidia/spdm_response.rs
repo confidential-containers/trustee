@@ -197,7 +197,14 @@ impl OpaqueData {
 
         let mut offset: usize = 0;
 
-        while offset + 4 < bytes_len {
+        while offset < bytes_len {
+            if bytes_len - offset < 4 {
+                bail!(
+                    "OpaqueData item header overflow: {} trailing byte(s)",
+                    bytes_len - offset
+                );
+            }
+
             let mut item = NvidiaOpaqueDataItem::default();
 
             // DataType
@@ -213,12 +220,15 @@ impl OpaqueData {
             offset += 2;
 
             // Data
-            let data_bytes = bytes.get(offset..offset + item.size).ok_or(anyhow!(
+            let data_end = offset
+                .checked_add(item.size)
+                .ok_or_else(|| anyhow!("OpaqueData size overflow"))?;
+            let data_bytes = bytes.get(offset..data_end).ok_or(anyhow!(
                 "OpaqueData overflow: offset {:#x}, data_size {:#x}",
                 offset,
                 item.size,
             ))?;
-            offset += item.size;
+            offset = data_end;
 
             item.data = match item.r#type {
                 OpaqueDataType::DriverVersion
@@ -642,5 +652,30 @@ mod tests {
         let claims = OpaqueData::decode(&data).unwrap();
 
         assert_eq!(claims["protected_pcie_status"], "55");
+    }
+
+    #[rstest]
+    #[case::one_byte(&[0])]
+    #[case::two_bytes(&[0, 0])]
+    #[case::three_bytes(&[0, 0, 0])]
+    fn test_rejects_truncated_opaque_item_header(#[case] suffix: &[u8]) {
+        let mut data = required_opaque_data();
+        data.extend(suffix);
+
+        let error = OpaqueData::decode(&data).unwrap_err();
+
+        assert!(error
+            .to_string()
+            .starts_with("OpaqueData item header overflow:"));
+    }
+
+    #[test]
+    fn test_rejects_final_unknown_zero_length_opaque_item() {
+        let mut data = required_opaque_data();
+        data.extend([37, 0, 0, 0]);
+
+        let error = OpaqueData::decode(&data).unwrap_err();
+
+        assert_eq!(error.to_string(), "Invalid OpaqueDataType 37");
     }
 }
