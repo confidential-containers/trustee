@@ -77,6 +77,22 @@ enum NvidiaVerifierTypeInternal {
     Local,
 }
 
+impl NvidiaVerifierTypeInternal {
+    fn kind(&self) -> NvidiaVerifierKind {
+        match self {
+            Self::Local => NvidiaVerifierKind::Local,
+            Self::Remote { .. } => NvidiaVerifierKind::Remote,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum NvidiaVerifierKind {
+    Local,
+    Remote,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NvidiaRemoteVerifierConfig {
     verifier_url: Option<String>,
@@ -387,9 +403,12 @@ impl Verifier for Nvidia {
         let mut seen_ueids = HashSet::new();
 
         for device in devices.device_evidence_list {
-            let (claims, tee_class) = match &self.verifier_type {
+            let verifier = self.verifier_type.kind();
+            let (mut claims, tee_class) = match &self.verifier_type {
                 NvidiaVerifierTypeInternal::Local => {
-                    self.evaluate_device_locally(device, expected_nonce_vec.clone())?
+                    let (claims, tee_class) =
+                        self.evaluate_device_locally(device, expected_nonce_vec.clone())?;
+                    (claims, tee_class)
                 }
                 NvidiaVerifierTypeInternal::Remote { config, jwks } => {
                     self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
@@ -397,7 +416,16 @@ impl Verifier for Nvidia {
                 }
             };
 
-            if matches!(&self.verifier_type, NvidiaVerifierTypeInternal::Local) {
+            claims
+                .as_object_mut()
+                .context("NVIDIA verifier returned non-object claims")?
+                .insert(
+                    "verifier".to_string(),
+                    serde_json::to_value(verifier)
+                        .context("serializing NVIDIA verifier kind into claims")?,
+                );
+
+            if verifier == NvidiaVerifierKind::Local {
                 let ueid = claims
                     .get("ueid")
                     .and_then(Value::as_str)
@@ -511,6 +539,13 @@ mod tests {
     }
 
     #[rstest]
+    #[case::local(NvidiaVerifierKind::Local, "local")]
+    #[case::remote(NvidiaVerifierKind::Remote, "remote")]
+    fn test_serializes_verifier_kind(#[case] verifier: NvidiaVerifierKind, #[case] expected: &str) {
+        assert_eq!(serde_json::to_value(verifier).unwrap(), expected);
+    }
+
+    #[rstest]
     #[case::local_verifier("local", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
     #[case::local_verifier_blackwell("local", "4cff7f5380ead8fad8ec2c531c110aca4302a88f603792801a8ca29ee151af2e", include_str!("../../test_data/nvidia/blackwellAttestationReport.txt").trim(), include_str!("../../test_data/nvidia/blackwell_cert_chain_case1.txt"), Architecture::Blackwell)]
     // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
@@ -535,6 +570,7 @@ mod tests {
     ) {
         let b64_engine = base64::engine::general_purpose::STANDARD;
         let is_local = verifier_type == "local";
+        let expected_verifier = verifier_type;
 
         let device_uuid: &str = "1111-2222-33333-444444-555555";
 
@@ -578,6 +614,7 @@ mod tests {
 
         assert_eq!(claims.len(), 1);
         assert_eq!(claims[0].1, "gpu");
+        assert_eq!(claims[0].0["verifier"], expected_verifier);
         if is_local {
             assert!(claims[0].0["ueid"]
                 .as_str()
