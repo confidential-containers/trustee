@@ -1,0 +1,18 @@
+{{- $kdsStorePath := ((.Values.as.verifier | default dict).snp | default dict).kdsStoreHostPath | default "" -}}
+{{- if $kdsStorePath -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "coco-trustee.names.snp-kds-store.pvc" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: {{ include "coco-trustee.names.snp-kds-store.pv" . }}
+{{- end }}

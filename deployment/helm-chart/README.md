@@ -218,6 +218,27 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Use an **s390x** AS image built with the `se-verifier` feature (`as.image.repository` / `as.image.tag`). See **`scenarios/ibm-se.yaml`** for the full override. Set the SE attestation policy afterwards as documented in `deps/verifier/src/se/README.md`.
 
+### AMD SEV-SNP offline VCEK store
+
+The **SNP** verifier needs a **VCEK** certificate to validate an attestation report. By default it fetches one from **AMD KDS**, which requires outbound connectivity from the AS Pod. Air-gapped clusters can instead stage the certificates on the node and have the verifier read them locally.
+
+Set **`as.verifier.snp.kdsStoreHostPath`** to the directory on the node that holds the store, **`as.verifier.snp.nodeName`** to the name of that node, and add an **`OfflineStore`** entry to **`as.verifier.snp.vcekSources`**. The chart then creates a `local`-type PV + PVC and mounts the directory at `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod. The three values are required together: rendering fails if the store is mounted without an `OfflineStore` source, or an `OfflineStore` source is configured without the mount, so a misconfiguration cannot silently fall back to KDS.
+
+```bash
+# 1. Place the certificates under a directory on the target SNP node, laid out as
+#    $KDS_STORE/vcek/{hwid}/{tcb_prefix}_vcek.der  (preferred)
+#    $KDS_STORE/vcek/{hwid}/vcek.der               (fallback)
+
+# 2. Install, pointing the chart at the node and directory:
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set as.verifier.snp.kdsStoreHostPath=$KDS_STORE \
+  --set as.verifier.snp.nodeName=<your-snp-node-name> \
+  --set 'as.verifier.snp.vcekSources[0].type=OfflineStore'
+```
+
+Sources are tried in the order given, so appending `--set 'as.verifier.snp.vcekSources[1].type=KDS'` keeps AMD KDS as a fallback for certificates that are missing locally. See [the AMD offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for how to build the `vcek/` directory and when it has to be refreshed.
+
 ## Testing
 
 **Inspect resources**:
@@ -272,8 +293,6 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 |-----|------|---------|-------------|
 | as.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for AS Pods. |
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
-| as.verifier.se.credsDir | string | `""` | Absolute path on the target node to the directory containing IBM SE attestation materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires `as.verifier.se.nodeName`. |
-| as.verifier.se.nodeName | string | `""` | Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`) resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume `nodeAffinity`. |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/staged-images/coco-as-grpc"` | AS container image repository. |
 | as.image.tag | string | `"latest"` | AS container image tag. |
@@ -291,6 +310,11 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.verifier.dcap.tcb_update_type | string | `"early"` | DCAP TCB update type (for example `early`). |
 | as.verifier.nvidia.type | string | `"Local"` | NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set. |
 | as.verifier.nvidia.verifierUrl | string | `"https://nras.attestation.nvidia.com/v4/attest"` | NRAS URL when `as.verifier.nvidia.type` is `Remote`. |
+| as.verifier.se.credsDir | string | `""` | Absolute path on the target node to the directory containing IBM SE attestation materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires `as.verifier.se.nodeName`. |
+| as.verifier.se.nodeName | string | `""` | Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`) resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume `nodeAffinity`. |
+| as.verifier.snp.kdsStoreHostPath | string | `""` | Absolute path on the target node to the directory containing the AMD SNP offline VCEK certificate store (must contain a `vcek/` subdirectory). When non-empty, the chart creates a `local`-type PV + PVC and mounts it at `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod, which is where an `OfflineStore` entry in `as.verifier.snp.vcekSources` reads from. Requires `as.verifier.snp.nodeName`. See [the offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for the directory layout. |
+| as.verifier.snp.nodeName | string | `""` | Kubernetes node name where the kds-store directory (`as.verifier.snp.kdsStoreHostPath`) resides. Required when `as.verifier.snp.kdsStoreHostPath` is set; used in the PV `nodeAffinity`. |
+| as.verifier.snp.vcekSources | list | `[]` | VCEK certificate sources for the SNP verifier, tried in the order given. When empty (the default), no `snp_verifier` block is emitted and the AS uses its built-in default (KDS). `KDS` fetches from AMD's Key Distribution Service and requires outbound connectivity. To configure an `OfflineStore` source, `as.verifier.snp.nodeName` and `as.verifier.snp.kdsStoreHostPath` must be provided as well, so the certificate store gets mounted into the AS Pod. |
 | bootstrapUserKeysJob | object | `{"keygenImage":{"pullPolicy":"IfNotPresent","repository":"alpine/openssl","tag":"3.5.6"},"kubectlImage":{"pullPolicy":"IfNotPresent","repository":"quay.io/kata-containers/kubectl","tag":"20260112"},"resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}}` | Bootstrap hook Job settings (pre-install/pre-upgrade key generation and post-delete cleanup when `secrets.useEphemeralGeneratedKeys=true`). |
 | bootstrapUserKeysJob.keygenImage.pullPolicy | string | `"IfNotPresent"` | OpenSSL `initContainer` image pull policy. |
 | bootstrapUserKeysJob.keygenImage.repository | string | `"alpine/openssl"` | OpenSSL `initContainer` image repository that generates demo keys. |

@@ -218,6 +218,27 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Use an **s390x** AS image built with the `se-verifier` feature (`as.image.repository` / `as.image.tag`). See **`scenarios/ibm-se.yaml`** for the full override. Set the SE attestation policy afterwards as documented in `deps/verifier/src/se/README.md`.
 
+### AMD SEV-SNP offline VCEK store
+
+The **SNP** verifier needs a **VCEK** certificate to validate an attestation report. By default it fetches one from **AMD KDS**, which requires outbound connectivity from the AS Pod. Air-gapped clusters can instead stage the certificates on the node and have the verifier read them locally.
+
+Set **`as.verifier.snp.kdsStoreHostPath`** to the directory on the node that holds the store, **`as.verifier.snp.nodeName`** to the name of that node, and add an **`OfflineStore`** entry to **`as.verifier.snp.vcekSources`**. The chart then creates a `local`-type PV + PVC and mounts the directory at `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod. The three values are required together: rendering fails if the store is mounted without an `OfflineStore` source, or an `OfflineStore` source is configured without the mount, so a misconfiguration cannot silently fall back to KDS.
+
+```bash
+# 1. Place the certificates under a directory on the target SNP node, laid out as
+#    $KDS_STORE/vcek/{hwid}/{tcb_prefix}_vcek.der  (preferred)
+#    $KDS_STORE/vcek/{hwid}/vcek.der               (fallback)
+
+# 2. Install, pointing the chart at the node and directory:
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set as.verifier.snp.kdsStoreHostPath=$KDS_STORE \
+  --set as.verifier.snp.nodeName=<your-snp-node-name> \
+  --set 'as.verifier.snp.vcekSources[0].type=OfflineStore'
+```
+
+Sources are tried in the order given, so appending `--set 'as.verifier.snp.vcekSources[1].type=KDS'` keeps AMD KDS as a fallback for certificates that are missing locally. See [the AMD offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for how to build the `vcek/` directory and when it has to be refreshed.
+
 ## Testing
 
 **Inspect resources**:
