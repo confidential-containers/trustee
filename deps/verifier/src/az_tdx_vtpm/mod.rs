@@ -74,7 +74,7 @@ impl Verifier for AzTdxVtpm {
         }
 
         let platform_info =
-            parse_platform_info(&td_quote.cert_data().qe_certification_data.certificates)?;
+            parse_platform_info(td_quote.cert_data().qe_certification_data.certificates)?;
 
         let pcs = self.config.pcs()?;
         let collateral = build_quote_collateral(
