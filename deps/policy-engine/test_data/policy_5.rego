@@ -18,7 +18,7 @@ allow if {
 
     data["resource-path"][0] == "myrepo"
     data["resource-path"][1] == "secret"
-    # check that the secret name exists and tht the minimum svn is met
+    # check that the secret name exists and that the minimum svn is met
     resources[data["resource-path"][2]] <= input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["svn"]
     
 }
