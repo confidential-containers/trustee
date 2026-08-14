@@ -157,6 +157,11 @@ The [resource storage backend](./docs/resource_storage_backend.md) where KBS sto
 ### Config
 A custom, [JSON-formatted configuration file](./docs/config.md) can be provided to configure KBS.
 
+### Policies
+[Sample policies](./sample_policies/) can be used as a starting point for writing
+your own resource policy. Additional example policies used by the policy engine
+tests are in [`deps/policy-engine/test_data/`](../deps/policy-engine/test_data/).
+
 ### Attestation Token Verification
 How KBS verifies attestation tokens, configures trust anchors, and relates AS
 token signing to KBS `[attestation_token]` settings is documented in
