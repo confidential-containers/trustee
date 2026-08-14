@@ -1,0 +1,30 @@
+# Helm values for the SNP offline VCEK store e2e leg (PR and nightly CI).
+#
+# Runner prerequisite: the VCEK certificate store must already exist on the SNP
+# host at `kdsStoreHostPath` below, laid out as `vcek/{hwid}/{tcb_prefix}_vcek.der`
+# (see attestation-service/docs/amd-offline-certificate-cache.md). It is staged
+# out of band as part of host setup, not by this workflow; the kind cluster only
+# bind-mounts it via e2e/snp/kind-config.yaml. Certificates have to be refreshed
+# whenever the host firmware/TCB changes.
+
+# The SNP verifier reports why an individual VCEK source failed only at debug
+# level; on `info` a failed run just says no configured source worked.
+log_level: debug
+
+kbs:
+  tls:
+    enabled: true
+    secretName: trustee-e2e-kbs-tls
+
+as:
+  verifier:
+    snp:
+      kdsStoreHostPath: /opt/confidential-containers/attestation-service/kds-store
+      # kind names the node `<cluster>-control-plane`, and the cluster for this
+      # leg is `kind-snp`, hence `kind-snp-control-plane`.
+      nodeName: kind-snp-control-plane
+      # KDS is the primary source; the offline store backs it up so the leg still
+      # passes when AMD KDS is unreachable or rate limited.
+      vcekSources:
+        - type: KDS
+        - type: OfflineStore

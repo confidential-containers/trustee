@@ -6,9 +6,8 @@ without connection to the AMD KDS. This guide mainly targets air-gapped
 environments.
 
 > [!Note]
-> Currently this guide shows a method that builds on using
-> [docker](https://confidentialcontainers.org/docs/attestation/installation/docker/)
-> to manage kbs services. Additional deployment methods will be covered in future releases.
+> This guide covers both [Docker Compose](https://confidentialcontainers.org/docs/attestation/installation/docker/)
+> and [Helm](https://confidentialcontainers.org/docs/attestation/installation/helm/) deployments.
 
 ## Enabling Offline VCEK Store in Attestation Service
 
@@ -120,6 +119,41 @@ sudo snphost fetch vek der . "<vcek-url>"
 
 ### 3. Install `vcek` directory into trustee deployment
 
+#### Helm Deployment
+
+1. Stage the VCEK certificates on the Kubernetes node at:
+   ```
+   /opt/confidential-containers/attestation-service/kds-store/vcek/{hwid}/{tcb_prefix}_vcek.der  (preferred)
+   ```
+   or
+   ```
+   /opt/confidential-containers/attestation-service/kds-store/vcek/{hwid}/vcek.der  (fallback)
+   ```
+
+2. Install Trustee with offline VCEK store enabled:
+   ```bash
+   helm install trustee ./deployment/helm-chart \
+     --namespace coco-trustee --create-namespace \
+     --set as.verifier.snp.kdsStoreHostPath=/opt/confidential-containers/attestation-service/kds-store \
+     --set as.verifier.snp.nodeName=<node-name> \
+     --set 'as.verifier.snp.vcekSources[0].type=OfflineStore'
+   ```
+
+   Replace `<node-name>` with the Kubernetes node hostname where the VCEK
+   certificates are stored (use `kubectl get nodes` to find it).
+
+   `as.verifier.snp.vcekSources` defaults to `[]`, which omits the `snp_verifier`
+   block and lets the AS use its built-in default (KDS). An `OfflineStore` source
+   has to be requested explicitly. It requires `kdsStoreHostPath` and `nodeName`,
+   since those are what get the certificate store mounted into the AS Pod. To
+   keep AMD KDS as a fallback for certificates that are missing locally:
+   ```bash
+   --set 'as.verifier.snp.vcekSources[0].type=OfflineStore' \
+   --set 'as.verifier.snp.vcekSources[1].type=KDS'
+   ```
+
+#### Docker Compose Deployment
+
 - **Install in running trustee deployment**
 
 Use docker commands to copy your `vcek` folder into the configured directory:
@@ -217,10 +251,16 @@ VCEK stores must be updated/rebuilt in the following events:
 
 ## Troubleshooting
 
-Enable debug and check logs for `vcek` keyword. Ensure configured sources match
-expected values.
+Enable debug logging and check logs for `vcek` keyword.
 
+**Helm:**
+```bash
+helm upgrade trustee ./deployment/helm-chart -n coco-trustee --set log_level=debug
+kubectl logs -n coco-trustee deploy/trustee-as -c as | grep -i vcek
 ```
+
+**Docker Compose:**
+```bash
 echo "RUST_LOG=debug" > debug.env
 docker compose --env-file debug.env up -d
 docker logs trustee-as-1 | grep -i vcek

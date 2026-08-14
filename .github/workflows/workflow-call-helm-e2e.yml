@@ -29,6 +29,20 @@ on:
         type: boolean
         default: false
         description: When true, run pre/post cleanup to keep a persistent runner tidy.
+      kind-config:
+        type: string
+        default: ''
+        description: >-
+          Optional path (relative to repo root) to a kind cluster config file.
+          When non-empty, passed to the kind-action `config` parameter to
+          customize the kind cluster (e.g. extraMounts for host certificates).
+      scenario:
+        type: string
+        default: ''
+        description: >-
+          Optional path (relative to deployment/helm-chart/) to a Helm values
+          file passed as E2E_BASE_SCENARIO. When empty, the default
+          scenarios/e2e-local-images.yaml is used.
 
 permissions: {}
 
@@ -90,6 +104,7 @@ jobs:
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
           cluster_name: ${{ env.KIND_CLUSTER }}
+          config: ${{ inputs.kind-config || '' }}
 
       - name: Load Trustee images into kind
         run: |
@@ -101,12 +116,18 @@ jobs:
       - name: Run Helm Trustee e2e
         env:
           EXPECTED_TEE: ${{ inputs.leg }}
+          HELM_E2E_SCENARIO: ${{ inputs.scenario }}
         run: |
+          MAKE_EXTRA_ARGS=()
+          if [ -n "${HELM_E2E_SCENARIO}" ]; then
+            MAKE_EXTRA_ARGS=("E2E_BASE_SCENARIO=${HELM_E2E_SCENARIO}")
+          fi
           make -C deployment/helm-chart e2e-test \
             E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
             E2E_IMAGE_TAG=latest \
             KBS_CLIENT="${RUNNER_TEMP}/helm-e2e-kbs-client/kbs-client" \
-            EXPECTED_TEE="${EXPECTED_TEE}"
+            EXPECTED_TEE="${EXPECTED_TEE}" \
+            "${MAKE_EXTRA_ARGS[@]}"
 
       # Self-hosted cleanup so the runner is left in a known-good state.
       - name: Cleanup kind cluster

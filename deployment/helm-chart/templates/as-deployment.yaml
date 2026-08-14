@@ -116,6 +116,11 @@ spec:
               mountPath: /opt/confidential-containers/kbs/user-keys
             - name: data
               mountPath: /opt/confidential-containers/attestation-service
+            {{- if ((.Values.as.verifier | default dict).snp | default dict).kdsStoreHostPath }}
+            - name: snp-kds-store
+              mountPath: /opt/confidential-containers/attestation-service/kds-store
+              readOnly: true
+            {{- end }}
             {{- if ((.Values.as.verifier | default dict).se | default dict).credsDir }}
             - name: ibmse
               mountPath: /run/confidential-containers/ibmse
@@ -137,6 +142,11 @@ spec:
             claimName: {{ $asClaim }}
         {{- else }}
           emptyDir: {}
+        {{- end }}
+        {{- if ((.Values.as.verifier | default dict).snp | default dict).kdsStoreHostPath }}
+        - name: snp-kds-store
+          persistentVolumeClaim:
+            claimName: {{ include "coco-trustee.names.snp-kds-store.pvc" . }}
         {{- end }}
         {{- if ((.Values.as.verifier | default dict).se | default dict).credsDir }}
         - name: ibmse

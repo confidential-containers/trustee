@@ -222,6 +222,26 @@ as:
       collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
       # -- DCAP TCB update type (for example `early`).
       tcb_update_type: "early"
+    snp:
+      # -- Absolute path on the target node to the directory containing the AMD SNP
+      # offline VCEK certificate store (must contain a `vcek/` subdirectory). When
+      # non-empty, the chart creates a `local`-type PV + PVC and mounts it at
+      # `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod,
+      # which is where an `OfflineStore` entry in `as.verifier.snp.vcekSources` reads
+      # from. Requires `as.verifier.snp.nodeName`. See
+      # [the offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md)
+      # for the directory layout.
+      kdsStoreHostPath: ""
+      # -- Kubernetes node name where the kds-store directory (`as.verifier.snp.kdsStoreHostPath`)
+      # resides. Required when `as.verifier.snp.kdsStoreHostPath` is set; used in the PV `nodeAffinity`.
+      nodeName: ""
+      # -- VCEK certificate sources for the SNP verifier, tried in the order given.
+      # When empty (the default), no `snp_verifier` block is emitted and the AS uses
+      # its built-in default (KDS). `KDS` fetches from AMD's Key Distribution Service
+      # and requires outbound connectivity. To configure an `OfflineStore` source,
+      # `as.verifier.snp.nodeName` and `as.verifier.snp.kdsStoreHostPath` must be
+      # provided as well, so the certificate store gets mounted into the AS Pod.
+      vcekSources: []
     se:
       # -- IBM Secure Execution (s390x) attestation materials. When `credsDir` is non-empty
       # the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts

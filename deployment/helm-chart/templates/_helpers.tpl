@@ -112,6 +112,12 @@ with `valkey.nameOverride: valkey` => `<release>-valkey-primary`).
 {{- define "coco-trustee.names.ibmse.pvc" -}}
 {{- printf "%s-ibmse-pvc" (include "coco-trustee.fullname" . | trunc 53 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
 {{- end }}
+{{- define "coco-trustee.names.snp-kds-store.pv" -}}
+{{- printf "%s-snp-kds-pv" (include "coco-trustee.fullname" . | trunc 52 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+{{- define "coco-trustee.names.snp-kds-store.pvc" -}}
+{{- printf "%s-snp-kds-pvc" (include "coco-trustee.fullname" . | trunc 51 | trimSuffix "-") | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 
 {{/*
 Fixed workload ports (override only via undocumented values for advanced use).
@@ -143,6 +149,17 @@ AS verifier config JSON fragment
 {{- define "coco-trustee.as.verifier" -}}
 {{- $nv := dig "verifier" "nvidia" (dict) (default dict .Values.as) | default dict -}}
 {{- $dcap := dig "verifier" "dcap" (dict) (default dict .Values.as) | default dict -}}
+{{- $snp := dig "verifier" "snp" (dict) (default dict .Values.as) | default dict -}}
+{{- $snpKdsStorePath := $snp.kdsStoreHostPath | default "" -}}
+{{- $snpNodeName := $snp.nodeName | default "" -}}
+{{- $snpVcekSources := $snp.vcekSources | default list -}}
+{{- $snpHasOfflineStore := contains "\"type\":\"OfflineStore\"" ($snpVcekSources | toJson) -}}
+{{- if and $snpHasOfflineStore (not (and $snpKdsStorePath $snpNodeName)) -}}
+{{- fail "as.verifier.snp.kdsStoreHostPath and as.verifier.snp.nodeName must be set when as.verifier.snp.vcekSources contains an OfflineStore source" -}}
+{{- end -}}
+{{- if and $snpKdsStorePath (not $snpHasOfflineStore) -}}
+{{- fail "as.verifier.snp.vcekSources must contain an OfflineStore source when as.verifier.snp.kdsStoreHostPath is set, otherwise the mounted certificate store is never read" -}}
+{{- end -}}
 {{- if $nv -}}
 {{- if eq $nv.type "Remote" -}}
 {{- $_ := required "as.verifier.nvidia.verifierUrl must be set when as.verifier.nvidia.type is Remote" (trim (default "" $nv.verifierUrl)) -}}
@@ -164,6 +181,13 @@ AS verifier config JSON fragment
     {{- if $dcap.tcb_update_type }},
     "tcb_update_type": "{{ $dcap.tcb_update_type }}"
     {{- end }}
+}
+{{- end -}}
+{{- if and $snpVcekSources (or $nv $dcap) }},
+{{- end }}
+{{ if $snpVcekSources -}}
+"snp_verifier": {
+    "vcek_sources": {{ $snpVcekSources | toJson }}
 }
 {{- end -}}
 {{- end }}

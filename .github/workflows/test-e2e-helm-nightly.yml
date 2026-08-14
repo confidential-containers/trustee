@@ -72,6 +72,9 @@ jobs:
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true
 
+  # Exercises the offline VCEK certificate store, so the SNP runner must have the
+  # store staged at /opt/confidential-containers/attestation-service/kds-store as
+  # part of host setup. See deployment/helm-chart/scenarios/snp-e2e.yaml.
   helm-trustee-e2e-snp:
     name: Helm Trustee e2e (SNP)
     needs: build-docker-e2e-materials
@@ -83,3 +86,5 @@ jobs:
       runs-on: '{"group":"snp-vm"}'
       client-artifact: helm-e2e-kbs-client-snp-linux-amd64
       self-hosted: true
+      kind-config: deployment/helm-chart/e2e/snp/kind-config.yaml
+      scenario: scenarios/snp-e2e.yaml
