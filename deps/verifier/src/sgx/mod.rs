@@ -83,7 +83,7 @@ async fn verify_evidence(
 
     let quote = parse_quote(&quote_bin)?;
 
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
+    let platform_info = parse_platform_info(quote.cert_data().qe_certification_data.certificates)?;
 
     let collateral = build_quote_collateral(
         platform_info.fmspc,

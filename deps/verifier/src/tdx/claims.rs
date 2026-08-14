@@ -35,7 +35,7 @@ macro_rules! body_field {
     };
 }
 
-impl Quote {
+impl Quote<'_> {
     body_field!(report_data);
     body_field!(mr_config_id);
     body_field!(rtmr_0);
@@ -308,7 +308,7 @@ mod tests {
         let quote = parse_quote(&quote_bin).expect("parse quote");
         let ccel = CcEventLog::try_from(ccel_bin).expect("parse ccel");
         let platform_info =
-            parse_platform_info(&quote.cert_data().qe_certification_data.certificates)
+            parse_platform_info(quote.cert_data().qe_certification_data.certificates)
                 .expect("parse platform info");
         let claims =
             generate_parsed_claim(&quote, Some(ccel), &platform_info).expect("parse claim failed");

@@ -78,17 +78,17 @@ struct QeReport {
 
 #[repr(C)]
 #[derive(Debug)]
-pub(crate) struct QeCertificationData {
+pub(crate) struct QeCertificationData<'a> {
     qe_report: QeReport,
-    qe_authentication: Vec<u8>,
-    pub(crate) certificates: Vec<u8>,
+    qe_authentication: &'a [u8],
+    pub(crate) certificates: &'a [u8],
 }
 
 #[repr(C)]
 #[derive(Debug)]
-pub(crate) struct QuoteCertificationData {
+pub(crate) struct QuoteCertificationData<'a> {
     quote_signature: QuoteSignature,
-    pub(crate) qe_certification_data: QeCertificationData,
+    pub(crate) qe_certification_data: QeCertificationData<'a>,
 }
 
 /// SGX report body (SGX ECDSA quote v3, tee_type = 0x00000000)
@@ -381,12 +381,12 @@ impl fmt::Display for QuoteV5Body {
 }
 
 /// A parsed Intel DCAP ECDSA quote.
-pub(crate) enum Quote {
+pub(crate) enum Quote<'a> {
     /// SGX Quote v3 (tee_type = 0x00000000)
     V3 {
         header: QuoteHeader,
         body: SgxReportBody,
-        cert_data: QuoteCertificationData,
+        cert_data: QuoteCertificationData<'a>,
     },
 
     /// TD Quote v4 (tee_type = 0x00000081)
@@ -395,7 +395,7 @@ pub(crate) enum Quote {
     V4 {
         header: QuoteHeader,
         body: TdxReportBody,
-        cert_data: QuoteCertificationData,
+        cert_data: QuoteCertificationData<'a>,
     },
 
     /// TD Quote v5 (tee_type = 0x00000081)
@@ -406,12 +406,12 @@ pub(crate) enum Quote {
         r#type: QuoteV5Type,
         size: [u8; 4],
         body: QuoteV5Body,
-        cert_data: QuoteCertificationData,
+        cert_data: QuoteCertificationData<'a>,
     },
 }
 
-impl Quote {
-    pub(crate) fn cert_data(&self) -> &QuoteCertificationData {
+impl<'a> Quote<'a> {
+    pub(crate) fn cert_data(&self) -> &QuoteCertificationData<'a> {
         match self {
             Quote::V3 { cert_data, .. } => cert_data,
             Quote::V4 { cert_data, .. } => cert_data,
@@ -428,7 +428,7 @@ impl Quote {
     }
 }
 
-impl fmt::Display for Quote {
+impl fmt::Display for Quote<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Quote::V3 { header, body, .. } => write!(f, "SGX Quote (V3):\n{header}\n{body}\n"),
@@ -455,7 +455,7 @@ const PCK_CERT_CHAIN_CERT_DATA_TYPE: u16 = 5;
 ///
 /// `is_sgx_v3`: SGX v3 quotes omit the cert-data-type (u16) and length (u32)
 /// fields before the QeReport; TDX v4/v5 include them.
-fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertificationData> {
+fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertificationData<'_>> {
     let mut offset = 0;
 
     let quote_signature: QuoteSignature = data.gread::<QuoteSignature>(&mut offset)?;
@@ -475,10 +475,9 @@ fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertifi
     let qe_report: QeReport = data.gread(&mut offset)?;
 
     let qe_auth_len: usize = data.gread::<u16>(&mut offset)? as usize;
-    let qe_authentication: Vec<u8> = data
+    let qe_authentication: &[u8] = data
         .get(offset..offset + qe_auth_len)
-        .ok_or_else(|| anyhow!("QE authentication data out of bounds"))?
-        .to_vec();
+        .ok_or_else(|| anyhow!("QE authentication data out of bounds"))?;
 
     offset += qe_auth_len;
     let pck_cert_chain_type: u16 = data.gread::<u16>(&mut offset)?;
@@ -491,10 +490,9 @@ fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertifi
     }
 
     let cert_len: usize = data.gread::<u32>(&mut offset)? as usize;
-    let certificates = data
+    let certificates: &[u8] = data
         .get(offset..offset + cert_len)
-        .ok_or_else(|| anyhow!("PCK certificate chain data out of bounds"))?
-        .to_vec();
+        .ok_or_else(|| anyhow!("PCK certificate chain data out of bounds"))?;
 
     Ok(QuoteCertificationData {
         quote_signature,
@@ -511,7 +509,7 @@ fn parse_cert_data_at(
     quote_bin: &[u8],
     sig_len_off: usize,
     is_sgx_v3: bool,
-) -> Result<QuoteCertificationData> {
+) -> Result<QuoteCertificationData<'_>> {
     let sig_start = sig_len_off + std::mem::size_of::<u32>();
 
     let sig_len: [u8; 4] = quote_bin
@@ -537,7 +535,7 @@ fn parse_cert_data_at(
 /// - (3, 0x00000000) → [`Quote::V3`] (SGX)
 /// - (4, 0x00000081) → [`Quote::V4`] (TDX 1.0)
 /// - (5, 0x00000081) → [`Quote::V5`] (TDX 1.0 or 1.5)
-pub(crate) fn parse_quote(quote_bin: &[u8]) -> Result<Quote> {
+pub(crate) fn parse_quote(quote_bin: &[u8]) -> Result<Quote<'_>> {
     let header = quote_bin
         .pread::<QuoteHeader>(0)
         .context("parse quote header failed")?;
@@ -694,7 +692,7 @@ mod tests {
 
         let parsed_quote = parse_quote(&quote_bin).expect("parse quote");
         let platform_info =
-            parse_platform_info(&parsed_quote.cert_data().qe_certification_data.certificates)
+            parse_platform_info(parsed_quote.cert_data().qe_certification_data.certificates)
                 .expect("parse platform info");
 
         let pcs = Pcs::new(&config).expect("Pcs::new");
