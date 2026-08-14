@@ -58,7 +58,10 @@ Please go [here](DEVELOPMENT.md).
 
 ## Deployment
 
-There are two main ways to deploy Trustee.
+### Helm Chart
+
+The recommended way to deploy Trustee is the [Helm chart](deployment/helm-chart/README.md),
+which installs the KBS, AS, and RVPS on Kubernetes.
 
 ### Docker Compose
 
@@ -69,12 +72,11 @@ Please refer to the [cluster setup guide](kbs/docs/cluster.md).
 
 This cluster could be run inside a VM or as part of a managed service.
 
-### Kubernetes
+### Other Kubernetes Options
 
-There are two supported ways of deploying Trustee on Kubernetes.
-One is via the [KBS Operator](https://github.com/confidential-containers/kbs-operator),
-which deploys the KBS components. The second option is to use the KBS'
-provided Kubernetes tooling [here](kbs/config/kubernetes).
+Trustee can also be deployed via the
+[KBS Operator](https://github.com/confidential-containers/kbs-operator),
+or with the KBS' provided Kubernetes tooling [here](kbs/config/kubernetes).
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fconfidential-containers%2Fkbs?ref=badge_large)
