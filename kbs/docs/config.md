@@ -184,7 +184,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `build_name`     | String                 | The build name to be used as part of the Verifier ID in the EAR                | No       | Automatically generated from Cargo package and AS version             |
 | `profile_name`   | String                 | The Profile that describes the EAR token                                       | No       | tag:github.com,2024:confidential-containers/Trustee`                  |
 | `signer`         | [TokenSignerConfig][4] | Signing material of the attestation result token.                              | No       | None                                                                  |
-| `verbose_token`  | Boolean                | Include raw additional-device evidence in the EAR. Multi-GPU guests can produce tokens larger than actix-http's 128 KiB request-head limit (`message head is too large` on CDH `Authorization: Bearer` resource GETs). Set `false` to omit that evidence from the token; verification still runs. | No       | `true`                                                                |
+| `verbose_token`  | Boolean                | Include detailed information in the EAR, such as the raw additional-device evidence. Device evidence (for example a GPU) can produce tokens larger than actix-http's 128 KiB request-head limit (causing errors like `message head is too large` on CDH `Authorization: Bearer` resource GETs). Set `false` to omit that extra detail from the token; verification still runs. | No       | `true`                                                                |
 
 ##### TokenSignerConfig
 
