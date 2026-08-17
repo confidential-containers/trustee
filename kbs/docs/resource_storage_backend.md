@@ -75,6 +75,6 @@ echo -n "hello" | gcloud secrets versions add my-test --data-file=-
 # the resource kbs:///default/default/my-test
 ```
 
-### Hashicorp Vault Backend
+### HashiCorp Vault / OpenBao Backend
 
 [Vault KV secrets engine backend](./vault_kv.md)
