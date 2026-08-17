@@ -83,8 +83,10 @@ pub struct ReferenceMeasurement {
     pub reference: Vec<u8>,
     /// Value to seed the replay accumulator with, instead of an all-zero
     /// buffer. Some measurement registers (e.g. a vTPM DRTM PCR) reset to a
-    /// non-zero value before any event extends them. Leave empty to fall
-    /// back to an all-zero seed of the algorithm's digest size.
+    /// non-zero value before any event extends them. See Table 7 of
+    /// <https://trustedcomputinggroup.org/wp-content/uploads/PC-Client-Specific-Platform-TPM-Profile-for-TPM-2p0-v1p05p_r14_pub.pdf>.
+    /// Leave empty to fall back to an all-zero seed of the algorithm's digest
+    /// size.
     pub initial_value: Vec<u8>,
 }
 

@@ -44,11 +44,14 @@ const SHA256_LEN: usize = 32;
 /// vTPM DRTM measurement registers (PCR17-22, per the TCG PC Client
 /// Platform Firmware Profile). These reset to all-0xFF, not all-zero,
 /// before any event extends them -- unlike general-purpose registers
-/// (e.g. PCR23) AAEL events may target instead. Azure's vTPM additionally
-/// rejects locality-0 extends on this range, so real AAEL events land
-/// elsewhere in practice; the eventlog records which register each event
-/// actually targeted, so the replay seeds per-register from this class
-/// rather than assuming a single fixed PCR/seed pair.
+/// (e.g. PCR23) AAEL events may target instead. See Table 7 of
+/// <https://trustedcomputinggroup.org/wp-content/uploads/PC-Client-Specific-Platform-TPM-Profile-for-TPM-2p0-v1p05p_r14_pub.pdf>.
+/// Azure's vTPM additionally rejects locality-0 extends on this range, so real
+/// AAEL events land elsewhere in practice -- see
+/// <https://github.com/confidential-containers/guest-components/pull/1605#issuecomment-5119810216>
+/// -- the eventlog records which register each event actually targeted, so
+/// the replay seeds per-register from this class rather than assuming a
+/// single fixed PCR/seed pair.
 const DRTM_PCR_MIN: u32 = 17;
 const DRTM_PCR_MAX: u32 = 22;
 const DRTM_SEED: [u8; 32] = [0xFF; 32];
