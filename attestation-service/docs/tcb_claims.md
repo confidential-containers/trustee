@@ -167,9 +167,9 @@ The following fields report the TD's current TCB level, as opposed to the level 
 ## Azure SEV-SNP Confidential VM (az-snp-vtpm)
 
 - `["az-snp-vtpm"].*`: claims inherit the fields from the [SEV-SNP](#amd-sev-snp) layout.
-- `["az-tdx-vtpm"].tpm`: Object. TPM PCR values.
-  - `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: String (hex). SHA256 PCR registers for the TEE's vTPM quote.
-  - `["az-tdx-vtpm"].tpm.init_data`: **Optional**. String (hex). The register used as initdata digest (PCR 8).
+- `["az-snp-vtpm"].tpm`: Object. TPM PCR values.
+  - `["az-snp-vtpm"].tpm.pcr{01,..,n}`: String (hex). SHA256 PCR registers for the TEE's vTPM quote.
+  - `["az-snp-vtpm"].tpm.init_data`: **Optional**. String (hex). The register used as initdata digest (PCR 8).
 
 Note: The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
 
