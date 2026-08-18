@@ -28,6 +28,13 @@ impl EngineTrait for Regorus {
     fn policy_suffix() -> &'static str {
         ".rego"
     }
+    fn check_policy_format(policy: &str) -> Result<()> {
+        let mut engine = regorus::Engine::new();
+        engine
+            .add_policy("".to_string(), policy.to_string())
+            .map_err(PolicyError::LoadPolicyFailed)?;
+        Ok(())
+    }
 }
 
 impl Regorus {
