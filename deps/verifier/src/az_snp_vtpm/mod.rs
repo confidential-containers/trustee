@@ -112,18 +112,14 @@ fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
     Ok(attest.extra_data().to_vec())
 }
 
-/// Decode and replay the AAEL runtime eventlog (if present) -- one register
-/// per distinct PCR index the log's events actually target, each seeded
-/// per `initial_seed_for_pcr` -- and insert the parsed per-event log as a
-/// claim analogous to the CSV/TDX verifiers' `uefi_event_logs` claim.
-fn extend_eventlog_claim(
-    claim: &mut TeeEvidenceParsedClaim,
-    cc_eventlog: Option<&str>,
-    tpm_quote: &TpmQuote,
-) -> Result<()> {
+/// Decode and verify the AAEL runtime eventlog against `tpm_quote` (if
+/// present) -- one register per distinct PCR index the log's events
+/// actually target, each seeded per `initial_seed_for_pcr`. Returns the
+/// parsed log on success, or `None` if the evidence carried no eventlog.
+fn verify_eventlog(cc_eventlog: Option<&str>, tpm_quote: &TpmQuote) -> Result<Option<CcEventLog>> {
     let Some(el) = cc_eventlog.filter(|el| !el.is_empty()) else {
         warn!("No AAEL eventlog included inside the az-snp-vtpm evidence, skipping replay.");
-        return Ok(());
+        return Ok(None);
     };
 
     let ccel_data = STANDARD
@@ -155,6 +151,19 @@ fn extend_eventlog_claim(
 
     ccel.replay_and_match(compare_obj)?;
     debug!("AAEL eventlog replay succeeded for registers {targeted_pcrs:?}");
+
+    Ok(Some(ccel))
+}
+
+/// Insert a verified eventlog as a `uefi_event_logs` claim, analogous to
+/// the CSV/TDX verifiers -- a no-op if `ccel` is `None`.
+fn extend_eventlog_claim(
+    claim: &mut TeeEvidenceParsedClaim,
+    ccel: Option<CcEventLog>,
+) -> Result<()> {
+    let Some(ccel) = ccel else {
+        return Ok(());
+    };
 
     let Value::Object(ref mut map) = claim else {
         bail!("failed to extend the claim, not an object");
@@ -274,7 +283,8 @@ impl Verifier for AzSnpVtpm {
 
         let mut claim = parse_tee_evidence_az(&snp_report);
         extend_claim(&mut claim, tpm_quote)?;
-        extend_eventlog_claim(&mut claim, evidence.cc_eventlog(), tpm_quote)?;
+        let ccel = verify_eventlog(evidence.cc_eventlog(), tpm_quote)?;
+        extend_eventlog_claim(&mut claim, ccel)?;
 
         Ok(vec![(claim, "cpu".to_string())])
     }
@@ -828,7 +838,9 @@ mod tests {
     fn test_extend_eventlog_claim_none_is_noop() {
         let mut claim = json!({});
         let tpm_quote = load_tpm_quote();
-        extend_eventlog_claim(&mut claim, None, &tpm_quote).unwrap();
+        let ccel = verify_eventlog(None, &tpm_quote).unwrap();
+        assert!(ccel.is_none());
+        extend_eventlog_claim(&mut claim, ccel).unwrap();
         assert!(claim.as_object().unwrap().is_empty());
     }
 
@@ -851,7 +863,8 @@ mod tests {
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
         let mut claim = json!({});
-        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        let ccel = verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        extend_eventlog_claim(&mut claim, ccel).unwrap();
 
         let events = claim
             .as_object()
@@ -889,7 +902,8 @@ mod tests {
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
         let mut claim = json!({});
-        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        let ccel = verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        extend_eventlog_claim(&mut claim, ccel).unwrap();
 
         let events = claim
             .as_object()
@@ -927,7 +941,8 @@ mod tests {
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
         let mut claim = json!({});
-        extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        let ccel = verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
+        extend_eventlog_claim(&mut claim, ccel).unwrap();
 
         let events = claim
             .as_object()
@@ -953,7 +968,6 @@ mod tests {
         tpm_quote.pcrs[DRTM_TEST_PCR as usize] = zero_seeded_pcr17;
 
         let cc_eventlog = STANDARD.encode(&ccel_bytes);
-        let mut claim = json!({});
-        assert!(extend_eventlog_claim(&mut claim, Some(cc_eventlog.as_str()), &tpm_quote).is_err());
+        assert!(verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote).is_err());
     }
 }
