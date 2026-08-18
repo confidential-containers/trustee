@@ -762,57 +762,24 @@ mod tests {
         assert_eq!(report_data, hex::encode(REPORT_DATA));
     }
 
-    // Mirrors guest-components' `EL_HEADER` (attestation-agent/attester/src/utils.rs):
-    // a TCG_PCR_EVENT `EV_NO_ACTION` entry whose TCG_EfiSpecIDEvent declares
-    // SHA-256 (0x000B, 32 bytes), SHA-384 (0x000C, 48 bytes) and SM3 (0x0012, 32 bytes).
-    #[rustfmt::skip]
-    const TEST_EL_HEADER: [u8; 73] = [
-        0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
-        0x0B, 0x00, 0x20, 0x00, 0x0C, 0x00, 0x30, 0x00, 0x12, 0x00,
-        0x20, 0x00, 0x00,
-    ];
+    // Fixtures under test_data/az-snp-vtpm/aael-*.bin are raw AAEL eventlogs
+    // (a TCG_PCR_EVENT `EV_NO_ACTION` TCG_EfiSpecIDEvent header declaring
+    // SHA-256/SHA-384/SM3, followed by one or more TCG_PCR_EVENT2 entries
+    // using `EV_IPL` as a generic, parser-agnostic event type -- same as
+    // guest-components' own eventlog unit tests). Each entry's event data is
+    // one of the payloads below; its digest is recomputed here rather than
+    // baked into the fixture, since that's what the replay logic itself
+    // hashes against.
+    const PULL_IMAGE_EVENT: &[u8] = b"pull-image-event";
+    const DRTM_EVENT: &[u8] = b"drtm-event";
+    const APP_SUPPORT_EVENT: &[u8] = b"app-support-event";
 
-    // Builds a TCG_PCR_EVENT2 entry (single SHA-256 digest) for `target_mr`.
-    // `EV_IPL` (0xd) is used as a generic, parser-agnostic event type, same
-    // as guest-components' own eventlog unit tests.
-    fn make_sha256_event(target_mr: u32, event_data: &[u8], digest: [u8; 32]) -> Vec<u8> {
-        let mut v = Vec::new();
-        v.extend_from_slice(&target_mr.to_le_bytes());
-        v.extend_from_slice(&0x0000000du32.to_le_bytes());
-        v.extend_from_slice(&1u32.to_le_bytes());
-        v.extend_from_slice(&0x000Bu16.to_le_bytes());
-        v.extend_from_slice(&digest);
-        v.extend_from_slice(&(event_data.len() as u32).to_le_bytes());
-        v.extend_from_slice(event_data);
-        v
-    }
-
-    fn make_aael(target_mr: u32, event_data: &[u8]) -> (Vec<u8>, [u8; 32]) {
-        let digest: [u8; 32] = Sha256::digest(event_data).into();
-        let mut ccel = TEST_EL_HEADER.to_vec();
-        ccel.extend_from_slice(&make_sha256_event(target_mr, event_data, digest));
-        ccel.extend_from_slice(&[0xFFu8; 8]); // end flag
-        (ccel, digest)
-    }
-
-    /// Like `make_aael`, but with one event per `(target_mr, event_data)` pair
-    /// in the same log -- for exercising replay against multiple registers.
-    fn make_aael_multi(events: &[(u32, &[u8])]) -> (Vec<u8>, Vec<[u8; 32]>) {
-        let mut ccel = TEST_EL_HEADER.to_vec();
-        let mut digests = Vec::new();
-        for &(target_mr, event_data) in events {
-            let digest: [u8; 32] = Sha256::digest(event_data).into();
-            ccel.extend_from_slice(&make_sha256_event(target_mr, event_data, digest));
-            digests.push(digest);
-        }
-        ccel.extend_from_slice(&[0xFFu8; 8]); // end flag
-        (ccel, digests)
-    }
+    const AAEL_PCR17_PULL_IMAGE: &[u8] =
+        include_bytes!("../../test_data/az-snp-vtpm/aael-pcr17-pull-image.bin");
+    const AAEL_PCR23_PULL_IMAGE: &[u8] =
+        include_bytes!("../../test_data/az-snp-vtpm/aael-pcr23-pull-image.bin");
+    const AAEL_MULTI_PCR17_PCR23: &[u8] =
+        include_bytes!("../../test_data/az-snp-vtpm/aael-multi-pcr17-pcr23.bin");
 
     #[test]
     fn test_extend_eventlog_claim_none_is_noop() {
@@ -844,7 +811,12 @@ mod tests {
         #[case] seed: [u8; 32],
         #[case] expect_ok: bool,
     ) {
-        let (ccel_bytes, event_digest) = make_aael(target_pcr, b"pull-image-event");
+        let ccel_bytes: &[u8] = if target_pcr == DRTM_TEST_PCR {
+            AAEL_PCR17_PULL_IMAGE
+        } else {
+            AAEL_PCR23_PULL_IMAGE
+        };
+        let event_digest: [u8; 32] = Sha256::digest(PULL_IMAGE_EVENT).into();
 
         let mut hasher = Sha256::new();
         hasher.update(seed);
@@ -861,7 +833,7 @@ mod tests {
         }
         tpm_quote.pcrs[target_pcr as usize] = expected_pcr;
 
-        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let cc_eventlog = STANDARD.encode(ccel_bytes);
         let result = verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote);
         assert_eq!(result.is_ok(), expect_ok);
 
@@ -881,13 +853,8 @@ mod tests {
 
     #[test]
     fn test_extend_eventlog_claim_replays_multiple_registers_with_correct_seeds() {
-        let (ccel_bytes, digests) = make_aael_multi(&[
-            (DRTM_TEST_PCR, b"drtm-event"),
-            (APP_SUPPORT_PCR, b"app-support-event"),
-        ]);
-        let [drtm_digest, app_support_digest] = digests[..] else {
-            panic!("expected exactly 2 digests");
-        };
+        let drtm_digest: [u8; 32] = Sha256::digest(DRTM_EVENT).into();
+        let app_support_digest: [u8; 32] = Sha256::digest(APP_SUPPORT_EVENT).into();
 
         let mut drtm_hasher = Sha256::new();
         drtm_hasher.update(DRTM_SEED);
@@ -903,7 +870,7 @@ mod tests {
         tpm_quote.pcrs[DRTM_TEST_PCR as usize] = expected_drtm_pcr;
         tpm_quote.pcrs[APP_SUPPORT_PCR as usize] = expected_app_support_pcr;
 
-        let cc_eventlog = STANDARD.encode(&ccel_bytes);
+        let cc_eventlog = STANDARD.encode(AAEL_MULTI_PCR17_PCR23);
         let mut claim = json!({});
         let ccel = verify_eventlog(Some(cc_eventlog.as_str()), &tpm_quote).unwrap();
         extend_eventlog_claim(&mut claim, ccel).unwrap();
