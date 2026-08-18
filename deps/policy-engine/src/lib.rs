@@ -23,6 +23,11 @@ pub trait EngineTrait {
     fn policy_suffix() -> &'static str {
         ""
     }
+
+    // Check that a policy is well-formed, before it is accepted and stored.
+    fn check_policy_format(_policy: &str) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -36,6 +41,7 @@ impl<T: Send + Sync + EngineTrait> PolicyEngine<T> {
     /// The policy is expected to be provided as string.
     /// Concrete policy engine backend may handle the policy in different ways.
     pub async fn set_policy(&self, policy_id: &str, policy: &str, overwrite: bool) -> Result<()> {
+        T::check_policy_format(policy)?;
         let params = SetParameters { overwrite };
         let policy_id = format!("{}{}", policy_id, T::policy_suffix());
         let _ = self
