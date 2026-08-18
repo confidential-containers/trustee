@@ -165,7 +165,7 @@ fn replay(
     initial_value: &[u8],
 ) -> Result<Vec<u8>> {
     let digest_size = alg.get_digest_size(alg)?;
-    
+
     if !initial_value.is_empty() && initial_value.len() != digest_size {
         bail!(
             "initial_value length {} does not match {:?} digest size {}",
