@@ -38,7 +38,7 @@ impl FromStr for NrasResponse {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let response: NrasResponseInternal = serde_json::from_str(s)?;
 
-        if response.1.len() != 2 {
+        if response.0.len() != 2 {
             bail!("Unexpected Payload Format");
         };
         let jwt = response.0[1].clone();
