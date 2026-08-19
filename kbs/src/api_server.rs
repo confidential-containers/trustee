@@ -396,7 +396,7 @@ pub(crate) async fn api(
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), None)
+                    .handle(&body, &query, resource_path, request.method(), None, None)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -448,9 +448,18 @@ pub(crate) async fn api(
 
                 let init_data = claims
                     .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+                let validated_identifiers =
+                    claims.pointer("/submods/cpu0/ear.trustee.identifiers/validated");
 
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), init_data)
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        init_data,
+                        validated_identifiers,
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 

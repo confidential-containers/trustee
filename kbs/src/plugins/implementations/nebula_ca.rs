@@ -402,6 +402,7 @@ impl ClientPlugin for NebulaCaPlugin {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
+        _validated_identifiers: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         if path.len() != 1 {
             bail!("Illegal path. Only one path segment is supported");

@@ -188,6 +188,7 @@ impl super::super::plugin_manager::ClientPlugin for Provisioner {
         path: &[&str],
         method: &Method,
         init_data: Option<&serde_json::Value>,
+        _validated_identifiers: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         match (method.as_str(), path.first().copied()) {
             ("POST", Some("provision")) => self.handle_provision(body).await,
