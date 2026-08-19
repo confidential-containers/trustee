@@ -384,6 +384,7 @@ impl ClientPlugin for ExternalPlugin {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
+        _extensions: &HashMap<String, serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let (backend, sub_path) = self.backend_for(path)?;
         backend.handle(body, query, sub_path, method).await

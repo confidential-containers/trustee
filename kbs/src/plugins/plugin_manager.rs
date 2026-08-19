@@ -40,6 +40,8 @@ pub trait ClientPlugin: Send + Sync {
         path: &[&str],
         method: &Method,
         init_data: Option<&Value>,
+        // Extensions from the attestation token
+        extensions: &HashMap<String, Value>,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
