@@ -45,6 +45,9 @@ pkcs11 = ["cryptoki"]
 # that want to join a Nebula overlay network
 nebula-ca-plugin = []
 
+# Spire plugin
+spire-plugin = ["spire-api"]
+
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
@@ -106,6 +109,7 @@ rustls = { version = "0.23", default-features = false, features = [
 ], optional = true }
 semver = "1.0.28"
 serde = { workspace = true, features = ["derive"] }
+spire-api = { version = "0.8", optional = true }
 serde_json.workspace = true
 serde_with.workspace = true
 sha2.workspace = true
