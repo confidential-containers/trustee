@@ -449,6 +449,7 @@ impl TestHarness {
             KBS_URL,
             &secret_path,
             None,
+            None,
             vec![],
             init_data,
         )
