@@ -396,7 +396,14 @@ pub(crate) async fn api(
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), None)
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        None,
+                        &HashMap::new(),
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -449,8 +456,28 @@ pub(crate) async fn api(
                 let init_data = claims
                     .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
 
+                // Extract only custom extensions scoped to Trustee
+                let mut trustee_extensions = HashMap::new();
+                if let Some(submod) = claims
+                    .pointer("/submods/cpu0")
+                    .and_then(serde_json::Value::as_object)
+                {
+                    for (name, value) in submod {
+                        if name.starts_with("ear.trustee") {
+                            trustee_extensions.insert(name.clone(), value.clone());
+                        }
+                    }
+                }
+
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), init_data)
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        init_data,
+                        &trustee_extensions,
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
