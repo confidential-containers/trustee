@@ -23,6 +23,9 @@ use super::{Pkcs11Backend, Pkcs11Config};
 #[cfg(feature = "external-plugin")]
 use super::{ExternalPlugin, ExternalPluginConfig};
 
+#[cfg(feature = "spire-plugin")]
+use super::{SpirePlugin, SpirePluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 #[async_trait::async_trait]
@@ -89,6 +92,10 @@ pub enum PluginsConfig {
 
     #[serde(alias = "provisioner")]
     Provisioner(ProvisionerConfig),
+
+    #[cfg(feature = "spire-plugin")]
+    #[serde(alias = "spire")]
+    SpirePlugin(SpirePluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -103,6 +110,8 @@ impl Display for PluginsConfig {
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
             PluginsConfig::Provisioner(_) => f.write_str("provisioner"),
+            #[cfg(feature = "spire-plugin")]
+            PluginsConfig::SpirePlugin(_) => f.write_str("spire"),
         }
     }
 }
@@ -149,6 +158,12 @@ impl PluginsConfig {
                     .await
                     .context("Initialize 'Provisioner' plugin failed")?;
                 Arc::new(prov) as _
+            }
+            #[cfg(feature = "spire-plugin")]
+            PluginsConfig::SpirePlugin(spire_config) => {
+                let spire = SpirePlugin::try_from(spire_config)
+                    .context("Initialize 'spire' plugin failed")?;
+                Arc::new(spire) as _
             }
         };
 
