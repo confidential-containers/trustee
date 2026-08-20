@@ -21,6 +21,8 @@ E2E_IMAGE_PULL_POLICY ?= Never
 # Base e2e scenario file. Override this to switch scenario per run.
 E2E_BASE_SCENARIO ?= $(CHART_DIR)/scenarios/e2e-local-images.yaml
 
+E2E_SPIRE_SCENARIO ?= $(CHART_DIR)/scenarios/spire.yaml
+
 # Optional extra Helm args for scenario-specific runtime settings.
 HELM_E2E_EXTRA_ARGS ?=
 
@@ -54,7 +56,8 @@ export EXPECTED_TEE
 
 .PHONY: e2e-test deploy undeploy test-client check-tools wait-ready \
 	check-docker helm-dependency-build helm-lint \
-	load-e2e-images-into-kind prepare-e2e-tls dump-logs
+	load-e2e-images-into-kind prepare-e2e-tls dump-logs \
+	install-spire-stack deploy-spire test-client-spire e2e-test-spire
 
 check-tools:
 	@command -v helm >/dev/null || (echo "missing: helm" >&2; exit 1)
@@ -149,6 +152,39 @@ e2e-test: check-tools
 	fi; \
 	if [ $$status -eq 0 ]; then \
 		$(MAKE) test-client || status=$$?; \
+	fi; \
+	if [ $$status -ne 0 ]; then \
+		$(MAKE) dump-logs || true; \
+	fi; \
+	$(MAKE) undeploy || true; \
+	exit $$status
+
+install-spire-stack: check-tools
+	@chmod +x '$(CHART_DIR)/e2e/spire-setup.sh'
+	@'$(CHART_DIR)/e2e/spire-setup.sh'
+
+deploy-spire: helm-lint prepare-e2e-tls install-spire-stack
+	helm upgrade --install trustee-e2e '$(CHART_DIR)' \
+		--namespace coco-trustee-e2e \
+		--create-namespace \
+		-f '$(E2E_BASE_SCENARIO)' \
+		-f '$(E2E_SPIRE_SCENARIO)' \
+		$(HELM_E2E_IMAGE_ARGS) \
+		--wait \
+		--timeout 20m
+
+test-client-spire: check-tools wait-ready
+	@chmod +x '$(CHART_DIR)/e2e/spire-test.sh'
+	@'$(CHART_DIR)/e2e/spire-test.sh'
+
+# Deploy SPIRE + Trustee, test the plugin, then always undeploy.
+e2e-test-spire: check-tools
+	@status=0; \
+	if [ $$status -eq 0 ]; then \
+		$(MAKE) deploy-spire || status=$$?; \
+	fi; \
+	if [ $$status -eq 0 ]; then \
+		$(MAKE) test-client-spire || status=$$?; \
 	fi; \
 	if [ $$status -ne 0 ]; then \
 		$(MAKE) dump-logs || true; \

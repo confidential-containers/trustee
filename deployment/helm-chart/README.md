@@ -239,6 +239,20 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Sources are tried in the order given, so appending `--set 'as.verifier.snp.vcekSources[1].type=KDS'` keeps AMD KDS as a fallback for certificates that are missing locally. See [the AMD offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for how to build the `vcek/` directory and when it has to be refreshed.
 
+### SPIRE plugin
+
+The **`spire`** KBS plugin delivers SPIFFE X.509-SVIDs to attested guests via an existing SPIRE deployment's Delegated Identity API. It requires a KBS image built with the `spire-plugin` cargo feature, and a cluster that already runs a SPIRE server + agent with the admin (Delegated Identity API) socket enabled and mounted on the host — **this chart does not deploy SPIRE itself**.
+
+The Delegated Identity API is served on a separate admin socket from the regular Workload API socket, so it isn't exposed via the `csi.spiffe.io` CSI driver. Instead it needs the SPIRE agent's admin socket enabled and mounted on the host (`spire-agent.sockets.admin.enabled`/`mountOnHost` in the upstream SPIRE Helm chart), which KBS then mounts via `hostPath` through `kbs.extraVolumes`/`kbs.extraVolumeMounts`. This requires KBS to run on the same node as the SPIRE agent.
+
+```bash
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  -f ./deployment/helm-chart/scenarios/spire.yaml
+```
+
+See **`scenarios/spire.yaml`** for the full override and `kbs/docs/plugins/spire.md` for plugin details (endpoints, selector mapping, configuration).
+
 ## Testing
 
 **Inspect resources**:
@@ -353,6 +367,10 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.service.exposeLoadBalancer | bool | `false` | When `true`, create an additional external `LoadBalancer` Service (`<fullname>-kbs-lb`). The primary KBS Service (`<fullname>-kbs`) is always internal `ClusterIP`. |
 | kbs.service.loadBalancerAnnotations | object | `{}` | Annotations applied to the optional KBS `LoadBalancer` Service when `exposeLoadBalancer=true`. |
 | kbs.service.port | int | `8080` | Service port for KBS; used by both the internal `ClusterIP` Service and the optional external `LoadBalancer` Service. |
+| kbs.spire | object | `{"adminSocketPath":"/run/spire/sockets/admin.sock","attestedSelectorValue":"true","enabled":false}` | SPIRE plugin: delivers SPIFFE X.509-SVIDs to attested guests via an existing SPIRE deployment's Delegated Identity API. Requires a KBS image built with the `spire-plugin` cargo feature, and a cluster that already runs a SPIRE server + agent with the admin (Delegated Identity API) socket enabled and mounted on the host (this chart does not deploy SPIRE itself). See `scenarios/spire.yaml` and `kbs/docs/plugins/spire.md`. |
+| kbs.spire.adminSocketPath | string | `"/run/spire/sockets/admin.sock"` | Path to the SPIRE Agent admin (Delegated Identity API) socket, as seen inside the KBS container. Must be reachable, e.g. via a hostPath volume mount configured through `kbs.extraVolumes`/`kbs.extraVolumeMounts` (see `scenarios/spire.yaml`). |
+| kbs.spire.attestedSelectorValue | string | `"true"` | Value used for the always-added `trustee:<value>` marker selector on every SVID request. |
+| kbs.spire.enabled | bool | `false` | Enable the `spire` KBS plugin (renders a `[[plugins]] name = "spire"` block into the KBS config). |
 | kbs.tls.enabled | bool | `false` | Enable native HTTPS on the KBS listener. Requires `secretName`; the chart does not generate endpoint identity material. |
 | kbs.tls.secretName | string | `""` | Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`. |
 | kbs.tolerations | list | `[]` | Tolerations for scheduling KBS Pods onto tainted nodes. |
@@ -469,6 +487,31 @@ Optional variables: `E2E_IMAGE_PREFIX`, `E2E_IMAGE_TAG`, `KBS_CLIENT`.
 CI (`test-e2e-kbs.yml`) reuses the Docker Compose e2e image build workflow artifacts: it loads the pre-built Trustee images into kind and uses the pre-built `kbs-client` binary before running Helm e2e.
 
 `make test-client` alone does not build images or undeploy.
+
+### SPIRE plugin e2e test
+
+A separate e2e test exercises the **`spire`** KBS plugin. Unlike the main e2e test, it also installs a throwaway SPIRE server + agent + `spiffe-csi` stack (via the upstream `spiffe/helm-charts-hardened` charts) before deploying Trustee with [scenarios/spire.yaml](./scenarios/spire.yaml):
+
+```bash
+kind create cluster --name kind-spire --wait 5m
+make -C deployment/helm-chart load-e2e-images-into-kind KIND_CLUSTER=kind-spire
+make -C deployment/helm-chart e2e-test-spire
+```
+
+Debug individually:
+
+```bash
+make -C deployment/helm-chart load-e2e-images-into-kind KIND_CLUSTER=kind-spire
+make -C deployment/helm-chart install-spire-stack
+make -C deployment/helm-chart deploy-spire
+make -C deployment/helm-chart test-client-spire
+make -C deployment/helm-chart dump-logs
+make -C deployment/helm-chart undeploy
+```
+
+**`test-client-spire`** — [e2e/spire-test.sh](./e2e/spire-test.sh) registers SPIRE entries, attests as the sample TEE, and fetches an X.509-SVID + trust bundle(s) via the plugin's `x509-svid` / `x509-bundles` resources.
+
+CI runs this as the separate `helm-trustee-e2e-spire` job in `test-e2e-kbs.yml`, reusing the same pre-built images and `kbs-client` artifacts as the main e2e job.
 
 ## Development notes
 

@@ -156,6 +156,20 @@ kbs:
     enabled: false
     # -- Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`.
     secretName: ""
+  # -- SPIRE plugin: delivers SPIFFE X.509-SVIDs to attested guests via an existing SPIRE
+  # deployment's Delegated Identity API. Requires a KBS image built with the `spire-plugin`
+  # cargo feature, and a cluster that already runs a SPIRE server + agent with the admin
+  # (Delegated Identity API) socket enabled and mounted on the host (this chart does not
+  # deploy SPIRE itself). See `scenarios/spire.yaml` and `kbs/docs/plugins/spire.md`.
+  spire:
+    # -- Enable the `spire` KBS plugin (renders a `[[plugins]] name = "spire"` block into the KBS config).
+    enabled: false
+    # -- Path to the SPIRE Agent admin (Delegated Identity API) socket, as seen
+    # inside the KBS container. Must be reachable, e.g. via a hostPath volume mount configured
+    # through `kbs.extraVolumes`/`kbs.extraVolumeMounts` (see `scenarios/spire.yaml`).
+    adminSocketPath: "/run/spire/sockets/admin.sock"
+    # -- Value used for the always-added `trustee:<value>` marker selector on every SVID request.
+    attestedSelectorValue: "true"
   image:
     # -- KBS container image repository.
     repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
