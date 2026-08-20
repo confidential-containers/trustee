@@ -2,6 +2,7 @@ AS_TYPE ?= coco-as
 ALIYUN ?= false
 PQC_EXPERIMENTAL ?= false
 NEBULA_CA_PLUGIN ?= false
+SPIRE_PLUGIN ?= true
 VAULT ?= true
 GCP ?= false
 AWS ?= false
@@ -58,6 +59,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   override FEATURES := $(FEATURES),nebula-ca-plugin
+endif
+
+ifeq ($(SPIRE_PLUGIN), true)
+  override FEATURES := $(FEATURES),spire-plugin
 endif
 
 ifeq ($(VAULT), true)
