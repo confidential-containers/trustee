@@ -218,3 +218,60 @@ jobs:
       runs-on: '["ubuntu-24.04"]'
       client-artifact: helm-e2e-kbs-client-linux-amd64
       self-hosted: false
+
+  helm-trustee-e2e-spire:
+    name: Helm Trustee e2e (spire plugin)
+    needs: build-docker-e2e-materials
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      OS_VERSION: ubuntu-24.04
+      KIND_CLUSTER: kind-spire
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download pre-built images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docker-e2e-images-linux-amd64
+          path: ${{ runner.temp }}/docker-e2e-images
+
+      - name: Load images
+        run: docker load --input "${RUNNER_TEMP}/docker-e2e-images/images.tar"
+
+      - name: Download pre-built kbs-client
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: helm-e2e-kbs-client-linux-amd64
+          path: ${{ runner.temp }}/helm-e2e-kbs-client
+
+      - name: Prepare kbs-client
+        run: chmod +x "${RUNNER_TEMP}/helm-e2e-kbs-client/kbs-client"
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER }}
+
+      - name: Load Trustee images into kind
+        run: |
+          make -C deployment/helm-chart load-e2e-images-into-kind \
+            KIND_CLUSTER="${KIND_CLUSTER}" \
+            E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
+            E2E_IMAGE_TAG=latest
+
+      - name: Run Helm Trustee e2e (spire plugin)
+        run: |
+          make -C deployment/helm-chart e2e-test-spire \
+            E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
+            E2E_IMAGE_TAG=latest \
+            KBS_CLIENT="${RUNNER_TEMP}/helm-e2e-kbs-client/kbs-client"
