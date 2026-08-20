@@ -190,7 +190,7 @@ backend connection.
 
 On **s390x**, the **IBM Secure Execution (SE)** verifier needs attestation materials at runtime. Because KBS talks to a **remote `coco_as_grpc` AS**, the verifier runs inside the **AS Pod**, so these materials must be mounted on **AS**, not KBS. (This differs from the builtin-AS kustomize overlay in `kbs/config/kubernetes/overlays/ibm-se`, which mounts them on KBS.)
 
-The verifier reads materials from fixed paths under **`/run/confidential-containers/ibmse/`** (overridable via `SE_*` env vars; see `deps/verifier/src/se/ibmse.rs` and `deps/verifier/src/se/README.md`). The chart mounts them from a **local node path** via a PersistentVolume / PersistentVolumeClaim — set **`as.verifier.se.credsDir`** to the directory on the node that contains the materials (equivalent to `IBM_SE_CREDS_DIR` used in the kustomize overlay), and **`as.verifier.se.nodeName`** to the name of that node.  The chart then creates a `local`-type PV + PVC and mounts the whole directory at `/run/confidential-containers/ibmse/` on the AS Pod.
+The verifier reads materials from fixed paths under **`/run/confidential-containers/ibmse/`** (overridable via `SE_*` env vars; see `deps/verifier/src/se/README.md`). The chart mounts them from a **local node path** via a PersistentVolume / PersistentVolumeClaim — set **`as.verifier.se.credsDir`** to the directory on the node that contains the materials (equivalent to `IBM_SE_CREDS_DIR` used in the kustomize overlay), and **`as.verifier.se.nodeName`** to the name of that node.  The chart then creates a `local`-type PV + PVC and mounts the whole directory at `/run/confidential-containers/ibmse/` on the AS Pod.
 
 | Material | Expected path under `credsDir` | Notes |
 |----------|-------------------------------|-------|
