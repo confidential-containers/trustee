@@ -144,6 +144,7 @@ fn parse_selector(
         Value::String(s) => s.clone(),
         Value::Number(n) => n.to_string(),
         Value::Bool(b) => b.to_string(),
+        // Nested identifiers are not supported.
         Value::Null | Value::Array(_) | Value::Object(_) => return None,
     };
 
