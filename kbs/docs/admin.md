@@ -39,7 +39,7 @@ This mode enables real admin authentication and authorization.
 - `authentication = bearer_jwt` verifies `Authorization: Bearer <JWT>`
 - JWT **MUST** contain a `role` claim
 - `authorization = regex_acl` authorizes by `acl(role -> allowed_endpoints)`
-- `allowed_endpoints` must start with `^/kbs` and end with `$`
+- `allowed_endpoints` must start with `^/` and end with `$`
 
 Example:
 

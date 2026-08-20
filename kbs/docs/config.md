@@ -27,6 +27,7 @@ The following properties can be set under the `[http_server]` section.
 | `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                     |
 | `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                        |
 | `worker_count`         | Integer      | Number of HTTP actix worker threads              | No       | Num of logical CPU cores |
+| `require_admin_auth_metrics` | Boolean | Require a valid admin token to access the `/metrics` endpoint. | No | `false` |
 | `tls_profile`          | String       | TLS security profile (see [TLS Configuration](#tls-configuration)) | No | `intermediate` |
 | `tls_min_version`      | String       | Minimum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
 | `tls_max_version`      | String       | Maximum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
@@ -301,7 +302,7 @@ Each ACL entry:
 | `role` | String | JWT `role` value to match | Yes |
 | `allowed_endpoints` | String | Regex of allowed request paths | Yes |
 
-`allowed_endpoints` must start with `^/kbs` and end with `$`.
+`allowed_endpoints` must start with `^/` and end with `$`.
 
 ### Storage Backend Configuration
 

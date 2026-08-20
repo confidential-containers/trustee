@@ -123,6 +123,12 @@ pub struct HttpServerConfig {
     /// If not specified, defaults to the number of logical CPU cores.
     pub worker_count: Option<usize>,
 
+    /// Require a valid admin token (via the configured admin authentication/authorization
+    /// backend) to access the `/metrics` endpoint. When enabled, Prometheus scraping must
+    /// present a bearer JWT allowed for the `/metrics` path. Defaults to `false` for
+    /// backward compatibility with unauthenticated metric scraping.
+    pub require_admin_auth_metrics: bool,
+
     /// TLS/HTTPS configuration
     #[serde(flatten)]
     pub tls: TlsConfig,
@@ -135,6 +141,7 @@ impl Default for HttpServerConfig {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig::default(),
         }
     }
@@ -367,6 +374,7 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig {
                 private_key: Some("/etc/kbs-private.key".into()),
                 certificate: Some("/etc/kbs-cert.pem".into()),
@@ -427,6 +435,7 @@ mod tests {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},
@@ -470,6 +479,7 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig {
                 private_key: Some("/etc/kbs-private.key".into()),
                 certificate: Some("/etc/kbs-cert.pem".into()),
@@ -518,6 +528,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig::default(),
         },
         admin: make_token_authorization_admin_config(),
@@ -563,6 +574,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::InsecureAllowAll {},
@@ -604,6 +616,7 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            require_admin_auth_metrics: false,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},

@@ -42,8 +42,7 @@ impl TryFrom<RegexAclConfig> for RegexAclAuthorizer {
     fn try_from(config: RegexAclConfig) -> Result<Self> {
         let mut acls = Vec::new();
         for acl in config.acls {
-            if !acl.allowed_endpoints.starts_with("^/kbs") || !acl.allowed_endpoints.ends_with("$")
-            {
+            if !acl.allowed_endpoints.starts_with("^/") || !acl.allowed_endpoints.ends_with("$") {
                 return Err(Error::UnanchoredRegex);
             }
             let regex = Regex::new(&acl.allowed_endpoints)?;

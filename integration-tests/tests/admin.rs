@@ -10,7 +10,7 @@ use tracing::info;
 
 extern crate integration_tests;
 use crate::integration_tests::common::{
-    init_tracing, KbsConfigType, PolicyType, TestHarness, ADMIN_ROLE,
+    init_tracing, KbsConfigType, PolicyType, TestHarness, TestParameters, ADMIN_ROLE,
 };
 
 //
@@ -191,6 +191,111 @@ import rego.v1
 
 default executables = 97
 ";
+
+//
+// The /metrics endpoint can be protected by admin authentication (opt-in via
+// http_server.require_admin_auth_metrics): no token is denied, a valid token is
+// allowed, and disabled/restricted admin backends deny even authenticated requests.
+//
+#[rstest]
+#[case::metrics_no_token(KbsConfigType::EarTokenBuiltInRvps, false)]
+#[case::metrics_with_valid_token(KbsConfigType::EarTokenBuiltInRvps, true)]
+#[case::metrics_with_deny_admin_backend(KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin, true)]
+#[case::metrics_with_restricted_simple_backend(
+    KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin,
+    true
+)]
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn metrics_requires_admin_auth(
+    #[case] test_config: KbsConfigType,
+    #[case] provide_token: bool,
+) -> Result<()> {
+    init_tracing();
+
+    let deny_all = test_config == KbsConfigType::EarTokenBuiltInRvpsDenyAllAdmin;
+    let restricted = test_config == KbsConfigType::EarTokenBuiltInRvpsSimpleRestrictedAdmin;
+
+    let mut params = TestParameters::from(test_config);
+    params.require_admin_auth_metrics = true;
+    let harness = TestHarness::new(params).await?;
+    harness.wait().await?;
+
+    let token = provide_token.then(|| harness.sign_admin_token().expect("admin token"));
+    let res = harness.get_metrics(token).await?;
+
+    harness.cleanup().await?;
+
+    if deny_all {
+        assert_eq!(
+            res.status(),
+            reqwest::StatusCode::UNAUTHORIZED,
+            "metrics must be denied when the admin backend is disabled"
+        );
+        return Ok(());
+    }
+
+    if restricted {
+        assert_eq!(
+            res.status(),
+            reqwest::StatusCode::UNAUTHORIZED,
+            "metrics must be denied for roles not allowed by the restricted ACL"
+        );
+        return Ok(());
+    }
+
+    if provide_token {
+        assert_eq!(
+            res.status(),
+            reqwest::StatusCode::OK,
+            "metrics must be reachable with a valid admin token"
+        );
+        let body = res.text().await?;
+        assert!(
+            body.contains("kbs_build_info"),
+            "expected metrics body to contain kbs_build_info, got: {body}"
+        );
+    } else {
+        assert_eq!(
+            res.status(),
+            reqwest::StatusCode::UNAUTHORIZED,
+            "metrics must be denied without an admin token"
+        );
+    }
+
+    Ok(())
+}
+
+//
+// With http_server.require_admin_auth_metrics disabled (the default), /metrics is
+// served without any authentication, preserving backward compatibility.
+//
+#[rstest]
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn metrics_unprotected_by_default() -> Result<()> {
+    init_tracing();
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    harness.wait().await?;
+
+    let res = harness.get_metrics(None).await?;
+
+    harness.cleanup().await?;
+
+    assert_eq!(
+        res.status(),
+        reqwest::StatusCode::OK,
+        "metrics must be reachable without an admin token when protection is off"
+    );
+    let body = res.text().await?;
+    assert!(
+        body.contains("kbs_build_info"),
+        "expected metrics body to contain kbs_build_info, got: {body}"
+    );
+
+    Ok(())
+}
 
 //
 // Set a secret with the a valid admin private key
