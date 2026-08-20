@@ -227,11 +227,14 @@ as:
       # the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts
       # the directory at `/run/confidential-containers/ibmse/` on the AS Pod.
       # -- Absolute path on the target node to the directory containing IBM SE attestation
-      # materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty,
-      # the chart creates a `local`-type PV + PVC. Requires `as.verifier.se.nodeName`.
+      # materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the
+      # chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the
+      # directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires
+      # `as.verifier.se.nodeName`.
       credsDir: ""
       # -- Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`)
-      # resides. Required when `as.verifier.se.credsDir` is set; used in the PV `nodeAffinity`.
+      # resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume
+      # `nodeAffinity`.
       nodeName: ""
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).
