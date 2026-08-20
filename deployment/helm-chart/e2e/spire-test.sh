@@ -67,15 +67,23 @@ spire_server() {
 	kubectl exec -n "${SPIRE_NAMESPACE}" "${pod}" -c spire-server -- /opt/spire/bin/spire-server "$@"
 }
 
+agent_spiffe_id() {
+	spire_server agent list | grep -m1 '^SPIFFE ID' | awk '{print $NF}'
+}
+
 register_spire_entries() {
-	log "registering SPIRE entry for KBS's own (delegate) SPIFFE ID: ${KBS_SPIFFE_ID}"
+	local parent_id
+	parent_id="$(agent_spiffe_id)"
+	[[ -n "${parent_id}" ]] || die "could not determine the attested SPIRE agent's SPIFFE ID"
+
+	log "registering SPIRE entry for KBS's own (delegate) SPIFFE ID: ${KBS_SPIFFE_ID} (parent: ${parent_id})"
 	spire_server entry create \
 		-spiffeID "${KBS_SPIFFE_ID}" \
-		-parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent" \
+		-parentID "${parent_id}" \
 		-selector "k8s:ns:${SPIRE_NAMESPACE}" \
 		-selector "k8s:sa:${KBS_SERVICE_ACCOUNT}"
 
-	log "registering SPIRE entry for the attested workload: ${WORKLOAD_SPIFFE_ID}"
+	log "registering SPIRE entry for the attested workload: ${WORKLOAD_SPIFFE_ID} (parent: ${parent_id})"
 	local selector_args=()
 	local sel
 	for sel in "${SPIRE_ENTRY_SELECTORS[@]}"; do
@@ -83,7 +91,7 @@ register_spire_entries() {
 	done
 	spire_server entry create \
 		-spiffeID "${WORKLOAD_SPIFFE_ID}" \
-		-parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent" \
+		-parentID "${parent_id}" \
 		"${selector_args[@]}"
 }
 
