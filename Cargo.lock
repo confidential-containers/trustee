@@ -3613,6 +3613,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa15c101fcef1df74dc306d2943bbafb4c654b83449432e130eb8bdd3b39b05"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bytes",
  "http 1.5.0",
  "http-body 1.1.0",
@@ -3620,6 +3621,7 @@ dependencies = [
  "http-cache",
  "http-cache-semantics",
  "reqwest 0.13.4",
+ "reqwest-middleware",
  "url",
 ]
 
@@ -3789,7 +3791,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "system-configuration 0.7.0",
  "tokio",
  "tower-service",
@@ -5867,7 +5869,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.3",
  "rustls",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
@@ -5906,7 +5908,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.5",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.61.2",
 ]
@@ -7819,7 +7821,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -8852,7 +8854,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
