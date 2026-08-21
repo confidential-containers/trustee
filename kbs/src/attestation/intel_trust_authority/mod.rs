@@ -292,8 +292,16 @@ fn build_attest_request(
 
 #[async_trait]
 impl Attest for IntelTrustAuthority {
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String> {
-        let policy_ids = self.config.policy_ids.clone();
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> anyhow::Result<String> {
+        // Fall back to the configured policies when the client selected no
+        // policy-selector.
+        let policy_ids = policy_ids
+            .map(<[String]>::to_vec)
+            .unwrap_or_else(|| self.config.policy_ids.clone());
         let policy_must_match = match policy_ids.is_empty() {
             true => false,
             false => !self.config.allow_unmatched_policy.unwrap_or_default(),

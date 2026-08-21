@@ -15,7 +15,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::attestation::{
+    backend::{make_nonce, Attest, IndependentEvidence},
+    coco::DEFAULT_POLICY_ID,
+};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct Config {
@@ -70,7 +73,11 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> Result<String> {
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> Result<String> {
         let mut verification_requests = vec![];
 
         for evidence in evidence_to_verify {
@@ -96,7 +103,9 @@ impl Attest for BuiltInCoCoAs {
             verification_requests.push(request);
         }
 
-        let policy_ids = vec!["default".to_string()];
+        let policy_ids = policy_ids
+            .map(<[String]>::to_vec)
+            .unwrap_or_else(|| vec![DEFAULT_POLICY_ID.to_string()]);
         self.inner
             .read()
             .await

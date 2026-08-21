@@ -16,7 +16,10 @@ use std::collections::HashMap;
 use tonic::transport::Channel;
 use tracing::info;
 
-use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::attestation::{
+    backend::{make_nonce, Attest, IndependentEvidence},
+    coco::DEFAULT_POLICY_ID,
+};
 
 use self::attestation::{
     attestation_service_client::AttestationServiceClient,
@@ -100,7 +103,11 @@ impl Attest for GrpcClientPool {
         Ok(())
     }
 
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> Result<String> {
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> Result<String> {
         let mut verification_requests: Vec<IndividualAttestationRequest> = vec![];
 
         for evidence in evidence_to_verify {
@@ -136,7 +143,9 @@ impl Attest for GrpcClientPool {
 
         let attestation_request = tonic::Request::new(AttestationRequest {
             verification_requests,
-            policy_ids: vec!["default".to_string()],
+            policy_ids: policy_ids
+                .map(<[String]>::to_vec)
+                .unwrap_or_else(|| vec![DEFAULT_POLICY_ID.to_string()]),
         });
 
         let mut client = self.pool.get().await?;
