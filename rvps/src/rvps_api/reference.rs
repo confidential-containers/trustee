@@ -16,6 +16,13 @@ pub struct ReferenceValueRegisterRequest {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReferenceValueRegisterResponse {}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ReferenceValueListRequest {}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ReferenceValueListResponse {
+    #[prost(string, repeated, tag = "1")]
+    pub reference_value_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
 /// Generated client implementations.
 pub mod reference_value_provider_service_client {
     #![allow(
@@ -146,6 +153,25 @@ pub mod reference_value_provider_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn list_reference_values(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ReferenceValueListRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReferenceValueListResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/reference.ReferenceValueProviderService/ListReferenceValues",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "reference.ReferenceValueProviderService",
+                "ListReferenceValues",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -174,6 +200,10 @@ pub mod reference_value_provider_service_server {
             tonic::Response<super::ReferenceValueRegisterResponse>,
             tonic::Status,
         >;
+        async fn list_reference_values(
+            &self,
+            request: tonic::Request<super::ReferenceValueListRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReferenceValueListResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct ReferenceValueProviderServiceServer<T> {
@@ -323,6 +353,51 @@ pub mod reference_value_provider_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = RegisterReferenceValueSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/reference.ReferenceValueProviderService/ListReferenceValues" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListReferenceValuesSvc<T: ReferenceValueProviderService>(pub Arc<T>);
+                    impl<T: ReferenceValueProviderService>
+                        tonic::server::UnaryService<super::ReferenceValueListRequest>
+                        for ListReferenceValuesSvc<T>
+                    {
+                        type Response = super::ReferenceValueListResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ReferenceValueListRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ReferenceValueProviderService>::list_reference_values(
+                                    &inner, request,
+                                )
+                                .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListReferenceValuesSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

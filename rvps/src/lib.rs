@@ -120,4 +120,8 @@ impl Rvps {
 
         Ok(Some(reference_value.value()))
     }
+
+    pub async fn list_reference_values(&self) -> Result<Vec<String>> {
+        Ok(self.storage.list().await?)
+    }
 }

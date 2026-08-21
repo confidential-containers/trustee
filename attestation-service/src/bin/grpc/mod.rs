@@ -35,8 +35,8 @@ use crate::rvps_api::{
     reference_value_provider_service_server::{
         ReferenceValueProviderService, ReferenceValueProviderServiceServer,
     },
-    ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
-    ReferenceValueRegisterResponse,
+    ReferenceValueListRequest, ReferenceValueListResponse, ReferenceValueQueryRequest,
+    ReferenceValueQueryResponse, ReferenceValueRegisterRequest, ReferenceValueRegisterResponse,
 };
 
 fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
@@ -329,6 +329,27 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         info!("RegisterReferenceValue succeeded.");
         let res = ReferenceValueRegisterResponse {};
         Ok(Response::new(res))
+    }
+
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
+    async fn list_reference_values(
+        &self,
+        _request: Request<ReferenceValueListRequest>,
+    ) -> Result<Response<ReferenceValueListResponse>, Status> {
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
+        info!("ListReferenceValues API called.");
+        let reference_value_ids = self
+            .read()
+            .await
+            .attestation_service
+            .list_reference_values()
+            .await
+            .map_err(|e| Status::aborted(format!("List reference values: {e}")))?;
+        info!("ListReferenceValues succeeded.");
+        Ok(Response::new(ReferenceValueListResponse {
+            reference_value_ids,
+        }))
     }
 }
 
