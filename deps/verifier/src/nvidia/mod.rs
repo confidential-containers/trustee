@@ -22,11 +22,12 @@ use strum::{Display, EnumString};
 use tracing::{instrument, trace};
 
 use super::*;
+use crate::nvidia::cert_chain::NvidiaCertificateChain;
 use crate::nvidia::nras_jwks::NrasJwks;
 use crate::nvidia::nras_response::NrasResponse;
 use crate::nvidia::report::NvidiaAttestationReport;
 
-const HOPPER_SIGNATURE_LENGTH: usize = 96;
+const NVIDIA_REPORT_SIGNATURE_LENGTH: usize = 96;
 
 /// Only SPDM Version 1.1 is supported
 pub const SPDM_VERSION_SUPPORTED: u8 = 0x11;
@@ -76,6 +77,22 @@ enum NvidiaVerifierTypeInternal {
     Local,
 }
 
+impl NvidiaVerifierTypeInternal {
+    fn kind(&self) -> NvidiaVerifierKind {
+        match self {
+            Self::Local => NvidiaVerifierKind::Local,
+            Self::Remote { .. } => NvidiaVerifierKind::Remote,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum NvidiaVerifierKind {
+    Local,
+    Remote,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NvidiaRemoteVerifierConfig {
     verifier_url: Option<String>,
@@ -88,7 +105,7 @@ struct NvDeviceEvidence {
 
 // NVML Wrapper does not know about switches,
 // so create our own enum for the device architecture.
-#[derive(Debug, Deserialize, Display, EnumString, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 #[strum(ascii_case_insensitive)]
 enum Architecture {
     #[serde(alias = "BLACKWELL")]
@@ -107,9 +124,8 @@ struct NvDeviceReportAndCert {
     certificate: String,
 }
 
-/// UUID isn't used for attestation and isn't reported by the NVAT
-/// bindings. To maintain backwards comptability, keep UUID in the
-/// struct, but don't require it.
+/// Older evidence payloads include `uuid`, while the NVAT bindings do not.
+/// Keep it optional for wire compatibility; local verification does not trust it.
 fn default_uuid() -> String {
     "unknown".to_string()
 }
@@ -117,6 +133,7 @@ fn default_uuid() -> String {
 #[derive(Default, Debug, Serialize)]
 pub struct NvDeviceReportAndCertClaim {
     arch: String,
+    ueid: String,
     uuid: String,
     measurements: HashMap<u8, String>,
     config: HashMap<String, Value>,
@@ -125,6 +142,7 @@ pub struct NvDeviceReportAndCertClaim {
 impl NvDeviceReportAndCertClaim {
     fn new(
         device_arch: &Architecture,
+        device_ueid: &str,
         device_uuid: &str,
         attestation_report: &NvidiaAttestationReport,
     ) -> Self {
@@ -136,6 +154,7 @@ impl NvDeviceReportAndCertClaim {
 
         Self {
             arch: device_arch.to_string(),
+            ueid: device_ueid.to_string(),
             uuid: device_uuid.to_string(),
             measurements,
             config: attestation_report.response.opaque_data.clone(),
@@ -323,14 +342,17 @@ impl Nvidia {
         device: NvDeviceReportAndCert,
         expected_nonce_vec: Vec<u8>,
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
-        // Only Hopper GPU is supported for local verification.
-        if device.arch != Architecture::Hopper {
-            bail!("Device architecture not supported");
+        if device.arch == Architecture::LS10 {
+            bail!("Device architecture LS10 not supported for local verification");
         }
 
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let cert_chain_vec: Vec<u8> = b64_engine.decode(device.certificate)?;
+        let ueid = NvidiaCertificateChain::decode(&cert_chain_vec)
+            .context("decoding NVIDIA certificate chain")?
+            .ueid()
+            .context("extracting NVIDIA UEID")?;
         // Try hex::decode() to see if someone uses the original encoding still.
         // An Err Result suggests the evidence is base64 encoded so re-try with that.
         let report_vec: Vec<u8> = match hex::decode(&device.evidence) {
@@ -343,15 +365,16 @@ impl Nvidia {
 
         let report = NvidiaAttestationReport::try_new(
             report_vec.as_slice(),
-            HOPPER_SIGNATURE_LENGTH,
+            NVIDIA_REPORT_SIGNATURE_LENGTH,
             cert_chain_vec.as_slice(),
             expected_nonce_vec.as_slice(),
+            device.arch,
         )?;
         trace!("{}", &report);
 
         // Build the device claims
         let device_claims =
-            NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
+            NvDeviceReportAndCertClaim::new(&device.arch, &ueid, device.uuid.as_str(), &report);
         let value = serde_json::to_value(device_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
 
@@ -377,11 +400,15 @@ impl Verifier for Nvidia {
         };
         let expected_nonce_vec: Vec<u8> =
             regularize_data(expected_nonce, SPDM_NONCE_SIZE, "REPORT_DATA", "NVIDIA");
+        let mut seen_ueids = HashSet::new();
 
         for device in devices.device_evidence_list {
-            let claims = match &self.verifier_type {
+            let verifier = self.verifier_type.kind();
+            let (mut claims, tee_class) = match &self.verifier_type {
                 NvidiaVerifierTypeInternal::Local => {
-                    self.evaluate_device_locally(device, expected_nonce_vec.clone())?
+                    let (claims, tee_class) =
+                        self.evaluate_device_locally(device, expected_nonce_vec.clone())?;
+                    (claims, tee_class)
                 }
                 NvidiaVerifierTypeInternal::Remote { config, jwks } => {
                     self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
@@ -389,7 +416,29 @@ impl Verifier for Nvidia {
                 }
             };
 
-            all_devices_claims.push(claims);
+            claims
+                .as_object_mut()
+                .context("NVIDIA verifier returned non-object claims")?
+                .insert(
+                    "verifier".to_string(),
+                    serde_json::to_value(verifier)
+                        .context("serializing NVIDIA verifier kind into claims")?,
+                );
+
+            if verifier == NvidiaVerifierKind::Local {
+                let ueid = claims
+                    .get("ueid")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| anyhow!("Local NVIDIA claims missing UEID"))?;
+
+                // A repeated report must not count as another GPU when policy
+                // checks the number of attested devices.
+                if !seen_ueids.insert(ueid.to_string()) {
+                    bail!("Duplicate NVIDIA device UEID");
+                }
+            }
+
+            all_devices_claims.push((claims, tee_class));
         }
 
         if let Ok(ppcie_claims) = validate_ppcie(all_devices_claims.clone()) {
@@ -404,62 +453,101 @@ impl Verifier for Nvidia {
 mod tests {
     use assert_json_diff::assert_json_eq;
     use rstest::rstest;
-    use tracing_subscriber::{fmt, EnvFilter};
 
     use super::*;
 
-    /// Test the build of claims for a list of one nvidia device
-    ///
-    /// Reference for the claims values:
-    ///  - Clone https://github.com/nvidia/nvtrust.git
-    ///  - Follow the nvtrust/guest_tools/attestation_sdk/README.md to install requirements
-    ///  - From nvtrust/guest_tools/gpu_verifiers/local_gpu_verifier/src, run:
-    ///    python3 -m verifier.cc_admin --test_no_gpu --verbose
-    #[test]
-    fn test_build_claims_for_one_hopper_device() {
-        fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .with_test_writer()
-            .try_init()
-            .expect("Failed to initialize tracing");
+    const BLACKWELL_NONCE_HEX: &str =
+        "4cff7f5380ead8fad8ec2c531c110aca4302a88f603792801a8ca29ee151af2e";
 
-        let device_arch = Architecture::Hopper;
-        let device_uuid: &str = "1111-2222-33333-444444-555555";
+    fn blackwell_device(uuid: &str) -> NvDeviceReportAndCert {
+        NvDeviceReportAndCert {
+            arch: Architecture::Blackwell,
+            uuid: uuid.to_string(),
+            evidence: include_str!("../../test_data/nvidia/blackwellAttestationReport.txt")
+                .trim()
+                .to_string(),
+            certificate: base64::engine::general_purpose::STANDARD.encode(include_bytes!(
+                "../../test_data/nvidia/blackwell_cert_chain_case1.txt"
+            )),
+        }
+    }
 
-        let expected_nonce: &str =
-            "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb";
-        let expected_nonce_vec: Vec<u8> = hex::decode(expected_nonce).unwrap();
+    async fn evaluate_blackwell_devices(
+        devices: Vec<NvDeviceReportAndCert>,
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+        let expected_nonce = hex::decode(BLACKWELL_NONCE_HEX)?;
+        let evidence = serde_json::to_value(NvDeviceEvidence {
+            device_evidence_list: devices,
+        })?;
+        let verifier = Nvidia::new(None).await?;
 
-        // The report certificate chain is stored in PEM format
-        let cert_chain_bytes = include_bytes!("../../test_data/nvidia/hopper_cert_chain_case1.txt");
+        verifier
+            .evaluate(
+                evidence,
+                &ReportData::Value(&expected_nonce),
+                &InitDataHash::NotProvided,
+            )
+            .await
+    }
 
-        // The attestation report is stored in text and hex encoded.
-        let report_str = include_str!("../../test_data/nvidia/hopperAttestationReport.txt");
-        let report_vec = hex::decode(report_str).unwrap();
-
+    #[rstest]
+    #[case::hopper(
+        Architecture::Hopper,
+        "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb",
+        include_bytes!("../../test_data/nvidia/hopper_cert_chain_case1.txt"),
+        include_str!("../../test_data/nvidia/hopperAttestationReport.txt"),
+        include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt")
+    )]
+    #[case::blackwell(
+        Architecture::Blackwell,
+        BLACKWELL_NONCE_HEX,
+        include_bytes!("../../test_data/nvidia/blackwell_cert_chain_case1.txt"),
+        include_str!("../../test_data/nvidia/blackwellAttestationReport.txt"),
+        include_str!("../../test_data/nvidia/blackwellAttestationReport-claims.txt")
+    )]
+    fn test_build_claims_for_one_device(
+        #[case] architecture: Architecture,
+        #[case] nonce: &str,
+        #[case] cert_chain: &[u8],
+        #[case] report: &str,
+        #[case] expected_claims: &str,
+    ) {
+        let nonce = hex::decode(nonce).unwrap();
+        let report = hex::decode(report.trim()).unwrap();
         let report = NvidiaAttestationReport::try_new(
-            report_vec.as_slice(),
-            HOPPER_SIGNATURE_LENGTH,
-            cert_chain_bytes,
-            expected_nonce_vec.as_slice(),
+            &report,
+            NVIDIA_REPORT_SIGNATURE_LENGTH,
+            cert_chain,
+            &nonce,
+            architecture,
         )
         .unwrap();
+        let ueid = NvidiaCertificateChain::decode(cert_chain)
+            .unwrap()
+            .ueid()
+            .unwrap();
+        let claims = NvDeviceReportAndCertClaim::new(
+            &architecture,
+            &ueid,
+            "1111-2222-33333-444444-555555",
+            &report,
+        );
+        let claims = serde_json::to_value(claims).unwrap();
+        let expected_claims: Value = serde_json::from_str(expected_claims.trim()).unwrap();
 
-        let device_claims = NvDeviceReportAndCertClaim::new(&device_arch, device_uuid, &report);
+        assert_json_eq!(expected_claims, claims);
+    }
 
-        let value = serde_json::to_value(device_claims).unwrap();
-        debug!("Nvidia device claims:\n{:#?}", &value);
-
-        let expected_claim: serde_json::Value = serde_json::from_str(
-            include_str!("../../test_data/nvidia/hopperAttestationReport-claims.txt").trim(),
-        )
-        .expect("hopperAttestationReport-claims.txt must be valid JSON");
-
-        assert_json_eq!(expected_claim, value);
+    #[rstest]
+    #[case::local(NvidiaVerifierKind::Local, "local")]
+    #[case::remote(NvidiaVerifierKind::Remote, "remote")]
+    fn test_serializes_verifier_kind(#[case] verifier: NvidiaVerifierKind, #[case] expected: &str) {
+        assert_eq!(serde_json::to_value(verifier).unwrap(), expected);
     }
 
     #[rstest]
     #[case::local_verifier("local", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
+    #[case::local_verifier_blackwell("local", "4cff7f5380ead8fad8ec2c531c110aca4302a88f603792801a8ca29ee151af2e", include_str!("../../test_data/nvidia/blackwellAttestationReport.txt").trim(), include_str!("../../test_data/nvidia/blackwell_cert_chain_case1.txt"), Architecture::Blackwell)]
     // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
     // Please run these tests if you make any changes to the verifier.
     #[ignore]
@@ -481,6 +569,8 @@ mod tests {
         #[case] arch: Architecture,
     ) {
         let b64_engine = base64::engine::general_purpose::STANDARD;
+        let is_local = verifier_type == "local";
+        let expected_verifier = verifier_type;
 
         let device_uuid: &str = "1111-2222-33333-444444-555555";
 
@@ -522,6 +612,51 @@ mod tests {
             .await
             .unwrap();
 
+        assert_eq!(claims.len(), 1);
+        assert_eq!(claims[0].1, "gpu");
+        assert_eq!(claims[0].0["verifier"], expected_verifier);
+        if is_local {
+            assert!(claims[0].0["ueid"]
+                .as_str()
+                .is_some_and(|ueid| !ueid.is_empty() && ueid.chars().all(|c| c.is_ascii_digit())));
+        }
         println!("{:?}", serde_json::to_string(&claims));
+    }
+
+    #[rstest]
+    #[case::same_reported_uuid("reported-uuid", "reported-uuid")]
+    #[case::different_reported_uuid("first-reported-uuid", "second-reported-uuid")]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_local_evaluation_rejects_duplicate_ueid(
+        #[case] first_uuid: &str,
+        #[case] second_uuid: &str,
+    ) {
+        let error = evaluate_blackwell_devices(vec![
+            blackwell_device(first_uuid),
+            blackwell_device(second_uuid),
+        ])
+        .await
+        .unwrap_err();
+
+        assert_eq!(error.to_string(), "Duplicate NVIDIA device UEID");
+    }
+
+    #[test]
+    fn test_local_verifier_rejects_ls10() {
+        let device = NvDeviceReportAndCert {
+            arch: Architecture::LS10,
+            uuid: "switch".to_string(),
+            evidence: String::new(),
+            certificate: String::new(),
+        };
+
+        let error = Nvidia::default()
+            .evaluate_device_locally(device, vec![0; SPDM_NONCE_SIZE])
+            .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Device architecture LS10 not supported for local verification"
+        );
     }
 }
