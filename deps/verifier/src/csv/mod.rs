@@ -226,21 +226,25 @@ impl Verifier for CsvVerifier {
                             index: 1,
                             algorithm: TcgAlgorithm::Sm3,
                             reference: attestation_report_v2.tee_info.rtmr1.to_vec(),
+                            initial_value: vec![],
                         },
                         ReferenceMeasurement {
                             index: 2,
                             algorithm: TcgAlgorithm::Sm3,
                             reference: attestation_report_v2.tee_info.rtmr2.to_vec(),
+                            initial_value: vec![],
                         },
                         ReferenceMeasurement {
                             index: 3,
                             algorithm: TcgAlgorithm::Sm3,
                             reference: attestation_report_v2.tee_info.rtmr3.to_vec(),
+                            initial_value: vec![],
                         },
                         ReferenceMeasurement {
                             index: 4,
                             algorithm: TcgAlgorithm::Sm3,
                             reference: attestation_report_v2.tee_info.rtmr4.to_vec(),
+                            initial_value: vec![],
                         },
                     ];
 

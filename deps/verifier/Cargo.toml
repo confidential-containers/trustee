@@ -37,6 +37,7 @@ sgx-verifier = [
 ]
 az-snp-vtpm-verifier = [
     "az-snp-vtpm",
+    "eventlog",
     "serde_with",
     "sev",
     "snp-verifier",

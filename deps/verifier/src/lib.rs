@@ -217,6 +217,28 @@ pub type TeeEvidenceParsedClaim = serde_json::Value;
 pub type TeeEvidence = serde_json::Value;
 pub type TeeClass = String;
 
+/// Insert a verified eventlog as a `uefi_event_logs` claim -- a no-op if
+/// `ccel` is `None`.
+#[cfg(feature = "az-snp-vtpm-verifier")]
+pub(crate) fn extend_eventlog_claim(
+    claim: &mut TeeEvidenceParsedClaim,
+    ccel: Option<eventlog::CcEventLog>,
+) -> Result<()> {
+    let Some(ccel) = ccel else {
+        return Ok(());
+    };
+
+    let serde_json::Value::Object(ref mut map) = claim else {
+        bail!("failed to extend the claim, not an object");
+    };
+    map.insert(
+        "uefi_event_logs".to_string(),
+        serde_json::to_value(ccel.log)?,
+    );
+
+    Ok(())
+}
+
 pub enum ReportData<'a> {
     Value(&'a [u8]),
     NotProvided,
