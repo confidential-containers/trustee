@@ -38,10 +38,15 @@ enum Commands {
     /// Get confidential resource
     #[clap(arg_required_else_help = true)]
     GetResource {
-        /// KBS Resource path, e.g my_repo/resource_type/123abc
+        /// KBS Resource path, e.g my_repo/resource_type/123abc.
         /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
         #[clap(long, value_parser)]
         path: String,
+
+        /// Name of the plugin to route the request to, e.g. `spire`. If unset,
+        /// the request is routed to the default "resource" plugin.
+        #[clap(long, value_parser)]
+        plugin: Option<String>,
 
         /// Custom TEE private Key (RSA) file path (PEM format)
         /// Used to protect the Respond Payload
@@ -259,6 +264,7 @@ async fn main() -> Result<()> {
         }
         Commands::GetResource {
             path,
+            plugin,
             tee_key_file,
             attestation_token,
             init_data,
@@ -287,6 +293,7 @@ async fn main() -> Result<()> {
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
                     &path,
+                    plugin.as_deref(),
                     tee_key,
                     token,
                     kbs_cert.clone(),
@@ -297,6 +304,7 @@ async fn main() -> Result<()> {
                 let resource_bytes = kbs_client::get_resource_with_attestation(
                     &cli.url,
                     &path,
+                    plugin.as_deref(),
                     tee_key,
                     kbs_cert.clone(),
                     init_data,

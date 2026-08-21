@@ -365,17 +365,21 @@ extensions := [
 # that are bound to the hardware evidence via attesation
 # and bound to the workload by the guest runtime.
 validated_identifiers := object.union_n([
-    container_images_id,
     container_uids_id,
+    pod_image_id,
+    pod_image_count_id,
 ])
 
-# Use list comprehension to parse all of the images specified in the policy.
 container_images := [img |
     container := input["init_data_claims"]["agent_policy_claims"]["containers"][_]
     img := container["OCI"]["Annotations"]["io.kubernetes.cri.image-name"]
 ]
 
-container_images_id := {"container_images": container_images} if {
+pod_image_id := {"pod-image": container_images} if {
+    count(container_images) > 0
+} else := {}
+
+pod_image_count_id := {"pod-image-count": count(container_images)} if {
     count(container_images) > 0
 } else := {}
 

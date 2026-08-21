@@ -117,6 +117,7 @@ reqwest-middleware = "0.5.1"
 http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, features = [
     "manager-moka",
     "url-standard",
+    "reqwest-middleware",
 ] }
 chrono = { workspace = true, features = ["serde"] }
 urlencoding = "2.1.3"
