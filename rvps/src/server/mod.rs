@@ -13,8 +13,8 @@ use crate::rvps_api::reference::reference_value_provider_service_server::{
     ReferenceValueProviderService, ReferenceValueProviderServiceServer,
 };
 use crate::rvps_api::reference::{
-    ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
-    ReferenceValueRegisterResponse,
+    ReferenceValueListRequest, ReferenceValueListResponse, ReferenceValueQueryRequest,
+    ReferenceValueQueryResponse, ReferenceValueRegisterRequest, ReferenceValueRegisterResponse,
 };
 
 pub struct RvpsServer {
@@ -73,6 +73,22 @@ impl ReferenceValueProviderService for RvpsServer {
 
         let res = ReferenceValueRegisterResponse {};
         Ok(Response::new(res))
+    }
+
+    async fn list_reference_values(
+        &self,
+        _request: Request<ReferenceValueListRequest>,
+    ) -> Result<Response<ReferenceValueListResponse>, Status> {
+        let reference_value_ids = self
+            .rvps
+            .read()
+            .await
+            .list_reference_values()
+            .await
+            .map_err(|e| Status::aborted(format!("List reference values: {e}")))?;
+        Ok(Response::new(ReferenceValueListResponse {
+            reference_value_ids,
+        }))
     }
 }
 
