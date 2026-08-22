@@ -8,7 +8,7 @@ use tracing::{debug, info};
 
 use self::rvps_api::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
-    ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
+    ReferenceValueListRequest, ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
 };
 
 use super::{Result, RvpsApi};
@@ -114,6 +114,17 @@ impl RvpsApi for Agent {
             }
             None => Ok(None),
         }
+    }
+
+    async fn list_reference_values(&self) -> Result<Vec<String>> {
+        let req = tonic::Request::new(ReferenceValueListRequest {});
+        let mut client = self.pool.get().await?;
+        let ids = client
+            .list_reference_values(req)
+            .await?
+            .into_inner()
+            .reference_value_ids;
+        Ok(ids)
     }
 }
 

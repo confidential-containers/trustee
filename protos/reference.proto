@@ -16,7 +16,14 @@ message ReferenceValueRegisterRequest {
 
 message ReferenceValueRegisterResponse {}
 
+message ReferenceValueListRequest {}
+
+message ReferenceValueListResponse {
+    repeated string reference_value_ids = 1;
+}
+
 service ReferenceValueProviderService {
     rpc QueryReferenceValue(ReferenceValueQueryRequest) returns (ReferenceValueQueryResponse) {};
     rpc RegisterReferenceValue(ReferenceValueRegisterRequest) returns (ReferenceValueRegisterResponse) {};
+    rpc ListReferenceValues(ReferenceValueListRequest) returns (ReferenceValueListResponse) {};
 }

@@ -31,6 +31,16 @@ async fn query(addr: String, reference_value_id: String) -> Result<()> {
     Ok(())
 }
 
+async fn list(addr: String) -> Result<()> {
+    let ids = client::list(addr).await?;
+    if ids.is_empty() {
+        info!("No reference values registered.");
+    } else {
+        info!("Registered reference value IDs:\n{}", ids.join("\n"));
+    }
+    Ok(())
+}
+
 /// RVPS command-line arguments.
 #[derive(Parser)]
 #[command(name = "rvps-tool")]
@@ -42,6 +52,9 @@ enum Cli {
 
     /// Query reference values
     Query(QueryArgs),
+
+    /// List of all registered reference values
+    List(ListArgs),
 }
 
 #[derive(Args)]
@@ -68,6 +81,14 @@ struct QueryArgs {
     reference_value_id: String,
 }
 
+#[derive(Args)]
+#[command(author, version, about, long_about = None)]
+struct ListArgs {
+    /// The address of target RVPS
+    #[arg(short, long, default_value = DEFAULT_ADDR)]
+    addr: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let env_filter = match std::env::var_os("RUST_LOG") {
@@ -90,5 +111,6 @@ async fn main() -> Result<()> {
     match cli {
         Cli::Register(para) => register(&para.addr, &para.path).await,
         Cli::Query(para) => query(para.addr, para.reference_value_id).await,
+        Cli::List(para) => list(para.addr).await,
     }
 }

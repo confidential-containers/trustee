@@ -43,4 +43,9 @@ impl RvpsApi for BuiltinRvps {
 
         Ok(reference_value)
     }
+
+    async fn list_reference_values(&self) -> Result<Vec<String>> {
+        let ids = self.rvps.list_reference_values().await?;
+        Ok(ids)
+    }
 }
