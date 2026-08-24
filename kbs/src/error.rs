@@ -92,11 +92,17 @@ pub enum Error {
         source: key_value_storage::KeyValueStorageError,
     },
 
-    #[error("Attestation Token not found")]
-    TokenNotFound,
+    #[error("Trust Context error: {source}")]
+    TrustContextError {
+        #[source]
+        source: anyhow::Error,
+    },
 
-    #[error("Token Verifier error")]
-    TokenVerifierError(#[from] crate::token::Error),
+    #[error("Token Verifier error: {source}")]
+    TokenVerifierError {
+        #[source]
+        source: anyhow::Error,
+    },
 
     #[error("Prometheus error")]
     PrometheusError {

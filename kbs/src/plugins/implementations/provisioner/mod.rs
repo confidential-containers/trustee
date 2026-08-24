@@ -21,6 +21,8 @@ use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::trust_context::TrustContext;
+
 const PROVISIONER_STORAGE_NAMESPACE: &str = "provisioner";
 
 // UUID v5 namespace for the provisioner plugin.
@@ -101,9 +103,18 @@ impl Provisioner {
     async fn handle_get_resource(
         &self,
         path: &[&str],
-        init_data: Option<&serde_json::Value>,
+        trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>> {
         let resource_key = path.join("/");
+
+        let Some(trust_context) = trust_context else {
+            bail!("provisioner requires trust context for resource access");
+        };
+
+        let init_data = trust_context
+            .attestation_summary
+            .claims
+            .pointer("/cpu0/ear.veraison.annotated-evidence/init_data_claims");
 
         let Some(claims) = init_data else {
             bail!("provisioner requires init_data for resource access");
@@ -187,12 +198,12 @@ impl super::super::plugin_manager::ClientPlugin for Provisioner {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-        init_data: Option<&serde_json::Value>,
+        trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>> {
         match (method.as_str(), path.first().copied()) {
             ("POST", Some("provision")) => self.handle_provision(body).await,
             ("DELETE", Some("provision")) => self.handle_deprovision(&path[1..]).await,
-            ("GET", _) => self.handle_get_resource(path, init_data).await,
+            ("GET", _) => self.handle_get_resource(path, trust_context).await,
             _ => bail!(
                 "unsupported: {} /kbs/v0/provisioner/{}",
                 method,

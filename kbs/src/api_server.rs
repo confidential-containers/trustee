@@ -2,22 +2,23 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{
-    http::{header::Header, Method},
+    http::Method,
     middleware,
     web::{self, Query},
     App, HttpRequest, HttpResponse, HttpServer,
 };
-use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
-use anyhow::Context;
+use anyhow::anyhow;
 use base64::Engine;
 use key_value_storage::StorageProvider;
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
 
+#[cfg(feature = "as")]
+use crate::crypto::jwt::JwtVerifier;
 use crate::{
     admin::Admin,
     config::KbsConfig,
@@ -27,7 +28,7 @@ use crate::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
-    token::TokenVerifier,
+    trust_context::TrustContext,
     Error, Result,
 };
 
@@ -58,27 +59,18 @@ pub struct ApiServer {
     pub policy_engine: PolicyEngine<Regorus>,
     admin: Admin,
     config: KbsConfig,
-    token_verifier: TokenVerifier,
+    #[cfg(feature = "as")]
+    token_verifier: Arc<JwtVerifier>,
 }
 
 impl ApiServer {
-    async fn get_attestation_token(&self, request: &HttpRequest) -> anyhow::Result<String> {
-        #[cfg(feature = "as")]
-        if let Ok(token) = self
-            .attestation_service
-            .get_attest_token_from_session(request)
+    /// Resolve the [`TrustContext`] for a resource request from an attested KBS
+    /// protocol session (cookie based).
+    #[cfg(feature = "as")]
+    async fn get_trust_context(&self, request: &HttpRequest) -> anyhow::Result<TrustContext> {
+        self.attestation_service
+            .get_trust_context_from_session(request)
             .await
-        {
-            return Ok(token);
-        }
-
-        let bearer = Authorization::<Bearer>::parse(request)
-            .context("parse Authorization header failed")?
-            .into_scheme();
-
-        let token = bearer.token().to_string();
-
-        Ok(token)
     }
 
     pub async fn new(config: KbsConfig) -> Result<Self> {
@@ -92,7 +84,12 @@ impl ApiServer {
         let plugin_manager = PluginManager::new(config.plugins.clone(), storage_provider.clone())
             .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
-        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
+        #[cfg(feature = "as")]
+        let token_verifier = Arc::new(
+            JwtVerifier::from_config(config.attestation_token.clone())
+                .await
+                .map_err(|source| Error::TokenVerifierError { source })?,
+        );
 
         let policy_storage_backend = storage_provider
             .get_or_register(KBS_STORAGE_NAMESPACE)
@@ -132,6 +129,8 @@ impl ApiServer {
             plugin_manager,
             policy_engine,
             admin,
+
+            #[cfg(feature = "as")]
             token_verifier,
 
             #[cfg(feature = "as")]
@@ -258,7 +257,7 @@ pub(crate) async fn api(
         #[cfg(feature = "as")]
         "attest" if request.method() == Method::POST => core
             .attestation_service
-            .attest(&body, request)
+            .attest(&body, request, core.token_verifier.clone())
             .await
             .map_err(From::from),
         #[cfg(feature = "as")]
@@ -393,7 +392,8 @@ pub(crate) async fn api(
                 .await
                 .map_err(|e| Error::PluginInternalError { source: e })?
             {
-                // Plugin calls need to be authorized by the admin auth
+                // Plugin calls need to be authorized by the admin auth. These
+                // are not gated by attestation, so no trust context is passed.
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
                     .handle(&body, &query, resource_path, request.method(), None)
@@ -402,15 +402,19 @@ pub(crate) async fn api(
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
-                // Plugin calls need to be authorized by the Token and policy
-                let token = core
-                    .get_attestation_token(&request)
-                    .await
-                    .map_err(|_| Error::TokenNotFound)?;
+                // Plugin calls need to be authorized by the trust context and policy
+                let trust_context = core.get_trust_context(&request).await.map_err(|e| {
+                    Error::TrustContextError {
+                        source: anyhow!("Failed to get trust context: {e}"),
+                    }
+                })?;
 
-                let claims = core.token_verifier.verify(token)?;
-
-                let claim_str = serde_json::to_string(&claims)?;
+                // The policy operates on a unified trust context rather than
+                // backend-specific raw attestation claims.
+                let policy_input = json!({
+                    "trust_context": trust_context,
+                });
+                let policy_input_str = policy_input.to_string();
 
                 KBS_POLICY_EVALS.inc();
                 // TODO: add policy filter support for other plugins
@@ -418,7 +422,7 @@ pub(crate) async fn api(
                     .policy_engine
                     .evaluate_rego(
                         Some(policy_data_str),
-                        claim_str,
+                        policy_input_str,
                         KBS_POLICY_ID,
                         vec![KBS_POLICY_RULE.to_string()],
                         vec![],
@@ -446,11 +450,14 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims
-                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
-
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), init_data)
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        Some(&trust_context),
+                    )
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -459,8 +466,7 @@ pub(crate) async fn api(
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
-                    let public_key = core.token_verifier.extract_tee_public_key(claims)?;
-
+                    let public_key = trust_context.tee_pubkey;
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

@@ -8,16 +8,17 @@ use crate::{
         SELECTED_HASH_ALGORITHM_JSON_KEY, SUPPORTED_HASH_ALGORITHMS_JSON_KEY,
     },
     crypto::jwt::JwtVerifier,
+    trust_context::{AttestationSummary, TrustContext},
 };
 use anyhow::*;
 use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use educe::Educe;
-use kbs_types::{Challenge, HashAlgorithm, Tee};
+use kbs_types::{Challenge, HashAlgorithm, Tee, TeePubKey};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
+use serde_json::{from_value, json, Value};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::serde_as;
 use sha2::{Digest, Sha512};
@@ -31,6 +32,13 @@ const BASE_AS_ADDR: &str = "/appraisal/v2/attest";
 const AZURE_ADDR_SUFFIX: &str = "/azure";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
+
+pub const TOKEN_TEE_PUBKEY_PATH_ITA: &str = "/tdx/attester_runtime_data/tee-pubkey";
+pub const TOKEN_TEE_PUBKEY_PATH_ITA_VTPM: &str = "/tdx/attester_user_data/tee-pubkey";
+
+/// Sections of an ITA token holding the user-defined (runtime data) claims.
+pub const TOKEN_RUNTIME_DATA_PATH_ITA: &str = "/tdx/attester_runtime_data";
+pub const TOKEN_RUNTIME_DATA_PATH_ITA_VTPM: &str = "/tdx/attester_user_data";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DcapTeeEvidence {
@@ -357,6 +365,50 @@ impl Attest for IntelTrustAuthority {
             .context("Failed to verify attestation token")?;
 
         Ok(resp_data.token.clone())
+    }
+
+    fn claims_to_trust_context(&self, claims: Value) -> anyhow::Result<TrustContext> {
+        let (tee_pubkey, custom_claims) =
+            if let Some(pkey_value) = claims.pointer(TOKEN_TEE_PUBKEY_PATH_ITA) {
+                let tee_pubkey = TeePubKey::deserialize(pkey_value)
+                    .context("Failed to deserialize tee public key")?;
+                let custom_claims = claims
+                    .pointer(TOKEN_RUNTIME_DATA_PATH_ITA)
+                    .cloned()
+                    .unwrap_or_default();
+                (tee_pubkey, custom_claims)
+            } else if let Some(pkey_value) = claims.pointer(TOKEN_TEE_PUBKEY_PATH_ITA_VTPM) {
+                let tee_pubkey = TeePubKey::deserialize(pkey_value)
+                    .context("Failed to deserialize tee public key")?;
+                let custom_claims = claims
+                    .pointer(TOKEN_RUNTIME_DATA_PATH_ITA_VTPM)
+                    .cloned()
+                    .unwrap_or_default();
+                (tee_pubkey, custom_claims)
+            } else {
+                bail!("No tee public key found in claims");
+            };
+
+        let issuer = claims
+            .get("iss")
+            .and_then(Value::as_str)
+            .map(ToString::to_string);
+
+        // ITA only issues a token once the evidence has been successfully
+        // verified against the configured policies (the `verify` path enforces
+        // `policy_must_match` unless explicitly relaxed), so reaching this point
+        // means the evidence was affirmed.
+        Ok(TrustContext {
+            attestation_summary: AttestationSummary {
+                tee_type: vec![Tee::Tdx],
+                policy_ids: self.config.policy_ids.clone(),
+                issuer,
+                verification_result: true,
+                claims,
+            },
+            tee_pubkey,
+            custom_claims,
+        })
     }
 
     async fn generate_challenge(

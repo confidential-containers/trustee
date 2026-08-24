@@ -7,7 +7,7 @@ use kbs::admin::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::KbsConfig;
 use kbs::config::{HttpServerConfig, TlsConfig};
-use kbs::token::AttestationTokenVerifierConfig;
+use kbs::crypto::jwt::TokenVerifierConfig;
 use kbs::ApiServer;
 
 use kbs::plugins::{implementations::RepositoryConfig, PluginsConfig};
@@ -325,11 +325,10 @@ impl TestHarness {
         };
 
         let kbs_config = KbsConfig {
-            attestation_token: AttestationTokenVerifierConfig {
+            attestation_token: TokenVerifierConfig {
                 trusted_certs_paths: vec![],
                 insecure_header_jwk: true,
                 trusted_jwk_sets: vec![],
-                extra_teekey_paths: vec![],
             },
             attestation_service: AttestationConfig {
                 attestation_service: AttestationServiceConfig::CoCoASBuiltIn(

@@ -3,4 +3,4 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub(crate) mod jwk;
-pub(crate) mod jwt;
+pub mod jwt;

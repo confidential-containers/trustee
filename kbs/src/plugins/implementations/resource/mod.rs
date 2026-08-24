@@ -25,6 +25,7 @@ pub mod backend;
 pub use backend::*;
 
 use super::super::plugin_manager::ClientPlugin;
+use crate::trust_context::TrustContext;
 
 #[async_trait::async_trait]
 impl ClientPlugin for ResourceStorage {
@@ -34,7 +35,7 @@ impl ClientPlugin for ResourceStorage {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-        _init_data: Option<&serde_json::Value>,
+        _trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>> {
         let resource_desc = path.join("/");
         match method.as_str() {

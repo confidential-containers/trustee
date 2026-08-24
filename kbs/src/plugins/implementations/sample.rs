@@ -11,6 +11,7 @@ use anyhow::Result;
 use serde::Deserialize;
 
 use super::super::plugin_manager::ClientPlugin;
+use crate::trust_context::TrustContext;
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct SampleConfig {
@@ -37,7 +38,7 @@ impl ClientPlugin for Sample {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-        _init_data: Option<&serde_json::Value>,
+        _trust_context: Option<&TrustContext>,
     ) -> Result<Vec<u8>> {
         Ok("sample plugin response".as_bytes().to_vec())
     }
