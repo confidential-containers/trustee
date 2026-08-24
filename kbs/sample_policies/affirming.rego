@@ -4,11 +4,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    not any_not_affirming
-    count(input.submods) > 0
-}
-
-any_not_affirming if {
-    some _, submod in input.submods
-    submod["ear.status"] != "affirming"
+    # verification_result is true means the all submodules in the attestation token are affirming
+    input.trust_context.attestation_summary.verification_result == true
+    count(input.trust_context.attestation_summary.claims) > 0
 }
