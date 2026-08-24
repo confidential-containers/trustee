@@ -242,6 +242,7 @@ pub fn parse_tee_evidence(quote: &VtpmQuote, ak_public: &str) -> TeeEvidencePars
         "init_data": hex::encode(pcrs[INITDATA_PCR]),
         "report_data": hex::encode(quote.nonce().unwrap_or_default()),
         "ak_public": ak_public,
+        "hardware_type": crate::hardware_type::types::TPM,
     });
     claims_map as TeeEvidenceParsedClaim
 }

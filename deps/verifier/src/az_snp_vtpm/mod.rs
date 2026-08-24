@@ -362,6 +362,8 @@ pub(crate) fn parse_tee_evidence_az(report: &AttestationReport) -> TeeEvidencePa
         "measurement": format!("{}", STANDARD.encode(report.measurement)),
         "report_data": format!("{}", STANDARD.encode(report.report_data)),
         "init_data": format!("{}", STANDARD.encode(report.host_data)),
+
+        "hardware_type": crate::hardware_type::types::AZURE_SNP_VTPM,
     });
 
     claims_map as TeeEvidenceParsedClaim
