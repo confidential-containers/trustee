@@ -222,7 +222,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
 }
 ";
 
@@ -233,8 +233,8 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
-    input[\"submods\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
 }
 ";
 

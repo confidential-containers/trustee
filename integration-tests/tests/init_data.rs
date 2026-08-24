@@ -77,7 +77,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data\"] == \"{init_data_hash}\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data\"] == \"{init_data_hash}\"
 }
 ";
 
@@ -122,7 +122,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0] == \"-----BEGIN CERTIFICATE-----\\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\\n-----END CERTIFICATE-----\\n\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0] == \"-----BEGIN CERTIFICATE-----\\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\\n-----END CERTIFICATE-----\\n\"
 }
 ";
 
@@ -236,7 +236,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
+    input[\"trust_context\"][\"attestation_summary\"][\"claims\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
 }
 ";
 
