@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-//! A simple KBS client for test.
+//! A Client for accessing admin and guest APIs of the KBS
 
 use anyhow::{bail, Result};
 use base64::engine::general_purpose::STANDARD;
