@@ -67,6 +67,7 @@ enum Commands {
         /// token, allowing KBS policies to access raw init-data claims.
         /// The per the InitData specification, the plaintext should be toml or json
         /// depending on what the runtime expects.
+        #[clap(long)]
         init_data: Option<String>,
     },
 
@@ -81,6 +82,7 @@ enum Commands {
         tee_key_file: Option<PathBuf>,
 
         /// InitData plaintext. See GetResource
+        #[clap(long)]
         init_data: Option<String>,
     },
 }
