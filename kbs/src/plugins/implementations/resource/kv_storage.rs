@@ -51,6 +51,9 @@ impl StorageBackend for KvStorage {
 
         Ok(())
     }
+    async fn list_secret_resources(&self) -> Result<Vec<String>> {
+        Ok(self.storage.list().await?)
+    }
 }
 
 impl KvStorage {
