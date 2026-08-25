@@ -39,6 +39,11 @@ pub trait StorageBackend: Send + Sync {
 
     /// Delete secret resource from repository
     async fn delete_secret_resource(&self, resource_desc: ResourceDesc) -> Result<()>;
+
+    /// List all resource paths ("repository/type/tag") stored in this backend, across every repository.
+    async fn list_secret_resources(&self) -> Result<Vec<String>> {
+        bail!("list_secret_resources is not supported for this backend")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -185,6 +190,10 @@ impl ResourceStorage {
             .with_label_values(&[&format!("{}", resource_desc)])
             .inc();
         self.backend.read_secret_resource(resource_desc).await
+    }
+
+    pub(crate) async fn list_secret_resources(&self) -> Result<Vec<String>> {
+        self.backend.list_secret_resources().await
     }
 }
 
