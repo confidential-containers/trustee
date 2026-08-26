@@ -5,7 +5,7 @@ NEBULA_CA_PLUGIN ?= false
 VAULT ?= true
 GCP ?= false
 AWS ?= false
-EXTERNAL_PLUGIN ?= false
+EXTERNAL_PLUGIN ?= true
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
