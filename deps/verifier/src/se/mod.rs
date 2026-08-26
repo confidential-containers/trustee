@@ -16,7 +16,7 @@ pub mod ibmse;
 
 static VERIFIER: OnceCell<SeVerifierImpl> = OnceCell::const_new();
 
-const DEFAULT_FIRMWARE_VERIFY_URL: &str =
+pub(super) const DEFAULT_FIRMWARE_VERIFY_URL: &str =
     "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -69,7 +69,7 @@ impl Verifier for SeVerifier {
         if let InitDataHash::Value(_) = expected_init_data_hash {
             warn!("IBM SE verifier does not support verify init data hash, will ignore the input `init_data_hash`.");
         }
-        let claims = se_verifier.evaluate(evidence, expected_report_data)?;
+        let claims = se_verifier.evaluate(evidence, expected_report_data).await?;
         Ok(vec![(claims, "cpu".to_string())])
     }
 
