@@ -19,10 +19,10 @@ first path segment after `/kbs/v0/external/`.
 
 There are two distinct layers:
 
-- **In-tree stub plugin** — `external_plugin` is an in-tree KBS plugin (enabled
-  with `--features external-plugin`) and acts a routing stub only. It handles
-  auth, attestation, and JWE, then forwards requests over gRPC to whichever
-  backend the URL names.
+- **In-tree stub plugin** — `external_plugin` is an in-tree KBS plugin (built
+  in by default; omit it with `EXTERNAL_PLUGIN=false make`) and acts a routing
+  stub only. It handles auth, attestation, and JWE, then forwards requests over
+  gRPC to whichever backend the URL names.
 
 - **Out-of-tree plugins** — the actual plugin implementations are separate
   processes or containers that live **outside the Trustee repository**. You
@@ -145,8 +145,7 @@ Run the plugin and KBS as separate processes:
 ./my-plugin
 
 # Terminal 2: start KBS
-cargo run --bin kbs --features external-plugin -- \
-    --config-file kbs-config.toml
+cargo run --bin kbs -- --config-file kbs-config.toml
 
 # Terminal 3: test
 curl http://127.0.0.1:8080/kbs/v0/external/my-plugin/test
@@ -156,7 +155,7 @@ Using the test config from this repo:
 
 ```bash
 # Terminal 2
-cd kbs && cargo run --bin kbs --features external-plugin -- \
+cd kbs && cargo run --bin kbs -- \
     --config-file test/config/external-plugin.toml
 
 # Terminal 3 (port 8085 and plugin name match the test config)
@@ -236,15 +235,21 @@ running and the endpoint in `kbs-config.toml` matches its bind address.
 **TLS errors at startup**
 
 ```
-missing field `tls_mode`
-Backend 'x': TLS mode requires https:// endpoint, got http://
-missing field `ca_cert_path`
+`https://` endpoint requires `ca_cert_path` (PEM file for server certificate verification)
+`http://` endpoint is plaintext and must not set `ca_cert_path`; use `https://` for TLS
+endpoint must start with `http://` or `https://`
+unknown field `tls_mode`
+Read CA certificate
 ```
 
-Each backend must set `tls_mode` explicitly. Endpoint scheme must match
-`tls_mode` (`http://` for insecure, `https://` for tls). In TLS mode,
-`ca_cert_path` must be present in the same backend table as `tls_mode`. Verify
-cert paths exist and are readable.
+The endpoint scheme is what selects the transport, and it is the only thing
+that does: `http://` is plaintext, `https://` is TLS. A `https://` endpoint
+requires `ca_cert_path` in the same backend table; a `http://` one must not set
+it. Verify cert paths exist and are readable.
+
+> Unknown keys are rejected. A backend carrying the removed `tls_mode` key
+> fails to start with an "unknown field" error; delete the key and let the
+> endpoint scheme select the transport.
 
 **401 on requests**
 
@@ -259,5 +264,6 @@ GET /kbs/v0/external/my-plugin/test -> 404 Not Found
 ```
 
 No plugin registered with the name `external`. Check `kbs-config.toml` for a
-`[[plugins]]` entry with `name = "external"` and confirm KBS was built with
-`--features external-plugin`.
+`[[plugins]]` entry with `name = "external"`. If the binary was built with
+`EXTERNAL_PLUGIN=false` (or `--no-default-features` without `external-plugin`),
+that entry is not recognised at all and KBS fails to parse the config.

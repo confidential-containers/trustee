@@ -128,10 +128,13 @@ External plugins are registered in the KBS TOML config under a single `external`
 [[plugins]]
 name = "external"
 backends = [
-  { name = "my-plugin", endpoint = "http://127.0.0.1:50051", tls_mode = "insecure" },
-  { name = "other-plugin", endpoint = "https://127.0.0.1:50052", tls_mode = "tls", ca_cert_path = "/etc/kbs/ca.pem" },
+  { name = "my-plugin", endpoint = "http://127.0.0.1:50051" },
+  { name = "other-plugin", endpoint = "https://127.0.0.1:50052", ca_cert_path = "/etc/kbs/ca.pem" },
 ]
 ```
+
+The endpoint scheme selects the transport: `http://` is plaintext, `https://`
+is TLS and requires `ca_cert_path`.
 
 Plugins are reached at `/kbs/v0/external/<name>/...`.
 

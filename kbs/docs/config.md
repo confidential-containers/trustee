@@ -468,11 +468,13 @@ with `name = "external"` owns all backends via a `backends` inline array:
 [[plugins]]
 name = "external"
 backends = [
-  { name = "my-plugin", endpoint = "https://localhost:50051", tls_mode = "tls", ca_cert_path = "/etc/kbs/plugin-ca.pem" },
+  { name = "my-plugin", endpoint = "https://localhost:50051", ca_cert_path = "/etc/kbs/plugin-ca.pem" },
 ]
 ```
 
-Each backend is reachable at `/kbs/v0/external/<name>/...`.
+Each backend is reachable at `/kbs/v0/external/<name>/...`. The endpoint scheme
+selects the transport: `http://` is plaintext, `https://` is TLS. Unknown keys
+are rejected, so a config carrying the removed `tls_mode` key fails to parse.
 
 **Per-backend fields:**
 
@@ -480,7 +482,7 @@ Each backend is reachable at `/kbs/v0/external/<name>/...`.
 |---|---|---|---|---|
 | `name` | string | Yes | — | Sub-plugin name used in URL routing |
 | `endpoint` | string | Yes | — | gRPC endpoint (`http://` for insecure, `https://` for TLS) |
-| `ca_cert_path` | string | No | — | CA certificate path (required when `endpoint` is a TLS endpoint`) |
+| `ca_cert_path` | string | Conditional | — | CA certificate for verifying the plugin's server certificate. Required for a `https://` endpoint, and rejected for a `http://` one |
 | `timeout_ms` | integer | No | — | Per-request timeout in milliseconds |
 
 See [`ext_plugin.md`](ext_plugin.md) for deployment details and the gRPC protocol.

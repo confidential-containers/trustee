@@ -22,4 +22,4 @@ pub use resource::{RepositoryConfig, ResourceStorage};
 pub use sample::{Sample, SampleConfig};
 
 #[cfg(feature = "external-plugin")]
-pub use external_plugin::{BackendConfig, ExternalPlugin, ExternalPluginConfig, TlsMode};
+pub use external_plugin::{BackendConfig, ExternalPlugin, ExternalPluginConfig};
