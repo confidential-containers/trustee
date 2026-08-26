@@ -3,12 +3,12 @@ FROM docker.io/library/rust@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e6918
     AS builder
 ARG ALIYUN=false
 ARG VAULT=false
-ARG EXTERNAL_PLUGIN=false
+ARG EXTERNAL_PLUGIN=true
 
 WORKDIR /usr/src/kbs
 COPY . .
 
-RUN apt-get update && apt install -y git cmake
+RUN apt-get update && apt install -y git cmake protobuf-compiler libprotobuf-dev
 
 # Build and Install KBS
 RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} VAULT=${VAULT} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \

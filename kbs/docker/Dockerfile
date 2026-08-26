@@ -7,7 +7,7 @@ ARG ALIYUN=false
 ARG VAULT=true
 ARG GCP=false
 ARG AWS=false
-ARG EXTERNAL_PLUGIN=false
+ARG EXTERNAL_PLUGIN=true
 
 ENV DEBIAN_FRONTEND=noninteractive
 
