@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, info};
-use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
+use verifier::{check_evidence_version, InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
 use crate::ear_token::EarAttestationTokenBroker;
 
@@ -33,7 +33,7 @@ fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
     Ok(serde_json_canonicalizer::to_vec(&value)?)
 }
 
-pub type TeeEvidence = serde_json::Value;
+pub use verifier::TeeEvidence;
 pub type TeeClass = String;
 
 /// Tee Claims are the output of the verifier plus some metadata
@@ -243,6 +243,14 @@ impl AttestationService {
                 Some(data) => InitDataHash::Value(data),
                 None => InitDataHash::NotProvided,
             };
+
+            // Generic version guard: reject evidence whose version exceeds what
+            // this verifier supports, before handing it to the TEE-specific code.
+            check_evidence_version(
+                verifier.as_ref(),
+                &verification_request.evidence,
+                &verification_request.tee,
+            )?;
 
             let claims = verifier
                 .evaluate(verification_request.evidence, &report_data, &init_data_hash)
