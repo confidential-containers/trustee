@@ -35,8 +35,9 @@ use crate::rvps_api::{
     reference_value_provider_service_server::{
         ReferenceValueProviderService, ReferenceValueProviderServiceServer,
     },
-    ReferenceValueListRequest, ReferenceValueListResponse, ReferenceValueQueryRequest,
-    ReferenceValueQueryResponse, ReferenceValueRegisterRequest, ReferenceValueRegisterResponse,
+    ReferenceValueDeleteRequest, ReferenceValueDeleteResponse, ReferenceValueListRequest,
+    ReferenceValueListResponse, ReferenceValueQueryRequest, ReferenceValueQueryResponse,
+    ReferenceValueRegisterRequest, ReferenceValueRegisterResponse,
 };
 
 fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
@@ -350,6 +351,25 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
         Ok(Response::new(ReferenceValueListResponse {
             reference_value_ids,
         }))
+    }
+
+    #[instrument(skip_all, fields(request_id = tracing::field::Empty))]
+    async fn delete_reference_value(
+        &self,
+        request: Request<ReferenceValueDeleteRequest>,
+    ) -> Result<Response<ReferenceValueDeleteResponse>, Status> {
+        let request_id = Uuid::new_v4().to_string();
+        Span::current().record("request_id", tracing::field::display(&request_id));
+        info!("DeleteReferenceValue API called.");
+        let deleted = self
+            .read()
+            .await
+            .attestation_service
+            .delete_reference_value(&request.into_inner().reference_value_id)
+            .await
+            .map_err(|e| Status::aborted(format!("Delete reference value: {e}")))?;
+        info!("DeleteReferenceValue succeeded.");
+        Ok(Response::new(ReferenceValueDeleteResponse { deleted }))
     }
 }
 

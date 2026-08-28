@@ -124,4 +124,9 @@ impl Rvps {
     pub async fn list_reference_values(&self) -> Result<Vec<String>> {
         Ok(self.storage.list().await?)
     }
+
+    pub async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool> {
+        let deleted = self.storage.delete(reference_value_id).await?;
+        Ok(deleted.is_some())
+    }
 }

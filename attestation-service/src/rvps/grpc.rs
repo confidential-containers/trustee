@@ -8,7 +8,8 @@ use tracing::{debug, info};
 
 use self::rvps_api::{
     reference_value_provider_service_client::ReferenceValueProviderServiceClient,
-    ReferenceValueListRequest, ReferenceValueQueryRequest, ReferenceValueRegisterRequest,
+    ReferenceValueDeleteRequest, ReferenceValueListRequest, ReferenceValueQueryRequest,
+    ReferenceValueRegisterRequest,
 };
 
 use super::{Result, RvpsApi};
@@ -125,6 +126,19 @@ impl RvpsApi for Agent {
             .into_inner()
             .reference_value_ids;
         Ok(ids)
+    }
+
+    async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool> {
+        let req = tonic::Request::new(ReferenceValueDeleteRequest {
+            reference_value_id: reference_value_id.to_string(),
+        });
+        let mut client = self.pool.get().await?;
+        let deleted = client
+            .delete_reference_value(req)
+            .await?
+            .into_inner()
+            .deleted;
+        Ok(deleted)
     }
 }
 
