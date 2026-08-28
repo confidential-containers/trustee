@@ -41,6 +41,16 @@ async fn list(addr: String) -> Result<()> {
     Ok(())
 }
 
+async fn delete(addr: String, reference_value_id: String) -> Result<()> {
+    let deleted = client::delete(addr, reference_value_id.clone()).await?;
+    if deleted {
+        info!("Deleted reference value '{reference_value_id}'.");
+    } else {
+        info!("No reference value found for id '{reference_value_id}'.");
+    }
+    Ok(())
+}
+
 /// RVPS command-line arguments.
 #[derive(Parser)]
 #[command(name = "rvps-tool")]
@@ -55,6 +65,9 @@ enum Cli {
 
     /// List of all registered reference values
     List(ListArgs),
+
+    /// Delete a reference value
+    Delete(DeleteArgs),
 }
 
 #[derive(Args)]
@@ -89,6 +102,17 @@ struct ListArgs {
     addr: String,
 }
 
+#[derive(Args)]
+#[command(author, version, about, long_about = None)]
+struct DeleteArgs {
+    /// The address of target RVPS
+    #[arg(short, long, default_value = DEFAULT_ADDR)]
+    addr: String,
+    /// The id of the reference value to delete
+    #[arg(short, long)]
+    reference_value_id: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let env_filter = match std::env::var_os("RUST_LOG") {
@@ -112,5 +136,6 @@ async fn main() -> Result<()> {
         Cli::Register(para) => register(&para.addr, &para.path).await,
         Cli::Query(para) => query(para.addr, para.reference_value_id).await,
         Cli::List(para) => list(para.addr).await,
+        Cli::Delete(para) => delete(para.addr, para.reference_value_id).await,
     }
 }

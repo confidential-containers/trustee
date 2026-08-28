@@ -22,8 +22,17 @@ message ReferenceValueListResponse {
     repeated string reference_value_ids = 1;
 }
 
+message ReferenceValueDeleteRequest {
+    string reference_value_id = 1;
+}
+
+message ReferenceValueDeleteResponse {
+    bool deleted = 1;
+}
+
 service ReferenceValueProviderService {
     rpc QueryReferenceValue(ReferenceValueQueryRequest) returns (ReferenceValueQueryResponse) {};
     rpc RegisterReferenceValue(ReferenceValueRegisterRequest) returns (ReferenceValueRegisterResponse) {};
     rpc ListReferenceValues(ReferenceValueListRequest) returns (ReferenceValueListResponse) {};
+    rpc DeleteReferenceValue(ReferenceValueDeleteRequest) returns (ReferenceValueDeleteResponse) {};
 }
