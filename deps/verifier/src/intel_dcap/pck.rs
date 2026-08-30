@@ -244,12 +244,11 @@ pub(crate) fn parse_platform_info(pem_certs: &[u8]) -> Result<PlatformInfo> {
 
             let cfg = &cfg_seq.configs;
 
-            let bytes: [u8; 16] =
+            // Keep the OCTET STRING's raw byte order, matching Intel's own
+            // tooling (e.g. poe-gen-tool), rather than reformatting as a GUID.
+            let piid: [u8; 16] =
                 pi.s.try_into()
                     .context("platform_instance is not 16 bytes")?;
-
-            // The GUID is stored little-endian in the OCTET STRING; convert to big-endian.
-            let piid = u128::from_le_bytes(bytes).to_be_bytes();
 
             (
                 Some(piid),
@@ -300,7 +299,7 @@ mod tests {
                 info.platform_instance_id
                     .expect("platform_instance_id not present")
             ),
-            "82548d228d94d5e204a95b354dc61a02"
+            "021ac64d355ba904e2d5948d228d5482"
         );
         assert_eq!(info.fmspc.len(), 6);
         assert_eq!(info.pceid.len(), 2);
