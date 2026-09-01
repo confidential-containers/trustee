@@ -38,8 +38,11 @@ s_rak=${_d}/../misc/rak-priv.json
 golden=${_d}/../misc/cca-example-token.cbor
 token="${tmp_dir}/t.cbor"
 
+# Must match the KBS primary runtime-data hashed by the AS: JCS-canonical
+# JSON (keys sorted), including the "additional-evidence" field the KBS adds.
 nonce_hex=$(cat << EOF | tr -d '\n' | tr -d '[:space:] ' | shasum -a 384 | cut -d' ' -f1
 {
+  "additional-evidence": "",
   "nonce": "$nonce",
   "tee-pubkey": {
     "alg": "RSA",
@@ -65,13 +68,19 @@ attreq="${tmp_dir}/a.json"
 
 cat << EOF > $attreq
 {
-  "tee-pubkey": {
-    "alg": "RSA",
-    "e": "AQAB",
-    "kty": "RSA",
-    "n": "vrjOfz9Ccdgx5nQudyhdoR17V-IubWMeOZCwX_jj0hgAsz2J_pqYW08PLbK_PdiVGKPrqzmDIsLI7sA25VEnHU1uCLNwBuUiCO11_-7dYbsr4iJmG0Qu2j8DsVyT1azpJC_NG84Ty5KKthuCaPod7iI7w0LK9orSMhBEwwZDCxTWq4aYWAchc8t-emd9qOvWtVMDC2BXksRngh6X5bUYLy6AyHKvj-nUy1wgzjYQDwHMTplCoLtU-o-8SNnZ1tmRoGE9uJkBLdh5gFENabWnU5m1ZqZPdwS-qo-meMvVfJb6jJVWRpl2SUtCnYG2C32qvbWbjZ_jBPD5eunqsIo1vQ"
+  "runtime-data": {
+    "tee-pubkey": {
+      "alg": "RSA",
+      "e": "AQAB",
+      "kty": "RSA",
+      "n": "vrjOfz9Ccdgx5nQudyhdoR17V-IubWMeOZCwX_jj0hgAsz2J_pqYW08PLbK_PdiVGKPrqzmDIsLI7sA25VEnHU1uCLNwBuUiCO11_-7dYbsr4iJmG0Qu2j8DsVyT1azpJC_NG84Ty5KKthuCaPod7iI7w0LK9orSMhBEwwZDCxTWq4aYWAchc8t-emd9qOvWtVMDC2BXksRngh6X5bUYLy6AyHKvj-nUy1wgzjYQDwHMTplCoLtU-o-8SNnZ1tmRoGE9uJkBLdh5gFENabWnU5m1ZqZPdwS-qo-meMvVfJb6jJVWRpl2SUtCnYG2C32qvbWbjZ_jBPD5eunqsIo1vQ"
+    },
+    "nonce": "$nonce"
   },
-  "tee-evidence": "{ \"token\": [ $vectoken ] }"
+  "tee-evidence": {
+    "primary_evidence": { "token": [ $vectoken ] },
+    "additional_evidence": ""
+  }
 }
 EOF
 
