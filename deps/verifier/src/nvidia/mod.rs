@@ -4,13 +4,14 @@
 //
 
 pub mod cert_chain;
+pub mod claims;
 pub mod nras_jwks;
 pub mod nras_response;
 pub mod report;
 pub mod spdm_request;
 pub mod spdm_response;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
@@ -19,9 +20,12 @@ use std::collections::{HashMap, HashSet};
 use std::result::Result::Ok;
 use std::str::FromStr;
 use strum::{Display, EnumString};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use super::*;
+use crate::nvidia::claims::{
+    NvidiaGpuCommonClaims, NvidiaGpuEvidenceClaims, NvidiaSwitchEvidenceClaims,
+};
 use crate::nvidia::nras_jwks::NrasJwks;
 use crate::nvidia::nras_response::NrasResponse;
 use crate::nvidia::report::NvidiaAttestationReport;
@@ -37,6 +41,10 @@ pub const DMTF_MEASUREMENT_SPECIFICATION_VALUE: u8 = 1;
 
 /// Accessing NRAS requires entering into a licensing agreement with NVIDIA.
 /// Using Trustee with the NRAS remote verifier assumes that you have done this.
+///
+/// After NRAS returns EAT claims, the verifier runs built-in checks on fixed
+/// outcomes (cert chains, signatures, RIM/measurement checks, nonce, …) and
+/// only exports curated variable fields to claims. See [`claims`].
 pub const NRAS_URL: &str = "https://nras.attestation.nvidia.com/v4/attest";
 
 /// Timeout for a single NRAS attestation request. The remote service performs
@@ -79,6 +87,7 @@ enum NvidiaVerifierTypeInternal {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NvidiaRemoteVerifierConfig {
     verifier_url: Option<String>,
+    debug: bool,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -299,23 +308,51 @@ impl Nvidia {
         let response = NrasResponse::from_str(&res.text().await?)?;
         response.validate(jwks)?;
 
-        let claims = response.claims()?;
+        match endpoint {
+            "gpu" => {
+                let claims = response.gpu_claims()?;
+                claims
+                    .verify(config.debug)
+                    .context("failed to verify claims")?;
 
-        // Check that the nonce matches the expected report data.
-        // Consider moving this logic into the NrasResponse struct.
-        let nonce_ok = claims
-            .pointer(&format!(
-                "/x-nvidia-{endpoint}-attestation-report-nonce-match"
-            ))
-            .ok_or_else(|| anyhow!("Couldn't find nonce status."))?;
-        let nonce_ok = nonce_ok
-            .as_bool()
-            .ok_or_else(|| anyhow!("Nonce status malformed"))?;
-        if !nonce_ok {
-            bail!("Report Data Mismatch");
+                let evidence_claims = NvidiaGpuEvidenceClaims::Remote {
+                    common: NvidiaGpuCommonClaims {
+                        driver_version: claims.x_nvidia_gpu_driver_version.clone(),
+                        vbios_version: claims.x_nvidia_gpu_vbios_version.clone(),
+                    },
+                    hwmodel: claims.hwmodel.clone(),
+                    ueid: claims.ueid.clone(),
+                    oemid: claims.oemid.clone(),
+                    iss: claims.iss.clone(),
+                    switch_pdis: claims.x_nvidia_gpu_switch_pdis.clone(),
+                    eat_nonce: claims.eat_nonce.clone(),
+                };
+                let value = serde_json::to_value(evidence_claims)
+                    .context("serializing NVIDIA remote GPU evidence claims into JSON")?;
+                Ok((value, tee_class.to_string()))
+            }
+            "switch" => {
+                let claims = response.switch_claims()?;
+                claims
+                    .verify(config.debug)
+                    .context("failed to verify switch claims")?;
+
+                let evidence_claims = NvidiaSwitchEvidenceClaims::Remote {
+                    bios_version: claims.x_nvidia_switch_bios_version.clone(),
+                    hwmodel: claims.hwmodel.clone(),
+                    ueid: claims.ueid.clone(),
+                    oemid: claims.oemid.clone(),
+                    iss: claims.iss.clone(),
+                    switch_pdi: claims.x_nvidia_switch_pdi.clone(),
+                    switch_gpu_pdis: claims.x_nvidia_switch_gpu_pdis.clone(),
+                    eat_nonce: claims.eat_nonce.clone(),
+                };
+                let value = serde_json::to_value(evidence_claims)
+                    .context("serializing NVIDIA remote switch evidence claims into JSON")?;
+                Ok((value, tee_class.to_string()))
+            }
+            _ => bail!("Unsupported NRAS endpoint: {endpoint}"),
         }
-
-        Ok((claims, tee_class.to_string()))
     }
 
     fn evaluate_device_locally(
@@ -352,7 +389,8 @@ impl Nvidia {
         // Build the device claims
         let device_claims =
             NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
-        let value = serde_json::to_value(device_claims)
+        let evidence_claims = NvidiaGpuEvidenceClaims::from(device_claims);
+        let value = serde_json::to_value(evidence_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
 
         Ok((value as TeeEvidenceParsedClaim, "gpu".to_string()))
@@ -446,8 +484,9 @@ mod tests {
         .unwrap();
 
         let device_claims = NvDeviceReportAndCertClaim::new(&device_arch, device_uuid, &report);
+        let evidence_claims = NvidiaGpuEvidenceClaims::from(device_claims);
 
-        let value = serde_json::to_value(device_claims).unwrap();
+        let value = serde_json::to_value(evidence_claims).unwrap();
         debug!("Nvidia device claims:\n{:#?}", &value);
 
         let expected_claim: serde_json::Value = serde_json::from_str(
@@ -507,9 +546,10 @@ mod tests {
 
         let verifier_type = match verifier_type {
             "local" => NvidiaVerifierType::Local,
-            "remote" => {
-                NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None })
-            }
+            "remote" => NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig {
+                verifier_url: None,
+                debug: true,
+            }),
             _ => panic!("Unknown verifier type."),
         };
 
