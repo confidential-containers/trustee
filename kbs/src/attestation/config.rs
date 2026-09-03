@@ -16,12 +16,12 @@ pub struct AttestationConfig {
     #[serde(default = "default_timeout")]
     pub timeout: i64,
 
-    /// Maps a policy-selector, which a client may select in the RCAR
+    /// Maps an attestation-policy-selector, which a client may select in the RCAR
     /// `Request`, to the Attestation Service policies that evaluate its
     /// evidence.
     ///
     /// Empty by default, which leaves clients unable to influence policy
-    /// selection. Only policy-selectors declared here are reachable.
+    /// selection. Only attestation-policy-selectors declared here are reachable.
     #[serde(default)]
     pub policy_id_map: HashMap<String, Vec<String>>,
 }

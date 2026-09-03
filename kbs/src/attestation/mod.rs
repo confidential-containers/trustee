@@ -27,7 +27,7 @@ pub const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 
 /// JSON key with which a client selects attestation policies in the extra
 /// parameters of an RCAR `Request`
-pub const POLICY_SELECTOR_JSON_KEY: &str = "policy-selector";
+pub const ATTESTATION_POLICY_SELECTOR_JSON_KEY: &str = "attestation-policy-selector";
 
 /// Generate extra parameters for TEE hash algorithm negotiation.
 ///
