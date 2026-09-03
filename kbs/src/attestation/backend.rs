@@ -26,7 +26,7 @@ use crate::prometheus::{
 use super::{
     config::{AttestationConfig, AttestationServiceConfig},
     session::SessionStatus,
-    Error, Result, POLICY_SELECTOR_JSON_KEY,
+    Error, Result, ATTESTATION_POLICY_SELECTOR_JSON_KEY,
 };
 
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
@@ -94,7 +94,7 @@ pub trait Attest: Send + Sync {
     /// Verify Attestation Evidence
     /// Return Attestation Results Token
     ///
-    /// `policy_ids` are the policies resolved from the policy-selector
+    /// `policy_ids` are the policies resolved from the attestation-policy-selector
     /// selected by the client, or `None` to apply the default of this
     /// Attestation Service.
     async fn verify(
@@ -130,30 +130,30 @@ pub trait Attest: Send + Sync {
     }
 }
 
-/// Resolve the policy-selector that a client optionally selected in an RCAR
+/// Resolve the attestation-policy-selector that a client optionally selected in an RCAR
 /// `Request` into the Attestation Service policies to evaluate its evidence
 /// with.
 ///
-/// Selecting no policy-selector leaves the Attestation Service default in
-/// place. An unknown policy-selector is rejected instead of silently falling
+/// Selecting no attestation-policy-selector leaves the Attestation Service default in
+/// place. An unknown attestation-policy-selector is rejected instead of silently falling
 /// back, so a client can only reach policies that an administrator declared.
 fn resolve_policy_ids(
     policy_id_map: &HashMap<String, Vec<String>>,
     extra_params: &serde_json::Value,
 ) -> anyhow::Result<Option<Vec<String>>> {
-    let Some(policy_selector) = extra_params.get(POLICY_SELECTOR_JSON_KEY) else {
+    let Some(policy_selector) = extra_params.get(ATTESTATION_POLICY_SELECTOR_JSON_KEY) else {
         return Ok(None);
     };
 
     let policy_selector = policy_selector
         .as_str()
-        .context("policy-selector is not a string")?;
+        .context("attestation-policy-selector is not a string")?;
 
     policy_id_map
         .get(policy_selector)
         .cloned()
         .map(Some)
-        .context("policy-selector is not configured")
+        .context("attestation-policy-selector is not configured")
 }
 
 /// Attestation Service
@@ -168,7 +168,7 @@ pub struct AttestationService {
     /// Maximum session expiration time.
     timeout: i64,
 
-    /// Policies a client is allowed to select, keyed by policy-selector
+    /// Policies a client is allowed to select, keyed by attestation-policy-selector
     policy_id_map: HashMap<String, Vec<String>>,
 }
 
@@ -185,13 +185,13 @@ impl AttestationService {
         storage_backend_config: &StorageBackendConfig,
         storage_provider: Arc<dyn StorageProvider>,
     ) -> Result<Self> {
-        // A policy-selector without any policy would leave the evidence
+        // A attestation-policy-selector without any policy would leave the evidence
         // unevaluated, which some Attestation Services accept silently.
         for (policy_selector, policy_ids) in &config.policy_id_map {
             if policy_ids.is_empty() {
                 return Err(Error::AttestationServiceInitialization {
                     source: anyhow!(
-                        "no attestation policy is mapped to policy-selector {policy_selector}"
+                        "no attestation policy is mapped to attestation-policy-selector {policy_selector}"
                     ),
                 });
             }
@@ -559,18 +559,18 @@ mod tests {
     }
 
     #[rstest::rstest]
-    // No policy-selector selected: the Attestation Service default applies.
+    // No attestation-policy-selector selected: the Attestation Service default applies.
     #[case(json!({}), Some(None))]
     #[case(json!(""), Some(None))]
     #[case(json!({"selected-hash-algorithm": "sha384"}), Some(None))]
-    // A declared policy-selector resolves to every policy it is mapped to.
-    #[case(json!({"policy-selector": "alice"}), Some(Some(vec!["alice-strict"])))]
-    #[case(json!({"policy-selector": "bob"}), Some(Some(vec!["bob-cpu", "bob-gpu"])))]
+    // A declared attestation-policy-selector resolves to every policy it is mapped to.
+    #[case(json!({"attestation-policy-selector": "alice"}), Some(Some(vec!["alice-strict"])))]
+    #[case(json!({"attestation-policy-selector": "bob"}), Some(Some(vec!["bob-cpu", "bob-gpu"])))]
     // Anything else is rejected rather than downgraded to the default.
-    #[case(json!({"policy-selector": "alice-strict"}), None)]
-    #[case(json!({"policy-selector": "../escape"}), None)]
-    #[case(json!({"policy-selector": ""}), None)]
-    #[case(json!({"policy-selector": 1}), None)]
+    #[case(json!({"attestation-policy-selector": "alice-strict"}), None)]
+    #[case(json!({"attestation-policy-selector": "../escape"}), None)]
+    #[case(json!({"attestation-policy-selector": ""}), None)]
+    #[case(json!({"attestation-policy-selector": 1}), None)]
     fn test_resolve_policy_ids(
         #[case] extra_params: serde_json::Value,
         #[case] expected: Option<Option<Vec<&str>>>,
@@ -595,7 +595,11 @@ mod tests {
         assert!(resolve_policy_ids(&policy_id_map, &json!({}))
             .unwrap()
             .is_none());
-        assert!(resolve_policy_ids(&policy_id_map, &json!({"policy-selector": "alice"})).is_err());
+        assert!(resolve_policy_ids(
+            &policy_id_map,
+            &json!({"attestation-policy-selector": "alice"})
+        )
+        .is_err());
     }
 
     #[tokio::test]

@@ -298,7 +298,7 @@ impl Attest for IntelTrustAuthority {
         policy_ids: Option<&[String]>,
     ) -> anyhow::Result<String> {
         // Fall back to the configured policies when the client selected no
-        // policy-selector.
+        // attestation-policy-selector.
         let policy_ids = policy_ids
             .map(<[String]>::to_vec)
             .unwrap_or_else(|| self.config.policy_ids.clone());

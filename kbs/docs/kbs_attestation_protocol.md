@@ -117,26 +117,26 @@ transfer some specific information. For example, some attestations follow the
 Diffie–Hellman key exchange protocol to first build a secure channel and
 transfer secret messages (Such as AMD SEV(-ES) pre-attestation).
 
-`extra-params` may also carry a `policy-selector`, which selects the Attestation
+`extra-params` may also carry a `attestation-policy-selector`, which selects the Attestation
 Service policies that evaluate this session's evidence:
 
 ```json
-"extra-params": { "policy-selector": "alice" }
+"extra-params": { "attestation-policy-selector": "alice" }
 ```
 
-KBS maps each `policy-selector` to one or more attestation policies, so the
+KBS maps each `attestation-policy-selector` to one or more attestation policies, so the
 accepted values are specific to a deployment and must be known to the KBC in
-advance. An unmapped `policy-selector` is rejected, and omitting the field
+advance. An unmapped `attestation-policy-selector` is rejected, and omitting the field
 selects a default policy.
 Note that not all backend attestation services support multiple policies, e.g.
 CoCo AS now only support one policy, while ITA supports multiple.
 
-Selecting a `policy-selector` does not by itself entitle the KBC to anything,
+Selecting a `attestation-policy-selector` does not by itself entitle the KBC to anything,
 since KBS still decides what each appraisal may release. It does change what the
 resulting token means, though, so a relying party should not treat every token
 alike. The [Attestation Results Token](#attestation-results-token) names the
-policy that was actually applied, which is the policy the `policy-selector`
-resolved to rather than the `policy-selector` itself, so a resource policy can
+policy that was actually applied, which is the policy the `attestation-policy-selector`
+resolved to rather than the `attestation-policy-selector` itself, so a resource policy can
 require a particular appraisal before releasing a resource.
 
 ## `Challenge`

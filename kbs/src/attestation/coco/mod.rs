@@ -5,5 +5,5 @@ pub mod grpc;
 pub mod builtin;
 
 /// Attestation Service policy applied when a client does not select a
-/// policy-selector.
+/// attestation-policy-selector.
 pub const DEFAULT_POLICY_ID: &str = "default";
