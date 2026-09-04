@@ -114,7 +114,7 @@ sudo snphost fetch vek der . "<vcek-url>"
 > [!IMPORTANT]
 > - Note that the VCEK URL is specific to the hardware AMD firmware of the
 > machine. If the firmware is updated, the VCEK URL will change. See the
-> [AMD VCEK documentation](https://docs.amd.com/api/khub/documents/dWGhwYpo1Wv51rJN4d~47g/content)
+> [AMD VCEK documentation](https://docs.amd.com/v/u/en-US/57230)
 > for more information about the VCEK URL format.
 
 ### 3. Install `vcek` directory into trustee deployment
