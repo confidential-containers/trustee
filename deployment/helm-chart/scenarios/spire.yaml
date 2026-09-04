@@ -1,0 +1,23 @@
+# SPIRE plugin: deliver SPIFFE X.509-SVIDs to attested guests via an
+# existing SPIRE deployment's Delegated Identity API.
+#
+# The Delegated Identity API is served on a separate admin socket from the
+# regular Workload API socket, so it isn't exposed via the csi.spiffe.io CSI
+# driver. Instead it needs the SPIRE agent's admin socket enabled and mounted
+# on the host (spire-agent.sockets.admin.enabled/mountOnHost), which KBS then
+# mounts via hostPath.
+
+kbs:
+  spire:
+    enabled: true
+    adminSocketPath: "/run/spire/sockets/admin.sock"
+    attestedSelectorValue: "true"
+  extraVolumes:
+    - name: spire-agent-admin-socket
+      hostPath:
+        path: "/run/spire/agent/sockets/csi.spiffe.io/admin"
+        type: "Directory"
+  extraVolumeMounts:
+    - name: spire-agent-admin-socket
+      mountPath: "/run/spire/sockets"
+      readOnly: true

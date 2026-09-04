@@ -35,6 +35,7 @@ impl ClientPlugin for ResourceStorage {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
+        _extensions: &HashMap<String, serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let resource_desc = path.join("/");
         match method.as_str() {

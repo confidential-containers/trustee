@@ -459,6 +459,26 @@ with the `[plugins.self_signed_ca]` properties.
 
 Detailed [documentation](#kbs/docs/plugins/nebula_ca.md).
 
+#### SPIRE Plugin Configuration
+
+The SPIRE plugin can be enabled by adding the following to the KBS config (requires KBS built with
+the `spire-plugin` cargo feature).
+
+```toml
+[[plugins]]
+name = "spire"
+admin_socket_path = "/run/spire/sockets/admin.sock"
+```
+
+| Property                    | Type   | Description                                                                        | Default   |
+|------------------------------|--------|--------------------------------------------------------------------------------------|-----------|
+| `admin_socket_path`         | String | Filesystem path to the SPIRE Agent's admin (Delegated Identity API) Unix socket      | -         |
+| `attested_selector_value`   | String | Value used for the always-added `trustee:<value>` marker selector                    | `true`    |
+| `k8s_selector_prefix`       | String | Selector type used for known k8s workload attestor selector keys                     | `k8s`     |
+| `trustee_selector_prefix`   | String | Selector type used for non-ks selector keys                                          | `trustee` |
+
+Detailed [documentation](#kbs/docs/plugins/spire.md).
+
 #### External Plugin Configuration
 
 External plugins extend KBS with custom gRPC-backed endpoints. A single `[[plugins]]` entry

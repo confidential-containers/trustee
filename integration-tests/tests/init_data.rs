@@ -260,8 +260,11 @@ async fn check_validated_identifiers() -> Result<()> {
         .pointer("/submods/cpu0/ear.trustee.identifiers/validated")
         .ok_or(anyhow!("Could not find validated identifiers."))?;
 
-    let expected_identifiers =
-        json!({"container_images":["bitnami/nginx:latest"],"container_uids":[65535,1001]});
+    let expected_identifiers = json!({
+        "container_uids":[65535,1001],
+        "pod-image":["bitnami/nginx:latest"],
+        "pod-image-count":1,
+    });
 
     if *validated_identifiers == expected_identifiers {
         return Ok(());
