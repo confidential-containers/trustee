@@ -177,6 +177,7 @@ impl Verifier for CsvVerifier {
                     "sig_algo": hex::encode(report.tee_info().sig_algo().to_le_bytes()),
                     "anonce": hex::encode(anonce.to_le_bytes()),
                     "serial_number": String::from_utf8(serial_number)?.trim_end_matches('\0'),
+                    "hardware_type": crate::hardware_type::types::HYGON_CSV,
                 });
                 Ok(vec![(claims, "cpu".to_string())])
             }
@@ -216,6 +217,7 @@ impl Verifier for CsvVerifier {
                     "rtmr4": hex::encode(attestation_report_v2.tee_info.rtmr4),
                     "reserved1": hex::encode(attestation_report_v2.tee_info.reserved1),
                     "serial_number": String::from_utf8(serial_number)?.trim_end_matches('\0'),
+                    "hardware_type": crate::hardware_type::types::HYGON_CSV,
                 });
                 if let Some(el) = cc_eventlog {
                     let ccel_data = base64::engine::general_purpose::STANDARD.decode(el)?;

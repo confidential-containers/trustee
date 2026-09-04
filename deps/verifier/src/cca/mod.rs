@@ -229,7 +229,8 @@ fn b642hex(b64: &String) -> Result<String> {
 }
 
 fn cca_generate_parsed_claim(tcb: EvidenceClaimsSet) -> Result<TeeEvidenceParsedClaim> {
-    let v = serde_json::to_value(tcb).context("serializing CCA evidence claims into JSON")?;
+    let mut v = serde_json::to_value(tcb).context("serializing CCA evidence claims into JSON")?;
+    crate::hardware_type::insert(&mut v, crate::hardware_type::types::ARM_CCA);
     Ok(v as TeeEvidenceParsedClaim)
 }
 
