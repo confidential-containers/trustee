@@ -3596,12 +3596,11 @@ dependencies = [
 
 [[package]]
 name = "http-cache-reqwest"
-version = "1.0.0-alpha.7"
+version = "1.0.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b8eff2dd41dcc485744bd8ce476cf0fe2df289ba8b49c1750b7c887ef7a07b5"
+checksum = "0fa15c101fcef1df74dc306d2943bbafb4c654b83449432e130eb8bdd3b39b05"
 dependencies = [
  "anyhow",
- "async-trait",
  "bytes",
  "http 1.4.0",
  "http-body 1.0.1",
@@ -3609,7 +3608,6 @@ dependencies = [
  "http-cache",
  "http-cache-semantics",
  "reqwest 0.13.4",
- "reqwest-middleware",
  "url",
 ]
 
