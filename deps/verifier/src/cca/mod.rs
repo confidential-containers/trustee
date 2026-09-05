@@ -89,7 +89,7 @@ impl Verifier for CCA {
 
         let expected_report_data = regularize_data(expected_report_data, 64, "REPORT_DATA", "CCA");
 
-        let evidence = serde_json::from_value::<CcaEvidence>(evidence)
+        let evidence = serde_json::from_value::<CcaEvidence>(evidence.data)
             .context("Deserialize CCA Evidence failed.")?;
 
         let ear: Ear = match config.cca_verifier {

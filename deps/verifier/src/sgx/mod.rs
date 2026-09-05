@@ -50,8 +50,8 @@ impl Verifier for SgxVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let tee_evidence =
-            serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
+        let tee_evidence = serde_json::from_value::<SgxEvidence>(evidence.data)
+            .context("Deserialize Quote failed.")?;
 
         debug!("evidence: {}", serde_json::to_string(&tee_evidence)?);
 

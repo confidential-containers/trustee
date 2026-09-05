@@ -38,6 +38,11 @@ impl AzTdxVtpm {
 
 #[async_trait]
 impl Verifier for AzTdxVtpm {
+    /// The max supported evidence version
+    fn max_supported_version(&self) -> u8 {
+        2
+    }
+
     /// The following verification steps are performed:
     /// 1. TPM Quote has been signed by AK included in the HCL variable data
     /// 2. Attestation nonce matches TPM Quote nonce
@@ -57,7 +62,7 @@ impl Verifier for AzTdxVtpm {
             bail!("unexpected empty report data");
         };
 
-        let evidence = serde_json::from_value::<Evidence>(evidence)
+        let evidence = serde_json::from_value::<Evidence>(evidence.data)
             .context("Failed to deserialize Azure vTPM TDX evidence")?;
 
         let hcl_report = HclReport::new(evidence.hcl_report().into())?;

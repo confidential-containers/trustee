@@ -204,7 +204,7 @@ impl Verifier for TpmVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let guest_ev = serde_json::from_value::<Evidence>(evidence)
+        let guest_ev = serde_json::from_value::<Evidence>(evidence.data)
             .context("Failed to deserialize TPM Evidence")?;
 
         let quote = guest_ev

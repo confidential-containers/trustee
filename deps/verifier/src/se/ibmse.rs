@@ -220,7 +220,7 @@ impl SeVerifierImpl {
 
         // evidence is serialized SeAttestationResponse String bytes
         let se_response: SeAttestationResponse =
-            serde_json::from_value(evidence).map_err(SeError::DeserializeEvidence)?;
+            serde_json::from_value(evidence.data).map_err(SeError::DeserializeEvidence)?;
 
         let meas_key = self
             .decrypt(&se_response.encr_measurement_key)
@@ -473,7 +473,7 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::Value(&report_data);
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = verifier.evaluate(evidence.into(), &expected_report_data);
 
         // Should fail at measurement verification (we don't have valid measurement),
         // but NOT at user_data validation
@@ -521,7 +521,7 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::Value(&report_data);
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = verifier.evaluate(evidence.into(), &expected_report_data);
 
         assert!(result.is_err(), "Should fail with mismatched user_data");
         let err = result.unwrap_err();
@@ -566,7 +566,7 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::NotProvided;
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = verifier.evaluate(evidence.into(), &expected_report_data);
 
         // Should fail at measurement verification, but NOT at user_data validation
         assert!(result.is_err(), "Should fail at measurement verification");
