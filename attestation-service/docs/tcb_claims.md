@@ -202,11 +202,18 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 
 ## NVIDIA
 
-The local verifier only supports Hopper and returns the following claims.
+Trustee adds `verifier` to every NVIDIA device claim. Its value is `local` for
+in-process verification and `remote` for NRAS verification.
 
-- `arch`: Device architecture. Only `Hopper` is supported
+The local verifier supports Hopper and Blackwell and returns the following
+claims.
+
+- `arch`: Device architecture (`Hopper` or `Blackwell`)
 - `measurements`: List of measurements and its respective index
-- `uuid`: Device UUID
+- `ueid`: Decimal serial number from the report-signing certificate. This is
+  authenticated by certificate-chain verification.
+- `uuid`: Guest-supplied UUID metadata. The local verifier does not authenticate
+  this value, so it must not be used for device identity or authorization.
 - `config.board_id`: Board ID
 - `config.chip_sku`: Chip SKU (Stock Keeping Unit)
 - `config.chip_sku_mod`: Chip SKU mod
@@ -215,12 +222,17 @@ The local verifier only supports Hopper and returns the following claims.
 - `config.fwid`: Firmware ID. Found in the report and the signing certificate
 - `config.gpu_info`: GPU information
 - `config.measurement_count`: One measurement_count for each entry in `measurements`. Each measurement_count indicates how many times the respective measurement was extended to get to its current value
-- `config.nvdec0_status`: NVIDIA decoder status
+- `config.nvdec0_status`: NVIDIA decoder status (`enabled` for `0xaa`,
+  `disabled` for `0x55`)
 - `config.project`: Project
 - `config.project_sku`: Project SKU
 - `config.project_sku_mod`: Project SKU mod
-- `config.protected_pcie_status`: Protected PCIe status
+- `config.protected_pcie_status`: Protected PCIe status as lowercase hex. NVIDIA
+  exposes this as opaque bytes; the included Hopper fixture contains `55`.
 - `config.vbios_version`: Device VBIOS version
+
+Depending on the architecture and report contents, `config` can also contain
+`chip_info`, `feature_flag`, `opaque_data_version`, or `sys_enable_status`.
 
 The remote verifier exports the claims that come from NRAS, which are listed [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
 Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
