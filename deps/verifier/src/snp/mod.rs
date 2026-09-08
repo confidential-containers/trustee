@@ -646,6 +646,7 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "reported_tcb_tee": report.reported_tcb.tee,
         "reported_tcb_snp": report.reported_tcb.snp,
         "reported_tcb_microcode": report.reported_tcb.microcode,
+        "reported_tcb_fmc": report.reported_tcb.fmc,
 
         // platform info
         "platform_tsme_enabled": report.plat_info.tsme_enabled(),
