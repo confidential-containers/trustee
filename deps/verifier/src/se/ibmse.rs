@@ -18,7 +18,7 @@ use pv::request::{BootHdrTags, CertVerifier, HkdVerifier, ReqEncrCtx, Request, S
 use pv::uv::ConfigUid;
 use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, hex::Hex, serde_as};
-use std::{env, fs, time::Duration};
+use std::{env, fs};
 use thiserror::Error;
 use tracing::{debug, info, warn};
 
@@ -163,7 +163,6 @@ pub struct SeAttestationRequest {
 pub struct SeVerifierImpl {
     private_key: PKey<Private>,
     public_key: PKey<Public>,
-    /// Firmware verification config, controls enable_firmware_verification and firmware_verify_url
     config: super::SeVerifierConfig,
 }
 
@@ -338,6 +337,12 @@ impl SeVerifierImpl {
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
+
+        if self.config.enable_firmware_verification {
+            attestation_flags.set_firmware_state();
+            info!("Firmware state flag set");
+        }
+
         let mut arcb = AttestationRequest::new(
             AttestationVersion::One,
             AttestationMeasAlg::HmacSha512,
@@ -393,7 +398,6 @@ impl SeVerifierImpl {
         let se_img_hdr = env_or_default!("SE_IMAGE_HEADER_FILE", DEFAULT_SE_IMAGE_HEADER_FILE);
         let mut hdr_file = open_file(se_img_hdr)?;
         let image_hdr_tags = BootHdrTags::from_se_image(&mut hdr_file)?;
-
         let se_attestation_request = SeAttestationRequest {
             request_blob,
             measurement_size: AttestationMeasAlg::HmacSha512.exp_size(),
