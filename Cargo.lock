@@ -627,9 +627,9 @@ dependencies = [
  "base64 0.23.1",
  "cfg-if",
  "clap",
- "ear",
+ "ear 0.6.0",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "mobc",
@@ -1297,6 +1297,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
+name = "base64-serde"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c6d128af408d8ebd08331f0331cf2cf20d19e6c44a7aec58791641ecc8c0b5"
+
+[[package]]
 name = "base64-simd"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1579,10 +1585,10 @@ dependencies = [
  "ciborium",
  "clap",
  "cose-rust",
- "ear",
+ "ear 0.5.0",
  "hex",
  "hex-literal",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "multimap 0.9.1",
  "openssl",
  "serde",
@@ -1760,6 +1766,32 @@ name = "cmov"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
+
+[[package]]
+name = "cmw"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579a5bfd38d97739b94c06dd5aa08a85621b18dc3a6b06def2998afc52b518c0"
+dependencies = [
+ "base64 0.22.1",
+ "base64-serde",
+ "bitflags 1.3.2",
+ "ciborium",
+ "hex",
+ "iri-string",
+ "lazy_static",
+ "mime",
+ "minicbor 1.1.0",
+ "minicbor-serde",
+ "once_cell",
+ "regex",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "simple_asn1",
+ "thiserror 2.0.20",
+ "xml-rs",
+]
 
 [[package]]
 name = "coarsetime"
@@ -2581,10 +2613,30 @@ dependencies = [
  "ciborium",
  "cose-rust",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "lazy_static",
  "openssl",
  "phf 0.13.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "ear"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579b9ca5846d627287a8760809645fdce2229aa60e93021c359680eb109addcd"
+dependencies = [
+ "base64 0.23.1",
+ "ciborium",
+ "cmw",
+ "cose-rust",
+ "hex",
+ "jsonwebtoken 11.0.0",
+ "lazy_static",
+ "openssl",
+ "phf 0.14.0",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -3996,7 +4048,7 @@ dependencies = [
  "attestation-service",
  "base64 0.23.1",
  "const_format",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs",
  "kbs-client",
  "key-value-storage",
@@ -4048,6 +4100,16 @@ name = "ipnet"
 version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
+
+[[package]]
+name = "iri-string"
+version = "0.7.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1663ee7d8cf2900cc1414b1e1eec9f348d6eaa3bcab07579f4726a4b8499f447"
+dependencies = [
+ "memchr",
+ "serde",
+]
 
 [[package]]
 name = "is_debug"
@@ -4266,6 +4328,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "11.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881733cbc631fc9e472e24447ce32a64bedf2da498d6d8570b08edc87de71f65"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "getrandom 0.2.17",
+ "js-sys",
+ "pem",
+ "serde",
+ "serde_json",
+ "signature 2.2.0",
+ "simple_asn1",
+ "zeroize",
+]
+
+[[package]]
 name = "jwt-simple"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4333,7 +4413,7 @@ dependencies = [
  "google-cloud-secretmanager-v1",
  "hex",
  "josekit",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "kms",
@@ -4385,7 +4465,7 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "clap",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs_protocol",
  "reqwest 0.13.4",
  "serde",
@@ -4402,7 +4482,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "010924a5f65328c9609598c895ea506c723e3c72e528aeaba0a9645d8330b718"
 dependencies = [
  "base64 0.22.1",
- "ear",
+ "ear 0.5.0",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -4418,7 +4498,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4453d70e4a9a7db181a83661803dc296471957d16cb4ddd2af7a52d17eb234cc"
 dependencies = [
  "base64 0.22.1",
- "ear",
+ "ear 0.5.0",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -4759,6 +4839,42 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "minicbor"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "734daad4ff3b880f23dc2a675dd74553fa8e583367aa7523f96a16e96a516b62"
+dependencies = [
+ "minicbor-derive",
+]
+
+[[package]]
+name = "minicbor"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c12b4033ffaa92fbf9df03df38d19324f52bad130dd223f811734a8006dd2d69"
+
+[[package]]
+name = "minicbor-derive"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "512ce2c37128698ea15c99b3518936c78a8b112b92468e7b95b9fa045666ebd8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "minicbor-serde"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80047f75e28e3b38f6ab2ec3c2c7669f6b411fa6f8424e1a90a3fd784b19a3f4"
+dependencies = [
+ "minicbor 2.3.0",
+ "serde",
+]
 
 [[package]]
 name = "minimal-lexical"
@@ -5414,8 +5530,19 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
 dependencies = [
- "phf_macros",
+ "phf_macros 0.13.1",
  "phf_shared 0.13.1",
+ "serde",
+]
+
+[[package]]
+name = "phf"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "010378780309880b08997fae13be7834dba947d36393bd372f2b1556deb2a2f6"
+dependencies = [
+ "phf_macros 0.14.0",
+ "phf_shared 0.14.0",
  "serde",
 ]
 
@@ -5430,13 +5557,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "phf_generator"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aeb62e0959d5a1bebc965f4d15d9e2b7cea002b6b0f5ba8cde6cc26738467100"
+dependencies = [
+ "fastrand",
+ "phf_shared 0.14.0",
+]
+
+[[package]]
 name = "phf_macros"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812f032b54b1e759ccd5f8b6677695d5268c588701effba24601f6932f8269ef"
 dependencies = [
- "phf_generator",
+ "phf_generator 0.13.1",
  "phf_shared 0.13.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "phf_macros"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fa8d0ca26d424d27630da600c6624696e7dec8bf7b3b492b383c5dc49e5e085"
+dependencies = [
+ "phf_generator 0.14.0",
+ "phf_shared 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -5456,6 +5606,15 @@ name = "phf_shared"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
 dependencies = [
  "siphasher",
 ]
@@ -8234,7 +8393,7 @@ dependencies = [
  "attestation-service",
  "clap",
  "dirs 6.0.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs",
  "nix",
  "openssl",
@@ -8532,13 +8691,13 @@ dependencies = [
  "chrono",
  "codicon",
  "csv-rs",
- "ear",
+ "ear 0.5.0",
  "eventlog",
  "hex",
  "http-cache-reqwest",
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "openssl",
@@ -9187,6 +9346,12 @@ dependencies = [
  "thiserror 2.0.20",
  "time",
 ]
+
+[[package]]
+name = "xml-rs"
+version = "0.8.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xmlparser"
