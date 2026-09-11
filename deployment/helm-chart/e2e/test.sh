@@ -60,9 +60,9 @@ kbs_client() {
 }
 
 # Emit a resource policy that only releases resources when the attestation
-# evidence was produced by ${1}. The AS records each device's evidence under its
-# lowercase TEE name inside "ear.veraison.annotated-evidence", so requiring that
-# key to be present asserts the requester really attested as that TEE type.
+# evidence was produced by ${1}. The AS records the TEE type in
+# ear_attester_claims.tee, so matching that string asserts the requester
+# really attested as that TEE type.
 write_require_tee_policy() {
 	local tee="$1" out="$2"
 	cat >"${out}" <<EOF
@@ -72,7 +72,7 @@ import rego.v1
 default allow = false
 
 allow if {
-	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["${tee}"]
+	input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "${tee}"
 }
 EOF
 }

@@ -20,7 +20,7 @@ allow if {
 
 
 
-    input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]["productId"] == data["resource-path"][1]
+    input["submods"]["cpu0"]["ear_attester_claims"]["claims"]["productId"] == data["resource-path"][1]
 }
 
 
