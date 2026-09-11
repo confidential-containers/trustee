@@ -341,9 +341,11 @@ configuration := 2 if {
 #################################
 # EXTENSIONS
 #
-# Extensions are added to the EAR Appraisal
+# Policy extensions are mapped into ear_verifier_claims.custom on the
+# EAR appraisal (name → value). The `key` field is kept for schema
+# compatibility with older policies.
 #
-# The identifiers extension contains information that
+# The identifiers entry contains information that
 # describes the workload.
 #
 # In Confidential Containers many of these identifiers

@@ -22,7 +22,8 @@ More information about these trust claims, including what the numerical values o
 can be found [here](https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/).
 
 A policy can also optionally define a claim called `data.policy.extensions`.
-Any extensions specified via this claim will be added to the attestation token.
+Entries from this claim are placed under `ear_verifier_claims.custom` in the
+attestation token (EAR draft-04 verifier-authority claims).
 The extensions claim should contain an array of extension objects.
 An extension object should look like this:
 ```json
@@ -34,17 +35,17 @@ An extension object should look like this:
 ```
 
 Extension names should be Collision-Resistant Public Claim Names.
-The extension key should be an i32.
-If the extension is registered in the EAR specification, the key will be positive.
-Otherwise, the key should be negative.
+The `key` field is retained for policy-schema compatibility; AS currently
+maps only `name` → `value` into `ear_verifier_claims.custom`.
 The extension value can be any valid JSON, including nested objects.
 
-The default policy includes the extension `ear.trustee.identifiers`, which is used
-to store fields that identify the workload.
+The default policy includes `ear.trustee.identifiers` under
+`ear_verifier_claims.custom`, which is used to store fields that identify the
+workload.
 With Confidential Containers these identifiers will usually be based on the Kata
 Agent Policy or other configuration fields in the InitData.
 Other runtimes might use other mechanisms, such as the event log.
-The `identifiers` extension includes two subfields.
+The `identifiers` value includes two subfields.
 
 * `validated` identifiers are those that are bound to the hardware evidence via
 attestation and that the guest runtime binds to the workload.
