@@ -17,8 +17,9 @@
 #    {
 #        "submods": {
 #            "cpu0": {
-#                "ear.veraison.annotated-evidence": {
-#                    "sample": {
+#                "ear_attester_claims": {
+#                    "tee": "sample",
+#                    "claims": {
 #                        "productId": "",
 #                        "svn": ""
 #                    }
@@ -82,5 +83,5 @@ plugin = data.plugin
 
 allow if {
 	plugin == "resource"
-	not input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["sample"]
+	not input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "sample"
 }

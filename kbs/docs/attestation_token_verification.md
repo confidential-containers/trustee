@@ -134,7 +134,7 @@ are tried automatically:
 | CoCo AS (legacy) | `/customized_claims/runtime_data/tee-pubkey` |
 | Intel TA | `/tdx/attester_runtime_data/tee-pubkey` |
 | Intel TA (vTPM) | `/tdx/attester_user_data/tee-pubkey` |
-| EAR | `/submods/cpu0/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey` |
+| EAR | `/submods/cpu0/ear_verifier_claims/runtime_data/tee-pubkey` |
 | Generic | `/tee-pubkey` |
 
 Add custom paths with `extra_teekey_paths` if your token stores the key elsewhere.
