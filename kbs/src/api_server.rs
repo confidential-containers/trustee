@@ -446,8 +446,7 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims
-                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+                let init_data = claims.pointer("/submods/cpu0/ear_verifier_claims/init_data");
 
                 let response = plugin
                     .handle(&body, &query, resource_path, request.method(), init_data)
