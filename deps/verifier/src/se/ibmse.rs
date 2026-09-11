@@ -296,7 +296,7 @@ impl SeVerifierImpl {
         Ok(serde_json::to_value(claims).map_err(SeError::BuildJsonClaims)?)
     }
 
-    pub async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+    pub async fn generate_supplemental_challenge(&self, tee_parameters: String) -> Result<String> {
         let se_certificate_root =
             env_or_default!("SE_CERTIFICATES_ROOT", DEFAULT_SE_CERTIFICATES_ROOT);
         let ca_certs = list_files_in_folder(&se_certificate_root)?;
@@ -322,6 +322,21 @@ impl SeVerifierImpl {
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
+
+        let machine_type = machine_type_from_tee_parameters(&tee_parameters);
+        debug!(
+            "Detected machine type from tee_parameters: {:?}",
+            machine_type
+        );
+        match machine_type.as_deref() {
+            Some("z17") => {
+                attestation_flags.set_firmware_state();
+                info!("Firmware state flag set for z17 machine type");
+            }
+            Some(mt) => debug!("Firmware state flag NOT set for machine type: {}", mt),
+            None => debug!("Firmware state flag NOT set: machine type not detected"),
+        }
+
         let mut arcb = AttestationRequest::new(
             AttestationVersion::One,
             AttestationMeasAlg::HmacSha512,
@@ -377,7 +392,7 @@ impl SeVerifierImpl {
         let se_img_hdr = env_or_default!("SE_IMAGE_HEADER_FILE", DEFAULT_SE_IMAGE_HEADER_FILE);
         let mut hdr_file = open_file(se_img_hdr)?;
         let image_hdr_tags = BootHdrTags::from_se_image(&mut hdr_file)?;
-
+    
         let se_attestation_request = SeAttestationRequest {
             request_blob,
             measurement_size: AttestationMeasAlg::HmacSha512.exp_size(),
@@ -391,6 +406,18 @@ impl SeVerifierImpl {
         let challenge = serde_json::to_string(&se_attestation_request)?;
         Ok(challenge)
     }
+}
+
+fn machine_type_from_tee_parameters(tee_parameters: &str) -> Option<String> {
+    if tee_parameters.is_empty() {
+        debug!("tee_parameters is empty, firmware state flag not set");
+        return None;
+    }
+    let value = serde_json::from_str::<serde_json::Value>(tee_parameters).ok()?;
+    value
+        .get("machine-type")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned)
 }
 
 #[cfg(test)]
