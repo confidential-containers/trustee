@@ -10,5 +10,5 @@ allow if {
 
 any_not_affirming if {
     some _, submod in input.submods
-    submod["ear.status"] != "affirming"
+    submod["ear_status"] != "affirming"
 }
