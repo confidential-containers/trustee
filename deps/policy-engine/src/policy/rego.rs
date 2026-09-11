@@ -303,12 +303,13 @@ mod tests {
 {{
     "submods": {{
         "cpu0": {{
-            "ear.trustworthiness-vector": {{
+            "ear_trustworthiness_vector": {{
                 "executables": 2,
                 "hardware": 3
             }},
-            "ear.veraison.annotated-evidence": {{
-                "sample" : {{   
+            "ear_attester_claims": {{
+                "tee": "sample",
+                "claims": {{
                     "productId": "{input_name}",
                     "svn": {input_svn}
                 }}
