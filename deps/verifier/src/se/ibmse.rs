@@ -18,7 +18,7 @@ use pv::request::{BootHdrTags, CertVerifier, HkdVerifier, ReqEncrCtx, Request, S
 use pv::uv::ConfigUid;
 use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, hex::Hex, serde_as};
-use std::{env, fs};
+use std::{env, fs, time::Duration};
 use thiserror::Error;
 use tracing::{debug, info, warn};
 
@@ -26,6 +26,13 @@ const DEFAULT_CERTS_OFFLINE_VERIFICATION: &str = "false";
 
 /// Size of report data in IBM SE attestation (64 bytes)
 const SE_REPORT_DATA_SIZE: usize = 64;
+
+/// Size of image and attestation public-host-key hashes in additional data.
+const PHKH_ADDITIONAL_DATA_SIZE: usize = 64;
+/// Size of the firmware state returned by the Ultravisor.
+const FIRMWARE_STATE_SIZE: usize = 320;
+
+const FIRMWARE_VERIFY_TIMEOUT: Duration = Duration::from_secs(3);
 
 const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/ibmse/hkds";
 
@@ -163,10 +170,23 @@ pub struct SeAttestationRequest {
 pub struct SeVerifierImpl {
     private_key: PKey<Private>,
     public_key: PKey<Public>,
+    /// Firmware verification config, controls enable_firmware_verification and firmware_verify_url
+    config: super::SeVerifierConfig,
 }
 
 impl SeVerifierImpl {
-    pub fn new() -> Result<Self> {
+    pub fn new(config: Option<super::SeVerifierConfig>) -> Result<Self> {
+        let mut config = config.unwrap_or_default();
+
+        // Allow env var to override toml config without recompiling.
+        if let Ok(val) = env::var("SE_ENABLE_FIRMWARE_VERIFICATION") {
+            config.enable_firmware_verification = val.trim().eq_ignore_ascii_case("true");
+            info!(
+                "SE_ENABLE_FIRMWARE_VERIFICATION env var overrides config: enable_firmware_verification={}",
+                config.enable_firmware_verification
+            );
+        }
+
         let pri_key_file = env_or_default!(
             "SE_MEASUREMENT_ENCR_KEY_PRIVATE",
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE
@@ -184,6 +204,7 @@ impl SeVerifierImpl {
         Ok(Self {
             private_key,
             public_key,
+            config,
         })
     }
 
