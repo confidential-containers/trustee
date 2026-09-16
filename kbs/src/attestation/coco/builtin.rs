@@ -9,7 +9,7 @@ use attestation_service::{
     config::VerifierConfig, ear_token::EarTokenConfiguration, rvps::RvpsConfig, AttestationService,
     HashAlgorithm, InitDataInput, RuntimeData, VerificationRequest,
 };
-use kbs_types::{Challenge, Tee};
+use kbs_types::{Challenge, Tee, TeeTopology};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -115,20 +115,21 @@ impl Attest for BuiltInCoCoAs {
 
     async fn generate_challenge(
         &self,
-        tee: Tee,
-        tee_parameters: serde_json::Value,
+        tee_topology: &TeeTopology,
+        request_extra_params: &serde_json::Value,
     ) -> Result<Challenge> {
-        let nonce = match tee {
+        let primary_tee = &tee_topology.primary;
+        let nonce = match primary_tee.name {
             Tee::Se => {
                 self.inner
                     .read()
                     .await
-                    .generate_supplemental_challenge(tee, tee_parameters.to_string())
+                    .generate_supplemental_challenge(primary_tee.name, primary_tee.context.as_ref())
                     .await?
             }
             _ => make_nonce().await?,
         };
-        let extra_params = generate_extra_params(tee, &tee_parameters)?;
+        let extra_params = generate_extra_params(primary_tee.name, request_extra_params)?;
 
         Ok(Challenge {
             nonce,

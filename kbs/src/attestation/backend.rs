@@ -8,7 +8,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
+use kbs_types::{Attestation, Challenge, InitData, Request, Tee, TeeTopology};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use rsa::rand_core::{OsRng, RngCore};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -32,7 +32,7 @@ use super::{
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
 
 static KBS_MAJOR_VERSION: u64 = 0;
-static KBS_MINOR_VERSION: u64 = 4;
+static KBS_MINOR_VERSION: u64 = 5;
 static KBS_PATCH_VERSION: u64 = 0;
 
 static VERSION_REQ: LazyLock<VersionReq> = LazyLock::new(|| {
@@ -70,8 +70,8 @@ pub async fn make_nonce() -> anyhow::Result<String> {
 }
 
 pub(crate) async fn generic_generate_challenge(
-    _tee: Tee,
-    _tee_parameters: serde_json::Value,
+    _tee_topology: &TeeTopology,
+    _request_extra_params: &serde_json::Value,
 ) -> anyhow::Result<Challenge> {
     let nonce = make_nonce().await?;
 
@@ -106,10 +106,10 @@ pub trait Attest: Send + Sync {
     /// generate the Challenge to pass to attester based on Tee and nonce
     async fn generate_challenge(
         &self,
-        tee: Tee,
-        tee_parameters: serde_json::Value,
+        tee_topology: &TeeTopology,
+        request_extra_params: &serde_json::Value,
     ) -> anyhow::Result<Challenge> {
-        generic_generate_challenge(tee, tee_parameters).await
+        generic_generate_challenge(tee_topology, request_extra_params).await
     }
 
     /// Add reference values to the RVPS, if the AS supports it
@@ -316,7 +316,7 @@ impl AttestationService {
 
         let challenge = self
             .inner
-            .generate_challenge(request.tee, request.extra_params.clone())
+            .generate_challenge(&request.tees, &request.extra_params)
             .await
             .inspect_err(|_| AUTH_ERRORS.inc())
             .context("Attestation Service generate challenge failed")?;
@@ -357,7 +357,7 @@ impl AttestationService {
         let attestation: Attestation = serde_json::from_slice(attestation)
             .inspect_err(|_| ATTESTATION_ERRORS.inc())
             .context("deserialize Attestation")?;
-        let (tee, nonce) = {
+        let (primary_tee, nonce) = {
             let session = self
                 .session_map
                 .get(session_id)
@@ -396,7 +396,10 @@ impl AttestationService {
                 .context("Failed to serialize Attestation")?;
             debug!("Attestation: {attestation_str}");
 
-            (session.request().tee, session.challenge().nonce.to_string())
+            (
+                session.request().tees.primary.name,
+                session.challenge().nonce.to_string(),
+            )
         };
 
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
@@ -417,7 +420,7 @@ impl AttestationService {
         });
 
         let mut primary_evidence = IndependentEvidence {
-            tee,
+            tee: primary_tee,
             tee_evidence: attestation.tee_evidence.primary_evidence,
             runtime_data: primary_runtime_data,
             init_data: None,
@@ -454,12 +457,8 @@ impl AttestationService {
             .ok_or(anyhow!("session not found"))
             .inspect_err(|_| ATTESTATION_ERRORS.inc())?;
 
-        let tee_type_label = serde_json::to_string(&session.request().tee)?
-            // it seems impossible to prevent serde from putting double-quotes
-            // around the tee name, get rid of them subsequently
-            .trim_start_matches('"')
-            .trim_end_matches('"')
-            .to_owned();
+        let primary_tee = session.request().tees.primary.name;
+        let tee_type_label = primary_tee.to_string();
 
         let policy_ids = resolve_policy_ids(&self.policy_id_map, &session.request().extra_params)
             .inspect_err(|_| ATTESTATION_ERRORS.inc())?;

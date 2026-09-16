@@ -166,7 +166,7 @@ impl SessionMap {
 
 #[cfg(test)]
 mod tests {
-    use kbs_types::Tee;
+    use kbs_types::{Tee, TeeParameters, TeeTopology};
     use key_value_storage::memory::MemoryKeyValueStorage;
     use serde_json::json;
 
@@ -178,7 +178,13 @@ mod tests {
         let session_map = SessionMap::new(storage);
         let request = Request {
             version: "1.0.0".to_string(),
-            tee: Tee::Sample,
+            tees: TeeTopology {
+                primary: TeeParameters {
+                    name: Tee::Sample,
+                    context: None,
+                },
+                additional: vec![],
+            },
             extra_params: json!({}),
         };
         let challenge = Challenge {

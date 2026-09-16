@@ -9,7 +9,9 @@ use ibmse::SeVerifierImpl;
 use tokio::sync::OnceCell;
 use tracing::{instrument, warn};
 
-use crate::{InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
+use crate::{
+    InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, TeeMetadata, Verifier,
+};
 
 pub mod ibmse;
 
@@ -37,12 +39,15 @@ impl Verifier for SeVerifier {
         Ok(vec![(claims, "cpu".to_string())])
     }
 
-    async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+    async fn generate_supplemental_challenge(
+        &self,
+        tee_metadata: Option<&TeeMetadata>,
+    ) -> Result<String> {
         let se_verifier = VERIFIER
             .get_or_try_init(|| async { SeVerifierImpl::new() })
             .await?;
         se_verifier
-            .generate_supplemental_challenge(_tee_parameters)
+            .generate_supplemental_challenge(tee_metadata)
             .await
     }
 }
