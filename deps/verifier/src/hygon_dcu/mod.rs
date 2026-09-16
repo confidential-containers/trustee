@@ -68,6 +68,7 @@ impl Verifier for HygonDcuVerifier {
                         "sig_algo": format!("{:x}", report.body.sig_algo),
                     },
                     "report_data": hex::encode(report.body.user_data),
+                    "hardware_type": crate::hardware_type::types::HYGON_DCU,
                 });
                 (value, HYGON_DCU_TEE_CLASS.to_string())
             })

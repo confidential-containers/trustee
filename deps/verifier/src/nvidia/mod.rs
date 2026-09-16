@@ -98,6 +98,16 @@ enum Architecture {
     LS10,
 }
 
+impl Architecture {
+    fn hardware_type(&self) -> &'static str {
+        match self {
+            Architecture::Hopper => crate::hardware_type::types::NVIDIA_HOPPER,
+            Architecture::Blackwell => crate::hardware_type::types::NVIDIA_BLACKWELL,
+            Architecture::LS10 => crate::hardware_type::types::NVIDIA_LS10,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct NvDeviceReportAndCert {
     arch: Architecture,
@@ -216,7 +226,11 @@ fn validate_ppcie(
         bail!("Topology must contain 4 switches");
     }
 
-    let claims = json!({"switch_count":4, "gpu_count":8 });
+    let claims = json!({
+        "switch_count": 4,
+        "gpu_count": 8,
+        "hardware_type": crate::hardware_type::types::NVIDIA_PPCIE,
+    });
 
     Ok(claims)
 }
@@ -299,7 +313,7 @@ impl Nvidia {
         let response = NrasResponse::from_str(&res.text().await?)?;
         response.validate(jwks)?;
 
-        let claims = response.claims()?;
+        let mut claims = response.claims()?;
 
         // Check that the nonce matches the expected report data.
         // Consider moving this logic into the NrasResponse struct.
@@ -314,6 +328,8 @@ impl Nvidia {
         if !nonce_ok {
             bail!("Report Data Mismatch");
         }
+
+        crate::hardware_type::insert(&mut claims, device.arch.hardware_type());
 
         Ok((claims, tee_class.to_string()))
     }
@@ -352,8 +368,9 @@ impl Nvidia {
         // Build the device claims
         let device_claims =
             NvDeviceReportAndCertClaim::new(&device.arch, device.uuid.as_str(), &report);
-        let value = serde_json::to_value(device_claims)
+        let mut value = serde_json::to_value(device_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
+        crate::hardware_type::insert(&mut value, device.arch.hardware_type());
 
         Ok((value as TeeEvidenceParsedClaim, "gpu".to_string()))
     }
