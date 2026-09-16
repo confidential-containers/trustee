@@ -15,6 +15,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, Span};
 use uuid::Uuid;
+use verifier::TeeMetadata;
 
 #[derive(Error, Debug, AsRefStr)]
 pub enum Error {
@@ -245,16 +246,18 @@ pub async fn get_challenge(
         .as_ref()
         .map(|s| s.as_str())
         .ok_or(anyhow!("Failed to get inner tee"))?;
-    let tee_params = request
+    let tee_metadata = request
         .inner
         .get("tee_params")
-        .ok_or(anyhow!("Failed to get inner tee_params"))?;
+        .map(|s| serde_json::from_str::<TeeMetadata>(s))
+        .transpose()
+        .context("Failed to parse tee_params")?;
 
     let tee = to_tee(inner_tee)?;
     let challenge = cocoas
         .read()
         .await
-        .generate_supplemental_challenge(tee, tee_params.to_string())
+        .generate_supplemental_challenge(tee, tee_metadata.as_ref())
         .await
         .context("generate challenge")?;
     info!("GetChallenge succeeded.");

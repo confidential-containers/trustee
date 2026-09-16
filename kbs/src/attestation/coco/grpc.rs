@@ -9,7 +9,7 @@ use attestation::{
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use kbs_types::{Challenge, HashAlgorithm, Tee};
+use kbs_types::{Challenge, HashAlgorithm, Tee, TeeTopology};
 use mobc::{Manager, Pool};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -162,14 +162,21 @@ impl Attest for GrpcClientPool {
 
     async fn generate_challenge(
         &self,
-        tee: Tee,
-        tee_parameters: serde_json::Value,
+        tee_topology: &TeeTopology,
+        request_extra_params: &serde_json::Value,
     ) -> Result<Challenge> {
-        let nonce = match tee {
+        let primary_tee = &tee_topology.primary;
+        let nonce = match primary_tee.name {
             Tee::Se => {
                 let mut inner = HashMap::new();
                 inner.insert(String::from("tee"), String::from("se"));
-                inner.insert(String::from("tee_params"), tee_parameters.to_string());
+                if let Some(context) = &primary_tee.context {
+                    inner.insert(
+                        String::from("tee_params"),
+                        serde_json::to_string(&context)
+                            .context("Failed to serialize tee_params")?,
+                    );
+                }
                 let req = tonic::Request::new(ChallengeRequest { inner });
 
                 let mut client = self.pool.get().await?;
@@ -183,7 +190,8 @@ impl Attest for GrpcClientPool {
             _ => make_nonce().await?,
         };
 
-        let extra_params = crate::attestation::generate_extra_params(tee, &tee_parameters)?;
+        let extra_params =
+            crate::attestation::generate_extra_params(primary_tee.name, request_extra_params)?;
 
         let challenge = Challenge {
             nonce,

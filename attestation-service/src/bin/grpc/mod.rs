@@ -25,6 +25,7 @@ use tonic::{Request, Response, Status};
 use tonic_health::server::health_reporter;
 use tracing::{debug, info, instrument, warn, Span};
 use uuid::Uuid;
+use verifier::TeeMetadata;
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
 use crate::as_api::{
@@ -253,10 +254,12 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .inner
             .get("tee")
             .ok_or(Status::aborted("Error parse inner_tee tee"))?;
-        let tee_params = request
+        let tee_metadata = request
             .inner
             .get("tee_params")
-            .ok_or(Status::aborted("Error parse inner_tee tee_params"))?;
+            .map(|s| serde_json::from_str::<TeeMetadata>(s))
+            .transpose()
+            .map_err(|e| Status::aborted(format!("Error parse tee_params: {e}")))?;
         let tee = to_kbs_tee(inner_tee)
             .map_err(|e| Status::aborted(format!("Error parse TEE type: {e}")))?;
 
@@ -264,7 +267,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             .read()
             .await
             .attestation_service
-            .generate_supplemental_challenge(tee, tee_params.clone())
+            .generate_supplemental_challenge(tee, tee_metadata.as_ref())
             .await
             .map_err(|e| Status::aborted(format!("Challenge: {e:?}")))?;
 

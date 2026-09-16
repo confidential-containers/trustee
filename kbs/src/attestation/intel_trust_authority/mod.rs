@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use educe::Educe;
-use kbs_types::{Challenge, HashAlgorithm, Tee};
+use kbs_types::{Challenge, HashAlgorithm, Tee, TeeTopology};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
@@ -369,26 +369,27 @@ impl Attest for IntelTrustAuthority {
 
     async fn generate_challenge(
         &self,
-        tee: Tee,
-        tee_parameters: serde_json::Value,
+        tee_topology: &TeeTopology,
+        request_extra_params: &serde_json::Value,
     ) -> Result<Challenge> {
-        debug!("ITA: generate_challenge: tee: {tee:?}, tee_parameters: {tee_parameters:?}");
+        debug!("ITA: generate_challenge: tee_topology: {tee_topology:?}, request_extra_params: {request_extra_params:?}");
 
-        if tee_parameters.is_null() {
+        if request_extra_params.is_null() {
             debug!(
                 "ITA: generate_challenge: no TEE parameters so falling back to legacy behaviour"
             );
 
-            return generic_generate_challenge(tee, tee_parameters).await;
+            return generic_generate_challenge(tee_topology, request_extra_params).await;
         }
 
         let mut supported_hash_algorithms = vec![];
 
-        let Some(hash_algorithms_found) = tee_parameters.get(SUPPORTED_HASH_ALGORITHMS_JSON_KEY)
+        let Some(hash_algorithms_found) =
+            request_extra_params.get(SUPPORTED_HASH_ALGORITHMS_JSON_KEY)
         else {
             info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
 
-            return generic_generate_challenge(tee, tee_parameters).await;
+            return generic_generate_challenge(tee_topology, request_extra_params).await;
         };
 
         let Some(algorithms) = hash_algorithms_found.as_array() else {
@@ -412,7 +413,8 @@ impl Attest for IntelTrustAuthority {
 
         debug!("ITA: generate_challenge: supported_hash_algorithms: {supported_hash_algorithms:?}");
 
-        let hash_algorithm: String = match tee {
+        let primary_tee = tee_topology.primary.name;
+        let hash_algorithm: String = match primary_tee {
             Tee::Sgx | Tee::AzTdxVtpm => {
                 let needed_algorithm = HashAlgorithm::Sha256.as_ref().to_string().to_lowercase();
 
@@ -624,6 +626,8 @@ mod tests {
         #[case] params: Value,
         #[case] expected_result: Result<Challenge>,
     ) {
+        use kbs_types::TeeParameters;
+
         let mut file = NamedTempFile::new().unwrap();
         let certs_file = "file://".to_owned() + &file.path().display().to_string();
 
@@ -646,7 +650,18 @@ mod tests {
 
         let ita = IntelTrustAuthority::new(cfg).await.unwrap();
 
-        let actual_result = ita.generate_challenge(tee, params).await;
+        let actual_result = ita
+            .generate_challenge(
+                &TeeTopology {
+                    primary: TeeParameters {
+                        name: tee,
+                        context: None,
+                    },
+                    additional: vec![],
+                },
+                &params,
+            )
+            .await;
 
         let msg = format!("{msg}, actual result: {actual_result:?}");
 

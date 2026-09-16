@@ -309,20 +309,46 @@ components:
     Request:
       required:
         - version
-        - tee
+        - tees
+        - extra-params
       type: object
       properties:
         version:
           type: string
-        tee:
-          type: string
-          enum: [az-snp-vtpm, az-tdx-vtpm, nvidia, sgx, snp, tdx, cca, csv, se, hygondcu, tpm, sample, sampledevice]
+          example: 0.5.0
+        tees:
+          $ref: '#/components/schemas/TeeTopology'
         extra-params:
           description: >-
-            Freely formatted JSON object used for HW-TEE specific attestation
-            processes.
-          type: object
+            Freely formatted JSON value containing parameters that apply to
+            the overall request.
       description: KBC attestation authentication request
+
+    TeeTopology:
+      required:
+        - primary
+      type: object
+      properties:
+        primary:
+          $ref: '#/components/schemas/TeeParameters'
+        additional:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeeParameters'
+
+    TeeParameters:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: TEE attestation and verification method.
+          enum: [az-snp-vtpm, az-tdx-vtpm, nvidia, nvidia-dpu, sgx, snp, tdx, cca, csv, se, hygondcu, tpm, sample, sampledevice]
+        context:
+          description: >-
+            Optional, freely formatted TEE-specific metadata used during the
+            attestation handshake. It is not verified evidence.
 
     Challenge:
       required:

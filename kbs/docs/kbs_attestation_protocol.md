@@ -71,13 +71,23 @@ The payload format of the request is as follows:
 ```json
 {
   /* KBS protocol version number used by KBC */
-  "version": "0.1.1",
-  /*
-   * Type of HW-TEE platforms where KBC is located,
-   * e.g. "tdx" or "snp", etc.
-   */
-  "tee": "$tee",
-  /* Reserved fields to support some special requests sent by HW-TEE. */
+  "version": "0.5.0",
+  "tees": {
+    /* The TEE that produces primary_evidence. */
+    "primary": {
+      "name": "$tee",
+      /* Optional TEE-specific metadata used during the handshake. */
+      "context": {}
+    },
+    /* Optional TEEs that produce additional_evidence. */
+    "additional": [
+      {
+        "name": "$additional_tee",
+        "context": {}
+      }
+    ]
+  },
+  /* Reserved parameters that apply to the overall request. */
   "extra-params": {}
 }
 ```
@@ -89,33 +99,48 @@ The payload format of the request is as follows:
 The protocol version number supported by KBC. KBS needs to judge whether this
 KBC can communicate normally according to this field.
 
-- `tee`
+- `tees`
 
-Used to declare the type of HW-TEE platform where KBC is located. Currently, known HW-TEE platforms are:
+Describes the attestation topology of the KBC environment. `tees.primary` is
+required and identifies the TEE that produces `primary_evidence`.
+`tees.additional` is optional and identifies the TEEs that produce
+`additional_evidence`.
+
+Each TEE entry contains:
+
+- `name`: the TEE attestation and verification method.
+- `context`: optional TEE-specific metadata needed before evidence generation,
+  for example platform information used by a verifier to construct a
+  supplemental challenge. This metadata is supplied by the attester and MUST
+  NOT be treated as verified evidence.
+
+Currently known TEE names are:
 
 | TEE            | Description                                                       |
 |----------------|-------------------------------------------------------------------|
 | `az-snp-vtpm`  | Microsoft Azure AMD SNP VTPM                                      |
 | `az-tdx-vtpm`  | Microsoft Azure TDX VTPM                                          |
+| `nvidia`       | NVIDIA GPU and related device attestation                         |
+| `nvidia-dpu`   | NVIDIA DPU attestation                                            |
 | `snp`          | AMD SNP                                                           |
 | `sgx`          | Intel SGX                                                         |
 | `tdx`          | Intel TDX                                                         |
 | `cca`          | Arm Confidential Compute Architecture                             |
 | `csv`          | China Secure Virtualization                                       |
 | `se`           | IBM Z Secure Execution                                            |
+| `hygondcu`     | Hygon Deep Computing Unit                                         |
 | `tpm`          | Trusted Platform Module                                           |
 | `sample`       | Value which should be only used for testing an attestation server |
+| `sampledevice` | Value which should be only used for testing device attestation    |
 
 Up-to-date list can be found [here](https://github.com/confidential-containers/kbs-types/blob/main/src/lib.rs).
 
 - `extra-params`
 
-In the run-time attestation scenario (Intel TDX and SGX, AMD SEV-SNP), the
-`extra-params` field is not used, so is set to the empty string. However, for
-the attestation of some special HW-TEE platforms, this field may be used to
-transfer some specific information. For example, some attestations follow the
-Diffie–Hellman key exchange protocol to first build a secure channel and
-transfer secret messages (Such as AMD SEV(-ES) pre-attestation).
+Contains parameters that apply to the overall request rather than to one TEE.
+When no request-wide parameters are needed, it should be an empty JSON object.
+TEE-specific metadata belongs in the corresponding `tees.primary.context` or
+`tees.additional[].context` field.
 
 `extra-params` may also carry a `attestation-policy-selector`, which selects the Attestation
 Service policies that evaluate this session's evidence:
