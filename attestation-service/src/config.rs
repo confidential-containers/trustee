@@ -65,9 +65,15 @@ impl TryFrom<&Path> for Config {
     ///            "tpm_verifier": {
     ///                "trusted_ak_keys_dir": "/etc/tpm/trusted_ak_keys",
     ///                "max_trusted_ak_keys": 100
+    ///            },
+    ///            "se_verifier": {
+    ///                "enable_firmware_verification": true,
+    ///                "firmware_verify_url": "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify"
     ///            }
     ///        }
     ///    }
+    /// Optional: override the firmware verification endpoint (firmware_verify_url) to your custom endpoint for verification.
+    /// The above is the default endpoint.
     type Error = ConfigError;
     fn try_from(config_path: &Path) -> Result<Self, ConfigError> {
         let file = File::open(config_path)?;

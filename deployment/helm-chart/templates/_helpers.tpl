@@ -160,6 +160,9 @@ AS verifier config JSON fragment
 {{- if and $snpKdsStorePath (not $snpHasOfflineStore) -}}
 {{- fail "as.verifier.snp.vcekSources must contain an OfflineStore source when as.verifier.snp.kdsStoreHostPath is set, otherwise the mounted certificate store is never read" -}}
 {{- end -}}
+{{- $se := dig "verifier" "se" (dict) (default dict .Values.as) | default dict -}}
+{{- $seEnabled := default false (index $se "enableFirmwareVerification") -}}
+{{- $seUrl := default "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify" (index $se "firmwareVerifyUrl") -}}
 {{- if $nv -}}
 {{- if eq $nv.type "Remote" -}}
 {{- $_ := required "as.verifier.nvidia.verifierUrl must be set when as.verifier.nvidia.type is Remote" (trim (default "" $nv.verifierUrl)) -}}
@@ -188,6 +191,14 @@ AS verifier config JSON fragment
 {{ if $snpVcekSources -}}
 "snp_verifier": {
     "vcek_sources": {{ $snpVcekSources | toJson }}
+}
+{{- end -}}
+{{- if and $se (or $nv $dcap $snpVcekSources) }},
+{{- end }}
+{{- if $se -}}
+"se_verifier": {
+    "enable_firmware_verification": {{ $seEnabled }},
+    "firmware_verify_url": "{{ $seUrl }}"
 }
 {{- end -}}
 {{- end }}

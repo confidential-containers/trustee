@@ -5,6 +5,7 @@
 
 use crate::{regularize_data, ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex};
 use anyhow::{anyhow, Context, Result};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use core::result::Result::Ok;
 use openssl::encrypt::{Decrypter, Encrypter};
 use openssl::pkey::{PKey, Private, Public};
@@ -18,14 +19,24 @@ use pv::request::{BootHdrTags, CertVerifier, HkdVerifier, ReqEncrCtx, Request, S
 use pv::uv::ConfigUid;
 use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, hex::Hex, serde_as};
-use std::{env, fs};
+use std::{collections::HashSet, env, fs, time::Duration};
 use thiserror::Error;
+use tokio::{sync::RwLock, time::sleep};
 use tracing::{debug, info, warn};
 
 const DEFAULT_CERTS_OFFLINE_VERIFICATION: &str = "false";
 
 /// Size of report data in IBM SE attestation (64 bytes)
 const SE_REPORT_DATA_SIZE: usize = 64;
+
+/// Size of the firmware state returned by the Ultravisor.
+const FIRMWARE_STATE_SIZE: usize = 320;
+
+const FIRMWARE_VERIFY_TIMEOUT: Duration = Duration::from_secs(3);
+const MAX_RETRIES: u32 = 10;
+const RETRY_DELAY: Duration = Duration::from_secs(3);
+
+const FIRMWARE_CLIENT_ID_HEADER_VALUE: &str = "X";
 
 const DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT: &str = "/run/confidential-containers/ibmse/hkds";
 
@@ -93,6 +104,15 @@ pub enum SeError {
 
     #[error("Failed to get attestation_public_host_key_hash")]
     MissingAttestationPublicHostKeyHash,
+
+    #[error("Failed to get firmware_state from additional_data")]
+    MissingFirmwareState,
+
+    #[error("Malformed firmware_state: expected {expected} bytes but got {actual} bytes from UV")]
+    MalformedFirmwareState { expected: usize, actual: usize },
+
+    #[error("Firmware verification failed: {0}")]
+    FirmwareVerificationFailed(String),
 
     #[error("Failed to deserialize evidence")]
     DeserializeEvidence(#[source] serde_json::Error),
@@ -163,10 +183,24 @@ pub struct SeAttestationRequest {
 pub struct SeVerifierImpl {
     private_key: PKey<Private>,
     public_key: PKey<Public>,
+    config: super::SeVerifierConfig,
+    firmware_cache: RwLock<HashSet<String>>,
+    http_client: reqwest::Client,
 }
 
 impl SeVerifierImpl {
-    pub fn new() -> Result<Self> {
+    pub fn new(config: Option<super::SeVerifierConfig>) -> Result<Self> {
+        let mut config = config.unwrap_or_default();
+
+        // Allow env var to override toml config without recompiling.
+        if let Ok(val) = env::var("SE_ENABLE_FIRMWARE_VERIFICATION") {
+            config.enable_firmware_verification = val.trim().eq_ignore_ascii_case("true");
+            info!(
+                "SE_ENABLE_FIRMWARE_VERIFICATION env var overrides config: enable_firmware_verification={}",
+                config.enable_firmware_verification
+            );
+        }
+
         let pri_key_file = env_or_default!(
             "SE_MEASUREMENT_ENCR_KEY_PRIVATE",
             DEFAULT_SE_MEASUREMENT_ENCR_KEY_PRIVATE
@@ -181,9 +215,18 @@ impl SeVerifierImpl {
         let pub_contents = fs::read(pub_key_file)?;
         let public_key = PKey::public_key_from_pem(&pub_contents)?;
 
+        let http_client = reqwest::Client::builder()
+            .timeout(FIRMWARE_VERIFY_TIMEOUT)
+            .user_agent("s390-tools-pvattest")
+            .build()
+            .context("Failed to create firmware verification HTTP client")?;
+
         Ok(Self {
             private_key,
             public_key,
+            config,
+            firmware_cache: RwLock::new(HashSet::new()),
+            http_client,
         })
     }
 
@@ -211,10 +254,104 @@ impl SeVerifierImpl {
         Ok(encrypted)
     }
 
-    pub fn evaluate(
+    /// Verify the 320-byte firmware hash against the IBM firmware attestation API.
+    /// Constructs a JSON POST request and checks the `valid` field in the response.
+    /// Returns Ok(()) if firmware is valid, Err if not or if the API call fails.
+    async fn verify_firmware(&self, firmware_hash: &[u8]) -> Result<()> {
+        #[derive(Serialize)]
+        struct FwRequest {
+            version: String,
+            payload: String,
+        }
+
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        struct VerifiedHash {
+            hash: String,
+            signature: String,
+        }
+
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct FwResponse {
+            valid: bool,
+            reference_id: String,
+            #[serde(default)]
+            reason: Option<String>,
+            #[serde(default)]
+            #[allow(dead_code)]
+            verified_hashes: Option<Vec<VerifiedHash>>,
+        }
+
+        let url = &self.config.firmware_verify_url;
+        let hash_b64 = BASE64.encode(firmware_hash);
+        let body = FwRequest {
+            version: "1.0".to_string(),
+            payload: hash_b64.clone(),
+        };
+
+        // Return immediately if this hash was already verified successfully.
+        if self.firmware_cache.read().await.contains(&hash_b64) {
+            debug!("Firmware hash found in cache, skipping API call");
+            return Ok(());
+        }
+
+        for attempt in 1..=MAX_RETRIES {
+            debug!("POST firmware verification to {url} (attempt {attempt}/{MAX_RETRIES})");
+
+            let resp = self
+                .http_client
+                .post(url)
+                .header("x-client-id", FIRMWARE_CLIENT_ID_HEADER_VALUE)
+                .json(&body)
+                .send()
+                .await
+                .context("Failed to send firmware verification request")?;
+
+            if !resp.status().is_success() {
+                return Err(SeError::FirmwareVerificationFailed(format!(
+                    "API returned HTTP {}",
+                    resp.status()
+                ))
+                .into());
+            }
+
+            let result: FwResponse = resp
+                .json()
+                .await
+                .context("Failed to parse firmware verification response")?;
+
+            // Store the firmware hash in the cache after successful verification.
+            // On subsequent runs, the cache is checked first to avoid another API call.
+            if result.valid {
+                info!(
+                    "Firmware verification passed (referenceId: {})",
+                    result.reference_id
+                );
+                self.firmware_cache.write().await.insert(hash_b64);
+                return Ok(());
+            }
+            debug!("Firmware response received from the api call: {:?}", result);
+            let reason = result
+                .reason
+                .unwrap_or_else(|| format!("referenceId: {}", result.reference_id));
+            warn!("Firmware verification attempt {attempt}/{MAX_RETRIES} not yet valid: {reason}");
+
+            if attempt < MAX_RETRIES {
+                sleep(RETRY_DELAY).await;
+            }
+        }
+
+        Err(SeError::FirmwareVerificationFailed(format!(
+            "firmware not valid after {MAX_RETRIES} attempts"
+        ))
+        .into())
+    }
+
+    pub async fn evaluate(
         &self,
         evidence: TeeEvidence,
-        expected_report_data: &ReportData,
+        expected_report_data: &ReportData<'_>,
     ) -> Result<TeeEvidenceParsedClaim> {
         info!("IBM SE verify API called.");
 
@@ -275,6 +412,9 @@ impl SeVerifierImpl {
         let mut att_flags = AttestationFlags::default();
         att_flags.set_image_phkh();
         att_flags.set_attest_phkh();
+        if se_response.additional_data.len() == SE_REPORT_DATA_SIZE + FIRMWARE_STATE_SIZE {
+            att_flags.set_firmware_state();
+        }
         let add_data = AdditionalData::from_slice(&se_response.additional_data, &att_flags)?;
         debug!("additional_data: {:?}", add_data);
         let image_phkh = add_data
@@ -283,6 +423,50 @@ impl SeVerifierImpl {
         let attestation_phkh = add_data
             .attestation_public_host_key_hash()
             .ok_or(SeError::MissingAttestationPublicHostKeyHash)?;
+
+        let firmware_hash: Option<Vec<u8>> = match add_data.firmware_state() {
+            Some(fw_slice) if fw_slice.len() == FIRMWARE_STATE_SIZE => {
+                debug!("Firmware hash present: {} bytes from UV", fw_slice.len());
+                Some(fw_slice.to_vec())
+            }
+            Some(fw_slice) => {
+                return Err(SeError::MalformedFirmwareState {
+                    expected: FIRMWARE_STATE_SIZE,
+                    actual: fw_slice.len(),
+                }
+                .into());
+            }
+            None => {
+                debug!(
+                    "No firmware state returned by UV; expected for z16 or earlier, \
+                     or UV did not honour the firmware-state flag"
+                );
+                None
+            }
+        };
+
+        // Decision table:
+        // firmware_hash present  + enable_firmware_verification=true → verify firmware hash, attestation success
+        // firmware_hash present  + enable_firmware_verification=false → skip verification, attestation success
+        // firmware_hash absent   + enable_firmware_verification=true → skip verification, attestation success
+        // firmware_hash absent   + enable_firmware_verification=false → skip verification, attestation success
+        match (&firmware_hash, self.config.enable_firmware_verification) {
+            (Some(hash), true) => {
+                self.verify_firmware(hash).await?;
+            }
+            (Some(_), false) => {
+                debug!("Firmware hash present but verification is disabled, skipping");
+            }
+            (None, true) => {
+                warn!(
+                    "Firmware verification is enabled but no firmware state was found; \
+                     skipping firmware verification"
+                );
+            }
+            (None, false) => {
+                debug!("Firmware hash not present and verification is disabled, skipping");
+            }
+        }
 
         let claims = SeAttestationClaims {
             cuid: se_response.cuid,
@@ -296,7 +480,7 @@ impl SeVerifierImpl {
         Ok(serde_json::to_value(claims).map_err(SeError::BuildJsonClaims)?)
     }
 
-    pub async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+    pub async fn generate_supplemental_challenge(&self, tee_parameters: String) -> Result<String> {
         let se_certificate_root =
             env_or_default!("SE_CERTIFICATES_ROOT", DEFAULT_SE_CERTIFICATES_ROOT);
         let ca_certs = list_files_in_folder(&se_certificate_root)?;
@@ -322,6 +506,21 @@ impl SeVerifierImpl {
         let mut attestation_flags = AttestationFlags::default();
         attestation_flags.set_image_phkh();
         attestation_flags.set_attest_phkh();
+
+        let machine_type = machine_type_from_tee_parameters(&tee_parameters);
+        debug!(
+            "Detected machine type from tee_parameters: {:?}",
+            machine_type
+        );
+        match machine_type.as_deref() {
+            Some("z17") => {
+                attestation_flags.set_firmware_state();
+                info!("Firmware state flag set for z17 machine type");
+            }
+            Some(mt) => debug!("Firmware state flag NOT set for machine type: {}", mt),
+            None => debug!("Firmware state flag NOT set: machine type not detected"),
+        }
+
         let mut arcb = AttestationRequest::new(
             AttestationVersion::One,
             AttestationMeasAlg::HmacSha512,
@@ -393,6 +592,18 @@ impl SeVerifierImpl {
     }
 }
 
+fn machine_type_from_tee_parameters(tee_parameters: &str) -> Option<String> {
+    if tee_parameters.is_empty() {
+        debug!("tee_parameters is empty, firmware state flag not set");
+        return None;
+    }
+    let value = serde_json::from_str::<serde_json::Value>(tee_parameters).ok()?;
+    value
+        .get("machine-type")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,6 +611,11 @@ mod tests {
     use openssl::rsa::Rsa;
     use pv::request::BootHdrTags;
     use pv::uv::ConfigUid;
+    use rstest::rstest;
+
+    // Size of image and attestation public-host-key hashes in additional_data.
+    // Only needed in tests to build dummy attestation responses.
+    const PHKH_ADDITIONAL_DATA_SIZE: usize = 64;
 
     // Helper to generate test RSA key pair
     fn generate_test_keypair() -> (PKey<Private>, PKey<Public>) {
@@ -423,6 +639,9 @@ mod tests {
         SeVerifierImpl {
             private_key,
             public_key,
+            config: crate::se::SeVerifierConfig::default(),
+            firmware_cache: RwLock::new(HashSet::new()),
+            http_client: reqwest::Client::new(),
         }
     }
 
@@ -440,6 +659,170 @@ mod tests {
     fn create_dummy_config_uid() -> ConfigUid {
         // ConfigUid is a type alias for [u8; 16]
         [0u8; 16]
+    }
+
+    // Helper to create a SeVerifierImpl with explicit firmware-verification
+    // setting and an optional mock server URL.
+    fn create_verifier_with_config(
+        enable_firmware_verification: bool,
+        url: Option<&str>,
+    ) -> SeVerifierImpl {
+        let (private_key, public_key) = generate_test_keypair();
+        SeVerifierImpl {
+            private_key,
+            public_key,
+            config: crate::se::SeVerifierConfig {
+                enable_firmware_verification,
+                firmware_verify_url: url
+                    .map(str::to_string)
+                    .unwrap_or_else(|| crate::se::DEFAULT_FIRMWARE_VERIFY_URL.to_string()),
+            },
+            firmware_cache: RwLock::new(HashSet::new()),
+            http_client: reqwest::Client::new(),
+        }
+    }
+
+    const FW_REF_ID: &str = "70be38f2-cccd-4cb8-9cf5-8df1838320c1";
+
+    /// Build a firmware API response body.
+    fn fw_response_body(
+        valid: bool,
+        reason: &str,
+        verified_hashes: Option<Vec<serde_json::Value>>,
+    ) -> serde_json::Value {
+        let version = if verified_hashes.is_some() {
+            "2.0"
+        } else {
+            "1.0"
+        };
+        let mut body = serde_json::json!({
+            "version": version,
+            "valid": valid,
+            "referenceId": FW_REF_ID,
+            "reason": reason
+        });
+        if let Some(hashes) = verified_hashes {
+            body["verifiedHashes"] = serde_json::json!(hashes);
+        }
+        body
+    }
+
+    /// Mount a v1 failure `valid:false` mock on `server` that fires exactly `times` times.
+    async fn mount_fw_fail_mock(server: &wiremock::MockServer, reason: &str, times: u64) {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, ResponseTemplate};
+        Mock::given(method("POST"))
+            .and(path("/verify"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(fw_response_body(false, reason, None)),
+            )
+            .up_to_n_times(times)
+            .expect(times)
+            .mount(server)
+            .await;
+    }
+
+    // Mounts a success mock (valid:true) that fires exactly `times` times.
+    // verified_hashes=None → v1 response (no verifiedHashes field, matches default endpoint).
+    // verified_hashes=Some(..) → v2 response (verifiedHashes present).
+    async fn mount_fw_success_mock(
+        server: &wiremock::MockServer,
+        times: u64,
+        verified_hashes: Option<Vec<serde_json::Value>>,
+    ) {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, ResponseTemplate};
+        Mock::given(method("POST"))
+            .and(path("/verify"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(fw_response_body(
+                true,
+                &format!("All hashes are valid, referenceId:{FW_REF_ID}"),
+                verified_hashes,
+            )))
+            .up_to_n_times(times)
+            .expect(times)
+            .mount(server)
+            .await;
+    }
+
+    // Helper to build a SeAttestationResponse with a valid HMAC measurement so
+    // that evaluate() passes the measurement check and reaches the firmware branches.
+    fn make_valid_response_with_firmware(
+        verifier: &SeVerifierImpl,
+        include_firmware_state: bool,
+    ) -> SeAttestationResponse {
+        let nonce = vec![0x09u8; 16];
+        let meas_key_bytes = vec![0x0Au8; 32];
+        let encr_nonce = verifier.encrypt(&nonce).expect("encrypt nonce");
+        let encr_key = verifier.encrypt(&meas_key_bytes).expect("encrypt key");
+
+        let user_data = vec![0u8; SE_REPORT_DATA_SIZE];
+        let cuid = create_dummy_config_uid();
+        let image_hdr_tags = create_dummy_boot_hdr_tags();
+
+        // additional_data: 64 bytes PHKH (always) + optionally 320 bytes firmware state
+        let mut additional_data = vec![0x01u8; PHKH_ADDITIONAL_DATA_SIZE];
+        if include_firmware_state {
+            additional_data.extend_from_slice(&[0x02u8; FIRMWARE_STATE_SIZE]);
+        }
+
+        // Compute the measurement the same way evaluate() does, so eq_secure() passes.
+        let nonce_array: [u8; 16] = nonce.as_slice().try_into().expect("nonce must be 16 bytes");
+        let items = AttestationItems::new(
+            &image_hdr_tags,
+            &cuid,
+            Some(&user_data),
+            Some(&nonce_array),
+            Some(&additional_data),
+        );
+        let meas_key_pkey = openssl::pkey::PKey::hmac(&meas_key_bytes).expect("build HMAC key");
+        let measurement = AttestationMeasurement::calculate(
+            items,
+            AttestationMeasAlg::HmacSha512,
+            &meas_key_pkey,
+        )
+        .expect("calculate measurement");
+
+        SeAttestationResponse {
+            measurement: measurement.as_ref().to_vec(),
+            additional_data,
+            user_data,
+            cuid,
+            encr_measurement_key: encr_key,
+            encr_request_nonce: encr_nonce,
+            image_hdr_tags,
+        }
+    }
+
+    fn assert_machine_type(params: &str, expected: Option<&str>) {
+        assert_eq!(
+            machine_type_from_tee_parameters(params),
+            expected.map(str::to_owned),
+            "input: {params:?}"
+        );
+    }
+
+    #[test]
+    fn machine_type_is_read_from_kbs_extra_params() {
+        // known machine types
+        assert_machine_type(r#"{"machine-type":"z17"}"#, Some("z17"));
+        assert_machine_type(r#"{"machine-type":"z16"}"#, Some("z16"));
+
+        // empty string value is returned as-is, not treated as absent
+        assert_machine_type(r#"{"machine-type":""}"#, Some(""));
+
+        // key absent or object empty → None
+        assert_machine_type(r#"{"other-key":"z17"}"#, None);
+        assert_machine_type(r#"{}"#, None);
+
+        // non-string value (number, bool, null) → None
+        assert_machine_type(r#"{"machine-type":42}"#, None);
+        assert_machine_type(r#"{"machine-type":true}"#, None);
+        assert_machine_type(r#"{"machine-type":null}"#, None);
+
+        // invalid / empty input → None, must not panic
+        assert_machine_type("", None);
+        assert_machine_type("not-json", None);
     }
 
     /// Test user_data validation when report_data is provided and matches
@@ -473,7 +856,9 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::Value(&report_data);
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(verifier.evaluate(evidence, &expected_report_data));
 
         // Should fail at measurement verification (we don't have valid measurement),
         // but NOT at user_data validation
@@ -521,7 +906,9 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::Value(&report_data);
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(verifier.evaluate(evidence, &expected_report_data));
 
         assert!(result.is_err(), "Should fail with mismatched user_data");
         let err = result.unwrap_err();
@@ -566,7 +953,9 @@ mod tests {
         let evidence = serde_json::to_value(&response).expect("Failed to serialize");
         let expected_report_data = ReportData::NotProvided;
 
-        let result = verifier.evaluate(evidence, &expected_report_data);
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(verifier.evaluate(evidence, &expected_report_data));
 
         // Should fail at measurement verification, but NOT at user_data validation
         assert!(result.is_err(), "Should fail at measurement verification");
@@ -580,5 +969,114 @@ mod tests {
                 se_error
             );
         }
+    }
+
+    // Firmware decision matrix — uses valid measurements so evaluate() reaches the
+    // firmware branches.
+    //
+    // | fw_present | enable_fw | expected outcome                                      |
+    // |------------|-----------|-------------------------------------------------------|
+    // | true       | true      | verify_firmware called → Ok (mock returns valid:true) |
+    // | true       | false     | firmware hash present but verification skipped → Ok   |
+    // | false      | true      | no firmware state → Ok (verification skipped)         |
+    // | false      | false     | no firmware state, verification disabled → Ok         |
+    #[rstest]
+    #[case::fw_present_verify_enabled(true, true)]
+    #[case::fw_present_verify_disabled(true, false)]
+    #[case::no_fw_verify_enabled(false, true)]
+    #[case::no_fw_verify_disabled(false, false)]
+    #[tokio::test]
+    async fn firmware_decision_matrix(#[case] fw_present: bool, #[case] enable_fw: bool) {
+        use wiremock::MockServer;
+
+        let server = MockServer::start().await;
+        if fw_present && enable_fw {
+            mount_fw_success_mock(&server, 1, None).await;
+        }
+
+        let url = format!("{}/verify", server.uri());
+        let verifier = create_verifier_with_config(enable_fw, Some(&url));
+        let response = make_valid_response_with_firmware(&verifier, fw_present);
+        let evidence = serde_json::to_value(&response).expect("serialize");
+
+        let result = verifier.evaluate(evidence, &ReportData::NotProvided).await;
+
+        assert!(
+            result.is_ok(),
+            "fw_present={fw_present} enable_fw={enable_fw}: expected Ok, got: {:?}",
+            result.unwrap_err()
+        );
+
+        if fw_present && enable_fw {
+            server.verify().await;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // verify_firmware retry tests — wiremock stands in for the firmware API.
+    //
+    // Parameters:
+    //   fail_count   – how many valid:false responses the mock emits
+    //   v2_success   – if true the success response includes verifiedHashes (v2 API)
+    //   expect_ok    – whether the call should return Ok(()) or Err
+    //   payload_byte – single byte repeated to fill the 320-byte firmware hash
+    // ---------------------------------------------------------------------------
+    #[rstest]
+    // Case 1: 1 failure then v1 success
+    #[case::succeeds_on_second_attempt(1, false, true, 0xA1)]
+    // Case 2: 2 failures then v2 success
+    #[case::succeeds_on_third_attempt_v2(2, true, true, 0xB2)]
+    // Case 3: all MAX_RETRIES failures → Err.
+    #[case::fails_after_all_retries(MAX_RETRIES as usize, false, false, 0xC3)]
+    // Case 4: MAX_RETRIES-1 failures then v1 success on the last attempt.
+    #[case::succeeds_on_last_attempt((MAX_RETRIES - 1) as usize, false, true, 0xD4)]
+    #[tokio::test]
+    async fn fw_retry(
+        #[case] fail_count: usize,
+        #[case] v2_success: bool,
+        #[case] expect_ok: bool,
+        #[case] payload_byte: u8,
+    ) {
+        use wiremock::MockServer;
+        let server = MockServer::start().await;
+
+        for _ in 0..fail_count {
+            mount_fw_fail_mock(&server, "Hash mismatch, referenceId:70be38f2", 1).await;
+        }
+
+        if expect_ok {
+            let hashes = if v2_success {
+                Some(vec![
+                    serde_json::json!({"hash": "h1", "signature": "s1"}),
+                    serde_json::json!({"hash": "h2", "signature": "s2"}),
+                ])
+            } else {
+                None
+            };
+            mount_fw_success_mock(&server, 1, hashes).await;
+        }
+
+        let verifier = create_verifier_with_config(true, Some(&format!("{}/verify", server.uri())));
+        let firmware_hash = vec![payload_byte; FIRMWARE_STATE_SIZE];
+        let result = verifier.verify_firmware(&firmware_hash).await;
+
+        if expect_ok {
+            assert!(
+                result.is_ok(),
+                "expected Ok after {fail_count} failure(s), got: {result:?}"
+            );
+        } else {
+            assert!(
+                result.is_err(),
+                "expected Err after all {MAX_RETRIES} retries"
+            );
+            let err_str = result.unwrap_err().to_string();
+            assert!(
+                err_str.contains("firmware not valid after"),
+                "unexpected error message: {err_str}"
+            );
+        }
+
+        server.verify().await;
     }
 }
