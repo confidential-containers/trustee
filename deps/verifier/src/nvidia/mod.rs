@@ -368,7 +368,7 @@ impl Verifier for Nvidia {
         expected_report_data: &ReportData,
         _expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let devices: NvDeviceEvidence = serde_json::from_value(evidence)
+        let devices: NvDeviceEvidence = serde_json::from_value(evidence.data)
             .context("Failed to deserialize the NVIDIA device evidence")?;
         let mut all_devices_claims: Vec<(TeeEvidenceParsedClaim, String)> = Vec::new();
 
@@ -518,7 +518,7 @@ mod tests {
         });
         let verifier = Nvidia::new(verifier_config).await.unwrap();
         let claims = verifier
-            .evaluate(evidence, &report_data, &init_data)
+            .evaluate(evidence.into(), &report_data, &init_data)
             .await
             .unwrap();
 

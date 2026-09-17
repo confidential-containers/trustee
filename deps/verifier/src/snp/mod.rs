@@ -382,7 +382,7 @@ impl Verifier for Snp {
         let SnpEvidence {
             attestation_report: report,
             cert_chain,
-        } = serde_json::from_value(evidence).context("Deserialize SNP Evidence failed")?;
+        } = serde_json::from_value(evidence.data).context("Deserialize SNP Evidence failed")?;
 
         // See Trustee Issue#589 https://github.com/confidential-containers/trustee/issues/589
         // Version 3 minimum is needed to tell processor type in report

@@ -31,7 +31,7 @@ impl Verifier for SampleDeviceVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let tee_evidence = serde_json::from_value::<SampleDeviceEvidence>(evidence)
+        let tee_evidence = serde_json::from_value::<SampleDeviceEvidence>(evidence.data)
             .context("Deserialize Quote failed.")?;
 
         verify_tee_evidence(expected_report_data, expected_init_data_hash, &tee_evidence)

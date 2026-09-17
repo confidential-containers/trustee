@@ -87,7 +87,7 @@ impl Attest for BuiltInCoCoAs {
             };
 
             let mut request = VerificationRequest {
-                evidence: evidence.tee_evidence,
+                evidence: evidence.tee_evidence.into(),
                 tee: evidence.tee,
                 runtime_data: Some(RuntimeData::Structured(evidence.runtime_data)),
                 runtime_data_hash_algorithm,
