@@ -291,10 +291,16 @@ impl TestHarness {
                 "authorization_mode": "AuthenticatedAuthorization",
                 "authorization": {
                     "regex_acl": {
-                        "acls": [{
-                            "role": ADMIN_ROLE,
-                            "allowed_endpoints": "^/(kbs/v0/.*|metrics)$"
-                        }]
+                        "acls": [
+                            {
+                                "role": ADMIN_ROLE,
+                                "allowed_endpoints": "^/kbs/v0/.*$"
+                            },
+                            {
+                                "role": ADMIN_ROLE,
+                                "allowed_endpoints": "^/metrics$"
+                            }
+                        ]
                     }
                 },
                 "authentication": {

@@ -5,11 +5,13 @@ The Key Broker Service (KBS) exposes Prometheus metrics on the `/metrics` HTTP e
 > **Access control**: By default `/metrics` is served without authentication. Set
 > `require_admin_auth_metrics = true` under the `http_server` section of your KBS
 > configuration to protect the endpoint with the [admin API](admin.md) authentication and
-> authorization configuration. When enabled, scraping clients must present a valid admin JWT
-> (see `admin.authentication`) that is allowed for the `/metrics` path by the configured ACL
-> (e.g. an `allowed_endpoints` regex of `^/(kbs/v0/.*|metrics)$`). When the admin backend is
-> `DenyAll`, `/metrics` is not accessible at all. This prevents unauthenticated disclosure of
-> sensitive label values (resource paths, TEE types).
+> authorization configuration. This is defense-in-depth for deployments that do not place an
+> authenticating gateway in front of KBS; it is not a replacement for restricting network
+> access to the metrics port. When enabled, scraping clients must present a valid admin JWT
+> (see `admin.authentication`) that is allowed for the `/metrics` path by the configured ACL.
+> Because each ACL rule targets a single top-level namespace, grant metrics with its own rule,
+> e.g. an `allowed_endpoints` regex of `^/metrics$` alongside the existing `^/kbs/v0/.*$` rule.
+> When the admin backend is `DenyAll`, `/metrics` is not accessible at all.
 
 The `/metrics` endpoint itself is excluded from request metrics collection to
 avoid skewing the data with monitoring traffic.

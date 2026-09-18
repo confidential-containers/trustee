@@ -315,7 +315,7 @@ Each ACL entry:
 | `role` | String | JWT `role` value to match | Yes |
 | `allowed_endpoints` | String | Regex of allowed request paths | Yes |
 
-`allowed_endpoints` must start with `^/` and end with `$`.
+`allowed_endpoints` must start with `^/kbs` or `^/metrics` and end with `$`. Each rule targets a single top-level namespace; grant access to both by adding one rule per namespace.
 
 ### Storage Backend Configuration
 
