@@ -1282,6 +1282,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
+name = "base64-serde"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c6d128af408d8ebd08331f0331cf2cf20d19e6c44a7aec58791641ecc8c0b5"
+
+[[package]]
 name = "base64-simd"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1746,6 +1752,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
+name = "cmw"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579a5bfd38d97739b94c06dd5aa08a85621b18dc3a6b06def2998afc52b518c0"
+dependencies = [
+ "base64 0.22.1",
+ "base64-serde",
+ "bitflags 1.3.2",
+ "ciborium",
+ "hex",
+ "iri-string",
+ "lazy_static",
+ "mime",
+ "minicbor 1.1.0",
+ "minicbor-serde",
+ "once_cell",
+ "regex",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "simple_asn1",
+ "thiserror 2.0.21",
+ "xml-rs",
+]
+
+[[package]]
 name = "coarsetime"
 version = "0.1.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1986,6 +2018,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "corim-rs"
+version = "0.2.0"
+source = "git+https://github.com/veraison/corim-rs#65ef90ed2059171f5881d210eb4c8ddcb3f9d29b"
+dependencies = [
+ "base64 0.22.1",
+ "ciborium",
+ "coset",
+ "derive_more",
+ "either",
+ "oid",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "cose-rust"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1994,6 +2042,26 @@ dependencies = [
  "cbor-codec",
  "openssl",
  "rand 0.8.8",
+]
+
+[[package]]
+name = "coserv-rs"
+version = "0.1.0"
+source = "git+https://github.com/veraison/coserv-rs.git?rev=15121e8#15121e8baf89697a9739bf845968dae9da4e2e5c"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "ciborium",
+ "cmw",
+ "corim-rs 0.2.0",
+ "coset",
+ "derive_more",
+ "jsonwebkey 0.3.5",
+ "mime",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -3605,6 +3673,7 @@ dependencies = [
  "moka",
  "pin-project-lite",
  "postcard",
+ "redb",
  "serde",
  "url",
 ]
@@ -4054,6 +4123,16 @@ name = "ipnet"
 version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
+
+[[package]]
+name = "iri-string"
+version = "0.7.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1663ee7d8cf2900cc1414b1e1eec9f348d6eaa3bcab07579f4726a4b8499f447"
+dependencies = [
+ "memchr",
+ "serde",
+]
 
 [[package]]
 name = "is_debug"
@@ -4751,6 +4830,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mediatype"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "120fa187be19d9962f0926633453784691731018a2bf936ddb4e29101b79c4a7"
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4780,6 +4865,42 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "minicbor"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "734daad4ff3b880f23dc2a675dd74553fa8e583367aa7523f96a16e96a516b62"
+dependencies = [
+ "minicbor-derive",
+]
+
+[[package]]
+name = "minicbor"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7244eafd1e09e7c4e33043881997aa6ab6dffff3ed2cee3395a278980481d6e"
+
+[[package]]
+name = "minicbor-derive"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "512ce2c37128698ea15c99b3518936c78a8b112b92468e7b95b9fa045666ebd8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "minicbor-serde"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80047f75e28e3b38f6ab2ec3c2c7669f6b411fa6f8424e1a90a3fd784b19a3f4"
+dependencies = [
+ "minicbor 2.3.1",
+ "serde",
+]
 
 [[package]]
 name = "minimal-lexical"
@@ -5992,6 +6113,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redb"
+version = "4.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39178e0a867f9e3eaa6292a4ab1dd3613f2519c5b564341e1e7b29b270736cc4"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "redis"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6096,7 +6226,7 @@ dependencies = [
  "ciborium",
  "clap",
  "config",
- "corim-rs",
+ "corim-rs 0.1.0",
  "hex",
  "key-value-storage",
  "prost",
@@ -6281,8 +6411,11 @@ dependencies = [
  "bytes",
  "cookie 0.18.2",
  "cookie_store",
+ "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
+ "h2 0.4.20",
  "http 1.5.0",
  "http-body 1.1.0",
  "http-body-util",
@@ -6292,6 +6425,7 @@ dependencies = [
  "hyper-util",
  "js-sys",
  "log",
+ "mime",
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
@@ -8465,6 +8599,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "uritemplate-next"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcde98d1fc3f528255b1ecb22fb688ee0d23deb672a8c57127df10b98b4bd18c"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8548,16 +8691,22 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 [[package]]
 name = "veraison-apiclient"
 version = "0.0.2"
-source = "git+https://github.com/veraison/rust-apiclient?rev=fe149cd#fe149cdace19ee4b171b2ff38f708265daf155cc"
+source = "git+https://github.com/veraison/rust-apiclient?rev=91bb4ac#91bb4acc426f01c519c074ab881c29d526b7a6d4"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.22.1",
  "chrono",
+ "ciborium",
+ "coserv-rs",
+ "http-cache-reqwest",
  "jsonwebkey 0.3.5",
- "reqwest 0.12.28",
+ "mediatype",
+ "reqwest 0.13.5",
+ "reqwest-middleware",
  "serde",
  "serde_with",
  "thiserror 2.0.21",
  "tokio",
+ "uritemplate-next",
  "url",
 ]
 
@@ -9095,6 +9244,12 @@ dependencies = [
  "thiserror 2.0.21",
  "time",
 ]
+
+[[package]]
+name = "xml-rs"
+version = "0.8.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xmlparser"
