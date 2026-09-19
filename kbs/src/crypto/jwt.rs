@@ -22,8 +22,11 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::fs;
 use std::str::FromStr;
+use std::time::Duration;
 
-use crate::crypto::jwk::read_jwk_from_uri;
+use crate::crypto::jwk::{
+    key_fetch_client, read_jwk_from_uri, KEY_FETCH_CONNECT_TIMEOUT, KEY_FETCH_TIMEOUT,
+};
 
 fn path_to_file_uri(path: &str) -> Result<String> {
     let abs = std::path::Path::new(path)
@@ -49,10 +52,23 @@ fn normalize_jwk_set_source(source: &str) -> Result<String> {
 
 /// Read a PEM public key from a URI (`https://`, `file://`, or local path).
 pub(crate) async fn read_pem_public_key_from_uri(uri: &str) -> Result<DecodingKey> {
+    read_pem_public_key_from_uri_with_timeouts(uri, KEY_FETCH_CONNECT_TIMEOUT, KEY_FETCH_TIMEOUT)
+        .await
+}
+
+async fn read_pem_public_key_from_uri_with_timeouts(
+    uri: &str,
+    connect_timeout: Duration,
+    timeout: Duration,
+) -> Result<DecodingKey> {
     let maybe_url = Url::parse(uri);
     let data = if let Ok(url) = maybe_url {
         match url.scheme() {
-            "https" => reqwest::get(uri).await?.bytes().await?.to_vec(),
+            "https" => {
+                let client = key_fetch_client(connect_timeout, timeout)
+                    .context("failed to build HTTP client")?;
+                client.get(uri).send().await?.bytes().await?.to_vec()
+            }
             "file" => std::fs::read(url.path())?,
             _ => {
                 bail!("unsupported scheme in {uri}");
@@ -366,6 +382,31 @@ mod tests {
             got.is_ok(),
             expect_ok,
             "unexpected outcome: {got:?} (trusted={trusted_pem_path}, jwk={jwk_json_path})"
+        );
+    }
+
+    /// Without a timeout a silent endpoint would hang the PEM fetch forever.
+    #[tokio::test]
+    async fn test_remote_pem_fetch_times_out() {
+        use super::read_pem_public_key_from_uri_with_timeouts;
+        use crate::crypto::test_util::silent_endpoint;
+        use std::time::{Duration, Instant};
+
+        let uri = format!("https://{}", silent_endpoint().await);
+        let timeout = Duration::from_secs(1);
+
+        let start = Instant::now();
+        let result = read_pem_public_key_from_uri_with_timeouts(&uri, timeout, timeout).await;
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err(), "expected the fetch to time out");
+        assert!(
+            elapsed >= timeout,
+            "fetch failed after {elapsed:?}, before the timeout could fire"
+        );
+        assert!(
+            elapsed < timeout + Duration::from_secs(3),
+            "fetch took {elapsed:?}, expected to fail within {timeout:?}"
         );
     }
 }

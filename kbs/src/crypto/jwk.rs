@@ -3,13 +3,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonwebtoken::jwk::JwkSet;
-use reqwest::{get, Url};
+use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::fs;
+use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, info};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
+
+/// Connect timeout for fetching remote key material (JWK sets, OpenID
+/// configuration and PEM public keys).
+pub(crate) const KEY_FETCH_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Total timeout for a single remote key material fetch, including reading the
+/// body. These are small static documents, so this only guards against an
+/// unreachable or wedged endpoint hanging KBS startup indefinitely.
+pub(crate) const KEY_FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Error, Debug)]
 pub(crate) enum JwksGetError {
@@ -29,6 +39,17 @@ pub(crate) struct OpenIDConfig {
     jwks_uri: String,
 }
 
+/// Build the HTTP client used for remote key material fetches.
+pub(crate) fn key_fetch_client(
+    connect_timeout: Duration,
+    timeout: Duration,
+) -> reqwest::Result<Client> {
+    Client::builder()
+        .connect_timeout(connect_timeout)
+        .timeout(timeout)
+        .build()
+}
+
 /// Load a JWK set from a configured source.
 ///
 /// - `file://` and local paths: JWKS JSON file, read directly.
@@ -36,6 +57,14 @@ pub(crate) struct OpenIDConfig {
 ///   fails or returns no keys, it falls back to OpenID discovery at
 ///   `{uri}/.well-known/openid-configuration` and loads the returned `jwks_uri`.
 pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
+    read_jwk_from_uri_with_timeouts(uri, KEY_FETCH_CONNECT_TIMEOUT, KEY_FETCH_TIMEOUT).await
+}
+
+async fn read_jwk_from_uri_with_timeouts(
+    uri: &str,
+    connect_timeout: Duration,
+    timeout: Duration,
+) -> Result<JwkSet, JwksGetError> {
     let url = Url::parse(uri).map_err(|e| JwksGetError::InvalidSourcePath(e.to_string()))?;
     match url.scheme() {
         "file" => {
@@ -46,8 +75,17 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             })
         }
         "https" => {
+            let client = key_fetch_client(connect_timeout, timeout).map_err(|source| {
+                JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to build HTTP client"),
+                }
+            })?;
+
             // Try to load a JWK set directly from the configured URL first.
-            match get(uri)
+            match client
+                .get(uri)
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
@@ -68,7 +106,9 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             // Fall back to OpenID discovery at `{uri}/.well-known/openid-configuration`.
             let openid_config_url = build_openid_config_url(&url)?;
             info!("Getting OpenID configuration from {openid_config_url}");
-            let oidc: OpenIDConfig = get(openid_config_url.as_str())
+            let oidc: OpenIDConfig = client
+                .get(openid_config_url.as_str())
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source)
@@ -85,7 +125,9 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
                 JwksGetError::InvalidSourcePath(format!("invalid jwks_uri {}: {e}", oidc.jwks_uri))
             })?;
 
-            let jwks = get(jwks_url.as_str())
+            let jwks = client
+                .get(jwks_url.as_str())
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
@@ -122,10 +164,12 @@ fn build_openid_config_url(base: &Url) -> Result<Url, JwksGetError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_openid_config_url, read_jwk_from_uri};
+    use super::{build_openid_config_url, read_jwk_from_uri, read_jwk_from_uri_with_timeouts};
+    use crate::crypto::test_util::silent_endpoint;
     use jsonwebtoken::jwk::KeyAlgorithm;
     use reqwest::Url;
     use rstest::rstest;
+    use std::time::{Duration, Instant};
 
     #[rstest]
     #[case("https://", true)]
@@ -176,5 +220,28 @@ mod tests {
         let url = Url::parse(base).expect("valid base url");
         let got = build_openid_config_url(&url).expect("build discovery url");
         assert_eq!(got.as_str(), expected);
+    }
+
+    /// Without a timeout a silent endpoint would hang the fetch forever. A transport
+    /// error on the direct fetch is returned as-is rather than falling back to OpenID
+    /// discovery, so exactly one attempt is expected to time out.
+    #[tokio::test]
+    async fn test_remote_jwks_fetch_times_out() {
+        let uri = format!("https://{}", silent_endpoint().await);
+        let timeout = Duration::from_secs(1);
+
+        let start = Instant::now();
+        let result = read_jwk_from_uri_with_timeouts(&uri, timeout, timeout).await;
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err(), "expected the fetch to time out");
+        assert!(
+            elapsed >= timeout,
+            "fetch failed after {elapsed:?}, before the timeout could fire"
+        );
+        assert!(
+            elapsed < timeout + Duration::from_secs(3),
+            "fetch took {elapsed:?}, expected to fail within {timeout:?}"
+        );
     }
 }
