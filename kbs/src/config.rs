@@ -18,6 +18,8 @@ use strum::AsRefStr;
 const DEFAULT_INSECURE_HTTP: bool = false;
 const DEFAULT_SOCKET: &str = "127.0.0.1:8080";
 const DEFAULT_PAYLOAD_REQUEST_SIZE: u32 = 2;
+const DEFAULT_AUTH_RATE_LIMIT_PER_SECOND: u32 = 0;
+const DEFAULT_AUTH_RATE_LIMIT_BURST: u32 = 10;
 
 /// TLS security profile
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -123,6 +125,15 @@ pub struct HttpServerConfig {
     /// If not specified, defaults to the number of logical CPU cores.
     pub worker_count: Option<usize>,
 
+    /// Sustained per-client-IP rate limit for `POST /kbs/v0/auth`, in requests
+    /// per second. 0 disables the limit.
+    pub auth_rate_limit_per_second: u32,
+
+    /// Number of `POST /kbs/v0/auth` requests a single client IP may send in a
+    /// burst beyond the sustained rate before it is answered with 429. Must be
+    /// at least 1 when the limit is enabled.
+    pub auth_rate_limit_burst: u32,
+
     /// TLS/HTTPS configuration
     #[serde(flatten)]
     pub tls: TlsConfig,
@@ -135,8 +146,22 @@ impl Default for HttpServerConfig {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig::default(),
         }
+    }
+}
+
+impl HttpServerConfig {
+    /// Validate HTTP server configuration consistency
+    pub fn validate(&self) -> Result<()> {
+        if self.auth_rate_limit_per_second > 0 && self.auth_rate_limit_burst == 0 {
+            bail!(
+                "auth_rate_limit_burst must be at least 1 when auth_rate_limit_per_second is set"
+            );
+        }
+        self.tls.validate().context("TLS configuration error")
     }
 }
 
@@ -242,12 +267,7 @@ impl TryFrom<&Path> for KbsConfig {
             .try_deserialize()
             .map_err(|e| format_config_load_error(config_path, e))?;
 
-        // Validate TLS configuration
-        config
-            .http_server
-            .tls
-            .validate()
-            .context("TLS configuration error")?;
+        config.http_server.validate()?;
 
         Ok(config)
     }
@@ -270,7 +290,8 @@ mod tests {
     use crate::{
         admin::AdminConfig,
         config::{
-            HttpServerConfig, TlsConfig, TlsProfile, TlsVersion, DEFAULT_INSECURE_HTTP,
+            HttpServerConfig, TlsConfig, TlsProfile, TlsVersion, DEFAULT_AUTH_RATE_LIMIT_BURST,
+            DEFAULT_AUTH_RATE_LIMIT_PER_SECOND, DEFAULT_INSECURE_HTTP,
             DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
         },
         plugins::{
@@ -371,6 +392,8 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig {
                 private_key: Some("/etc/kbs-private.key".into()),
                 certificate: Some("/etc/kbs-cert.pem".into()),
@@ -432,6 +455,8 @@ mod tests {
             insecure_http: DEFAULT_INSECURE_HTTP,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},
@@ -476,6 +501,8 @@ mod tests {
             insecure_http: false,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig {
                 private_key: Some("/etc/kbs-private.key".into()),
                 certificate: Some("/etc/kbs-cert.pem".into()),
@@ -525,6 +552,8 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig::default(),
         },
         admin: make_token_authorization_admin_config(),
@@ -571,6 +600,8 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::InsecureAllowAll {},
@@ -613,6 +644,8 @@ mod tests {
             insecure_http: true,
             payload_request_size: DEFAULT_PAYLOAD_REQUEST_SIZE,
             worker_count: None,
+            auth_rate_limit_per_second: DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+            auth_rate_limit_burst: DEFAULT_AUTH_RATE_LIMIT_BURST,
             tls: TlsConfig::default(),
         },
         admin: AdminConfig::DenyAll {},
@@ -806,5 +839,71 @@ type = "Simple"
         let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
         assert_eq!(config.http_server.tls.profile, expected_profile);
         assert_eq!(config.http_server.tls.min_version, expected_min_version);
+    }
+
+    #[rstest]
+    #[case(
+        "test_data/configs/coco-as-grpc-3.toml",
+        DEFAULT_AUTH_RATE_LIMIT_PER_SECOND,
+        DEFAULT_AUTH_RATE_LIMIT_BURST
+    )]
+    #[case("test_data/configs/auth-rate-limit.toml", 5, 20)]
+    fn test_auth_rate_limit_config_files(
+        #[case] config_path: &str,
+        #[case] expected_per_second: u32,
+        #[case] expected_burst: u32,
+    ) {
+        let config = KbsConfig::try_from(Path::new(config_path)).unwrap();
+        assert_eq!(
+            config.http_server.auth_rate_limit_per_second,
+            expected_per_second
+        );
+        assert_eq!(config.http_server.auth_rate_limit_burst, expected_burst);
+    }
+
+    #[rstest]
+    #[case::disabled_ignores_burst(0, 0, true)]
+    #[case::enabled_requires_burst(5, 0, false)]
+    #[case::enabled_with_burst(5, 1, true)]
+    fn test_auth_rate_limit_validation(
+        #[case] per_second: u32,
+        #[case] burst: u32,
+        #[case] expect_ok: bool,
+    ) {
+        let config = HttpServerConfig {
+            auth_rate_limit_per_second: per_second,
+            auth_rate_limit_burst: burst,
+            ..Default::default()
+        };
+        assert_eq!(config.validate().is_ok(), expect_ok);
+    }
+
+    #[test]
+    fn config_load_rejects_auth_rate_limit_without_burst() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("kbs.toml");
+        std::fs::write(
+            &path,
+            r#"
+[http_server]
+insecure_http = true
+auth_rate_limit_per_second = 5
+auth_rate_limit_burst = 0
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+authorization_mode = "DenyAll"
+"#,
+        )
+        .expect("write config");
+
+        let err = KbsConfig::try_from(path.as_path()).unwrap_err();
+        assert!(
+            err.to_string().contains("auth_rate_limit_burst"),
+            "unexpected error: {err}"
+        );
     }
 }

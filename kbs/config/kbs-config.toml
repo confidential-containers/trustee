@@ -1,5 +1,8 @@
 [http_server]
 insecure_http = true
+# Per-client-IP rate limit for POST /kbs/v0/auth: sustained requests per second (0 = disabled) and burst.
+# auth_rate_limit_per_second = 5
+# auth_rate_limit_burst = 10
 
 [attestation_token]
 insecure_header_jwk = true

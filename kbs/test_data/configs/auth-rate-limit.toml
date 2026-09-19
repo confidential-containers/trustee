@@ -1,0 +1,15 @@
+# Per-client-IP rate limit on POST /kbs/v0/auth
+[http_server]
+insecure_http = true
+auth_rate_limit_per_second = 5
+auth_rate_limit_burst = 20
+
+[attestation_service]
+type = "coco_as_grpc"
+as_addr = "http://127.0.0.1:50001"
+
+[admin]
+authorization_mode = "DenyAll"
+
+[storage_backend]
+storage_type = "memory"

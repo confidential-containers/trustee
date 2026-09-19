@@ -27,11 +27,15 @@ The following properties can be set under the `[http_server]` section.
 | `certificate`          | String       | Path to a certificate file to be used for HTTPS. | No       | None                     |
 | `payload_request_size` | Integer      | Request payload size in mega bytes.              | No       | 2                        |
 | `worker_count`         | Integer      | Number of HTTP actix worker threads              | No       | Num of logical CPU cores |
+| `auth_rate_limit_per_second` | Integer | Per-client-IP rate limit for `POST /kbs/v0/auth`, in requests per second. `0` disables the limit. | No | `0` |
+| `auth_rate_limit_burst` | Integer     | Extra `POST /kbs/v0/auth` requests a client IP may send in a burst before receiving `429`. Must be at least 1 when the limit is enabled. | No | `10` |
 | `tls_profile`          | String       | TLS security profile (see [TLS Configuration](#tls-configuration)) | No | `intermediate` |
 | `tls_min_version`      | String       | Minimum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
 | `tls_max_version`      | String       | Maximum TLS version: `1.2` or `1.3`              | No       | Profile-dependent        |
 | `tls_ciphers`          | String       | TLS cipher suites (colon-separated OpenSSL list) | No       | Profile-dependent        |
 | `tls_groups`           | String       | TLS key exchange groups (colon-separated list)   | No       | Auto-detected with PQC   |
+
+The auth rate limit is keyed on the peer address of the TCP connection, so behind a reverse proxy or load balancer it applies to the proxy's address rather than the client's.
 
 #### TLS Configuration
 

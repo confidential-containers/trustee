@@ -4,7 +4,12 @@
 
 use std::collections::HashMap;
 
+use actix_governor::{
+    governor::middleware::NoOpMiddleware, Governor, GovernorConfig, GovernorConfigBuilder,
+    PeerIpKeyExtractor,
+};
 use actix_web::{
+    guard,
     http::{header::Header, Method},
     middleware,
     web::{self, Query},
@@ -20,7 +25,7 @@ use tracing::{info, warn};
 
 use crate::{
     admin::Admin,
-    config::KbsConfig,
+    config::{HttpServerConfig, KbsConfig},
     jwe::jwe,
     plugins::PluginManager,
     prometheus::{
@@ -160,11 +165,13 @@ impl ApiServer {
         );
 
         let http_config = self.config.http_server.clone();
+        let auth_rate_limit = auth_rate_limit(&http_config)?;
 
         #[allow(clippy::redundant_closure)]
         let mut http_server = HttpServer::new({
             move || {
                 let api_server = self.clone();
+                let auth_rate_limit = auth_rate_limit.clone();
                 App::new()
                     .wrap(middleware::Logger::default())
                     .wrap(middleware::from_fn(prometheus_metrics_middleware))
@@ -172,13 +179,7 @@ impl ApiServer {
                     .app_data(web::PayloadConfig::new(
                         (1024 * 1024 * http_config.payload_request_size) as usize,
                     ))
-                    .service(
-                        web::resource([kbs_path!("{path:.*}")])
-                            .route(web::get().to(api))
-                            .route(web::post().to(api))
-                            .route(web::put().to(api))
-                            .route(web::delete().to(api)),
-                    )
+                    .configure(|cfg| configure_kbs_routes(cfg, auth_rate_limit))
                     .service(
                         web::resource("/metrics")
                             .route(web::get().to(prometheus_metrics_handler))
@@ -209,6 +210,54 @@ impl ApiServer {
             .map_err(|e| Error::HTTPFailed { source: e.into() })?
             .run())
     }
+}
+
+/// Rate limiter for `POST /kbs/v0/auth`, keyed by client IP. The limiter state
+/// lives behind an `Arc`, so clones share it across all server workers.
+type AuthRateLimit = GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware>;
+
+fn auth_rate_limit(http_config: &HttpServerConfig) -> Result<Option<AuthRateLimit>> {
+    if http_config.auth_rate_limit_per_second == 0 {
+        return Ok(None);
+    }
+    GovernorConfigBuilder::default()
+        .requests_per_second(http_config.auth_rate_limit_per_second.into())
+        .burst_size(http_config.auth_rate_limit_burst)
+        .finish()
+        .map(Some)
+        .ok_or_else(|| Error::HTTPFailed {
+            source: anyhow::anyhow!(
+                "invalid auth rate limit: {} requests per second with burst {}",
+                http_config.auth_rate_limit_per_second,
+                http_config.auth_rate_limit_burst
+            ),
+        })
+}
+
+/// Register the KBS API routes.
+///
+/// With a rate limit configured, `POST /kbs/v0/auth` gets its own resource ahead
+/// of the catch-all so it wins route matching, wrapped in the governor middleware
+/// but served by the same `api` handler. That handler dispatches on the first
+/// path segment, so the resource also covers `/kbs/v0/auth/<anything>`;
+/// otherwise a client could sidestep the limit by appending a segment. The POST
+/// guard lets other methods fall through to the catch-all unchanged.
+fn configure_kbs_routes(cfg: &mut web::ServiceConfig, auth_rate_limit: Option<AuthRateLimit>) {
+    if let Some(rate_limit) = auth_rate_limit {
+        cfg.service(
+            web::resource(kbs_path!("{path:auth(?:/.*)?}"))
+                .guard(guard::Post())
+                .wrap(Governor::new(&rate_limit))
+                .route(web::post().to(api)),
+        );
+    }
+    cfg.service(
+        web::resource([kbs_path!("{path:.*}")])
+            .route(web::get().to(api))
+            .route(web::post().to(api))
+            .route(web::put().to(api))
+            .route(web::delete().to(api)),
+    );
 }
 
 /// APIs
@@ -529,4 +578,132 @@ async fn prometheus_metrics_middleware(
     }
 
     Ok(res)
+}
+
+#[cfg(all(test, feature = "coco-as-builtin"))]
+mod tests {
+    use super::*;
+    use crate::token::AttestationTokenVerifierConfig;
+    use actix_web::http::StatusCode;
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use std::net::SocketAddr;
+
+    async fn test_api_server(per_second: u32, burst: u32) -> ApiServer {
+        let config = KbsConfig {
+            attestation_token: AttestationTokenVerifierConfig {
+                insecure_header_jwk: true,
+                ..Default::default()
+            },
+            http_server: HttpServerConfig {
+                insecure_http: true,
+                auth_rate_limit_per_second: per_second,
+                auth_rate_limit_burst: burst,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        ApiServer::new(config).await.expect("api server")
+    }
+
+    fn post_from(peer: SocketAddr, uri: &str) -> TestRequest {
+        TestRequest::post().uri(uri).peer_addr(peer)
+    }
+
+    fn auth_body() -> serde_json::Value {
+        json!({ "version": "0.4.0", "tee": "sample", "extra-params": {} })
+    }
+
+    #[actix_web::test]
+    async fn auth_rate_limit_throttles_auth_per_peer() {
+        let api_server = test_api_server(1, 2).await;
+        let rate_limit = auth_rate_limit(&api_server.config.http_server).unwrap();
+        assert!(rate_limit.is_some());
+        let app = init_service(
+            App::new()
+                .app_data(web::Data::new(api_server))
+                .configure(|cfg| configure_kbs_routes(cfg, rate_limit)),
+        )
+        .await;
+        let peer: SocketAddr = "10.0.0.1:4000".parse().unwrap();
+
+        // The burst admits two requests; the third from the same peer is rejected.
+        for _ in 0..2 {
+            let req = post_from(peer, "/kbs/v0/auth")
+                .set_json(auth_body())
+                .to_request();
+            let resp = call_service(&app, req).await;
+            assert_eq!(resp.status(), StatusCode::OK);
+        }
+        let req = post_from(peer, "/kbs/v0/auth")
+            .set_json(auth_body())
+            .to_request();
+        let resp = call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert!(resp.headers().contains_key("retry-after"));
+
+        // A trailing path segment reaches the same handler and shares the budget.
+        let req = post_from(peer, "/kbs/v0/auth/extra")
+            .set_json(auth_body())
+            .to_request();
+        let resp = call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+
+        // Another peer has its own budget.
+        let other: SocketAddr = "10.0.0.2:4000".parse().unwrap();
+        let req = post_from(other, "/kbs/v0/auth")
+            .set_json(auth_body())
+            .to_request();
+        let resp = call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // Other endpoints are not limited: attest from the throttled peer still
+        // reaches the handler, which rejects it for lack of a session, not with 429.
+        for _ in 0..3 {
+            let req = post_from(peer, "/kbs/v0/attest")
+                .set_payload("{}")
+                .to_request();
+            let resp = call_service(&app, req).await;
+            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        }
+
+        // Only POST is limited; other methods fall through to the catch-all as before.
+        let req = TestRequest::get()
+            .uri("/kbs/v0/auth")
+            .peer_addr(peer)
+            .to_request();
+        let resp = call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[actix_web::test]
+    async fn auth_rate_limit_disabled_by_default() {
+        let api_server = test_api_server(0, 0).await;
+        let rate_limit = auth_rate_limit(&api_server.config.http_server).unwrap();
+        assert!(rate_limit.is_none());
+        let app = init_service(
+            App::new()
+                .app_data(web::Data::new(api_server))
+                .configure(|cfg| configure_kbs_routes(cfg, rate_limit)),
+        )
+        .await;
+        let peer: SocketAddr = "10.0.0.1:4000".parse().unwrap();
+
+        for _ in 0..5 {
+            let req = post_from(peer, "/kbs/v0/auth")
+                .set_json(auth_body())
+                .to_request();
+            let resp = call_service(&app, req).await;
+            assert_eq!(resp.status(), StatusCode::OK);
+        }
+    }
+
+    #[test]
+    fn auth_rate_limit_rejects_zero_burst() {
+        let http_config = HttpServerConfig {
+            auth_rate_limit_per_second: 1,
+            auth_rate_limit_burst: 0,
+            ..Default::default()
+        };
+        assert!(auth_rate_limit(&http_config).is_err());
+    }
 }

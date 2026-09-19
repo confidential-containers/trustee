@@ -22,6 +22,7 @@ use serde_with::base64::{Base64, UrlSafe};
 use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
+use std::time::Duration;
 use tracing::{debug, info, warn};
 
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
@@ -31,6 +32,15 @@ const BASE_AS_ADDR: &str = "/appraisal/v2/attest";
 const AZURE_ADDR_SUFFIX: &str = "/azure";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
+
+/// Connect timeout for requests to Intel Trust Authority.
+const ITA_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Total timeout for a single attestation request to Intel Trust Authority,
+/// including reading the response. ITA verifies the evidence server side, so
+/// this is more generous than a plain document fetch; it only guards against
+/// an unreachable or wedged endpoint hanging an attestation indefinitely.
+const ITA_ATTEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DcapTeeEvidence {
@@ -157,6 +167,7 @@ pub struct IntelTrustAuthorityConfig {
 pub struct IntelTrustAuthority {
     config: IntelTrustAuthorityConfig,
     token_verifier: JwtVerifier,
+    client: reqwest::Client,
 }
 
 /// Build the ITA attestation request from a list of independent evidences.
@@ -325,8 +336,8 @@ impl Attest for IntelTrustAuthority {
             env!("CARGO_PKG_VERSION")
         );
 
-        let client = reqwest::Client::new();
-        let resp = client
+        let resp = self
+            .client
             .post(att_url)
             .header(USER_AGENT, user_agent)
             .header(CONTENT_TYPE, "application/json")
@@ -449,6 +460,14 @@ impl Attest for IntelTrustAuthority {
 
 impl IntelTrustAuthority {
     pub async fn new(config: IntelTrustAuthorityConfig) -> Result<Self> {
+        Self::new_with_timeouts(config, ITA_CONNECT_TIMEOUT, ITA_ATTEST_TIMEOUT).await
+    }
+
+    async fn new_with_timeouts(
+        config: IntelTrustAuthorityConfig,
+        connect_timeout: Duration,
+        timeout: Duration,
+    ) -> Result<Self> {
         let trusted_jwk_sets = vec![config.certs_file.clone()];
         let trusted_certs_paths: Vec<String> = Vec::new();
         let trusted_pem_public_keys = Vec::new();
@@ -461,9 +480,16 @@ impl IntelTrustAuthority {
         .await
         .context("Failed to initialize token verifier")?;
 
+        let client = reqwest::Client::builder()
+            .connect_timeout(connect_timeout)
+            .timeout(timeout)
+            .build()
+            .context("Failed to build Intel Trust Authority HTTP client")?;
+
         Ok(Self {
             config: config.clone(),
             token_verifier,
+            client,
         })
     }
 }
@@ -673,5 +699,49 @@ mod tests {
             .to_lowercase();
 
         assert_eq!(actual_extra_params, expected_extra_params, "{}", msg);
+    }
+
+    /// Without a timeout a silent ITA endpoint would hang the attestation forever.
+    #[tokio::test]
+    async fn test_attest_request_times_out() {
+        use crate::crypto::test_util::silent_endpoint;
+        use std::time::Instant;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(create_certs_file_json_string().as_bytes())
+            .expect("failed to write certs file data");
+
+        let cfg = IntelTrustAuthorityConfig {
+            base_url: format!("https://{}", silent_endpoint().await),
+            api_key: "".into(),
+            certs_file: format!("file://{}", file.path().display()),
+            allow_unmatched_policy: None,
+            policy_ids: vec![],
+        };
+        let timeout = Duration::from_secs(1);
+        let ita = IntelTrustAuthority::new_with_timeouts(cfg, timeout, timeout)
+            .await
+            .unwrap();
+
+        let evidence = IndependentEvidence {
+            tee: Tee::Tdx,
+            tee_evidence: json!({ "quote": "" }),
+            runtime_data: json!({}),
+            init_data: None,
+        };
+
+        let start = Instant::now();
+        let result = ita.verify(vec![evidence], None).await;
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err(), "expected the request to time out");
+        assert!(
+            elapsed >= timeout,
+            "request failed after {elapsed:?}, before the timeout could fire"
+        );
+        assert!(
+            elapsed < timeout + Duration::from_secs(3),
+            "request took {elapsed:?}, expected to fail within {timeout:?}"
+        );
     }
 }
