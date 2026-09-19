@@ -8,6 +8,8 @@ use serde::Deserialize;
 pub mod broker;
 pub use broker::EarAttestationTokenBroker;
 
+pub mod claims;
+
 /// default token duration in minutes
 pub const DEFAULT_TOKEN_DURATION: i64 = 5;
 

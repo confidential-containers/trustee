@@ -40,13 +40,24 @@ and expose the InitData plaintext to the policy engine and as part of the
 attestation token.
 
 Both the InitData and ReportData will usually be included the attestation token.
-These fields will be available under the `AnnotatedEvidence` extension of the
-`cpu0` Appraisal.
+Raw values extracted from evidence are under `ear_attester_claims` of the
+`cpu0` Appraisal. Parsed / validated JSON (when plaintext was provided and
+bound) is under `ear_verifier_claims`:
+
+- raw hash / report bytes: `ear_attester_claims.init_data`, `ear_attester_claims.report_data`
+- TEE type and hardware object: `ear_attester_claims.tee`, `ear_attester_claims.claims`
+- parsed objects: `ear_verifier_claims.init_data`, `ear_verifier_claims.runtime_data`
+
+The `ear_verifier_claims` entries are only emitted when the client supplied the
+corresponding plaintext and the verifier bound it to the evidence. If only a
+digest (InitData) or raw bytes (ReportData) were supplied, there is nothing to
+report and the key is omitted entirely rather than set to `null`.
 
 If the plaintext InitData is provided, some transformations will be applied
 to the InitData to make it more easy to consume.
 
-As a result, the InitData section in the token may contain the following fields:
+As a result, the InitData section in the token (`ear_verifier_claims.init_data`)
+may contain the following fields:
 - `cdh.toml` JSON version of the CDH config file from the InitData.
 - `aa.toml` JSON version of the AA config file from the InitData.
 - `agent_policy_claims` The `policy_data` claim from the Kata Agent policy (as JSON).
@@ -56,5 +67,8 @@ data.
 
 # Hardware Claims
 
-The annotated evidence extension will also include hardware-specific claims
-extracted by the verifiers. These are listed in the [TCB Claims](./tcb_claims.md) document.
+`ear_attester_claims.claims` holds hardware-specific claims extracted by the
+verifiers, and `ear_attester_claims.tee` names the TEE (for example `tdx`,
+`snp`). The AS policy input still nests those claims under the TEE name; only
+the issued token uses the `tee` + `claims` shape. Field definitions are listed
+in the [TCB Claims](./tcb_claims.md) document.
