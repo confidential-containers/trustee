@@ -349,6 +349,8 @@ impl TestHarness {
                 insecure_http: true,
                 payload_request_size: 2,
                 worker_count: Some(4),
+                auth_rate_limit_per_second: 0,
+                auth_rate_limit_burst: 10,
                 tls: TlsConfig::default(),
             },
             admin: admin_config,
