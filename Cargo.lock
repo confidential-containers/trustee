@@ -3597,6 +3597,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0257762bf6d62b7b36da8654823b9f1a05ca0132f045fa60b09e69c85534ca70"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bytes",
  "http 1.4.0",
  "http-body 1.0.1",
@@ -3604,6 +3605,7 @@ dependencies = [
  "http-cache",
  "http-cache-semantics",
  "reqwest 0.13.4",
+ "reqwest-middleware",
  "url",
 ]
 
