@@ -189,7 +189,7 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 
 - `cca.realm`: Object. CCA Realm token claims.
   - `cca.realm.cca_realm_personalization_value`: String (Base64 Standard). Per Realm defined personalized value.
-  - `cca.realm.cca_realm_initial_measurement`: String (Base64 Standard). The initial measurement of the Realm.
+  - `cca.realm.cca_realm_initial_measurement`: String (hex). The initial measurement of the Realm.
   - `cca.realm.cca_realm_extensible_measurements`: String list. The extensible measurements of the Realm.
     - `cca.realm.cca_realm_extensible_measurements[i]`: String (Base64 Standard). The i-th extensible measurement of the Realm.
   - `cca.realm.cca_realm_hash_algo_id`: String (Base64 Standard). RMI hash algorithm.
@@ -197,8 +197,8 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 - `cca.platform`: Object. CCA Platform token claims.
   - `cca.platform.cca_platform_instance_id`: String (Base64 Standard). Hardware platform instance ID.
   - `cca.platform.cca_platform_implementation_id`: String (Base64 Standard). Hardware implementation ID.
-- `cca.report_data`: String (Base64 Standard). report data derived from realm challenge
-- `cca.init_data`: String (Base64 Standard). init data digest field, the same as `cca.realm.cca_realm_personalization_value`.
+- `cca.report_data`: String (hex). report data derived from realm challenge
+- `cca.init_data`: String (hex). init data digest field, the same as `cca.realm.cca_realm_personalization_value`.
 
 ## NVIDIA
 

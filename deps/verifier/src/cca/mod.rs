@@ -216,9 +216,11 @@ fn assemble_cca_evidence(
     let r: RealmClaims = serde_json::from_str(output.as_str())?;
     evidence.realm = r;
 
-    // Populate the init_data and report_data claims with the expected values
+    // Populate the init_data, report_data, and RIM claims with the expected values
     evidence.init_data = b642hex(&evidence.realm.cca_realm_personalization_value)?;
     evidence.report_data = b642hex(&evidence.realm.cca_realm_challenge)?;
+    evidence.realm.cca_realm_initial_measurement =
+        b642hex(&evidence.realm.cca_realm_initial_measurement)?;
 
     Ok(evidence)
 }
