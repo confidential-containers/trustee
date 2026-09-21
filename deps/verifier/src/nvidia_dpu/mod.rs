@@ -104,7 +104,7 @@ impl crate::Verifier for NvidiaDpuVerifier {
 
         // (1) Parse the DPU evidence from the attester JSON.
         let dpu_evidence: DpuEvidence =
-            serde_json::from_value(evidence).context("Failed to parse NVIDIA DPU evidence")?;
+            serde_json::from_value(evidence.data).context("Failed to parse NVIDIA DPU evidence")?;
 
         // (2) Assert exactly one device and get it.
         anyhow::ensure!(

@@ -99,7 +99,7 @@ impl Verifier for CsvVerifier {
             cert_chain,
             serial_number,
             cc_eventlog,
-        } = serde_json::from_value(evidence).context("Deserialize Quote failed.")?;
+        } = serde_json::from_value(evidence.data).context("Deserialize Quote failed.")?;
 
         let report = AttestationReport::try_from(&report_wrapper)?;
         let chip_id = std::str::from_utf8(&serial_number)?.trim_end_matches('\0');
