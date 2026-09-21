@@ -131,6 +131,28 @@ Available when the `tpm-verifier` feature is enabled.
 | `trusted_ak_keys_dir` | String | Directory containing trusted Attestation Key (AK) files | No       | `/etc/tpm/trusted_ak_keys`       |
 | `max_trusted_ak_keys` | Integer | Maximum number of trusted AK keys to load              | No       | `100`                            |
 
+
+##### SE Verifier
+
+Available when the `se-verifier` feature is enabled.
+
+| Property      | Type                           | Description                      | Required | Default |
+|---------------|--------------------------------|----------------------------------|----------|---------|
+| `se_verifier` | [SeVerifierConfig][se-1]     | SE verifier configuration       | No       | -       |
+
+[se-1]: #severifierconfig
+
+###### SeVerifierConfig
+
+| Property                       | Type   | Description                                                                              | Required | Default  |
+|--------------------------------|--------|------------------------------------------------------------------------------------------|----------|----------|
+| `enable_firmware_verification` | bool   | When `true`, the AS verifies the firmware hash against the IBM firmware attestation API. | No       | `false`  |
+| `firmware_verify_url`          | String | IBM firmware attestation API URL to verify the firmware hash.                            | No       | see below |
+
+Default `firmware_verify_url`:
+```
+https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify
+```
 ##### SNP Verifier
 
 Available when the `snp-verifier` feature is enabled. See details in [AMD SNP certificates caching guide](./amd-offline-certificate-cache.md).
@@ -337,6 +359,27 @@ Configuration with AMD SEV-SNP verifier using KDS:
     }
 }
 ```
+
+Configuration with IBM SE verifier and firmware verification enabled (z17):
+
+```json
+{
+    "rvps_config": {
+        "type": "BuiltIn"
+    },
+    "attestation_token_broker": {
+        "duration_min": 5
+    },
+    "verifier_config": {
+        "se_verifier": {
+            "enable_firmware_verification": true,
+            "firmware_verify_url": "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify"
+        }
+    }
+}
+```
+Optional: override the firmware verification endpoint (`firmware_verify_url`) to your custom endpoint for verification.
+The above is the default endpoint.
 
 Running with unified storage backend:
 
