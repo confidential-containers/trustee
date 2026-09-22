@@ -658,6 +658,8 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
 
         // platform identity
         "chip_id": hex::encode(report.chip_id),
+
+        "hardware_type": crate::hardware_type::types::AMD_SNP,
     });
 
     claims_map as TeeEvidenceParsedClaim

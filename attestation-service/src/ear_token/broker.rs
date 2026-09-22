@@ -436,10 +436,13 @@ fn generate_ec_keys() -> Result<(EcKey<Private>, Vec<u8>, Vec<u8>)> {
 ///    This means that the full init_data and report_data will be
 ///    available in the token.
 ///
-/// 2) Move all claims from input_claims except the ones mentioned
-///    in the previous step into their own Object under the tee name.
+/// 2) If the verifier produced a `hardware_type` claim, hoist it to the
+///    annotated-evidence top level alongside init_data and report_data.
 ///
-/// 3) Convert the claims from serde_json Values to RawValues from the
+/// 3) Move all claims from input_claims except the ones mentioned
+///    in the previous steps into their own Object under the tee name.
+///
+/// 4) Convert the claims from serde_json Values to RawValues from the
 ///    EAR crate.
 ///
 pub fn transform_claims(
@@ -489,6 +492,18 @@ pub fn transform_claims(
                 serde_json::from_str(&serde_json::to_string(&runtime_data_claims)?)?;
 
             output_claims.insert("runtime_data_claims".to_string(), transformed_claims);
+        }
+
+        if let Some(hardware_type) = claims_map.remove("hardware_type") {
+            output_claims.insert(
+                "hardware_type".to_string(),
+                RawValue::String(
+                    hardware_type
+                        .as_str()
+                        .context("hardware_type claim must be a string")?
+                        .to_string(),
+                ),
+            );
         }
     }
 
@@ -691,7 +706,8 @@ mod tests {
                 }
             },
             "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
-            "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+            "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "hardware_type": "intel-tdx"
         });
 
         let init_data_claims = Value::String("".to_string());
@@ -736,6 +752,7 @@ mod tests {
             },
             "report_data": "7c71fe2c86eff65a7cf8dbc22b3275689fd0464a267baced1bf94fc1324656aeb755da3d44d098c0c87382f3a5f85b45c8a28fee1d3bdb38342bf96671501429",
             "init_data": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "hardware_type": "intel-tdx",
             "runtime_data_claims": "",
             "init_data_claims": ""
         });
