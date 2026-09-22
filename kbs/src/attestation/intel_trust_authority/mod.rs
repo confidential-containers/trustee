@@ -22,6 +22,7 @@ use serde_with::base64::{Base64, UrlSafe};
 use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
+use std::time::Duration;
 use tracing::{debug, info, warn};
 
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
@@ -31,6 +32,9 @@ const BASE_AS_ADDR: &str = "/appraisal/v2/attest";
 const AZURE_ADDR_SUFFIX: &str = "/azure";
 
 const TRUSTEE_USER_AGENT: &str = "Confidential-containers-trustee";
+
+/// Total timeout for one attestation request to Intel Trust Authority.
+const ITA_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DcapTeeEvidence {
@@ -157,6 +161,7 @@ pub struct IntelTrustAuthorityConfig {
 pub struct IntelTrustAuthority {
     config: IntelTrustAuthorityConfig,
     token_verifier: JwtVerifier,
+    client: reqwest::Client,
 }
 
 /// Build the ITA attestation request from a list of independent evidences.
@@ -325,8 +330,8 @@ impl Attest for IntelTrustAuthority {
             env!("CARGO_PKG_VERSION")
         );
 
-        let client = reqwest::Client::new();
-        let resp = client
+        let resp = self
+            .client
             .post(att_url)
             .header(USER_AGENT, user_agent)
             .header(CONTENT_TYPE, "application/json")
@@ -461,9 +466,15 @@ impl IntelTrustAuthority {
         .await
         .context("Failed to initialize token verifier")?;
 
+        let client = reqwest::Client::builder()
+            .timeout(ITA_REQUEST_TIMEOUT)
+            .build()
+            .context("Failed to build Intel Trust Authority HTTP client")?;
+
         Ok(Self {
             config: config.clone(),
             token_verifier,
+            client,
         })
     }
 }
