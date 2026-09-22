@@ -3,13 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonwebtoken::jwk::JwkSet;
-use reqwest::{get, Url};
+use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::fs;
+use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, info};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
+
+/// Timeout for one remote key material fetch, from connecting through reading
+/// the body.
+const KEY_FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Error, Debug)]
 pub(crate) enum JwksGetError {
@@ -29,6 +34,11 @@ pub(crate) struct OpenIDConfig {
     jwks_uri: String,
 }
 
+/// HTTP client for remote key material fetches.
+pub(crate) fn key_fetch_client() -> reqwest::Result<Client> {
+    Client::builder().timeout(KEY_FETCH_TIMEOUT).build()
+}
+
 /// Load a JWK set from a configured source.
 ///
 /// - `file://` and local paths: JWKS JSON file, read directly.
@@ -46,8 +56,16 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             })
         }
         "https" => {
+            let client =
+                key_fetch_client().map_err(|source| JwksGetError::FailedToGetKeyMaterial {
+                    source: Into::<anyhow::Error>::into(source)
+                        .context("failed to build HTTP client"),
+                })?;
+
             // Try to load a JWK set directly from the configured URL first.
-            match get(uri)
+            match client
+                .get(uri)
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
@@ -68,7 +86,9 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
             // Fall back to OpenID discovery at `{uri}/.well-known/openid-configuration`.
             let openid_config_url = build_openid_config_url(&url)?;
             info!("Getting OpenID configuration from {openid_config_url}");
-            let oidc: OpenIDConfig = get(openid_config_url.as_str())
+            let oidc: OpenIDConfig = client
+                .get(openid_config_url.as_str())
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source)
@@ -85,7 +105,9 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
                 JwksGetError::InvalidSourcePath(format!("invalid jwks_uri {}: {e}", oidc.jwks_uri))
             })?;
 
-            let jwks = get(jwks_url.as_str())
+            let jwks = client
+                .get(jwks_url.as_str())
+                .send()
                 .await
                 .map_err(|source| JwksGetError::FailedToGetKeyMaterial {
                     source: Into::<anyhow::Error>::into(source).context("failed to get JWK set"),
