@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, info};
-use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
+use verifier::{InitDataHash, ReportData, TeeEvidenceParsedClaim, TeeMetadata};
 
 use crate::ear_token::EarAttestationTokenBroker;
 
@@ -324,6 +324,10 @@ impl AttestationService {
         tee: Tee,
         tee_parameters: String,
     ) -> Result<String> {
+        let metadata =
+            serde_json::from_str::<TeeMetadata>(&tee_parameters).context("parse TEE metadata")?;
+        let metadata = (!metadata.is_null()).then_some(metadata);
+
         let verifier = verifier::to_verifier(
             &tee,
             self.config.clone().verifier_config,
@@ -331,7 +335,7 @@ impl AttestationService {
         )
         .await?;
         verifier
-            .generate_supplemental_challenge(tee_parameters)
+            .generate_supplemental_challenge(metadata.as_ref())
             .await
     }
 }

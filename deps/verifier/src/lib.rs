@@ -50,6 +50,8 @@ pub mod tpm;
 #[cfg(feature = "nvidia-dpu-verifier")]
 pub mod nvidia_dpu;
 
+pub type TeeMetadata = serde_json::Value;
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct VerifierConfig {
     #[cfg(feature = "nvidia-verifier")]
@@ -307,8 +309,11 @@ pub trait Verifier {
     /// and pass it to attester side. This challenge is used by attester to
     /// generate the evidence
     ///
-    /// A optional `tee_parameters` comes from the attester side as the input.
-    async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+    /// Optional TEE metadata comes from the attester side as input.
+    async fn generate_supplemental_challenge(
+        &self,
+        _metadata: Option<&TeeMetadata>,
+    ) -> Result<String> {
         Ok(String::new())
     }
 }

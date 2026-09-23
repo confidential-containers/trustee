@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::attestation::generate_extra_params;
+use crate::attestation::{generate_extra_params, primary_tee_metadata};
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{
@@ -118,12 +118,16 @@ impl Attest for BuiltInCoCoAs {
         tee: Tee,
         tee_parameters: serde_json::Value,
     ) -> Result<Challenge> {
+        let metadata = primary_tee_metadata(tee, &tee_parameters)?;
         let nonce = match tee {
             Tee::Se => {
                 self.inner
                     .read()
                     .await
-                    .generate_supplemental_challenge(tee, tee_parameters.to_string())
+                    .generate_supplemental_challenge(
+                        tee,
+                        metadata.unwrap_or(serde_json::Value::Null).to_string(),
+                    )
                     .await?
             }
             _ => make_nonce().await?,
