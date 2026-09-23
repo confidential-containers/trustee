@@ -177,9 +177,14 @@ mod tests {
         let storage = Arc::new(MemoryKeyValueStorage::default());
         let session_map = SessionMap::new(storage);
         let request = Request {
-            version: "1.0.0".to_string(),
+            version: "0.4.0".to_string(),
             tee: Tee::Sample,
-            extra_params: json!({}),
+            extra_params: json!({
+                "tee-metadata": {
+                    "primary_tee": { "tee": "sample" },
+                    "additional_tees": []
+                }
+            }),
         };
         let challenge = Challenge {
             nonce: "1234567890".to_string(),
