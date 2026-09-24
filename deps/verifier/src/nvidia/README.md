@@ -1,50 +1,68 @@
 # Verifying NVIDIA devices with the Trustee Attestation Service
 
-This verifier provides two ways to verify NVIDIA devices.
+This verifier provides two ways to verify NVIDIA devices, selected by
+`nvidia_verifier.type`: `Local` (default) or `Remote`.
 
-## Local verifier
-The `local` verifier will parse the hardware evidence (SPDM messages) and extract the measurements.
-The policy can then compare these measurements with reference values.
+Detailed claim fields for policy are listed in
+[TCB Claims — NVIDIA](../../../../attestation-service/docs/tcb_claims.md#nvidia).
 
-## Remote verifier
-The `remote` verifier uses the NVIDIA NRAS service to validate the evidence.
+## Local (`type = "Local"`)
 
-To use this, the user should first enter into a licensing agreement with NVIDIA.
-The agreement is described [here](https://docs.nvidia.com/attestation/cloud-services/latest/license.html)
-and has provisions for research and development.
+Parses GPU hardware evidence (SPDM) locally and exports measurements and
+device config for the Attestation Service policy to check against reference
+values.
 
-When the `remote` verifier is enabled, NRAS handles evaluating the evidence against reference values.
+- Supports Hopper GPUs only.
+- Does not support nvSwitch.
 
-Rather than providing the raw HW measurements as TCB Claims, the `remote` verifier exports claims relating to each step of the verification process.
+## Remote (`type = "Remote"`)
 
-The policy checks these claims to make sure that attestation has been completed successfully.
+Sends evidence to NVIDIA NRAS for verification.
 
-The remote verifier can be enabled with the following entry in the attestation service config file:
+A licensing agreement with NVIDIA is required; see
+[NVIDIA Attestation Cloud Services license](https://docs.nvidia.com/attestation/cloud-services/latest/license.html).
 
-- JSON format (`as-config.json`):
+After NRAS returns a result, the verifier enforces fixed checks (report
+signature, certificate chains, RIM / measurement comparison, nonce, secure
+boot, debug status, and related outcomes). Only variable fields useful for
+policy (versions, identity, optional PPCIE topology, nonce) are exported;
+pass/fail verification flags are not.
+
+Supports GPU and nvSwitch. Uses NRAS claims version 3.0.
+
+Optional remote settings:
+
+| Option | Effect | Default |
+|--------|--------|---------|
+| `verifier_url` | NRAS endpoint to call | `https://nras.attestation.nvidia.com/v4/attest` |
+| `debug` | When `true`, relaxes RIM / measurement / secure-boot / debug-status checks | `false` |
+
+### Configuration examples
+
+- JSON (`as-config.json`):
 
     ```json
     {
-        "verifier_config" : {
+        "verifier_config": {
             "nvidia_verifier": {
                 "type": "Remote"
             }
         }
     }
     ```
-  
-- TOML format:
+
+- TOML:
 
     ```toml
-    [verifier_config.nvidia_verifier.verifier]
-        type = "Remote"
+    [verifier_config.nvidia_verifier]
+    type = "Remote"
     ```
 
-Alternatively, verifier configuration can be specified in the KBS config file `kbs-config.toml` file:
+Or in KBS `kbs-config.toml`:
 
 ```toml
 [attestation_service.verifier_config.nvidia_verifier]
-    type = "Remote"
+type = "Remote"
 ```
 
 For more details, see the [NVIDIA GPU Verifier configuration section](../../../../attestation-service/docs/config.md#nvidia-gpu-verifier).
