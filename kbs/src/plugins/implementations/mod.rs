@@ -9,6 +9,8 @@ pub mod pkcs11;
 pub mod provisioner;
 pub mod resource;
 pub mod sample;
+#[cfg(feature = "credgen-plugin")]
+pub mod credgen;
 
 #[cfg(feature = "external-plugin")]
 pub mod external_plugin;
@@ -23,3 +25,6 @@ pub use sample::{Sample, SampleConfig};
 
 #[cfg(feature = "external-plugin")]
 pub use external_plugin::{BackendConfig, ExternalPlugin, ExternalPluginConfig};
+
+#[cfg(feature = "credgen-plugin")]
+pub use credgen::{CredGenPlugin, CredGenPluginConfig};
