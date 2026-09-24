@@ -188,16 +188,13 @@ backend connection.
 
 ### Per-client rate limiting
 
-`POST /kbs/v0/auth` is unauthenticated by design and every call allocates a
-session record, so an abusive client can fill the session store. KBS only sees
-the address of whatever fronts it and cannot tell clients apart behind a proxy,
-so a per-client limit belongs on the Ingress controller or other proxy in front
-of KBS, which sees the real client address and keeps its counters across KBS
-replicas. Neither the Ingress API nor Gateway API expresses rate limiting, so
-configure it the way the chosen controller documents, and pass any annotations
-it needs through `ingress.annotations`. The chart routes the whole KBS API
-through one Ingress rule, so such a limit covers every `/kbs/v0` path, and the
-KBS side needs no configuration.
+KBS expects per-client rate limiting on the proxy in front of it; see
+[Rate Limiting](../../kbs/docs/rate-limiting.md) for why. With this chart,
+configure the limit on the Ingress controller and pass any annotations it needs
+through `ingress.annotations`. Neither the Ingress API nor Gateway API expresses
+rate limiting, so follow the controller's own documentation. The chart routes
+the whole KBS API through one Ingress rule, so such a limit covers every
+`/kbs/v0` path, and the KBS side needs no configuration.
 
 ### IBM Secure Execution (s390x)
 
