@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use key_value_storage::{KeyValueStorageInstance, SetParameters, StorageProvider};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -472,31 +473,40 @@ pub enum ClientMaterial {
 
 // ---- Plugin struct ------------------------------------------------------
 
-impl TryFrom<CredGenPluginConfig> for CredGenPlugin {
-    type Error = Error;
-
-    fn try_from(config: CredGenPluginConfig) -> Result<Self> {
-        Ok(CredGenPlugin {
-            ca_config: config.credgen.ca,
-            limits_config: config.credgen.settings,
-            store: Arc::new(RwLock::new(HashMap::new())),
-            server_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
-            client_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
-        })
-    }
-}
-
 /// Generates and delivers cryptographic credentials to an attested TEE (server)
 /// and its workload owner (client).
 pub struct CredGenPlugin {
     pub ca_config: TlsCertDetails,
     pub limits_config: SettingsConfig,
 
-    /// `identity-key => spec-sub-key => CredGenEntry`
-    pub store: Arc<RwLock<HashMap<String, HashMap<String, CredGenEntry>>>>,
+    /// Persistent credential store backed by the KBS kvstorage interface.
+    /// Keys are `"{id_key}/{spec_key}"` (e.g. `"myvm_default/grpc.tls"`).
+    store: KeyValueStorageInstance,
 
-    pub server_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
-    pub client_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
+    // Transient per-identity cert customisation. Not persisted: these are
+    // owner-supplied hints applied at the next GET /credentials call.
+    server_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
+    client_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
+}
+
+impl CredGenPlugin {
+    pub async fn new(
+        config: CredGenPluginConfig,
+        storage_provider: Arc<dyn StorageProvider>,
+    ) -> Result<Self> {
+        let store = storage_provider
+            .get_or_register("credgen")
+            .await
+            .context("credgen: failed to init storage backend")?;
+
+        Ok(Self {
+            ca_config: config.credgen.ca,
+            limits_config: config.credgen.settings,
+            store,
+            server_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
+            client_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
+        })
+    }
 }
 
 impl CredGenPlugin {
@@ -586,7 +596,8 @@ impl CredGenPlugin {
         }
 
         let secret_type = SecretType::from_str(type_str)?;
-        let spec_sub_key = format!("{}:{}", secret_name, type_str);
+        // Use `.` not `:` — kvstorage keys only allow [a-zA-Z0-9\-_./ ].
+        let spec_sub_key = format!("{}.{}", secret_name, type_str);
 
         Ok((secret_name, secret_type, spec_sub_key))
     }
@@ -711,12 +722,15 @@ impl CredGenPlugin {
             }
         };
 
+        let store_key = format!("{}/{}", id_key, spec_key);
         self.store
-            .write()
+            .set(
+                &store_key,
+                &serde_json::to_vec(&entry)?,
+                SetParameters { overwrite: true },
+            )
             .await
-            .entry(id_key.to_string())
-            .or_default()
-            .insert(spec_key.to_string(), entry);
+            .context("credgen: failed to write entry to store")?;
 
         let response = ServerSecret {
             secret_name,
@@ -755,23 +769,26 @@ impl CredGenPlugin {
             .cloned()
             .unwrap_or_else(|| TlsCertDetails::builder().common_name("Client").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
 
-        // Build the response material from the stored public-side entry.
-        let client_material: ClientMaterial = {
-            let store = self.store.read().await;
-            let entry = store
-                .get(&id_key)
-                .and_then(|inner| inner.get(&spec_key))
-                .ok_or_else(|| {
-                    anyhow!(
-                        "No secret '{}' found for identity '{}'. \
-                         The server must request credentials first.",
-                        spec_key,
-                        id_key
-                    )
-                })?;
+        // Build the response material from the stored entry.
+        let store_key = format!("{}/{}", id_key, spec_key);
+        let raw = self
+            .store
+            .get(&store_key)
+            .await
+            .context("credgen: store read failed")?
+            .ok_or_else(|| {
+                anyhow!(
+                    "No secret '{}' found for identity '{}'. \
+                     The server must request credentials first.",
+                    spec_key,
+                    id_key
+                )
+            })?;
+        let entry: CredGenEntry =
+            serde_json::from_slice(&raw).context("credgen: failed to deserialize entry")?;
 
-            match entry {
-                CredGenEntry::Tls { ca_key, ca_cert } => {
+        let client_material: ClientMaterial = match &entry {
+            CredGenEntry::Tls { ca_key, ca_cert } => {
                     // Sign a fresh client cert with the CA stored when the
                     // server last called GET /credentials.
                     let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
@@ -787,22 +804,17 @@ impl CredGenPlugin {
                         ca_cert: ca.cert.clone(),
                     }
                 }
-                CredGenEntry::Symmetric { key } => {
-                    ClientMaterial::Symmetric { key: key.clone() }
-                }
-                CredGenEntry::Ed25519 { public_key, .. } => ClientMaterial::Ed25519 {
-                    public_key: public_key.clone(),
-                },
-                CredGenEntry::Rsa { public_key, .. } => ClientMaterial::Rsa {
-                    public_key: public_key.clone(),
-                },
-                CredGenEntry::P256 { cert_pem, .. } => ClientMaterial::P256 {
-                    cert_pem: cert_pem.clone(),
-                },
-                CredGenEntry::Random { bytes } => ClientMaterial::Random {
-                    bytes: bytes.clone(),
-                },
+            CredGenEntry::Symmetric { key } => ClientMaterial::Symmetric { key: key.clone() },
+            CredGenEntry::Ed25519 { public_key, .. } => {
+                ClientMaterial::Ed25519 { public_key: public_key.clone() }
             }
+            CredGenEntry::Rsa { public_key, .. } => {
+                ClientMaterial::Rsa { public_key: public_key.clone() }
+            }
+            CredGenEntry::P256 { cert_pem, .. } => {
+                ClientMaterial::P256 { cert_pem: cert_pem.clone() }
+            }
+            CredGenEntry::Random { bytes } => ClientMaterial::Random { bytes: bytes.clone() },
         };
 
         let response = ClientSecret {
@@ -817,8 +829,14 @@ impl CredGenPlugin {
     ///
     /// Returns a JSON array of all identity keys currently held in the store.
     async fn list_pods(&self) -> Result<Vec<u8>> {
-        let keys: Vec<String> = self.store.read().await.keys().cloned().collect();
-        Ok(serde_json::to_vec(&keys)?)
+        let all_keys = self.store.list().await.context("credgen: store list failed")?;
+        // Store keys are "{id_key}/{spec_key}"; extract the unique id_key prefixes.
+        let mut ids: Vec<String> = all_keys
+            .into_iter()
+            .filter_map(|k| k.split('/').next().map(str::to_string))
+            .collect();
+        ids.dedup();
+        Ok(serde_json::to_vec(&ids)?)
     }
 
     /// Handles `POST /update_cert`.

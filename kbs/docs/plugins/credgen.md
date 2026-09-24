@@ -13,7 +13,7 @@ CredGen generates a fresh Certificate Authority (CA) for each `GET /credentials`
 - **P-256 keys**: ECDSA P-256 key pairs with a self-signed certificate
 - **Random bytes**: Cryptographically-random byte sequences shared between server and owner
 
-Credentials are stored in non-persistent memory and are lost on restart.
+Credentials are persisted via the KBS kvstorage backend and survive restarts.
 
 ## Architecture
 

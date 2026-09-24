@@ -160,7 +160,8 @@ impl PluginsConfig {
             }
             #[cfg(feature = "credgen-plugin")]
             PluginsConfig::CredGenPlugin(config) => {
-                let plugin = CredGenPlugin::try_from(config)
+                let plugin = CredGenPlugin::new(config, storage_provider)
+                    .await
                     .context("Initialize 'credgen' plugin failed")?;
                 Arc::new(plugin) as _
             }
