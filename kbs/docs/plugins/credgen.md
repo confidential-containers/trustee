@@ -4,58 +4,74 @@ The CredGen plugin dynamically generates cryptographic credentials (keys and cer
 
 ## Overview
 
-CredGen creates a separate Certificate Authority (CA) for each confidential VM, providing independent roots of trust. If one VM's CA is compromised, others remain secure. The plugin supports multiple secret types:
+CredGen generates a fresh Certificate Authority (CA) for each `GET /credentials` call, ensuring that the server cert and the matching client cert always share the same root. The plugin supports multiple secret types:
 
-- **TLS credentials**: X.509 certificates and private keys for mutual TLS authentication
+- **TLS credentials**: X.509 certificates and private keys for mutual TLS
 - **Symmetric keys**: Shared secrets for symmetric encryption
-- **Ed25519 keys**: Elliptic curve keys for signing and encryption
-- **RSA keys**: RSA key pairs for asymmetric cryptography
+- **Ed25519 keys**: Ed25519 key pairs
+- **RSA keys**: RSA key pairs
 - **P-256 keys**: ECDSA P-256 key pairs with a self-signed certificate
-- **Random bytes**: Cryptographically-random byte sequences shared identically between the server and the owner
+- **Random bytes**: Cryptographically-random byte sequences shared between server and owner
 
-Credentials are stored in non-persistent memory and are automatically cleaned up when the service restarts.
+Credentials are stored in non-persistent memory and are lost on restart.
 
 ## Architecture
 
 The plugin operates in two phases:
 
-1. **Server Phase**: When a confidential VM requests credentials via `GET /credentials`, CredGen generates server-side credentials (private keys, certificates) and stores the corresponding public material for later retrieval.
+1. **Server phase**: The confidential VM attests and calls `GET /credentials`. CredGen generates a fresh CA and server-side credentials, stores the CA for later use, and returns the private material TEE-encrypted to the VM.
 
-2. **Client Phase**: When a workload owner requests credentials via authenticated `POST /client_creds`, the plugin returns the matching public-side material (public keys, CA-signed client cert for TLS, etc.).
+2. **Client phase**: The workload owner calls `POST /client_creds`. CredGen signs a fresh client certificate using the CA stored from the last server request and returns the public-side material.
+
+### Identity
+
+The VM's identity key is derived from its **init-data** (`name` and `ns` fields), which is cryptographically bound to the TEE instance via the attestation token. This prevents any third party from forging or overwriting another VM's credentials.
+
+Owner-side POST requests (`/client_creds`, `/update_cert`) identify the target VM via the same `name` and `ns` query parameters.
+
+### Cert expiry
+
+When a TLS cert expires the server must re-attest and call `GET /credentials` again. That produces a fresh CA and server cert. The owner's next `POST /client_creds` will then return a client cert chaining to the new CA, consistent with the renewed server cert.
+
+## Testing with kbs-client
+
+The [`credgen-client`](https://github.com/salmanyam/trustee/tree/credgen-client) branch of `salmanyam/trustee` contains a `kbs-client` build with credgen support. Clone it and build the tool to use the examples in this document:
+
+```bash
+git clone -b credgen-client https://github.com/salmanyam/trustee.git
+cd trustee/trustee-client
+cargo build --release -p kbs-client
+```
+
+The binary will be at `target/release/kbs-client`.
 
 ## Setup
 
 ### 1. Build KBS with CredGen Plugin
 
-Build KBS with the `credgen-plugin` cargo feature enabled:
-
 ```bash
 cd kbs
-make background-check-kbs POLICY_ENGINE=opa SECRETPROV_PLUGIN=true
+make background-check-kbs POLICY_ENGINE=opa CREDGEN_PLUGIN=true
 ```
 
 ### 2. Configure the Plugin
 
-Add the CredGen plugin configuration to your KBS config file (e.g., `kbs/config/kbs-config.toml`):
+Add the CredGen plugin configuration to your KBS config file (e.g. `kbs/config/kbs-config.toml`):
 
 ```toml
 [[plugins]]
 name = "credgen"
 
 [plugins.credgen.ca]
-country = "US"
-state = "California"
-locality = "San Francisco"
-organization = "My Organization"
-org_unit = "Security Team"
+country = "AA"
+state = "N/A"
+locality = "N/A"
+organization = "Confidential Containers"
+org_unit = "Trustee"
 common_name = "CredGen CA"
-validity_days = 3650
+validity_days = 365
 
-[plugins.credgen.query]
-required = ["name", "ns"]
-spec_required = true
-
-[plugins.credgen.limits]
+[plugins.credgen.settings]
 symmetric_key_size = 32
 rsa_bits = 2048
 random_bytes_size = 32
@@ -65,23 +81,23 @@ supported_types = ["tls", "symmetric", "ed25519", "rsa", "p256", "random"]
 #### Configuration Options
 
 **CA Configuration** (`plugins.credgen.ca`):
-- `country`: Two-letter country code (default: `"AA"`)
-- `state`: State or province name (default: `"Default State"`)
-- `locality`: City or locality (default: `"Default City"`)
-- `organization`: Organization name (default: `"Default Organization"`)
-- `org_unit`: Organizational unit (default: `"Default Unit"`)
+- `country`: Two-letter country code (default: `"AA"`, ISO 3166-1 reserved private-use code)
+- `state`: State or province (default: `"N/A"`)
+- `locality`: City or locality (default: `"N/A"`)
+- `organization`: Organization name (default: `"Confidential Containers"`)
+- `org_unit`: Organizational unit (default: `"Trustee"`)
 - `common_name`: CA common name (default: `"NOT_SET"`)
-- `validity_days`: Certificate validity period in days (default: `3650`)
+- `validity_days`: CA certificate lifetime in days (default: `365`)
 
-**Query Configuration** (`plugins.credgen.query`):
-- `required`: List of query parameters whose values are joined to build the per-VM identity key (default: `["name", "ns"]`). These values are supplied by the guest itself — the plugin does not verify them against any external source; policy enforcement is delegated to the KBS resource policy.
-- `spec_required`: Whether `secret_name` and `secret_type` are mandatory on every request (default: `true`)
-
-**Limits Configuration** (`plugins.credgen.limits`):
-- `symmetric_key_size`: Size of symmetric keys in bytes (default: `32`)
+**Settings** (`plugins.credgen.settings`):
+- `symmetric_key_size`: Symmetric key size in bytes (default: `32`)
 - `rsa_bits`: RSA key size in bits (default: `2048`)
 - `random_bytes_size`: Number of random bytes to generate (default: `32`)
-- `supported_types`: Allowed secret types (default: `["tls", "symmetric", "ed25519", "rsa", "p256", "random"]`)
+- `supported_types`: Allowed secret types (default: all six types)
+
+**Certificate validity defaults**:
+- CA certificate: **365 days** (set via `plugins.credgen.ca.validity_days`)
+- Server and client end-entity certificates: **90 days** (set per-identity via `POST /update_cert`)
 
 ### 3. Start KBS
 
@@ -91,70 +107,58 @@ supported_types = ["tls", "symmetric", "ed25519", "rsa", "p256", "random"]
 
 ### 4. Configure Resource Policy
 
-Update your KBS resource policy to allow the credgen plugin. Example policy (`sample_policies/allow_all.rego`):
-
-```rego
-package policy
-
-default allow = false
-
-plugin = data.plugin
-
-allow if {
-    plugin in ["resource", "credgen"]
-}
-```
-
-Set the policy using kbs-client:
+Set a resource policy that allows access to the credgen plugin:
 
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
-    config --auth-private-key config/private.key \
-    set-resource-policy --policy-file sample_policies/allow_all.rego
+    config --admin-token-file kbs/config/admin-token \
+    set-resource-policy --allow-all
 ```
 
+## Confidential VM APIs (TEE-Encrypted Response)
 
-## Confidential VM APIs (Unauthenticated, TEE-Encrypted Response)
-
-These APIs are called by confidential VMs after successful attestation. Responses are automatically encrypted using the TEE's public key and delivered via the standard KBS protocol envelope.
+These APIs are called by the confidential VM after successful attestation. Responses are encrypted using the TEE's public key via the standard KBS protocol envelope.
 
 ### Get Credentials
 
-Request a single secret (key or certificate) for a confidential VM.
+Request a secret for the confidential VM.
 
 **Endpoint**: `GET /kbs/v0/credgen/credentials`
 
 **Query Parameters**:
-- `name` (required by default): Workload name
-- `ns` (required by default): Namespace
 - `secret_name` (required): Logical name for this secret (e.g. `grpc`)
 - `secret_type` (required): One of `tls`, `symmetric`, `ed25519`, `rsa`, `p256`, `random`
 
-**Example request via the KBS REST API** (e.g. from inside a confidential VM using the Attestation Service REST client):
+**Identity**: The VM's `name` and `ns` are read from its **init-data**, not from the query string.
+
+**Example**:
 
 ```http
-GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=grpc&secret_type=tls
+GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=tls
 ```
 
-**Example response**:
+**Example response** (TLS):
 
 ```json
 {
   "secret_name": "grpc",
   "secret_type": "tls",
   "material_type": "Tls",
-  "private_key": "...",
-  "cert": "...",
-  "ca_cert": "..."
+  "private_key": "<PEM>",
+  "cert": "<PEM>",
+  "ca_cert": "<PEM>"
 }
 ```
 
-For Ed25519 and RSA types, the VM receives the **private key**. For P-256, it receives the **private key** only (the self-signed cert is available to the owner via the client API). For symmetric keys, both sides receive the same shared key. For random bytes, both sides receive the same raw byte sequence.
+- **TLS**: VM receives private key, signed server cert, and CA cert.
+- **Ed25519 / RSA**: VM receives the private key.
+- **P-256**: VM receives the private key (the self-signed cert is available to the owner via `client_creds`).
+- **Symmetric / Random**: VM receives the shared value (identical to what the owner receives).
 
-## Owner/Client APIs (Authenticated)
+## Owner/Client APIs (Admin Auth Required)
 
-These APIs require an admin authentication token and are intended for workload owners.
+These APIs require an admin bearer token and are intended for workload owners.
 
 ### List Known Identities
 
@@ -162,12 +166,10 @@ Retrieve a list of all identity keys that have credentials stored.
 
 **Endpoint**: `POST /kbs/v0/credgen/list_pods`
 
-**Example request**:
-
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
-    config --auth-private-key config/private.key \
+    credgen --admin-token-file kbs/config/admin-token \
     list-pods
 ```
 
@@ -179,23 +181,21 @@ Retrieve a list of all identity keys that have credentials stored.
 
 ### Get Client Credentials
 
-Retrieve the public-side material for a specific secret. The credentials match the secrets previously generated for the VM.
+Retrieve the public-side material for a secret previously generated for the VM.
 
 **Endpoint**: `POST /kbs/v0/credgen/client_creds`
 
 **Query Parameters**:
-- `name` (required by default): Workload name (must match the value used when the VM requested credentials)
-- `ns` (required by default): Namespace
+- `name` (required): VM name (must match the value in the VM's init-data)
+- `ns` (required): Namespace
 - `secret_name` (required): Secret name
 - `secret_type` (required): Secret type
-
-**Example request**:
 
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
-    config --auth-private-key config/private.key \
-    get-client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=tls"
+    credgen --admin-token-file kbs/config/admin-token \
+    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=tls"
 ```
 
 **Example response** (TLS):
@@ -205,23 +205,28 @@ Retrieve the public-side material for a specific secret. The credentials match t
   "secret_name": "grpc",
   "secret_type": "tls",
   "material_type": "Tls",
-  "private_key": "...",
-  "cert": "...",
-  "ca_cert": "..."
+  "private_key": "<PEM>",
+  "cert": "<PEM>",
+  "ca_cert": "<PEM>"
 }
 ```
 
-For TLS, the owner receives a freshly issued client certificate signed by the same CA that signed the VM's server certificate. For Ed25519/RSA, the owner receives the **public key**. For P-256, the owner receives the **self-signed certificate**. For symmetric keys, the owner receives the same shared key as the VM. For random bytes, the owner receives the same byte sequence as the VM.
+- **TLS**: Owner receives a fresh client cert signed by the same CA as the VM's server cert.
+- **Ed25519 / RSA**: Owner receives the public key.
+- **P-256**: Owner receives the self-signed certificate.
+- **Symmetric / Random**: Owner receives the same value as the VM.
 
 ### Update Certificate Details
 
-Customize certificate details for server and/or client certificates before they are generated. Must be called before the VM requests credentials.
+Customize certificate subject fields and validity for server and/or client end-entity certs.
+Must be called **before** the VM calls `GET /credentials` for the settings to take effect.
+Only the fields you include are applied; omitted fields use the defaults.
 
 **Endpoint**: `POST /kbs/v0/credgen/update_cert`
 
 **Query Parameters**:
-- `name` (required by default): Workload name
-- `ns` (required by default): Namespace
+- `name` (required): VM name
+- `ns` (required): Namespace
 
 **Request Body**:
 
@@ -243,48 +248,54 @@ Customize certificate details for server and/or client certificates before they 
 }
 ```
 
-**Example request**:
+To change only the expiry, supply just `validity_days`:
+
+```json
+{
+  "server": { "validity_days": 180 },
+  "client": { "validity_days": 180 }
+}
+```
 
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
-    config --auth-private-key config/private.key \
+    credgen --admin-token-file kbs/config/admin-token \
     update-cert \
     --query "name=myvm&ns=default" \
-    --spec-file test/spec.json
+    --spec-file cert-details.json
 ```
 
 ## Usage Workflow
 
-1. **Start KBS** with CredGen plugin enabled.
+1. **Start KBS** with the CredGen plugin enabled.
 
 2. **Set resource policy** to allow the credgen plugin.
 
 3. **(Optional) Set custom certificate details** before the VM connects:
    ```bash
    kbs-client --url http://localhost:8090 \
-       config --auth-private-key config/private.key \
-       update-cert --query "name=myvm&ns=default" --spec-file spec.json
+       credgen --admin-token-file kbs/config/admin-token \
+       update-cert --query "name=myvm&ns=default" --spec-file cert-details.json
    ```
 
-4. **Confidential VM requests server credentials** (after attestation, via the Attestation Service REST client or kbs-client equivalent):
+4. **Confidential VM requests credentials** (after attestation). The VM's identity is read from its init-data:
    ```http
-   GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=grpc&secret_type=tls
+   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=tls
    ```
 
 5. **Workload owner lists known identities**:
    ```bash
    kbs-client --url http://localhost:8090 \
-       config --auth-private-key config/private.key \
+       credgen --admin-token-file kbs/config/admin-token \
        list-pods
    ```
 
 6. **Workload owner retrieves client credentials**:
    ```bash
    kbs-client --url http://localhost:8090 \
-       config --auth-private-key config/private.key \
-       get-client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=tls"
+       credgen --admin-token-file kbs/config/admin-token \
+       client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=tls"
    ```
 
 7. **Establish mutual TLS** between the VM (server) and the workload owner (client) using the matching credentials.
-

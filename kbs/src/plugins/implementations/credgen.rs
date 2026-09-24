@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by IBM Corporation
+// Copyright (c) 2026 by IBM Corporation
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -23,47 +23,40 @@ use serde::{Deserialize, Serialize};
 use super::super::plugin_manager::ClientPlugin;
 
 /// Default values used when certificate fields are not set in the plugin config.
+/// `"AA"` is the ISO 3166-1 reserved private-use code; there is no real
+/// country to put here for a generic CoCo deployment.
 pub const DEFAULT_COUNTRY: &str = "AA";
-pub const DEFAULT_STATE: &str = "Default State";
-pub const DEFAULT_LOCALITY: &str = "Default City";
-pub const DEFAULT_ORGANIZATION: &str = "Default Organization";
-pub const DEFAULT_ORG_UNIT: &str = "Default Unit";
-pub const DEFAULT_CA_VALIDITY_DAYS: u32 = 3650;
+pub const DEFAULT_STATE: &str = "N/A";
+pub const DEFAULT_LOCALITY: &str = "N/A";
+pub const DEFAULT_ORGANIZATION: &str = "Confidential Containers";
+pub const DEFAULT_ORG_UNIT: &str = "Trustee";
+
+/// Lifetime of the self-signed CA certificate.  The CA is created once per
+/// identity on the first TLS request and reused across end-entity renewals, so
+/// it should outlive several end-entity cert cycles.
+pub const DEFAULT_CA_VALIDITY_DAYS: u32 = 365;
+
+/// Lifetime of end-entity certificates (server and client).  Short so that
+/// guests are encouraged to re-attest and renew regularly.
+pub const DEFAULT_CERT_VALIDITY_DAYS: u32 = 90;
 
 // ---- Config types -------------------------------------------------------
+
+/// Identity fields read from init-data (TEE path) or the query string (owner
+/// path) and joined with `_` to form the store key.
+///
+/// Example: with values `"pod-abc"` and `"default"` the key is `"pod-abc_default"`.
+pub const IDENTITY_FIELDS: &[&str] = &["name", "ns"];
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct CredGenPluginConfig {
     #[serde(default)]
-    pub credgen: CredGenSection,
+    pub credgen: CredGenConfig,
 }
 
-/// Controls how incoming query strings are interpreted.
-///
-/// `required` lists the params whose values are joined (with `_`) to form the
-/// per-identity store key.  For example, `["name", "ns"]` with a request of
-/// `?name=pod-abc&ns=default` produces the key `"pod-abc_default"`.
-///
-/// `spec_required` gates whether `secret_name` and `secret_type` must appear
-/// on every request (default: true).
+/// Generation settings: key sizes, supported secret types.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct QueryConfig {
-    /// Identity params joined with `_` to build the store lookup key.
-    #[serde(default)]
-    pub required: Vec<String>,
-
-    /// When `true`, both `secret_name` and `secret_type` must be present.
-    #[serde(default = "default_true")]
-    pub spec_required: bool,
-}
-
-fn default_true() -> bool {
-    true
-}
-
-/// Resource limits applied during secret generation.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct LimitsConfig {
+pub struct SettingsConfig {
     /// Length of generated symmetric keys in bytes.
     pub symmetric_key_size: usize,
     /// Bit length for generated RSA key pairs.
@@ -75,15 +68,12 @@ pub struct LimitsConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
-pub struct CredGenSection {
+pub struct CredGenConfig {
     #[serde(default)]
     pub ca: TlsCertDetails,
 
     #[serde(default)]
-    pub query: QueryConfig,
-
-    #[serde(default)]
-    pub limits: LimitsConfig,
+    pub settings: SettingsConfig,
 }
 
 // ---- SecretType ---------------------------------------------------------
@@ -167,20 +157,16 @@ impl TlsCertDetails {
         self.common_name = name.into();
         self
     }
+
+    pub fn validity_days(mut self, days: u32) -> Self {
+        self.validity_days = days;
+        self
+    }
 }
 
 // ---- Default impls ------------------------------------------------------
 
-impl Default for QueryConfig {
-    fn default() -> Self {
-        Self {
-            required: vec!["name".to_string(), "ns".to_string()],
-            spec_required: true,
-        }
-    }
-}
-
-impl Default for LimitsConfig {
+impl Default for SettingsConfig {
     fn default() -> Self {
         Self {
             symmetric_key_size: 32,
@@ -376,18 +362,18 @@ impl CredGenCA {
 
 // ---- Store types --------------------------------------------------------
 
-/// Public-side material retained in the store after the server response is sent.
-///
-/// Private keys are intentionally never stored: once the TEE-encrypted server
-/// response has been built the private half is no longer needed by this plugin.
-/// The TLS CA lives in `CredGenPlugin::ca_store` keyed by identity, not here,
-/// so that it is reused across credential renewals for the same identity.
+/// Material retained in the store after the server response is sent.
+/// Private keys are never stored except for the TLS CA key, which is needed
+/// to sign client certs on demand.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum CredGenEntry {
     Tls {
-        // No fields: the CA is stored separately in ca_store so it can be
-        // reused when the VM renews its end-entity cert without rotating the CA.
+        /// CA key and cert stored so `POST /client_creds` can issue a matching
+        /// client cert. Overwritten on each `GET /credentials`; expiry is
+        /// handled by the server re-attesting to get a fresh CA and cert.
+        ca_key: Vec<u8>,
+        ca_cert: Vec<u8>,
     },
     Symmetric {
         /// Shared key; both server and client receive the same bytes.
@@ -492,46 +478,22 @@ impl TryFrom<CredGenPluginConfig> for CredGenPlugin {
     fn try_from(config: CredGenPluginConfig) -> Result<Self> {
         Ok(CredGenPlugin {
             ca_config: config.credgen.ca,
-            query_config: config.credgen.query,
-            limits_config: config.credgen.limits,
-
-            // Outer key: identity string built from query.required params (e.g. "pod-abc_default")
-            // Inner key: spec sub-key built from secret_name:secret_type (e.g. "grpc:tls")
+            limits_config: config.credgen.settings,
             store: Arc::new(RwLock::new(HashMap::new())),
-
-            // One CA per identity, reused across end-entity cert renewals.
-            ca_store: Arc::new(RwLock::new(HashMap::new())),
-
             server_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
             client_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 }
 
-/// Generates and delivers cryptographic secrets for a confidential VM (server)
+/// Generates and delivers cryptographic credentials to an attested TEE (server)
 /// and its workload owner (client).
-///
-/// # Request shape
-///
-/// Identity params (configured via `query.required`, default `["name", "ns"]`)
-/// are joined with `_` to build the store key:
-///   `?name=pod-abc&ns=default`  =>  identity key `"pod-abc_default"`
-///
-/// Spec params (`secret_name` and `secret_type`) identify the individual secret:
-///   `?secret_name=grpc&secret_type=tls`  =>  spec sub-key `"grpc:tls"`
 pub struct CredGenPlugin {
     pub ca_config: TlsCertDetails,
-    pub query_config: QueryConfig,
-    pub limits_config: LimitsConfig,
+    pub limits_config: SettingsConfig,
 
     /// `identity-key => spec-sub-key => CredGenEntry`
     pub store: Arc<RwLock<HashMap<String, HashMap<String, CredGenEntry>>>>,
-
-    /// One CA per identity, created on the first TLS credential request and
-    /// reused for all subsequent requests from the same identity. This ensures
-    /// that client certs always chain to the same CA as the server cert, even
-    /// when the server renews its end-entity cert.
-    pub ca_store: Arc<RwLock<HashMap<String, CredGenCA>>>,
 
     pub server_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
     pub client_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
@@ -540,24 +502,52 @@ pub struct CredGenPlugin {
 impl CredGenPlugin {
     // ---- Query helpers --------------------------------------------------
 
-    /// Build the identity store key from the required query params.
-    /// Must only be called after `validate_query` has confirmed all params are present.
-    fn identity_key(&self, params: &HashMap<String, String>) -> String {
-        self.query_config
-            .required
+    /// Build the identity store key from TEE-measured `init_data_claims`.
+    ///
+    /// [`IDENTITY_FIELDS`] are read from the parsed init-data map and joined
+    /// with `_`.  Because `init_data_claims` is cryptographically bound to the
+    /// TEE instance via the attestation token, this prevents any third party
+    /// from forging or overwriting another guest's credential entry by crafting
+    /// query-string parameters.
+    ///
+    /// Returns an error when `init_data` is absent or any required field is
+    /// missing or empty.
+    fn identity_key_from_init_data(
+        &self,
+        init_data: Option<&serde_json::Value>,
+    ) -> Result<String> {
+        let claims = init_data
+            .ok_or_else(|| anyhow!("init_data is required for credential generation"))?;
+
+        let mut parts = Vec::with_capacity(IDENTITY_FIELDS.len());
+        for key in IDENTITY_FIELDS {
+            let val = claims
+                .get(*key)
+                .and_then(|v| v.as_str())
+                .filter(|v| !v.trim().is_empty())
+                .ok_or_else(|| anyhow!("init_data missing required field: '{}'", key))?;
+            parts.push(val.to_string());
+        }
+        Ok(parts.join("_"))
+    }
+
+    /// Build the identity store key from query params (used for owner-side
+    /// requests where init_data is not available).
+    fn identity_key_from_query(&self, params: &HashMap<String, String>) -> String {
+        IDENTITY_FIELDS
             .iter()
-            .map(|k| params.get(k).map(String::as_str).unwrap_or_default())
+            .map(|k| params.get(*k).map(String::as_str).unwrap_or_default())
             .collect::<Vec<_>>()
             .join("_")
     }
 
-    /// Validate that all identity params are present and non-empty.
+    /// Validate that all identity params are present and non-empty in the query string.
     fn validate_query(&self, query: &HashMap<String, String>) -> Result<()> {
-        for key in &self.query_config.required {
-            if !query.contains_key(key) {
+        for key in IDENTITY_FIELDS {
+            if !query.contains_key(*key) {
                 bail!("Missing required query parameter: {}", key);
             }
-            if query.get(key).map(|v| v.trim().is_empty()).unwrap_or(true) {
+            if query.get(*key).map(|v| v.trim().is_empty()).unwrap_or(true) {
                 bail!("Query parameter '{}' cannot be empty", key);
             }
         }
@@ -570,10 +560,6 @@ impl CredGenPlugin {
         &self,
         query: &HashMap<String, String>,
     ) -> Result<(String, SecretType, String)> {
-        if !self.query_config.spec_required {
-            bail!("`spec_required` is false but parse_spec_params was called");
-        }
-
         let secret_name = query
             .get("secret_name")
             .filter(|v| !v.trim().is_empty())
@@ -613,31 +599,23 @@ impl CredGenPlugin {
     /// stored public material for the same (identity-key, spec-sub-key) pair.
     /// The `client_creds` endpoint will always return the public half of the
     /// most recently generated secret.
-    async fn build_server_response(&self, query: &HashMap<String, String>) -> Result<Vec<u8>> {
-        self.validate_query(query)?;
-        let id_key = self.identity_key(query);
+    ///
+    /// Identity is derived from `init_data_claims` (TEE-measured) rather than
+    /// the query string, so that a third party cannot overwrite another guest's
+    /// credential entry by forging query parameters.
+    async fn build_server_response(
+        &self,
+        query: &HashMap<String, String>,
+        init_data: Option<&serde_json::Value>,
+    ) -> Result<Vec<u8>> {
+        let id_key = self.identity_key_from_init_data(init_data)?;
         let (secret_name, secret_type, spec_key) = self.parse_spec_params(query)?;
 
         let (entry, server_material) = match secret_type {
             SecretType::Tls => {
-                // Reuse the existing CA for this identity so that client certs
-                // always chain to the same root even after end-entity renewal.
-                // Generate a new CA only on the first request (or after restart).
-                let ca = {
-                    let existing = self.ca_store.read().await.get(&id_key).cloned();
-                    match existing {
-                        Some(ca) => ca,
-                        None => {
-                            let ca = CredGenCA::new(&self.ca_config)?;
-                            self.ca_store
-                                .write()
-                                .await
-                                .insert(id_key.clone(), ca.clone());
-                            ca
-                        }
-                    }
-                };
-
+                // Fresh CA on every call; the CA is stored in the entry so
+                // client certs always chain to the same root as this server cert.
+                let ca = CredGenCA::new(&self.ca_config)?;
                 let ca_cert = X509::from_pem(&ca.cert)?;
                 let ca_key = PKey::private_key_from_pem(&ca.key)?;
 
@@ -647,19 +625,17 @@ impl CredGenPlugin {
                     .await
                     .get(&id_key)
                     .cloned()
-                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server"));
+                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
 
                 let (key, cert) = ca.generate_credentials(&ca_cert, &ca_key, &server_config)?;
 
-                let server_private_key = key.private_key_to_pem_pkcs8()?;
-                let server_cert = cert.to_pem()?;
-
-                // Record that a TLS entry exists for this spec-sub-key.
-                // The CA itself is in ca_store, not here.
-                let entry = CredGenEntry::Tls {};
+                let entry = CredGenEntry::Tls {
+                    ca_key: ca.key.clone(),
+                    ca_cert: ca.cert.clone(),
+                };
                 let material = ServerMaterial::Tls {
-                    private_key: server_private_key,
-                    cert: server_cert,
+                    private_key: key.private_key_to_pem_pkcs8()?,
+                    cert: cert.to_pem()?,
                     ca_cert: ca.cert,
                 };
                 (entry, material)
@@ -711,7 +687,7 @@ impl CredGenPlugin {
                     .await
                     .get(&id_key)
                     .cloned()
-                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server"));
+                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
                 let cert = CredGenCA::generate_p256_self_signed_cert(&key, &cert_details)?;
                 let cert_pem = cert.to_pem()?;
 
@@ -755,9 +731,18 @@ impl CredGenPlugin {
     /// Returns the public-side material for a secret that was previously generated
     /// by a `GET /credentials` call from the confidential VM.
     /// For TLS, a fresh client certificate is issued using the stored CA.
+    ///
+    /// # Identity asymmetry
+    ///
+    /// This endpoint is called by the workload owner (not the TEE itself), so
+    /// `init_data` is not available here.  Identity is therefore taken from the
+    /// query string.  The owner must supply the same identity params that the
+    /// TEE used when calling `GET /credentials` (where they were verified via
+    /// init-data).  Access control for this endpoint is enforced by admin auth
+    /// (`validate_auth` returns `true` for POST requests).
     async fn build_client_response(&self, query: &HashMap<String, String>) -> Result<Vec<u8>> {
         self.validate_query(query)?;
-        let id_key = self.identity_key(query);
+        let id_key = self.identity_key_from_query(query);
         let (secret_name, secret_type, spec_key) = self.parse_spec_params(query)?;
 
         // Read the client cert config before taking the store lock so that
@@ -768,7 +753,7 @@ impl CredGenPlugin {
             .await
             .get(&id_key)
             .cloned()
-            .unwrap_or_else(|| TlsCertDetails::builder().common_name("Client"));
+            .unwrap_or_else(|| TlsCertDetails::builder().common_name("Client").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
 
         // Build the response material from the stored public-side entry.
         let client_material: ClientMaterial = {
@@ -786,37 +771,10 @@ impl CredGenPlugin {
                 })?;
 
             match entry {
-                CredGenEntry::Tls { .. } => {
-                    // Look up the CA for this identity. If it has expired,
-                    // regenerate it so the client cert chain stays valid.
-                    let ca = {
-                        let existing = self.ca_store.read().await.get(&id_key).cloned();
-                        match existing {
-                            None => bail!(
-                                "No CA found for identity '{}'. \
-                                 The server must request credentials first.",
-                                id_key
-                            ),
-                            Some(ca) => {
-                                let ca_x509 = X509::from_pem(&ca.cert)?;
-                                let now = Asn1Time::days_from_now(0)?;
-                                if ca_x509.not_after() <= now.as_ref() {
-                                    // CA has expired: rotate it so future
-                                    // end-entity certs chain to a valid root.
-                                    let fresh = CredGenCA::new(&self.ca_config)?;
-                                    self.ca_store
-                                        .write()
-                                        .await
-                                        .insert(id_key.clone(), fresh.clone());
-                                    fresh
-                                } else {
-                                    ca
-                                }
-                            }
-                        }
-                    };
-
-                    // Issue a fresh client cert signed by the identity's CA.
+                CredGenEntry::Tls { ca_key, ca_cert } => {
+                    // Sign a fresh client cert with the CA stored when the
+                    // server last called GET /credentials.
+                    let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
                     let ca_cert_obj = X509::from_pem(&ca.cert)?;
                     let ca_key_obj = PKey::private_key_from_pem(&ca.key)?;
 
@@ -875,7 +833,7 @@ impl CredGenPlugin {
         data: &[u8],
     ) -> Result<()> {
         self.validate_query(query)?;
-        let id_key = self.identity_key(query);
+        let id_key = self.identity_key_from_query(query);
 
         let wrapper: CertDetailsWrapper = serde_json::from_slice(data)
             .map_err(|e| anyhow!("Failed to deserialize JSON: {}", e))?;
@@ -904,7 +862,7 @@ impl ClientPlugin for CredGenPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-        _init_data: Option<&serde_json::Value>,
+        init_data: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         if path.len() != 1 {
             bail!("Illegal path. Only one path segment is supported");
@@ -912,7 +870,7 @@ impl ClientPlugin for CredGenPlugin {
 
         match method.as_str() {
             "GET" => match path[0] {
-                "credentials" => self.build_server_response(query).await,
+                "credentials" => self.build_server_response(query, init_data).await,
                 _ => Err(anyhow!("{} not supported", path[0])),
             },
             "POST" => match path[0] {
