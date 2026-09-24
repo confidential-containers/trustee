@@ -23,7 +23,7 @@ use serde_json::Value;
 use std::fs;
 use std::str::FromStr;
 
-use crate::crypto::jwk::read_jwk_from_uri;
+use crate::crypto::jwk::{key_fetch_client, read_jwk_from_uri};
 
 fn path_to_file_uri(path: &str) -> Result<String> {
     let abs = std::path::Path::new(path)
@@ -52,7 +52,10 @@ pub(crate) async fn read_pem_public_key_from_uri(uri: &str) -> Result<DecodingKe
     let maybe_url = Url::parse(uri);
     let data = if let Ok(url) = maybe_url {
         match url.scheme() {
-            "https" => reqwest::get(uri).await?.bytes().await?.to_vec(),
+            "https" => {
+                let client = key_fetch_client().context("failed to build HTTP client")?;
+                client.get(uri).send().await?.bytes().await?.to_vec()
+            }
             "file" => std::fs::read(url.path())?,
             _ => {
                 bail!("unsupported scheme in {uri}");
