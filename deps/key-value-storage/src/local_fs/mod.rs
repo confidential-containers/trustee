@@ -178,7 +178,14 @@ mod tests {
         };
         let local_fs = LocalFs::new(config, "test").unwrap();
         local_fs
-            .set("test/12/3", b"test", SetParameters { overwrite: true })
+            .set(
+                "test/12/3",
+                b"test",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let value = local_fs.get("test/12/3").await.unwrap().unwrap();
@@ -205,7 +212,14 @@ mod tests {
                 tokio::spawn(async move {
                     let value = format!("value_{i}");
                     let res = local_fs
-                        .set("key", value.as_bytes(), SetParameters { overwrite: false })
+                        .set(
+                            "key",
+                            value.as_bytes(),
+                            SetParameters {
+                                overwrite: false,
+                                ..Default::default()
+                            },
+                        )
                         .await
                         .unwrap();
                     (res, value)
