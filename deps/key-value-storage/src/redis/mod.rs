@@ -4,7 +4,7 @@
 
 //! Redis backend for the key-value storage.
 
-use std::env;
+use std::{collections::HashSet, env};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -117,18 +117,21 @@ impl KeyValueStorage for RedisClient {
             .get_multiplexed_async_connection()
             .await
             .map_err(|e| KeyValueStorageError::ListKeysFailed { source: e.into() })?;
-        let pattern = format!("{}:*", self.namespace);
+        let prefix = format!("{}:", self.namespace);
 
-        let keys: Vec<String> = connection
-            .keys(pattern)
+        // KEYS blocks the server for the whole keyspace walk; SCAN iterates
+        // in small batches instead. SCAN may return a key more than once.
+        let mut iter = connection
+            .scan_match::<_, String>(format!("{prefix}*"))
             .await
             .map_err(|e| KeyValueStorageError::ListKeysFailed { source: e.into() })?;
+        let mut keys = HashSet::new();
+        while let Some(key) = iter.next_item().await {
+            let key = key.map_err(|e| KeyValueStorageError::ListKeysFailed { source: e.into() })?;
+            keys.insert(key.strip_prefix(&prefix).unwrap_or(&key).to_string());
+        }
 
-        let prefix = format!("{}:", self.namespace);
-        Ok(keys
-            .into_iter()
-            .map(|key| key.strip_prefix(&prefix).unwrap_or(&key).into())
-            .collect())
+        Ok(keys.into_iter().collect())
     }
 
     #[instrument(skip_all, name = "RedisClient::get", fields(key = key))]
@@ -207,6 +210,40 @@ mod tests {
         assert_eq!(res.unwrap(), SetResult::AlreadyExists);
         let value = client.delete("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
+    }
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_redis_list_spans_scan_batches() {
+        let client = RedisClient::new(Config::default(), "list_ns")
+            .await
+            .unwrap();
+        let other = RedisClient::new(Config::default(), "list_ns_other")
+            .await
+            .unwrap();
+
+        // More keys than a single SCAN batch returns by default.
+        let mut expected: Vec<String> = (0..100).map(|i| format!("key{i}")).collect();
+        for key in &expected {
+            client
+                .set(key, b"v", SetParameters { overwrite: true })
+                .await
+                .unwrap();
+        }
+        other
+            .set("key0", b"v", SetParameters { overwrite: true })
+            .await
+            .unwrap();
+
+        let mut keys = client.list().await.unwrap();
+        keys.sort();
+        expected.sort();
+        assert_eq!(keys, expected);
+
+        for key in &expected {
+            client.delete(key).await.unwrap();
+        }
+        other.delete("key0").await.unwrap();
     }
 
     #[test]
