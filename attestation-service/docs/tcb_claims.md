@@ -256,6 +256,7 @@ not covered by TBS nor report_data_signature, thus not integrity-protected.
 - `snp.reported_tcb_microcode`: Reported microcode version
 - `snp.reported_tcb_snp`: Reported SVN of SNP Firmware
 - `snp.reported_tcb_tee`: Reported SVN of ASP OS
+- `snp.reported_tcb_fmc`: Reported SVN of FMC firmware (Turin and newer processors only, null for Milan/Genoa)
 
 The claims map only includes the reported TCB version.
 An SEV-SNP Attestation Report contains four sets of TCB version information.
