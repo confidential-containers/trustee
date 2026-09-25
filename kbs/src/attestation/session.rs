@@ -125,7 +125,10 @@ impl SessionMap {
             .set(
                 session_id,
                 &session_bytes,
-                SetParameters { overwrite: true },
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
             )
             .await?;
         Ok(())

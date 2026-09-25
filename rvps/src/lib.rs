@@ -103,7 +103,14 @@ impl Rvps {
         for v in rv.iter() {
             let value_bytes = v.to_bytes()?;
             self.storage
-                .set(v.name(), &value_bytes, SetParameters { overwrite: true })
+                .set(
+                    v.name(),
+                    &value_bytes,
+                    SetParameters {
+                        overwrite: true,
+                        ..Default::default()
+                    },
+                )
                 .await?;
         }
 

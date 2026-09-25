@@ -194,7 +194,14 @@ mod tests {
         let value = client.get("test").await.unwrap();
         assert_eq!(value, None);
         client
-            .set("test", b"test", SetParameters { overwrite: true })
+            .set(
+                "test",
+                b"test",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let keys = client.list().await.unwrap();
@@ -202,7 +209,14 @@ mod tests {
         let value = client.get("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
         let res = client
-            .set("test", b"test2", SetParameters { overwrite: false })
+            .set(
+                "test",
+                b"test2",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await;
         assert_eq!(res.unwrap(), SetResult::AlreadyExists);
         let value = client.delete("test").await.unwrap();
