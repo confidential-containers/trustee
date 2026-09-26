@@ -231,8 +231,11 @@ impl AttestationService {
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
         let session_map = SessionMap::new(session_storage_backend);
-        // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
-        {
+        if session_map.storage.supports_ttl() {
+            info!("session storage expires sessions through its TTL");
+        } else {
+            info!("session storage has no TTL support, sweeping expired sessions every minute");
+            // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
             let cleanup_session_map = session_map.clone();
             // Run periodic cleanup every minute when healthy.
             let cleanup_interval = ::tokio::time::Duration::from_secs(60);

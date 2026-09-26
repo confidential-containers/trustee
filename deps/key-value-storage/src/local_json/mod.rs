@@ -212,11 +212,25 @@ mod tests {
         };
         let storage = LocalJson::new(config, "key_value.json").unwrap();
         storage
-            .set("key", b"original", SetParameters { overwrite: true })
+            .set(
+                "key",
+                b"original",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let res = storage
-            .set("key", b"updated", SetParameters { overwrite: true })
+            .set(
+                "key",
+                b"updated",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         assert_eq!(res, SetResult::Inserted);
@@ -232,11 +246,25 @@ mod tests {
         };
         let storage = LocalJson::new(config, "key_value.json").unwrap();
         storage
-            .set("key", b"original", SetParameters { overwrite: false })
+            .set(
+                "key",
+                b"original",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let res = storage
-            .set("key", b"updated", SetParameters { overwrite: false })
+            .set(
+                "key",
+                b"updated",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         assert_eq!(res, SetResult::AlreadyExists);

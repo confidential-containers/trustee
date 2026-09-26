@@ -33,7 +33,14 @@ impl StorageBackend for KvStorage {
         );
 
         self.storage
-            .set(&ref_resource_path, data, SetParameters { overwrite: true })
+            .set(
+                &ref_resource_path,
+                data,
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await?;
 
         Ok(())
