@@ -6,12 +6,7 @@
 //!
 //! All key-value pairs are stored in a single JSON file.
 
-use std::{
-    collections::HashMap,
-    fs,
-    path::PathBuf,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
 
 use async_trait::async_trait;
 use base64::{engine::general_purpose::URL_SAFE, Engine};
@@ -19,7 +14,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, instrument};
 
-use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult};
+use crate::{
+    expires_at_millis, now_millis, KeyValueStorage, KeyValueStorageError, Result, SetParameters,
+    SetResult,
+};
 
 /// Default file directory path for the local JSON file.
 const FILE_DIR_PATH: &str = "/opt/confidential-containers/storage/local_json";
@@ -41,7 +39,7 @@ impl StoredValue {
     fn new(value: &[u8], ttl: Option<Duration>) -> Self {
         let value = URL_SAFE.encode(value);
         // A TTL too large to represent never expires.
-        match ttl.and_then(|ttl| now_millis().checked_add(ttl_millis(ttl)?)) {
+        match ttl.and_then(expires_at_millis) {
             Some(expires_at) => Self::Expiring { value, expires_at },
             None => Self::Plain(value),
         }
@@ -59,16 +57,6 @@ impl StoredValue {
             Self::Plain(value) | Self::Expiring { value, .. } => value,
         }
     }
-}
-
-fn now_millis() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
-}
-
-fn ttl_millis(ttl: Duration) -> Option<u64> {
-    u64::try_from(ttl.as_nanos().div_ceil(1_000_000)).ok()
 }
 
 pub struct LocalJson {
