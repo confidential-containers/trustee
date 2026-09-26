@@ -71,7 +71,7 @@ impl LocalJson {
 impl KeyValueStorage for LocalJson {
     #[instrument(skip_all, name = "LocalJson::set", fields(key = key))]
     async fn set(&self, key: &str, value: &[u8], parameters: SetParameters) -> Result<SetResult> {
-        let _ = self.lock.write().await;
+        let _guard = self.lock.write().await;
         let file = tokio::fs::read(&self.file_path).await.map_err(|e| {
             KeyValueStorageError::GetKeyFailed {
                 source: e.into(),
@@ -105,7 +105,7 @@ impl KeyValueStorage for LocalJson {
 
     #[instrument(skip_all, name = "LocalJson::get", fields(key = key))]
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        let _ = self.lock.read().await;
+        let _guard = self.lock.read().await;
         let file = tokio::fs::read(&self.file_path).await.map_err(|e| {
             KeyValueStorageError::GetKeyFailed {
                 source: anyhow::anyhow!("failed to read the file: {}", e),
@@ -128,7 +128,7 @@ impl KeyValueStorage for LocalJson {
     }
 
     async fn list(&self) -> Result<Vec<String>> {
-        let _ = self.lock.read().await;
+        let _guard = self.lock.read().await;
         let file = tokio::fs::read(&self.file_path).await.map_err(|e| {
             KeyValueStorageError::ListKeysFailed {
                 source: anyhow::anyhow!("failed to read the file: {}", e),
@@ -144,7 +144,7 @@ impl KeyValueStorage for LocalJson {
 
     #[instrument(skip_all, name = "LocalJson::delete", fields(key = key))]
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        let _ = self.lock.write().await;
+        let _guard = self.lock.write().await;
         let file = tokio::fs::read(&self.file_path).await.map_err(|e| {
             KeyValueStorageError::GetKeyFailed {
                 source: e.into(),
@@ -181,6 +181,8 @@ impl KeyValueStorage for LocalJson {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
 
     #[tokio::test]
@@ -270,5 +272,35 @@ mod tests {
         assert_eq!(res, SetResult::AlreadyExists);
         let value = storage.get("key").await.unwrap().unwrap();
         assert_eq!(value, b"original");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_concurrent_set_keeps_every_key() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            file_dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        let storage = Arc::new(LocalJson::new(config, "key_value.json").unwrap());
+
+        let handles: Vec<_> = (0..50)
+            .map(|i| {
+                let storage = Arc::clone(&storage);
+                tokio::spawn(async move {
+                    storage
+                        .set(&format!("key_{i}"), b"value", SetParameters::default())
+                        .await
+                        .unwrap();
+                })
+            })
+            .collect();
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        assert_eq!(storage.list().await.unwrap().len(), 50);
+        for i in 0..50 {
+            let value = storage.get(&format!("key_{i}")).await.unwrap();
+            assert_eq!(value.as_deref(), Some(&b"value"[..]));
+        }
     }
 }

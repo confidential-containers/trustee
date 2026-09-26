@@ -68,7 +68,7 @@ impl KeyValueStorage for LocalFs {
             });
         }
 
-        let _ = self.lock.write().await;
+        let _guard = self.lock.write().await;
         let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
 
         if !parameters.overwrite && file_path.exists() {
@@ -91,7 +91,7 @@ impl KeyValueStorage for LocalFs {
 
     #[instrument(skip_all, name = "LocalFs::get", fields(key = key))]
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        let _ = self.lock.read().await;
+        let _guard = self.lock.read().await;
         let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
 
         if !file_path.exists() {
@@ -109,7 +109,7 @@ impl KeyValueStorage for LocalFs {
     }
 
     async fn list(&self) -> Result<Vec<String>> {
-        let _ = self.lock.read().await;
+        let _guard = self.lock.read().await;
 
         let mut keys = Vec::new();
         let mut files = tokio::fs::read_dir(&self.dir_path).await.map_err(|e| {
@@ -140,7 +140,7 @@ impl KeyValueStorage for LocalFs {
 
     #[instrument(skip_all, name = "LocalFs::delete", fields(key = key))]
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        let _ = self.lock.write().await;
+        let _guard = self.lock.write().await;
         let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
         if !file_path.exists() {
             return Ok(None);
@@ -166,6 +166,8 @@ impl KeyValueStorage for LocalFs {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
 
     #[tokio::test]
@@ -194,5 +196,46 @@ mod tests {
         assert_eq!(value, b"test");
         let keys = local_fs.list().await.unwrap();
         assert_eq!(keys, Vec::<String>::new());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_concurrent_set_without_overwrite_inserts_once() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        let local_fs = Arc::new(LocalFs::new(config, "test").unwrap());
+
+        let handles: Vec<_> = (0..50)
+            .map(|i| {
+                let local_fs = Arc::clone(&local_fs);
+                tokio::spawn(async move {
+                    let value = format!("value_{i}");
+                    let res = local_fs
+                        .set(
+                            "key",
+                            value.as_bytes(),
+                            SetParameters {
+                                overwrite: false,
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .unwrap();
+                    (res, value)
+                })
+            })
+            .collect();
+        let mut inserted = Vec::new();
+        for handle in handles {
+            let (res, value) = handle.await.unwrap();
+            if res == SetResult::Inserted {
+                inserted.push(value);
+            }
+        }
+
+        assert_eq!(inserted.len(), 1);
+        let stored = local_fs.get("key").await.unwrap().unwrap();
+        assert_eq!(stored, inserted[0].as_bytes());
     }
 }
