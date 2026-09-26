@@ -8,7 +8,7 @@ use actix_web::cookie::{
     time::{Duration, OffsetDateTime},
     Cookie,
 };
-use anyhow::Result;
+use anyhow::{bail, Result};
 use kbs_types::{Challenge, Request};
 use key_value_storage::{KeyValueStorage, SetParameters};
 use serde::{Deserialize, Serialize};
@@ -118,8 +118,16 @@ impl SessionMap {
     }
 
     pub async fn insert(&self, session: SessionStatus) -> Result<()> {
-        let session_bytes = serde_json::to_vec(&session)?;
         let session_id = session.id();
+        // The TTL is the session's remaining lifetime, so rewriting a session
+        // (e.g. once attested) never extends it.
+        let remaining = *session.timeout() - OffsetDateTime::now_utc();
+        let Ok(ttl) = std::time::Duration::try_from(remaining) else {
+            let _ = self.storage.delete(session_id).await?;
+            bail!("session expired.");
+        };
+
+        let session_bytes = serde_json::to_vec(&session)?;
         let _ = self
             .storage
             .set(
@@ -127,7 +135,7 @@ impl SessionMap {
                 &session_bytes,
                 SetParameters {
                     overwrite: true,
-                    ..Default::default()
+                    ttl: Some(ttl),
                 },
             )
             .await?;
@@ -195,5 +203,41 @@ mod tests {
         // The kbs_types::Challenge and kbs_types::Request does not handle PartialEq
         // so we need to compare the debugging string directly.
         assert_eq!(format!("{session:?}"), format!("{session_get:?}"));
+    }
+
+    fn test_session(timeout_minutes: i64) -> SessionStatus {
+        let request = Request {
+            version: "1.0.0".to_string(),
+            tee: Tee::Sample,
+            extra_params: json!({}),
+        };
+        let challenge = Challenge {
+            nonce: "1234567890".to_string(),
+            extra_params: json!({}),
+        };
+        SessionStatus::auth(request, timeout_minutes, challenge)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_session_expires_through_store_ttl() {
+        let storage = Arc::new(MemoryKeyValueStorage::default());
+        let session_map = SessionMap::new(storage.clone());
+        let session = test_session(1);
+        session_map.insert(session.clone()).await.unwrap();
+        assert!(storage.get(session.id()).await.unwrap().is_some());
+
+        // Only the store's clock moves, so this is the store TTL at work,
+        // not SessionStatus::is_expired.
+        tokio::time::advance(std::time::Duration::from_secs(61)).await;
+        assert!(storage.get(session.id()).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_insert_expired_session_fails() {
+        let storage = Arc::new(MemoryKeyValueStorage::default());
+        let session_map = SessionMap::new(storage.clone());
+        let session = test_session(-1);
+        assert!(session_map.insert(session.clone()).await.is_err());
+        assert!(storage.get(session.id()).await.unwrap().is_none());
     }
 }
