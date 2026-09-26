@@ -39,6 +39,14 @@ For example, a key-value pair `("key1", b"value1")` will be stored as:
 > - File path: `{dir_path}/ke\x2Fy\x2F1`
 > - File content: Raw bytes of `value1`
 
+### Expiry
+
+Entries written with a TTL have their expiry (Unix time in milliseconds) recorded
+in a `#expiry` JSON file in the same directory. `#` is not allowed in keys, so
+the file never collides with a stored value, and `list` skips it. Expired
+entries are hidden from reads, and their files are deleted on the next write.
+The index file only exists while some entry has a TTL.
+
 ## Notes
 
 1. **Performance**: File system operations may have overhead compared to in-memory storage, but provide persistence

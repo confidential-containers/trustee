@@ -9,10 +9,14 @@ CREATE TABLE IF NOT EXISTS repository (
   value BYTEA,
   key TEXT PRIMARY KEY
 );
+-- expires_at lets the session store expire rows itself (see the key-value-storage PostgreSQL README).
 CREATE TABLE IF NOT EXISTS kbs_protocol_session (
   value BYTEA,
-  key TEXT PRIMARY KEY
+  key TEXT PRIMARY KEY,
+  expires_at TIMESTAMPTZ
 );
+CREATE INDEX IF NOT EXISTS kbs_protocol_session_expires_at
+  ON kbs_protocol_session (expires_at) WHERE expires_at IS NOT NULL;
 CREATE TABLE IF NOT EXISTS attestation_service_policy (
   value BYTEA,
   key TEXT PRIMARY KEY

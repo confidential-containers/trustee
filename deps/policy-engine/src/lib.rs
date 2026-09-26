@@ -42,7 +42,10 @@ impl<T: Send + Sync + EngineTrait> PolicyEngine<T> {
     /// Concrete policy engine backend may handle the policy in different ways.
     pub async fn set_policy(&self, policy_id: &str, policy: &str, overwrite: bool) -> Result<()> {
         T::check_policy_format(policy)?;
-        let params = SetParameters { overwrite };
+        let params = SetParameters {
+            overwrite,
+            ..Default::default()
+        };
         let policy_id = format!("{}{}", policy_id, T::policy_suffix());
         let _ = self
             .storage
