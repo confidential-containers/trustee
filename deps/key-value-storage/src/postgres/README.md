@@ -5,7 +5,41 @@ This module provides a PostgreSQL-backed implementation of `KeyValueStorage` for
 ## Features
 
 - Stores key-value pairs in a configurable table (`key` primary key, `value` as binary)
+- Per-entry expiry through an `expires_at` column
 - Safe parameter binding via `sqlx`
+
+## Expiry (TTL)
+
+Every table needs an `expires_at TIMESTAMPTZ` column. A row whose `expires_at`
+is `NULL` never expires. Expiry times are computed with the database's `now()`,
+so all clients agree on them. Reads ignore expired rows, and writes delete them
+at most once a minute.
+
+### Upgrading from a version without TTL
+
+This is a breaking change: tables created by earlier versions have no
+`expires_at` column, and every query on them fails. Add the column to each
+table before upgrading. There is one table per storage namespace; the names
+below are the ones `deployment/helm-chart/files/postgres-initkv.sql` creates.
+
+```sql
+ALTER TABLE kbs ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE repository ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE attestation_service_policy ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE reference_value ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE kbs_protocol_session ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS kbs_protocol_session_expires_at
+  ON kbs_protocol_session (expires_at) WHERE expires_at IS NOT NULL;
+```
+
+Existing rows get no expiry, and KBS no longer sweeps sessions once the store
+expires them itself, so give leftover sessions one (any value above the session
+timeout works):
+
+```sql
+UPDATE kbs_protocol_session SET expires_at = now() + interval '1 day'
+  WHERE expires_at IS NULL;
+```
 
 ## Quick start (with Docker)
 
