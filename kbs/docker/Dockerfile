@@ -44,11 +44,27 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
     if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
     libsgx-dcap-quote-verify-dev; fi
 
+# Build and install libnvat from source
+ARG NVAT=true
+ARG NVAT_VERSION=2026.03.02
+ENV NVAT_USE_SYSTEM_LIB=1
+ENV LIBRARY_PATH=/usr/local/lib
+RUN mkdir -p /opt/nvat-lib && if [ "${ARCH}" = "x86_64" ] && [ "${NVAT}" = "true" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends cmake pkg-config libxml2-dev zlib1g-dev && \
+    git clone --depth=1 --branch "${NVAT_VERSION}" https://github.com/NVIDIA/attestation-sdk /tmp/attestation-sdk && \
+    cmake -S /tmp/attestation-sdk/nv-attestation-sdk-cpp -B /tmp/attestation-sdk/build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build /tmp/attestation-sdk/build --parallel "$(nproc)" && \
+    cmake --install /tmp/attestation-sdk/build && \
+    ln -sf /usr/local/include/nvat.h /usr/include/nvat.h && \
+    cp -a /usr/local/lib/libnvat.so* /opt/nvat-lib/ && \
+    ldconfig && \
+    rm -rf /tmp/attestation-sdk; fi
+
 # Build and Install KBS
 WORKDIR /usr/src/trustee
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} AWS=${AWS} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} AWS=${AWS} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} NVAT=${NVAT} && \
     make ARCH=${ARCH} install-kbs
 
 # ubuntu:24.04
@@ -77,5 +93,14 @@ RUN apt-get update && \
     fi && \
     apt clean all && \
     rm -rf /tmp/*
+
+# Install libnvat
+ARG NVAT=true
+COPY --from=builder /opt/nvat-lib/ /usr/local/lib/
+RUN if [ "${ARCH}" = "x86_64" ] && [ "${NVAT}" = "true" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends libxml2 && \
+    ldconfig && \
+    apt clean all && \
+    rm -rf /var/lib/apt/lists/* /tmp/*; fi
 
 COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs
