@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["grpc-bin", "rvps-grpc"]
+default = ["grpc-bin", "rvps-grpc", "nvat"]
 all-verifier = ["verifier/all-verifier"]
 tdx-verifier = ["verifier/tdx-verifier"]
 sgx-verifier = ["verifier/sgx-verifier"]
@@ -16,6 +16,7 @@ hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
 cca-verifier = ["verifier/cca-verifier"]
 se-verifier = ["verifier/se-verifier"]
 nvidia-verifier = ["verifier/nvidia-verifier"]
+nvat = ["verifier/nvat"]
 tpm-verifier = ["verifier/tpm-verifier"]
 
 rvps-grpc = ["prost", "tonic", "mobc"]
