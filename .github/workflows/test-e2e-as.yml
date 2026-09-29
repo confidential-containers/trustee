@@ -47,6 +47,9 @@ jobs:
           target/
         key: rust-${{ hashFiles('./Cargo.lock') }}
 
+    - name: Install NVIDIA Attestation SDK
+      uses: ./.github/actions/install-nvat-sdk
+
     - name: Install CoCo-AS e2e dependencies
       run: make as-e2e-install-deps
 
