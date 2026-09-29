@@ -70,6 +70,12 @@ if [ $(uname -m) = "x86_64" ]; then \
 fi && \
 rm -f /tmp/libsgx-dcap-quote-verify-1.21.100.3-1.el9.x86_64.rpm /tmp/libsgx-dcap-default-qpl-1.21.100.3-1.el9.x86_64.rpm
 
+# Not present by default in ubi-minimal
+RUN microdnf -y install tpm2-tss && microdnf clean all
+
+# Make sure we have all the shared libraries
+RUN ! ldd /usr/local/bin/kbs | grep 'not found$'
+
 # Declare build-time variables.
 ARG NAME="trustee"
 ARG DESCRIPTION="The Trustee server."
