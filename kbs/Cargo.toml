@@ -63,6 +63,10 @@ pqc-experimental = ["dep:ml-kem", "dep:sha3-kmac"]
 # Use GCP Secret Manager as KBS resource backend
 gcp = ["google-cloud-secretmanager-v1"]
 
+# NVIDIA NVAT can be used in conjunction with the nvidia-verifier in the AS to
+# enable two additional verifier modes on x86.
+coco-as-nvidia-nvat = ["attestation-service?/nvidia-nvat"]
+
 [dependencies]
 actix = "0.13.5"
 actix-web = { workspace = true, features = ["openssl"] }
