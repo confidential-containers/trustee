@@ -1,5 +1,5 @@
 # Use UBI to build.
-FROM registry.access.redhat.com/ubi9:9.8 as builder
+FROM registry.access.redhat.com/ubi9:9.8-1790665138 as builder
 ARG ALIYUN=false
 ARG VAULT=true
 
@@ -52,7 +52,8 @@ RUN if [ $(uname -m) = "x86_64" ]; then \
 fi
 
 # Package UBI image.
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1790555810
+
 
 # Update packages. Get CVE fixes sooner.
 RUN microdnf -y update && microdnf clean all
