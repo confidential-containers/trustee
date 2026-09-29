@@ -1,0 +1,37 @@
+name: Install NVIDIA Attestation SDK
+description: Install the NVIDIA Attestation SDK (libnvat-dev) from NVIDIA's apt repository (x86_64 only)
+
+inputs:
+  version:
+    description: >
+      libnvat-dev version to install. Should match the NVAT release used by
+      the "nv-attestation-sdk" crate dependency in deps/verifier/Cargo.toml
+      (see that crate's GitHub release notes for its corresponding
+      libnvat/libnvat-dev version).
+    required: false
+    default: "1.2.0"
+  cuda-keyring-version:
+    description: cuda-keyring package version used to register NVIDIA's apt repository
+    required: false
+    default: "1.1-1"
+
+runs:
+  using: composite
+  steps:
+    - name: Install NVIDIA Attestation SDK
+      if: runner.arch == 'X64'
+      shell: bash
+      env:
+        NVAT_VERSION: ${{ inputs.version }}
+        CUDA_KEYRING_VERSION: ${{ inputs.cuda-keyring-version }}
+      run: |
+        tmpdir="$(mktemp -d)"
+        curl -fsSL -o "${tmpdir}/cuda-keyring.deb" \
+          "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_${CUDA_KEYRING_VERSION}_all.deb"
+        sudo dpkg -i "${tmpdir}/cuda-keyring.deb"
+        rm -rf "${tmpdir}"
+
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends "libnvat-dev=${NVAT_VERSION}*"
+
+        echo "NVAT_USE_SYSTEM_LIB=1" >> "$GITHUB_ENV"
