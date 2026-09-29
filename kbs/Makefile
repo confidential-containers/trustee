@@ -81,6 +81,11 @@ ifeq ($(EXTERNAL_PLUGIN), true)
   override FEATURES := $(FEATURES),external-plugin
 endif
 
+NVAT ?= true
+ifeq ($(NVAT), true)
+  override FEATURES := $(FEATURES),coco-as-nvidia-nvat
+endif
+
 ifeq ($(PQC_EXPERIMENTAL), true)
   override FEATURES := $(FEATURES),pqc-experimental
 endif
