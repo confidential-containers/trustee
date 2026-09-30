@@ -169,6 +169,7 @@ async fn verify_evidence(
     // Return Evidence parsed claim
     let mut claim = generate_parsed_claim(&quote, ccel_option, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
+    crate::hardware_type::insert(&mut claim, crate::hardware_type::types::INTEL_TDX);
 
     Ok(claim)
 }

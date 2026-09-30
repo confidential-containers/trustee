@@ -93,6 +93,7 @@ fn parse_tee_evidence(quote: &SampleTeeEvidence) -> Result<TeeEvidenceParsedClai
         // The sample platform is in a sense only for debugging.
         // This claim will always be set to false and is only for testing.
         "debug": false,
+        "hardware_type": crate::hardware_type::types::SAMPLE,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)

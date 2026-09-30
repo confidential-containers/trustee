@@ -100,6 +100,7 @@ impl Verifier for AzTdxVtpm {
         let mut claim = generate_parsed_claim(&td_quote, None, &platform_info)?;
         extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
+        crate::hardware_type::insert(&mut claim, crate::hardware_type::types::AZURE_TDX_VTPM);
 
         Ok(vec![(claim, "cpu".to_string())])
     }

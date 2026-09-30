@@ -8,6 +8,8 @@ use key_value_storage::StorageProvider;
 use serde::Deserialize;
 use tracing::debug;
 
+pub mod hardware_type;
+
 pub mod sample;
 pub mod sample_device;
 
