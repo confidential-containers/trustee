@@ -33,6 +33,13 @@ struct AdminAclRuleEntry {
     role: String,
 }
 
+/// Top-level URI namespaces that an admin ACL may target. Admin authentication is
+/// intentionally limited to the KBS API (`/kbs`) and the optional admin-protected
+/// Prometheus endpoint (`/metrics`), so that relaxing the anchoring check cannot
+/// silently extend it to arbitrary endpoints. A rule spanning both namespaces must
+/// be split into one [`AdminAclRule`] per namespace.
+const ALLOWED_ENDPOINT_PREFIXES: [&str; 2] = ["^/kbs", "^/metrics"];
+
 pub struct RegexAclAuthorizer {
     acls: Vec<AdminAclRuleEntry>,
 }
@@ -42,8 +49,11 @@ impl TryFrom<RegexAclConfig> for RegexAclAuthorizer {
     fn try_from(config: RegexAclConfig) -> Result<Self> {
         let mut acls = Vec::new();
         for acl in config.acls {
-            if !acl.allowed_endpoints.starts_with("^/kbs") || !acl.allowed_endpoints.ends_with("$")
-            {
+            let anchored = acl.allowed_endpoints.ends_with('$');
+            let known_namespace = ALLOWED_ENDPOINT_PREFIXES
+                .iter()
+                .any(|prefix| acl.allowed_endpoints.starts_with(prefix));
+            if !known_namespace || !anchored {
                 return Err(Error::UnanchoredRegex);
             }
             let regex = Regex::new(&acl.allowed_endpoints)?;
@@ -77,5 +87,49 @@ impl AuthorizationTrait for RegexAclAuthorizer {
                 request.uri()
             ),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(allowed_endpoints: &str) -> RegexAclConfig {
+        RegexAclConfig {
+            acls: vec![AdminAclRule {
+                role: "admin".to_string(),
+                allowed_endpoints: allowed_endpoints.to_string(),
+            }],
+        }
+    }
+
+    #[test]
+    fn accepts_anchored_kbs_and_metrics_regexes() {
+        for allowed in ["^/kbs/.+$", "^/kbs/v0/resource/.+$", "^/metrics$"] {
+            assert!(
+                RegexAclAuthorizer::try_from(config(allowed)).is_ok(),
+                "expected {allowed} to be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unanchored_or_unknown_namespace_regexes() {
+        for rejected in [
+            "metrics$",       // not anchored at the start
+            "^/metrics",      // not anchored at the end
+            "^/kbs/v0/.+",    // not anchored at the end
+            "^/resource/.+$", // unknown top-level namespace
+            "^/healthz$",     // health endpoints are not admin-scoped
+            "^/.*$",          // would grant every path
+        ] {
+            assert!(
+                matches!(
+                    RegexAclAuthorizer::try_from(config(rejected)),
+                    Err(Error::UnanchoredRegex)
+                ),
+                "expected {rejected} to be rejected"
+            );
+        }
     }
 }
