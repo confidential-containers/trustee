@@ -1,0 +1,37 @@
+# KBS sessions in a bundled Valkey (Redis-protocol) store + default LocalFs KV backend.
+#
+# Valkey (BSD-licensed) replaces Redis, whose license is no longer OSI-approved;
+# the KBS `Redis` session backend speaks the Redis wire protocol, so both work.
+# Sharing session state outside the KBS Pod allows running several KBS replicas.
+#
+# Install (from repo root):
+#   helm dependency update ./deployment/helm-chart
+#   helm upgrade --install trustee ./deployment/helm-chart \
+#     --namespace coco-trustee --create-namespace \
+#     -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml
+#
+# The bundled Valkey image comes from docker.io, where anonymous pulls are
+# rate-limited. Point the image at a private mirror if needed, e.g.:
+#   helm upgrade --install trustee ./deployment/helm-chart ... \
+#     -f ./deployment/helm-chart/scenarios/valkey-sessions.yaml \
+#     --set valkey.image.registry=mirror.example.com \
+#     --set valkey.image.repository=bitnami/valkey \
+#     --set valkey.image.tag=9.1.0
+#
+# External Redis-compatible service instead of the bundled Valkey:
+#   kubectl create secret generic trustee-external-redis -n coco-trustee \
+#     --from-literal=REDIS_URL='redis://:password@redis.example.com:6379'
+#   helm upgrade --install trustee ./deployment/helm-chart ... \
+#     --set sessionStorageType=Redis \
+#     --set storageBackend.redis.mode=external \
+#     --set storageBackend.redis.external.existingSecretName=trustee-external-redis \
+#     --set storageBackend.redis.external.existingSecretKey=REDIS_URL
+
+sessionStorageType: Redis
+
+storageBackend:
+  redis:
+    mode: internal
+
+valkey:
+  enabled: true

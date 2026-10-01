@@ -34,6 +34,7 @@ impl ClientPlugin for ResourceStorage {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        _init_data: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let resource_desc = path.join("/");
         match method.as_str() {
@@ -41,6 +42,10 @@ impl ClientPlugin for ResourceStorage {
                 let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
                 self.set_secret_resource(resource_description, body).await?;
                 Ok(vec![])
+            }
+            "GET" if path.is_empty() => {
+                let resources = self.list_secret_resources().await?;
+                Ok(serde_json::to_vec(&resources)?)
             }
             "GET" => {
                 let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
@@ -61,13 +66,15 @@ impl ClientPlugin for ResourceStorage {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &[&str],
+        path: &[&str],
         method: &Method,
     ) -> Result<bool> {
         if method.as_str() == "POST" || method.as_str() == "DELETE" {
             return Ok(true);
         }
-
+        if method.as_str() == "GET" && path.is_empty() {
+            return Ok(true);
+        }
         Ok(false)
     }
 
@@ -75,10 +82,10 @@ impl ClientPlugin for ResourceStorage {
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &[&str],
+        path: &[&str],
         method: &Method,
     ) -> Result<bool> {
-        if method.as_str() == "GET" {
+        if method.as_str() == "GET" && !path.is_empty() {
             return Ok(true);
         }
 

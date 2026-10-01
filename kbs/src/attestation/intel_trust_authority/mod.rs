@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    attestation::backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
+    attestation::{
+        backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
+        SELECTED_HASH_ALGORITHM_JSON_KEY, SUPPORTED_HASH_ALGORITHMS_JSON_KEY,
+    },
     crypto::jwt::JwtVerifier,
 };
 use anyhow::*;
@@ -20,9 +23,6 @@ use serde_with::serde_as;
 use sha2::{Digest, Sha512};
 use std::result::Result::Ok;
 use tracing::{debug, info, warn};
-
-const SUPPORTED_HASH_ALGORITHMS_JSON_KEY: &str = "supported-hash-algorithms";
-const SELECTED_HASH_ALGORITHM_JSON_KEY: &str = "selected-hash-algorithm";
 
 const ERR_NO_TEE_ALGOS: &str = "ITA: TEE does not support any hash algorithms";
 const ERR_INVALID_TEE: &str = "ITA: Unknown TEE specified";
@@ -292,8 +292,16 @@ fn build_attest_request(
 
 #[async_trait]
 impl Attest for IntelTrustAuthority {
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> anyhow::Result<String> {
-        let policy_ids = self.config.policy_ids.clone();
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> anyhow::Result<String> {
+        // Fall back to the configured policies when the client selected no
+        // attestation-policy-selector.
+        let policy_ids = policy_ids
+            .map(<[String]>::to_vec)
+            .unwrap_or_else(|| self.config.policy_ids.clone());
         let policy_must_match = match policy_ids.is_empty() {
             true => false,
             false => !self.config.allow_unmatched_policy.unwrap_or_default(),

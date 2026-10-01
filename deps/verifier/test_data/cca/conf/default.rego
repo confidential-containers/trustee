@@ -33,10 +33,25 @@ default runtime_opaque := 2
 # This is the default, unless the RIM claim matches one of the configured
 # reference values.
 default executables := 33
+
 # The value 3 stands for
 # "Only a recognized genuine set of approved executables have
 #  been loaded during the boot process."
 # the RIM (realm initial measurement) must match
 executables := 3 if {
 	input.cca.realm["cca-realm-initial-measurement"] in data.reference["cca.realm.cca-realm-initial-measurement"]
+}
+
+# For the `configuration` trust claim, the value 36 stands for
+# "Elements of the configuration relevant to security are unavailable to the Verifier."
+default configuration := 36
+
+# trust_claims MUST be defined as an object with kebab-case EAR claim names.
+# Missing this causes the AS to panic at token issuance time.
+trust_claims := {
+	"hardware": hardware,
+	"instance-identity": instance_identity,
+	"runtime-opaque": runtime_opaque,
+	"executables": executables,
+	"configuration": configuration,
 }

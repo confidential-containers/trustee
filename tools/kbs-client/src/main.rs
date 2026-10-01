@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-//! A simple KBS client for test.
+//! A Client for accessing admin and guest APIs of the KBS
 
 use anyhow::{bail, Result};
 use base64::engine::general_purpose::STANDARD;
@@ -67,6 +67,7 @@ enum Commands {
         /// token, allowing KBS policies to access raw init-data claims.
         /// The per the InitData specification, the plaintext should be toml or json
         /// depending on what the runtime expects.
+        #[clap(long)]
         init_data: Option<String>,
     },
 
@@ -81,6 +82,7 @@ enum Commands {
         tee_key_file: Option<PathBuf>,
 
         /// InitData plaintext. See GetResource
+        #[clap(long)]
         init_data: Option<String>,
     },
 }

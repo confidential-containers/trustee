@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{http::header, web, App, HttpServer};
+use actix_web::{http::header, web, App, HttpResponse, HttpServer};
 use anyhow::Result;
 use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
 use clap::Parser;
@@ -179,6 +179,7 @@ loglevel: {env_filter}
             )
             .service(web::resource(WebApi::Challenge.as_ref()).route(web::post().to(get_challenge)))
             .service(web::resource(WebApi::Jwks.as_ref()).route(web::get().to(get_jwks)))
+            .route("/healthz", web::get().to(HttpResponse::Ok))
             .app_data(web::Data::clone(&attestation_service))
     });
 

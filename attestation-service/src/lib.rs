@@ -299,6 +299,26 @@ impl AttestationService {
             .context("query reference values")
     }
 
+    /// List all registered reference value IDs
+    pub async fn list_reference_values(&self) -> Result<Vec<String>> {
+        self.rvps
+            .lock()
+            .await
+            .list_reference_values()
+            .await
+            .context("list reference values")
+    }
+
+    /// Delete a reference value by id
+    pub async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool> {
+        self.rvps
+            .lock()
+            .await
+            .delete_reference_value(reference_value_id)
+            .await
+            .context("delete reference value")
+    }
+
     pub async fn generate_supplemental_challenge(
         &self,
         tee: Tee,

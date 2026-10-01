@@ -69,6 +69,7 @@ async fn verify_tee_evidence(
 fn parse_tee_evidence(quote: &SampleDeviceEvidence) -> Result<TeeEvidenceParsedClaim> {
     let claims_map = json!({
         "svn": quote.svn,
+        "report_data": quote.report_data,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)

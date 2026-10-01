@@ -36,6 +36,13 @@ The `setup` container initializes files under `kbs/config/docker-compose/` autom
   See [Attestation Token Verification](./attestation_token_verification.md#docker-compose-cluster)
   for how these files fit together.
 
+  By default `ca-cert.pem` is valid for 3650 days (10 years) and `token-cert.pem` for
+  90 days. Override either before `docker compose up` if you need different lifetimes:
+
+  ```bash
+  CA_CERT_DAYS=1825 TOKEN_CERT_DAYS=30 docker compose up -d
+  ```
+
 Use the generated admin token with `kbs-client`:
 
 ```bash

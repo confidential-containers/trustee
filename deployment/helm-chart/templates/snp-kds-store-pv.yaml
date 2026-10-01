@@ -1,0 +1,26 @@
+{{- $kdsStorePath := ((.Values.as.verifier | default dict).snp | default dict).kdsStoreHostPath | default "" -}}
+{{- if $kdsStorePath -}}
+{{- $nodeName := required "as.verifier.snp.nodeName is required when as.verifier.snp.kdsStoreHostPath is set" (((.Values.as.verifier | default dict).snp | default dict).nodeName | default "") -}}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "coco-trustee.names.snp-kds-store.pv" . }}
+  labels:
+    {{- include "coco-trustee.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  local:
+    path: {{ $kdsStorePath }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - {{ $nodeName }}
+{{- end }}

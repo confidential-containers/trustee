@@ -43,4 +43,14 @@ impl RvpsApi for BuiltinRvps {
 
         Ok(reference_value)
     }
+
+    async fn list_reference_values(&self) -> Result<Vec<String>> {
+        let ids = self.rvps.list_reference_values().await?;
+        Ok(ids)
+    }
+
+    async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool> {
+        let deleted = self.rvps.delete_reference_value(reference_value_id).await?;
+        Ok(deleted)
+    }
 }

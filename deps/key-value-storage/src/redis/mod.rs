@@ -4,6 +4,8 @@
 
 //! Redis backend for the key-value storage.
 
+use std::env;
+
 use anyhow::anyhow;
 use async_trait::async_trait;
 use redis::{cmd, AsyncCommands};
@@ -16,6 +18,13 @@ use crate::{
 
 /// Default Redis URL.
 const DEFAULT_URL: &str = "redis://127.0.0.1:6379";
+
+/// The environment variable name for the Redis connection URL. When set, it
+/// takes precedence over the URL from the configuration file, mirroring the
+/// `POSTGRES_URL` behavior of the PostgreSQL backend. This allows the URL
+/// (which may embed credentials) to be injected from a secret store instead
+/// of being written into a config file.
+pub const REDIS_URL_ENV_VAR: &str = "REDIS_URL";
 
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 #[serde(default)]
@@ -39,7 +48,8 @@ pub struct RedisClient {
 
 impl RedisClient {
     pub async fn new(config: Config, namespace: &str) -> Result<Self> {
-        let client = redis::Client::open(config.url.as_str())
+        let url = env::var(REDIS_URL_ENV_VAR).unwrap_or(config.url);
+        let client = redis::Client::open(url.as_str())
             .map_err(|e| KeyValueStorageError::InitializeBackendFailed { source: e.into() })?;
 
         Ok(Self {

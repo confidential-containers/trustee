@@ -98,6 +98,7 @@ The parameters
 - `AS_TYPES`: The KBS supports multiple backend attestation services. `AS_TYPES` selects which verifier to use. The options are `coco-as` and `intel-trust-authority-as`.
 - `COCO_AS_INTEGRATION_TYPE`:  The KBS can connect to the CoCo AS in multiple ways. `COCO_AS_INTEGRATION_TYPE` can be set either to `grpc` or `builtin`. With `grpc` the KBS will make a remote connection to the AS. If you are manually building and configuring the components, you'll need to set them up so that this connection can be established. Similar to passport mode, the remote AS can be useful if secret provisioning and attestation verification are not in the same scope. With `builtin` the KBA uses the AS as a crate. This is recommended if you want to avoid the complexity of a remote connection.
 - `ALIYUN`: The kbs support aliyun KMS as secret storage backend. `true` to enable building this feature. By default it is `false`.
+- `EXTERNAL_PLUGIN`: Support for [external gRPC plugins](docs/ext_plugin.md). By default it is `true`. Set to `false` to build a KBS that cannot host external plugins.
 
 ## External Plugins
 
@@ -107,8 +108,16 @@ gRPC, coexisting with compiled-in Rust plugins.
 
 ### Building with External Plugin Support
 
+External plugin support is compiled in by default. No endpoint is exposed
+unless the config declares an `external` plugin entry. Two things do change
+unconditionally in a default build: `/metrics` gains three `kbs_plugin_*`
+families, which report zero until a plugin is configured, and KBS installs
+the ring rustls provider as the process-wide default.
+
+To build a KBS without it:
+
 ```shell
-EXTERNAL_PLUGIN=true make
+EXTERNAL_PLUGIN=false make
 ```
 
 ### Plugin Configuration
@@ -119,10 +128,13 @@ External plugins are registered in the KBS TOML config under a single `external`
 [[plugins]]
 name = "external"
 backends = [
-  { name = "my-plugin", endpoint = "http://127.0.0.1:50051", tls_mode = "insecure" },
-  { name = "other-plugin", endpoint = "https://127.0.0.1:50052", tls_mode = "tls", ca_cert_path = "/etc/kbs/ca.pem" },
+  { name = "my-plugin", endpoint = "http://127.0.0.1:50051" },
+  { name = "other-plugin", endpoint = "https://127.0.0.1:50052", ca_cert_path = "/etc/kbs/ca.pem" },
 ]
 ```
+
+The endpoint scheme selects the transport: `http://` is plaintext, `https://`
+is TLS and requires `ca_cert_path`.
 
 Plugins are reached at `/kbs/v0/external/<name>/...`.
 
@@ -141,6 +153,16 @@ The KBS can use different backend storage. `LocalFs` will always be builtin.
 are `true` or `false` (by defult). Please refer to [the document](docs/config.md#repository-configuration)
 for more details.
 
+## Experimental Features
+
+PQC algorithm support for the KBS protocol as a replacement for classic cryptographic methods is provided here as an experimental compile-time feature. These can be enabled by building with the additional [PQC_EXPERIMENTAL=?] parameter set as required, e.g.
+
+```shell
+PQC_EXPERIMENTAL=true make
+```
+
+**Please note, enabling this feature extends support for the designated PQC algorithm, but will still support classic algorithms. However enabling this feature in guest components will require the feature to be enabled here to support resource requests with the new TeePubKey::AKP type.**
+
 ## References
 
 ### Attestation Protocol
@@ -156,6 +178,11 @@ The [resource storage backend](./docs/resource_storage_backend.md) where KBS sto
 
 ### Config
 A custom, [JSON-formatted configuration file](./docs/config.md) can be provided to configure KBS.
+
+### Policies
+[Sample policies](./sample_policies/) can be used as a starting point for writing
+your own resource policy. Additional example policies used by the policy engine
+tests are in [`deps/policy-engine/test_data/`](../deps/policy-engine/test_data/).
 
 ### Attestation Token Verification
 How KBS verifies attestation tokens, configures trust anchors, and relates AS

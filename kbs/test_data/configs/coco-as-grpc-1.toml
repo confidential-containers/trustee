@@ -7,6 +7,9 @@ as_addr = "http://127.0.0.1:50001"
 pool_size = 100
 timeout = 600
 
+[attestation_service.policy_id_map]
+alice = ["alice-strict"]
+
 [http_server]
 sockets = ["0.0.0.0:8080"]
 private_key = "/etc/kbs-private.key"

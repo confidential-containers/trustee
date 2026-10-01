@@ -67,6 +67,9 @@ pub(super) struct EvidenceV2 {
     pub(super) hcl_report: Vec<u8>,
     #[serde_as(as = "Base64<UrlSafe>")]
     pub(super) vcek: Vec<u8>,
+    /// Base64 encoded runtime eventlog (AAEL in TCG2 encoding), populated by
+    /// the guest attester once it has recorded runtime measurement events.
+    pub(super) cc_eventlog: Option<String>,
 }
 
 /// Versioned evidence wrapper - tries V1 first, falls back to V0
@@ -141,6 +144,15 @@ impl Evidence {
             Evidence::V0(_) => 0,
             Evidence::V1(_) => 1,
             Evidence::V2(_) => 2,
+        }
+    }
+
+    /// Base64 encoded runtime eventlog (AAEL), if the attester recorded one.
+    /// Only present starting at evidence v2.
+    pub(super) fn cc_eventlog(&self) -> Option<&str> {
+        match self {
+            Evidence::V0(_) | Evidence::V1(_) => None,
+            Evidence::V2(v2) => v2.cc_eventlog.as_deref(),
         }
     }
 }

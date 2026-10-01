@@ -117,6 +117,28 @@ transfer some specific information. For example, some attestations follow the
 Diffie–Hellman key exchange protocol to first build a secure channel and
 transfer secret messages (Such as AMD SEV(-ES) pre-attestation).
 
+`extra-params` may also carry a `attestation-policy-selector`, which selects the Attestation
+Service policies that evaluate this session's evidence:
+
+```json
+"extra-params": { "attestation-policy-selector": "alice" }
+```
+
+KBS maps each `attestation-policy-selector` to one or more attestation policies, so the
+accepted values are specific to a deployment and must be known to the KBC in
+advance. An unmapped `attestation-policy-selector` is rejected, and omitting the field
+selects a default policy.
+Note that not all backend attestation services support multiple policies, e.g.
+CoCo AS now only support one policy, while ITA supports multiple.
+
+Selecting a `attestation-policy-selector` does not by itself entitle the KBC to anything,
+since KBS still decides what each appraisal may release. It does change what the
+resulting token means, though, so a relying party should not treat every token
+alike. The [Attestation Results Token](#attestation-results-token) names the
+policy that was actually applied, which is the policy the `attestation-policy-selector`
+resolved to rather than the `attestation-policy-selector` itself, so a resource policy can
+require a particular appraisal before releasing a resource.
+
 ## `Challenge`
 
 If the KBC does not own any KBS generated HTTP Cookie, or if the Cookie validity
@@ -727,6 +749,29 @@ format is used for that purpose:
   "detail": "$detail"
 }
 ```
+> **Note:** the `type` field is an identifier string, not a functioning
+> hyperlink. The URL is not resolvable; it exists to namespace the error
+> type and follows RFC 7807 convention.
+
+`<problem-type>` is one of the following values, defined in
+[`kbs/src/error.rs`](https://github.com/confidential-containers/trustee/blob/main/kbs/src/error.rs):
+
+| Error type                      | HTTP status | Description                                                          |
+| -------------------------------- | ----------- | ---------------------------------------------------------------------|
+| `AdminAuth`                     | 401         | Admin authentication failed for an administrative API endpoint.      |
+| `AttestationError`              | 401         | An error occurred during the attestation process.                    |
+| `HTTPFailed`                    | 401         | The HTTP server failed to initialize.                                |
+| `HTTPSFailed`                   | 401         | The HTTPS server failed to initialize.                                |
+| `InvalidRequestPath`            | 404         | The request path does not correspond to a valid resource.            |
+| `JweError`                      | 401         | Failed to build the JWE-encrypted resource response.                 |
+| `PluginManagerInitialization`   | 401         | The plugin manager failed to initialize.                             |
+| `PluginNotFound`                | 404         | The requested plugin was not found.                                  |
+| `PluginInternalError`           | 401         | An internal error occurred inside a plugin.                          |
+| `PolicyDeny`                    | 401         | Access was denied by the attestation or resource policy.             |
+| `PolicyEngine`                  | 401         | An error occurred in the policy engine.                              |
+| `SerdeError`                    | 401         | Failed to serialize or deserialize a JSON payload.                   |
+| `TokenNotFound`                 | 401         | No attestation token was found in the request.                       |
+| `TokenVerifierError`            | 401         | The provided attestation token failed verification.                  |
 
 ## OpenAPI Description
 

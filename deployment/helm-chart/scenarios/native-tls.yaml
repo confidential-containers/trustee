@@ -1,0 +1,18 @@
+# Native KBS HTTPS with a pre-created Kubernetes TLS Secret.
+#
+# Create endpoint identity material whose SAN matches the address used by KBS
+# clients, then create the Secret before installing this scenario:
+#
+#   kubectl create namespace coco-trustee
+#   kubectl create secret tls trustee-kbs-tls \
+#     --namespace coco-trustee \
+#     --key ./kbs.key \
+#     --cert ./kbs.crt
+#   helm upgrade --install trustee ./deployment/helm-chart \
+#     --namespace coco-trustee \
+#     -f ./deployment/helm-chart/scenarios/native-tls.yaml
+
+kbs:
+  tls:
+    enabled: true
+    secretName: trustee-kbs-tls

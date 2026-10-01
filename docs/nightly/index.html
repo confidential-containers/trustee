@@ -10,7 +10,7 @@
     It queries the public GitHub Actions REST API (unauthenticated) for the
     scheduled runs of `test-e2e-helm-nightly.yml` and renders:
       - a per-run heatmap (most recent first),
-      - a table split into the Sample and Intel TDX legs.
+      - a table split into the Sample, Intel TDX, AMD SEV-SNP and IBM SE legs.
 
     Owner/repo/workflow can be overridden via query string so forks can reuse
     the same page, e.g. `?owner=my-fork&repo=trustee`.
@@ -170,13 +170,15 @@
     };
 
     // Match a job to its leg by name. The reusable workflow names its jobs
-    // "Helm Trustee e2e (amd64)" and "(TDX)" -- the amd64 job is the Sample /
-    // non-TEE leg. The s390x leg is the `helm-trustee-e2e-ibm-sel` job (its
-    // runs-on label "s390x" is not in the job name, so match on "ibm-sel").
+    // "Helm Trustee e2e (sample-tee on amd64)", "(TDX)" and "(SNP)" -- the amd64
+    // job is the Sample / non-TEE leg. The s390x leg is the
+    // `helm-trustee-e2e-ibm-sel` job (its runs-on label "s390x" is not in the
+    // job name, so match on "ibm-sel").
     // NOTE: `n` is lower-cased, so all needles here must be lower-case.
     const legOfJob = (name) => {
       const n = (name || "").toLowerCase();
       if (n.includes("tdx")) return "tdx";
+      if (n.includes("snp")) return "snp";
       if (n.includes("amd64") || n.includes("sample")) return "Sample";
       if (n.includes("ibm-sel") || n.includes("s390")) return "s390x";
       return null;
@@ -221,6 +223,7 @@
     const LEGS = [
       { id: "Sample", name: "Sample (non-TEE) on amd64" },
       { id: "tdx", name: "Intel TDX" },
+      { id: "snp", name: "AMD SEV-SNP" },
       { id: "s390x", name: "IBM SE (s390x)" },
     ];
 
@@ -323,6 +326,7 @@
         legsByRun[id] = {
           Sample: { status: st, conclusion: running ? null : "success", html_url: url },
           tdx: { status: running ? "queued" : "completed", conclusion: running ? null : "success", html_url: url },
+          snp: { status: running ? "queued" : "completed", conclusion: running ? null : "success", html_url: url },
           s390x: { status: st, conclusion: running ? null : "success", html_url: url },
         };
       }
@@ -341,6 +345,7 @@
       weekRunsAsc(1).slice(0, 3).forEach((r) => fail(r, "tdx"));    // last full week -> Cloudy
       weekRunsAsc(1).slice(0, 1).forEach((r) => fail(r, "s390x"));  // -> Cloudy
       weekRunsAsc(2).slice(0, 6).forEach((r) => fail(r, "tdx"));    // -> Overcast
+      weekRunsAsc(2).slice(0, 4).forEach((r) => fail(r, "snp"));    // -> Overcast
       weekRunsAsc(3).slice(0, 2).forEach((r) => fail(r, "Sample"));  // -> Cloudy
       weekRunsAsc(3).slice(0, 7).forEach((r) => fail(r, "s390x"));  // -> Rainy
       for (const r of runs) {
@@ -388,7 +393,7 @@
         return;
       }
 
-      // Lazily enrich rows with per-leg (Sample/Intel TDX) detail. Each run costs one
+      // Lazily enrich rows with per-leg (Sample/TDX/SNP/s390x) detail. Each run costs one
       // extra API call, so degrade gracefully if we hit the rate limit.
       const legsByRun = {};
       for (const r of runs) {

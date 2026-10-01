@@ -1,8 +1,11 @@
 AS_TYPE ?= coco-as
 ALIYUN ?= false
+PQC_EXPERIMENTAL ?= false
 NEBULA_CA_PLUGIN ?= false
 VAULT ?= true
-EXTERNAL_PLUGIN ?= false
+GCP ?= false
+AWS ?= false
+EXTERNAL_PLUGIN ?= true
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -61,8 +64,20 @@ ifeq ($(VAULT), true)
   override FEATURES := $(FEATURES),vault
 endif
 
+ifeq ($(GCP), true)
+  override FEATURES := $(FEATURES),gcp
+endif
+
+ifeq ($(AWS), true)
+  override FEATURES := $(FEATURES),aws
+endif
+
 ifeq ($(EXTERNAL_PLUGIN), true)
   override FEATURES := $(FEATURES),external-plugin
+endif
+
+ifeq ($(PQC_EXPERIMENTAL), true)
+  override FEATURES := $(FEATURES),pqc-experimental
 endif
 
 ifeq ($(CLI_FEATURES),sample_only)

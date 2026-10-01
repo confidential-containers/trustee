@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::attestation::generate_extra_params;
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{
@@ -14,7 +15,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::attestation::backend::{make_nonce, Attest, IndependentEvidence};
+use crate::attestation::{
+    backend::{make_nonce, Attest, IndependentEvidence},
+    coco::DEFAULT_POLICY_ID,
+};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Default)]
 pub struct Config {
@@ -69,15 +73,24 @@ impl Attest for BuiltInCoCoAs {
             .await
     }
 
-    async fn verify(&self, evidence_to_verify: Vec<IndependentEvidence>) -> Result<String> {
+    async fn verify(
+        &self,
+        evidence_to_verify: Vec<IndependentEvidence>,
+        policy_ids: Option<&[String]>,
+    ) -> Result<String> {
         let mut verification_requests = vec![];
 
         for evidence in evidence_to_verify {
+            let runtime_data_hash_algorithm = match evidence.tee {
+                Tee::Se => HashAlgorithm::Sha512,
+                _ => HashAlgorithm::Sha384,
+            };
+
             let mut request = VerificationRequest {
                 evidence: evidence.tee_evidence,
                 tee: evidence.tee,
                 runtime_data: Some(RuntimeData::Structured(evidence.runtime_data)),
-                runtime_data_hash_algorithm: HashAlgorithm::Sha384,
+                runtime_data_hash_algorithm,
                 init_data: None,
             };
             if let Some(init_data) = evidence.init_data {
@@ -90,7 +103,9 @@ impl Attest for BuiltInCoCoAs {
             verification_requests.push(request);
         }
 
-        let policy_ids = vec!["default".to_string()];
+        let policy_ids = policy_ids
+            .map(<[String]>::to_vec)
+            .unwrap_or_else(|| vec![DEFAULT_POLICY_ID.to_string()]);
         self.inner
             .read()
             .await
@@ -113,13 +128,12 @@ impl Attest for BuiltInCoCoAs {
             }
             _ => make_nonce().await?,
         };
+        let extra_params = generate_extra_params(tee, &tee_parameters)?;
 
-        let challenge = Challenge {
+        Ok(Challenge {
             nonce,
-            extra_params: serde_json::Value::String(String::new()),
-        };
-
-        Ok(challenge)
+            extra_params,
+        })
     }
 
     async fn register_reference_value(&self, message: &str) -> anyhow::Result<()> {

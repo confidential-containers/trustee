@@ -8,8 +8,11 @@ use actix_web::http::Method;
 use anyhow::{Context, Result};
 use key_value_storage::StorageProvider;
 use serde::Deserialize;
+use serde_json::Value;
 
 use super::{sample, RepositoryConfig, ResourceStorage};
+
+use super::{Provisioner, ProvisionerConfig};
 
 #[cfg(feature = "nebula-ca-plugin")]
 use super::{NebulaCaPlugin, NebulaCaPluginConfig};
@@ -36,6 +39,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
+        init_data: Option<&Value>,
     ) -> Result<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
@@ -81,6 +85,9 @@ pub enum PluginsConfig {
     #[cfg(feature = "external-plugin")]
     #[serde(alias = "external")]
     ExternalPlugin(ExternalPluginConfig),
+
+    #[serde(alias = "provisioner")]
+    Provisioner(ProvisionerConfig),
 }
 
 impl Display for PluginsConfig {
@@ -94,6 +101,7 @@ impl Display for PluginsConfig {
             PluginsConfig::Pkcs11(_) => f.write_str("pkcs11"),
             #[cfg(feature = "external-plugin")]
             PluginsConfig::ExternalPlugin(_) => f.write_str("external"),
+            PluginsConfig::Provisioner(_) => f.write_str("provisioner"),
         }
     }
 }
@@ -134,6 +142,12 @@ impl PluginsConfig {
                     .await
                     .context("Initialize 'external' plugin failed")?;
                 Arc::new(external_plugin) as _
+            }
+            PluginsConfig::Provisioner(cfg) => {
+                let prov = Provisioner::new(cfg, storage_provider)
+                    .await
+                    .context("Initialize 'Provisioner' plugin failed")?;
+                Arc::new(prov) as _
             }
         };
 

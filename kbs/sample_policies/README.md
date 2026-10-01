@@ -1,7 +1,7 @@
 This directory contains sample policy files to configure the policy engine
 of the KBS. You can use these files to write your own policies.
 
-There are also several example policies used [for testing](../test/data). 
+There are also several example policies used [for testing](../../deps/policy-engine/test_data/). 
 
 | File | Description |
 | ---  | ---         |

@@ -13,7 +13,7 @@ log_level: info
 # -- When `true`, templates use Helm `lookup` to write Service `clusterIP` entries into `hostAliases` for clusters that cannot resolve `*.svc.cluster.local`. If Services are missing on first render, rerun `helm upgrade`.
 dnsHostAliasWorkaround: false
 
-# -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, or `Postgres`. When empty, follows `storageBackend.type`.
+# -- KBS protocol session store: `Memory`, `LocalJson`, `LocalFs`, `Postgres`, or `Redis`. When empty, follows `storageBackend.type`. `Redis` speaks the Redis protocol and is served by the bundled Valkey subchart (or an external Redis-compatible service).
 sessionStorageType: "Memory"
 
 # -- Unified KV backend for KBS, AS, and RVPS (same `storage_type` in each service config).
@@ -47,6 +47,14 @@ storageBackend:
     internal:
       # -- When `true`, run KV table init SQL from `files/postgres-initkv.sql` on first database init (via a chart-managed ConfigMap). When `false`, also set `postgresql.primary.initdb.scriptsConfigMap` to `""`.
       initKvTables: true
+  redis:
+    # -- Redis-protocol source: `internal` (Bitnami Valkey subchart) or `external` (pre-created Secret with a Redis URL).
+    mode: internal
+    external:
+      # -- Required when `mode` is `external`: Secret containing the Redis URL (e.g. `redis://:password@redis.example.com:6379`).
+      existingSecretName: ""
+      # -- Required when `mode` is `external`: Secret key name for the Redis URL.
+      existingSecretKey: ""
 
 # -- [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql) subchart. Set `enabled: true` when bundled Postgres is required (`storageBackend.postgres.mode=internal` and Postgres storage is needed; see `scenarios/postgres-backend.yaml`). Additional subchart keys (image, metrics, replication, and so on) are supported; see upstream docs.
 postgresql:
@@ -87,6 +95,46 @@ postgresql:
       # -- Bundled Postgres Service port (used in `POSTGRES_URL`).
       postgresql: 5432
 
+# -- [Bitnami Valkey](https://artifacthub.io/packages/helm/bitnami/valkey) subchart, a Redis-protocol-compatible store used for the KBS `Redis` session backend (Valkey is BSD-licensed; it replaces Redis, whose license is no longer OSI-approved). Set `enabled: true` when the bundled store is required (`storageBackend.redis.mode=internal` and `sessionStorageType` or `storageBackend.type` is `Redis`; see `scenarios/valkey-sessions.yaml`). Additional subchart keys (metrics, replication, TLS, and so on) are supported; see upstream docs.
+valkey:
+  # -- Enable the Bitnami Valkey subchart. Must be `true` when `storageBackend.redis.mode=internal` and Redis storage is required.
+  enabled: false
+  # -- Subchart name override; the primary Service becomes `{Helm release}-valkey-primary`.
+  nameOverride: valkey
+  # -- Single Valkey primary; sessions do not need replicas. Set `replication` plus `replica.*` keys for HA (see upstream docs).
+  architecture: standalone
+  # -- Bundled Valkey container image. The default comes from `docker.io`, where anonymous pulls are rate-limited; point `registry`/`repository` at a private mirror to avoid pull failures (a chart-wide `global.imageRegistry` is also honored by the subchart).
+  image:
+    # -- Valkey image registry; override with a mirror to avoid docker.io rate limits.
+    registry: registry-1.docker.io
+    # -- Valkey image repository.
+    repository: bitnami/valkey
+    # -- Valkey image tag.
+    tag: latest
+    # -- Valkey image pull policy.
+    pullPolicy: IfNotPresent
+  auth:
+    # -- Require a password for the bundled Valkey (also used for the Trustee `REDIS_URL` Secret).
+    enabled: true
+    # -- Bundled Valkey password (also used for the Trustee `REDIS_URL` Secret).
+    password: trustee
+  primary:
+    persistence:
+      # -- KBS sessions are short-lived, so the bundled Valkey defaults to no PVC; set `true` (plus optional `storageClass`/`size`) to persist sessions across Pod restarts.
+      enabled: false
+    # -- CPU/memory requests and limits for the bundled Valkey primary.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    service:
+      ports:
+        # -- Bundled Valkey Service port (used in `REDIS_URL`).
+        valkey: 6379
+
 kbs:
   # -- Number of KBS Pod replicas.
   replicaCount: 1
@@ -103,6 +151,11 @@ kbs:
       poolSize: 200
       # -- Request timeout in seconds for the KBS -> gRPC AS client (`timeout` in `files/kbs-config.toml.template`).
       timeout: 30
+  tls:
+    # -- Enable native HTTPS on the KBS listener. Requires `secretName`; the chart does not generate endpoint identity material.
+    enabled: false
+    # -- Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`.
+    secretName: ""
   image:
     # -- KBS container image repository.
     repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
@@ -169,16 +222,39 @@ as:
       collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
       # -- DCAP TCB update type (for example `early`).
       tcb_update_type: "early"
+    snp:
+      # -- Absolute path on the target node to the directory containing the AMD SNP
+      # offline VCEK certificate store (must contain a `vcek/` subdirectory). When
+      # non-empty, the chart creates a `local`-type PV + PVC and mounts it at
+      # `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod,
+      # which is where an `OfflineStore` entry in `as.verifier.snp.vcekSources` reads
+      # from. Requires `as.verifier.snp.nodeName`. See
+      # [the offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md)
+      # for the directory layout.
+      kdsStoreHostPath: ""
+      # -- Kubernetes node name where the kds-store directory (`as.verifier.snp.kdsStoreHostPath`)
+      # resides. Required when `as.verifier.snp.kdsStoreHostPath` is set; used in the PV `nodeAffinity`.
+      nodeName: ""
+      # -- VCEK certificate sources for the SNP verifier, tried in the order given.
+      # When empty (the default), no `snp_verifier` block is emitted and the AS uses
+      # its built-in default (KDS). `KDS` fetches from AMD's Key Distribution Service
+      # and requires outbound connectivity. To configure an `OfflineStore` source,
+      # `as.verifier.snp.nodeName` and `as.verifier.snp.kdsStoreHostPath` must be
+      # provided as well, so the certificate store gets mounted into the AS Pod.
+      vcekSources: []
     se:
       # -- IBM Secure Execution (s390x) attestation materials. When `credsDir` is non-empty
       # the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts
       # the directory at `/run/confidential-containers/ibmse/` on the AS Pod.
       # -- Absolute path on the target node to the directory containing IBM SE attestation
-      # materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty,
-      # the chart creates a `local`-type PV + PVC. Requires `as.verifier.se.nodeName`.
+      # materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the
+      # chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the
+      # directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires
+      # `as.verifier.se.nodeName`.
       credsDir: ""
       # -- Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`)
-      # resides. Required when `as.verifier.se.credsDir` is set; used in the PV `nodeAffinity`.
+      # resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume
+      # `nodeAffinity`.
       nodeName: ""
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).

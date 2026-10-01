@@ -154,6 +154,15 @@ Concrete attestation service can be set via `type` field. Supported attestation 
 
 Due to different `type` field, properties are different.
 
+`timeout` and `policy_id_map` apply to every type. The latter is a table mapping
+each attestation-policy-selector a client may select to one or more policy IDs:
+
+```toml
+[attestation_service.policy_id_map]
+alice = ["alice-strict"]
+bob = ["bob-cpu", "bob-gpu"]
+```
+
 #### Built-In CoCo AS
 
 When `type` is set to `coco_as_builtin`, the following properties can be set.
@@ -164,6 +173,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | Property                   | Type                        | Description                                              | Default                                                                                                       |
 |----------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | `timeout`                  | Integer                     | The maximum time (in minutes) of the attestation session | 5                                                                                                             |
+| `policy_id_map`            | Map of String array         | AS policies selectable by a client, keyed by attestation-policy-selector. See [RCAR `Request`][ps]| `{}`                                                          |
 | `rvps_config`              | [RVPSConfiguration][2]      | RVPS configuration                                       | See [RVPSConfiguration][2]                                                                                    |
 | `attestation_token_broker` | [AttestationTokenBroker][1] | Attestation result token configuration.                  | See [AttestationTokenBroker][1]                                                                               |
 | `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM)| See [Verifier Configuration][vcfg]                                                                            |
@@ -173,6 +183,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 [3]: #keyvaluestorage
 [4]: #tokensignerconfig
 [vcfg]: ../../attestation-service/docs/config.md#verifier-configuration
+[ps]: ./kbs_attestation_protocol.md#request
 
 ##### AttestationTokenBroker
 
@@ -184,6 +195,7 @@ When `type` is set to `coco_as_builtin`, the following properties can be set.
 | `build_name`     | String                 | The build name to be used as part of the Verifier ID in the EAR                | No       | Automatically generated from Cargo package and AS version             |
 | `profile_name`   | String                 | The Profile that describes the EAR token                                       | No       | tag:github.com,2024:confidential-containers/Trustee`                  |
 | `signer`         | [TokenSignerConfig][4] | Signing material of the attestation result token.                              | No       | None                                                                  |
+| `verbose_token`  | Boolean                | Include detailed information in the EAR, such as the raw additional-device evidence. Device evidence (for example a GPU) can produce tokens larger than actix-http's 128 KiB request-head limit (causing errors like `message head is too large` on CDH `Authorization: Bearer` resource GETs). Set `false` to omit that extra detail from the token; verification still runs. | No       | `true`                                                                |
 
 ##### TokenSignerConfig
 
@@ -234,6 +246,7 @@ The following properties can be set.
 | Property    | Type    | Description                                                                                                                   | Default                  |
 |-------------|---------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
 | `timeout`   | Integer | The maximum time (in minutes) between RCAR handshake's `auth` and `attest` requests                                           | 5                        |
+| `policy_id_map` | Map of String array | AS policies selectable by a client, keyed by attestation-policy-selector. See [RCAR `Request`][ps]                    | `{}`                     |
 | `as_addr`   | String  | The URL of the remote CoCoAS                                                                                                  | `http://127.0.0.1:50004` |
 | `pool_size` | Integer | The connections between KBS and CoCoAS are maintained in a conenction pool. This property determines the max size of the pool | `100`                    |
 
@@ -251,6 +264,7 @@ The following properties can be set.
 | `api_key`                | String       | Intel Trust Authority API key.                                                                         | Yes      | -       |
 | `certs_file`             | String       | URL to an Intel Trust Authority portal or path to JWKS file used for token verification.               | Yes      | -       |
 | `policy_ids`             | String array | Quoted and comma-separated list of policy IDs defined in ITA portal.                                   | No       | `[]`    |
+| `policy_id_map`          | Map of String array | Policies selectable by a client, keyed by attestation-policy-selector. A selected attestation-policy-selector replaces `policy_ids`. See [RCAR `Request`][ps] | No       | `{}`    |
 | `allow_unmatched_policy` | Boolean      | Whether policy matching is required. If no `policy_ids` are specified, policy matching is not checked. | No       | false   |
 
 Detailed [documentation](https://docs.trustauthority.intel.com).
@@ -454,11 +468,13 @@ with `name = "external"` owns all backends via a `backends` inline array:
 [[plugins]]
 name = "external"
 backends = [
-  { name = "my-plugin", endpoint = "https://localhost:50051", tls_mode = "tls", ca_cert_path = "/etc/kbs/plugin-ca.pem" },
+  { name = "my-plugin", endpoint = "https://localhost:50051", ca_cert_path = "/etc/kbs/plugin-ca.pem" },
 ]
 ```
 
-Each backend is reachable at `/kbs/v0/external/<name>/...`.
+Each backend is reachable at `/kbs/v0/external/<name>/...`. The endpoint scheme
+selects the transport: `http://` is plaintext, `https://` is TLS. Unknown keys
+are rejected, so a config carrying the removed `tls_mode` key fails to parse.
 
 **Per-backend fields:**
 
@@ -466,7 +482,7 @@ Each backend is reachable at `/kbs/v0/external/<name>/...`.
 |---|---|---|---|---|
 | `name` | string | Yes | — | Sub-plugin name used in URL routing |
 | `endpoint` | string | Yes | — | gRPC endpoint (`http://` for insecure, `https://` for TLS) |
-| `ca_cert_path` | string | No | — | CA certificate path (required when `endpoint` is a TLS endpoint`) |
+| `ca_cert_path` | string | Conditional | — | CA certificate for verifying the plugin's server certificate. Required for a `https://` endpoint, and rejected for a `http://` one |
 | `timeout_ms` | integer | No | — | Per-request timeout in milliseconds |
 
 See [`ext_plugin.md`](ext_plugin.md) for deployment details and the gRPC protocol.

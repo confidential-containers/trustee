@@ -1,0 +1,10 @@
+# Kind cluster config that mounts the host's VCEK certificate store into
+# the kind node for offline SNP attestation.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /opt/confidential-containers/attestation-service/kds-store
+        containerPath: /opt/confidential-containers/attestation-service/kds-store
+        readOnly: true

@@ -396,7 +396,7 @@ pub(crate) async fn api(
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method(), None)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -417,10 +417,10 @@ pub(crate) async fn api(
                 if !core
                     .policy_engine
                     .evaluate_rego(
-                        Some(&policy_data_str),
-                        &claim_str,
+                        Some(policy_data_str),
+                        claim_str,
                         KBS_POLICY_ID,
-                        vec![KBS_POLICY_RULE],
+                        vec![KBS_POLICY_RULE.to_string()],
                         vec![],
                     )
                     .await
@@ -446,8 +446,11 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
+                let init_data = claims
+                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method())
+                    .handle(&body, &query, resource_path, request.method(), init_data)
                     .await
                     .map_err(|e| Error::PluginInternalError { source: e })?;
 
@@ -457,6 +460,7 @@ pub(crate) async fn api(
                     .map_err(|e| Error::PluginInternalError { source: e })?
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
+
                     let jwe =
                         jwe(public_key, response).map_err(|e| Error::JweError { source: e })?;
                     let res = serde_json::to_string(&jwe)?;

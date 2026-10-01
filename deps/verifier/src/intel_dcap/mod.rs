@@ -84,18 +84,27 @@ pub(crate) fn ecdsa_quote_verification(
         }
     });
 
-    let (_, supp_size) = tee_get_supplemental_data_version_and_size(quote).map_err(|e| {
+    let (version, supp_size) = tee_get_supplemental_data_version_and_size(quote).map_err(|e| {
         anyhow!(
             "tee_get_supplemental_data_version_and_size failed: {}",
             describe_error(e)
         )
     })?;
+    // `version` packs major_version in the low 16 bits and minor_version in
+    // the high 16 bits (see `supp_ver_t` in the DCAP headers), matching the
+    // layout the QVL also writes into `sgx_ql_qv_supplemental_t`'s version
+    // union when it populates `supp_data` below.
+    let minor_version = (version >> 16) as u16;
 
-    let expected_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
-    if supp_size != expected_size {
-        bail!(
-            "Supplemental data size mismatch: QVL returned {supp_size}, expected {expected_size}"
-        );
+    // `sgx_ql_qv_supplemental_t` only ever appends fields for a new minor
+    // version, so a runtime QVL older than this build reports a `supp_size`
+    // smaller than `size_of::<sgx_ql_qv_supplemental_t>()`; the unwritten
+    // tail stays at its `Default` (zeroed) value. Only a *larger* report is
+    // unsupported, since that would mean the installed QVL is newer than
+    // this build and expects a bigger buffer than we can provide.
+    let max_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
+    if supp_size > max_size {
+        bail!("Supplemental data size unsupported: runtime QVL version requires {supp_size} bytes, but this build only supports up to {max_size}");
     }
 
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();
@@ -112,13 +121,20 @@ pub(crate) fn ecdsa_quote_verification(
         .as_secs() as i64;
 
     // call DCAP quote verify library for quote verification
-    let (collateral_expiration_status, quote_verification_result) = tee_verify_quote(
-        quote,
-        collateral.as_ref(),
-        current_time,
-        None,
-        Some(&mut supp_data_desc),
-    )
+    //
+    // Safety: `supp_data_desc.p_data` points to `supp_data`, a live
+    // `sgx_ql_qv_supplemental_t` on the stack, and `data_size` was set to
+    // `supp_size`, matching that struct's size, so the descriptor upholds
+    // tee_verify_quote's size/validity precondition.
+    let (collateral_expiration_status, quote_verification_result) = unsafe {
+        tee_verify_quote(
+            quote,
+            collateral.as_ref(),
+            current_time,
+            None,
+            Some(&mut supp_data_desc),
+        )
+    }
     .map_err(|e| anyhow!("tee_verify_quote failed: {}", describe_error(e)))?;
 
     debug!("tee_verify_quote successfully returned.");
@@ -134,6 +150,7 @@ pub(crate) fn ecdsa_quote_verification(
         | sgx_ql_qv_result_t::SGX_QL_QV_RESULT_TD_RELAUNCH_ADVISED_CONFIG_NEEDED => {
             prepare_custom_claims_map(
                 &mut supp_data,
+                minor_version,
                 collateral_expiration_status,
                 quote_verification_result,
             )
@@ -141,9 +158,8 @@ pub(crate) fn ecdsa_quote_verification(
         }
         terminal_result => {
             bail!(
-                "Verification completed with Terminal result: {:?} ({:#04x})",
-                terminal_result,
-                terminal_result as u32
+                "Verification completed with Terminal result: {:#04x}",
+                terminal_result.0
             );
         }
     }

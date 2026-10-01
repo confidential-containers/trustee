@@ -17,10 +17,11 @@ permissions: {}
 
 jobs:
   kbs-push:
+    name: Build and push KBS image
     if: (inputs.image_group == 'kbs' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push KBS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +86,7 @@ jobs:
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build ${{ matrix.tag }}
@@ -99,10 +100,11 @@ jobs:
           push: true
 
   as-push:
+    name: Build and push AS image
     if: (inputs.image_group == 'as' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push AS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -147,7 +149,7 @@ jobs:
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build ${{ matrix.tag }}
@@ -161,10 +163,11 @@ jobs:
           push: true
 
   rvps-push:
+    name: Build and push RVPS image
     if: (inputs.image_group == 'rvps' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push RVPS images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -190,7 +193,7 @@ jobs:
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build ${{ matrix.tag }}
@@ -204,10 +207,11 @@ jobs:
           push: true
 
   kbs-client-push:
+    name: Build and push kbs-client image
     if: (inputs.image_group == 'kbs-client' || inputs.image_group == 'all')
     permissions:
       contents: read
-      packages: write
+      packages: write  # push kbs-client images to GHCR
     strategy:
       fail-fast: false
       matrix:
@@ -224,7 +228,7 @@ jobs:
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build ${{ matrix.tag }}

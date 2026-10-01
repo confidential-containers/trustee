@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   helm-trustee-e2e-ibm-sel:
+    name: Helm Trustee e2e (IBM SEL)
     runs-on: s390x
     strategy:
       fail-fast: false
@@ -44,20 +45,20 @@ jobs:
       contents: read
 
   # Sample TEE Helm e2e on a GitHub-hosted runner.
-  helm-trustee-e2e-amd64:
-    name: Helm Trustee e2e (amd64)
+  helm-trustee-e2e-sample:
+    name: Helm Trustee e2e (sample-tee on amd64)
     needs: build-docker-e2e-materials
     uses: ./.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:
-      leg: amd64
+      leg: sample
       runs-on: '["ubuntu-24.04"]'
       client-artifact: helm-e2e-kbs-client-linux-amd64
       self-hosted: false
 
   # Real TDX Helm e2e on a self-hosted runner. Unlike the PR suite, nightly runs
-  # this unconditionally (no `tdx-e2e` label gate) so the hardware path is
+  # this unconditionally (no `tee-e2e` label gate) so the hardware path is
   # exercised every day.
   helm-trustee-e2e-tdx:
     name: Helm Trustee e2e (TDX)
@@ -70,3 +71,20 @@ jobs:
       runs-on: '{"group":"tdx-vm"}'
       client-artifact: helm-e2e-kbs-client-tdx-linux-amd64
       self-hosted: true
+
+  # Exercises the offline VCEK certificate store, so the SNP runner must have the
+  # store staged at /opt/confidential-containers/attestation-service/kds-store as
+  # part of host setup. See deployment/helm-chart/scenarios/snp-e2e.yaml.
+  helm-trustee-e2e-snp:
+    name: Helm Trustee e2e (SNP)
+    needs: build-docker-e2e-materials
+    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    permissions:
+      contents: read
+    with:
+      leg: snp
+      runs-on: '{"group":"snp-vm"}'
+      client-artifact: helm-e2e-kbs-client-snp-linux-amd64
+      self-hosted: true
+      kind-config: deployment/helm-chart/e2e/snp/kind-config.yaml
+      scenario: scenarios/snp-e2e.yaml

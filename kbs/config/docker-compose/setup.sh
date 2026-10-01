@@ -4,6 +4,12 @@ set -euxo pipefail
 KEY_DIR="/opt/confidential-containers/kbs/user-keys"
 cd "${KEY_DIR}"
 
+# Token-signing cert validity in days; defaults to 90 instead of openssl's silent 30.
+TOKEN_CERT_DAYS="${TOKEN_CERT_DAYS:-90}"
+
+# Root CA cert validity in days; default unchanged at 10 years.
+CA_CERT_DAYS="${CA_CERT_DAYS:-3650}"
+
 if [ ! -s private.key ]; then
   openssl genpkey -algorithm ed25519 > private.key
   openssl pkey -in private.key -pubout -out public.pub
@@ -33,9 +39,9 @@ fi
 if [ ! -s token.key ]; then
   openssl genrsa -traditional -out ca.key 2048
   openssl req -new -key ca.key -out ca-req.csr -subj "/O=CNCF/OU=CoCo/CN=KBS-compose-root"
-  openssl req -x509 -days 3650 -key ca.key -in ca-req.csr -out ca-cert.pem
+  openssl req -x509 -days "${CA_CERT_DAYS}" -key ca.key -in ca-req.csr -out ca-cert.pem
   openssl ecparam -name prime256v1 -genkey -noout -out token.key
   openssl req -new -key token.key -out token-req.csr -subj "/O=CNCF/OU=CoCo/CN=CoCo-AS"
-  openssl x509 -req -in token-req.csr -CA ca-cert.pem -CAkey ca.key -CAcreateserial -out token-cert.pem -extensions req_ext
+  openssl x509 -req -days "${TOKEN_CERT_DAYS}" -in token-req.csr -CA ca-cert.pem -CAkey ca.key -CAcreateserial -out token-cert.pem -extensions req_ext
   cat token-cert.pem ca-cert.pem > token-cert-chain.pem
 fi

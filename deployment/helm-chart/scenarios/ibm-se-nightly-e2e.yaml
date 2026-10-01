@@ -1,0 +1,37 @@
+# IBM SE nightly e2e scenario (s390x): standalone values for the nightly leg.
+#
+# This file is standalone and does not inherit from e2e-local-images.yaml.
+# It mirrors ibm-se.yaml and additionally enables KBS TLS for the e2e test flow.
+#
+# Example:
+#   make -C deployment/helm-chart e2e-test \
+#     E2E_IMAGE_PULL_POLICY=Always \
+#     E2E_BASE_SCENARIO=scenarios/ibm-se-nightly-e2e.yaml \
+#     HELM_E2E_EXTRA_ARGS="--set as.verifier.se.nodeName=<your-s390x-node-name> --set as.verifier.se.credsDir=<absolute-path-to-materials-dir>"
+#
+# See deps/verifier/src/se/README.md for SE material preparation.
+
+kbs:
+  tls:
+    enabled: true
+    secretName: trustee-e2e-kbs-tls
+
+as:
+  # Use an s390x AS image built with the se-verifier feature. The default
+  # staged coco-as-grpc image tag must match your cluster architecture (s390x).
+  image:
+    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    tag: "latest"
+  verifier:
+    se:
+      # Set via --set as.verifier.se.nodeName=<node> at install time.
+      nodeName: ""
+      # Set via --set as.verifier.se.credsDir=<path> at install time.
+      credsDir: ""
+  extraEnvVars:
+    - name: CERTS_OFFLINE_VERIFICATION
+      value: "false"
+    - name: SE_SKIP_CERTS_VERIFICATION
+      value: "false"
+  podSecurityContext:
+    fsGroup: 1000

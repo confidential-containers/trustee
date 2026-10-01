@@ -89,7 +89,7 @@ async fn verify_evidence(
 
     debug!("{quote}");
 
-    let platform_info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)?;
+    let platform_info = parse_platform_info(quote.cert_data().qe_certification_data.certificates)?;
 
     let collateral = build_quote_collateral(
         platform_info.fmspc,
@@ -137,21 +137,25 @@ async fn verify_evidence(
                     index: 1,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_0().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 2,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_1().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 3,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_2().to_vec(),
+                    initial_value: vec![],
                 },
                 ReferenceMeasurement {
                     index: 4,
                     algorithm: TcgAlgorithm::Sha384,
                     reference: quote.rtmr_3().to_vec(),
+                    initial_value: vec![],
                 },
             ];
 
@@ -185,7 +189,7 @@ mod tests {
         let quote_bin = fs::read("./test_data/tdx_quote_4.dat").unwrap();
         let quote = parse_quote(&quote_bin).unwrap();
         let platform_info =
-            parse_platform_info(&quote.cert_data().qe_certification_data.certificates).unwrap();
+            parse_platform_info(quote.cert_data().qe_certification_data.certificates).unwrap();
 
         let parsed_claim = generate_parsed_claim(&quote, Some(ccel), &platform_info);
         assert!(parsed_claim.is_ok());

@@ -53,6 +53,13 @@ pub trait RvpsApi {
 
     /// Get the reference value by the given id.
     async fn query_reference_value(&self, reference_value_id: &str) -> Result<Option<Value>>;
+
+    /// List all registered reference value IDs.
+    async fn list_reference_values(&self) -> Result<Vec<String>>;
+
+    /// Delete a reference value by id. Returns true if it existed and was deleted,
+    /// false if there was nothing to delete.
+    async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]

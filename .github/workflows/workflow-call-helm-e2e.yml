@@ -9,7 +9,11 @@ on:
       leg:
         type: string
         required: true
-        description: Leg name, used in the concurrency group and kind cluster name.
+        description: >-
+          Leg name, used in the concurrency group and kind cluster name. It must
+          be the lowercase TEE type of the leg (e.g. `tdx`, `snp`, `sample`): the
+          e2e client asserts that the attestation evidence was produced by this
+          TEE type, so the leg exercises the real hardware path.
       runs-on:
         type: string
         required: true
@@ -25,6 +29,20 @@ on:
         type: boolean
         default: false
         description: When true, run pre/post cleanup to keep a persistent runner tidy.
+      kind-config:
+        type: string
+        default: ''
+        description: >-
+          Optional path (relative to repo root) to a kind cluster config file.
+          When non-empty, passed to the kind-action `config` parameter to
+          customize the kind cluster (e.g. extraMounts for host certificates).
+      scenario:
+        type: string
+        default: ''
+        description: >-
+          Optional path (relative to deployment/helm-chart/) to a Helm values
+          file passed as E2E_BASE_SCENARIO. When empty, the default
+          scenarios/e2e-local-images.yaml is used.
 
 permissions: {}
 
@@ -48,7 +66,7 @@ jobs:
       OS_VERSION: ubuntu-24.04
       KIND_CLUSTER: kind-${{ inputs.leg }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -65,7 +83,7 @@ jobs:
           path: ${{ runner.temp }}/docker-e2e-images
 
       - name: Load images
-        run: docker load --input "${{ runner.temp }}/docker-e2e-images/images.tar"
+        run: docker load --input "${RUNNER_TEMP}/docker-e2e-images/images.tar"
 
       - name: Download pre-built kbs-client
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -74,7 +92,7 @@ jobs:
           path: ${{ runner.temp }}/helm-e2e-kbs-client
 
       - name: Prepare kbs-client
-        run: chmod +x "${{ runner.temp }}/helm-e2e-kbs-client/kbs-client"
+        run: chmod +x "${RUNNER_TEMP}/helm-e2e-kbs-client/kbs-client"
 
       - name: Install Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
@@ -86,6 +104,7 @@ jobs:
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
           cluster_name: ${{ env.KIND_CLUSTER }}
+          config: ${{ inputs.kind-config || '' }}
 
       - name: Load Trustee images into kind
         run: |
@@ -95,11 +114,20 @@ jobs:
             E2E_IMAGE_TAG=latest
 
       - name: Run Helm Trustee e2e
+        env:
+          EXPECTED_TEE: ${{ inputs.leg }}
+          HELM_E2E_SCENARIO: ${{ inputs.scenario }}
         run: |
+          MAKE_EXTRA_ARGS=()
+          if [ -n "${HELM_E2E_SCENARIO}" ]; then
+            MAKE_EXTRA_ARGS=("E2E_BASE_SCENARIO=${HELM_E2E_SCENARIO}")
+          fi
           make -C deployment/helm-chart e2e-test \
             E2E_IMAGE_PREFIX=ghcr.io/confidential-containers/staged-images \
             E2E_IMAGE_TAG=latest \
-            KBS_CLIENT="${{ runner.temp }}/helm-e2e-kbs-client/kbs-client"
+            KBS_CLIENT="${RUNNER_TEMP}/helm-e2e-kbs-client/kbs-client" \
+            EXPECTED_TEE="${EXPECTED_TEE}" \
+            "${MAKE_EXTRA_ARGS[@]}"
 
       # Self-hosted cleanup so the runner is left in a known-good state.
       - name: Cleanup kind cluster

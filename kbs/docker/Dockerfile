@@ -1,11 +1,13 @@
-# rust:1.93.0
+# rust:1.95.0
 FROM --platform=${BUILDPLATFORM:-linux/amd64} \
-    docker.io/library/rust@sha256:bbde3ca426faeebab3eb58b8005d3d6da70607817a14bb92a55c94611d4d905f \
+    docker.io/library/rust@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 \
     AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
 ARG VAULT=true
-ARG EXTERNAL_PLUGIN=false
+ARG GCP=false
+ARG AWS=false
+ARG EXTERNAL_PLUGIN=true
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +21,7 @@ RUN apt-get update && \
 
 RUN if [ "${ARCH}" = "aarch64" ]; then apt-get install -y libc-bin; fi
 
-ARG DCAP_VERSION=1_26_100
+ARG DCAP_VERSION=1_27_100
 RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg && \
     curl -sSLf https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/99dcap_${DCAP_VERSION}_noble_custom_version.cfg | \
@@ -46,7 +48,7 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
 WORKDIR /usr/src/trustee
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} AWS=${AWS} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
     make ARCH=${ARCH} install-kbs
 
 # ubuntu:24.04
@@ -55,7 +57,7 @@ ARG ARCH=x86_64
 
 WORKDIR /tmp
 
-ARG DCAP_VERSION=1_26_100
+ARG DCAP_VERSION=1_27_100
 RUN apt-get update && \
     apt-get install -y \
     curl \

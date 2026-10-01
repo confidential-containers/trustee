@@ -1,6 +1,10 @@
 {{- if not .Values.secrets.useEphemeralGeneratedKeys }}
 {{- $_ := required "secrets.existingSecretName must be set when secrets.useEphemeralGeneratedKeys is false" (trim (default "" .Values.secrets.existingSecretName)) }}
 {{- end }}
+{{- $tlsEnabled := eq (include "coco-trustee.kbs.tlsEnabled" . | trim) "true" }}
+{{- if $tlsEnabled }}
+{{- $_ := include "coco-trustee.kbs.tlsSecretName" . }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -73,6 +77,13 @@ spec:
                   name: {{ $pgurl }}
                   key: {{ include "coco-trustee.postgresUrlSecretKey" . }}
             {{- end }}
+            {{- if eq (include "coco-trustee.storage.needsRedis" . | trim) "true" }}
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coco-trustee.redisUrlSecretName" . | trim }}
+                  key: {{ include "coco-trustee.redisUrlSecretKey" . }}
+            {{- end }}
             {{- with .Values.kbs.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -84,12 +95,14 @@ spec:
             httpGet:
               path: /healthz
               port: http
+              scheme: {{ ternary "HTTPS" "HTTP" $tlsEnabled }}
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /healthz
               port: http
+              scheme: {{ ternary "HTTPS" "HTTP" $tlsEnabled }}
             initialDelaySeconds: 15
             periodSeconds: 20
           {{- with .Values.kbs.resources }}
@@ -101,6 +114,11 @@ spec:
               mountPath: /etc/kbs
             - name: user-keys
               mountPath: /opt/confidential-containers/kbs/user-keys
+            {{- if $tlsEnabled }}
+            - name: kbs-tls
+              mountPath: /etc/kbs/tls
+              readOnly: true
+            {{- end }}
             {{- if $needLocalFs }}
             - name: data
               mountPath: {{ include "coco-trustee.storage.kbsLocalDir" . }}
@@ -126,6 +144,11 @@ spec:
           secret:
             secretName: {{ include "coco-trustee.userKeysSecretNameResolved" . | trim }}
 {{- include "coco-trustee.userKeysSecretVolumeItems" . | nindent 12 }}
+        {{- if $tlsEnabled }}
+        - name: kbs-tls
+          secret:
+            secretName: {{ include "coco-trustee.kbs.tlsSecretName" . }}
+        {{- end }}
         {{- if $needDataVolume }}
         {{- $kbsClaim := include "coco-trustee.persistence.kbsDataClaimName" . | trim }}
         - name: data

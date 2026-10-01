@@ -11,8 +11,8 @@ all-verifier = [
     "snp-verifier",
     "az-snp-vtpm-verifier",
     "az-tdx-vtpm-verifier",
-    # "csv-verifier",  # Temporarily disabled due to OpenSSL compatibility issues with csv-rs
-    # "hygon-dcu-verifier",  # Temporarily disabled due to OpenSSL compatibility issues with csv-rs
+    "csv-verifier",
+    "hygon-dcu-verifier",
     "cca-verifier",
     "se-verifier",
     "nvidia-verifier",
@@ -37,6 +37,7 @@ sgx-verifier = [
 ]
 az-snp-vtpm-verifier = [
     "az-snp-vtpm",
+    "eventlog",
     "serde_with",
     "sev",
     "snp-verifier",
@@ -56,6 +57,7 @@ cca-verifier = ["ear", "jsonwebtoken", "veraison-apiclient", "ccatoken"]
 se-verifier = ["openssl", "pv", "serde_with", "tokio/sync"]
 nvidia-verifier = ["jsonwebtoken", "asn1-rs", "openssl", "x509-parser"]
 tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
+nvidia-dpu-verifier = ["p384", "serde_with", "x509-parser"]
 
 [dependencies]
 anyhow.workspace = true
@@ -86,6 +88,7 @@ key-value-storage = { path = "../key-value-storage", default-features = false }
 jsonwebtoken = { workspace = true, default-features = false, optional = true }
 kbs-types.workspace = true
 openssl = { workspace = true, optional = true }
+p384 = { version = "0.13", features = ["ecdsa", "pem"], optional = true }
 pv = { version = "0.12.0", package = "s390_pv", optional = true }
 scroll = { version = "0.13.0", default-features = false, features = [
     "derive",
@@ -104,7 +107,7 @@ sev = { version = "7", default-features = false, features = [
 sha2.workspace = true
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
-intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.26", optional = true }
+intel-tee-quote-verification-rs = { git = "https://github.com/intel/confidential-computing.tee.dcap", tag = "DCAP_1.27", optional = true }
 strum.workspace = true
 veraison-apiclient = { git = "https://github.com/veraison/rust-apiclient", rev = "fe149cd", optional = true }
 ccatoken = { git = "https://github.com/veraison/rust-ccatoken", rev = "870c83f", optional = true }
@@ -112,10 +115,9 @@ ear = { version = "0.5.0", optional = true }
 x509-parser = { version = "0.18.1", optional = true }
 reqwest = { workspace = true, features = ["default-tls"] }
 reqwest-middleware = "0.5.1"
-http-cache-reqwest = { version = "1.0.0-alpha.8", default-features = false, features = [
+http-cache-reqwest = { version = "1.0.0-alpha.6", default-features = false, features = [
     "manager-moka",
     "url-standard",
-    "reqwest-middleware",
 ] }
 chrono = { workspace = true, features = ["serde"] }
 urlencoding = "2.1.3"
@@ -131,5 +133,6 @@ assert-json-diff.workspace = true
 openssl.workspace = true
 rstest.workspace = true
 serial_test.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true

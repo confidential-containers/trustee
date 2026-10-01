@@ -291,7 +291,7 @@ mod tests {
         let quote_bin = std::fs::read("./test_data/tdx_quote_4.dat").expect("read quote failed");
         let quote = parse_quote(&quote_bin).expect("parse quote");
 
-        let info = parse_platform_info(&quote.cert_data().qe_certification_data.certificates)
+        let info = parse_platform_info(quote.cert_data().qe_certification_data.certificates)
             .expect("parse platform info");
 
         assert!(info.is_platform_ca);

@@ -47,6 +47,9 @@ pub(crate) mod intel_dcap;
 #[cfg(feature = "tpm-verifier")]
 pub mod tpm;
 
+#[cfg(feature = "nvidia-dpu-verifier")]
+pub mod nvidia_dpu;
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct VerifierConfig {
     #[cfg(feature = "nvidia-verifier")]
@@ -64,6 +67,9 @@ pub struct VerifierConfig {
         feature = "az-tdx-vtpm-verifier"
     ))]
     dcap_verifier: Option<intel_dcap::QcnlConfig>,
+
+    #[cfg(feature = "nvidia-dpu-verifier")]
+    nvidia_dpu_verifier: Option<nvidia_dpu::NvidiaDpuVerifierConfig>,
 }
 
 /// Build the [`Verifier`] for `tee`.
@@ -192,12 +198,46 @@ pub async fn to_verifier(
                 }
             }
         }
+
+        Tee::NvidiaDpu => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "nvidia-dpu-verifier")] {
+                    let config = _config.and_then(|c| c.nvidia_dpu_verifier)
+                        .context("nvidia_dpu_verifier config is required")?;
+                    Ok(Box::new(nvidia_dpu::NvidiaDpuVerifier::new(config)?) as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `nvidia-dpu-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
     }
 }
 
 pub type TeeEvidenceParsedClaim = serde_json::Value;
 pub type TeeEvidence = serde_json::Value;
 pub type TeeClass = String;
+
+/// Insert a verified eventlog as a `uefi_event_logs` claim -- a no-op if
+/// `ccel` is `None`.
+#[cfg(feature = "az-snp-vtpm-verifier")]
+pub(crate) fn extend_eventlog_claim(
+    claim: &mut TeeEvidenceParsedClaim,
+    ccel: Option<eventlog::CcEventLog>,
+) -> Result<()> {
+    let Some(ccel) = ccel else {
+        return Ok(());
+    };
+
+    let serde_json::Value::Object(ref mut map) = claim else {
+        bail!("failed to extend the claim, not an object");
+    };
+    map.insert(
+        "uefi_event_logs".to_string(),
+        serde_json::to_value(ccel.log)?,
+    );
+
+    Ok(())
+}
 
 pub enum ReportData<'a> {
     Value(&'a [u8]),

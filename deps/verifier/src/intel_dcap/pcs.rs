@@ -290,6 +290,14 @@ impl Pcs {
         let mut params: HashMap<&str, String> = HashMap::new();
         let chain_header = Self::cert_chain_header(&ct);
 
+        // Intel's official PCS returns the Root CA CRL as raw DER, fetched
+        // directly from the CRL Distribution Point URL embedded in the
+        // certificate. Third-party caching services following Intel's spec
+        // (https://cc-enabling.trustedservices.intel.com/intel-sgx-tdx-pccs/01/introduction/),
+        // always return RootCaCrl hex-encoded so `CollateralService::get` must decode it
+        // on return.
+        let needs_hex_decode = matches!(ct, CollateralType::RootCaCrl(_)) && !is_pcs;
+
         let mut endpoint = match ct {
             CollateralType::TcbInfo(tee, fmspc) => {
                 params.insert("fmspc", hex::encode_upper(fmspc));
@@ -351,7 +359,12 @@ impl Pcs {
             .map(url_decode_bytes)
             .transpose()?;
 
-        let body = Vec::from(response.bytes().await?);
+        let response_bytes = response.bytes().await?;
+        let body = if needs_hex_decode {
+            hex::decode(response_bytes.trim_ascii())?
+        } else {
+            Vec::from(response_bytes)
+        };
         Ok(CollateralData { body, cert_chain })
     }
 }

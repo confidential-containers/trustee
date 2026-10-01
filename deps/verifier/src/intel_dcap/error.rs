@@ -1,7 +1,7 @@
 use intel_tee_quote_verification_rs::quote3_error_t;
 
 /// List of DCAP related errors.
-/// <https://download.01.org/intel-sgx/sgx-dcap/1.26/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf>
+/// <https://download.01.org/intel-sgx/sgx-dcap/1.27/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf>
 pub(super) fn describe_error(error: quote3_error_t) -> String {
     let description = match error {
         quote3_error_t::TEE_SUCCESS => "Success.",
@@ -90,14 +90,14 @@ pub(super) fn describe_error(error: quote3_error_t) -> String {
         quote3_error_t::SGX_QL_TCB_NOT_SUPPORTED => "Current TCB level cannot be found in platform/enclave TCB info.",
         quote3_error_t::SGX_QL_CONFIG_INVALID_JSON => "The QPL's config file is in JSON format but has a format error.",
         quote3_error_t::SGX_QL_RESULT_INVALID_SIGNATURE => "Invalid signature during quote verification.",
-        quote3_error_t::SGX_QL_QEIDENTITY_MISMATCH => "QaE Identity is not match to Intel signed QaE identity.",
-        quote3_error_t::SGX_QL_QVE_OUT_OF_DATE => "QaE ISVSVN is smaller than the ISVSVN threshold, or input QaE ISVSVN is too small.",
-        quote3_error_t::TEE_QEIDENTITY_MISMATCH => "Quote hash in the appraisal result is not derived from the input quote.",
-        quote3_error_t::TEE_QVE_OUT_OF_DATE => "Report data mismatch during qae report and identity verify.",
+        quote3_error_t::SGX_QL_QAEIDENTITY_MISMATCH => "QaE Identity is not match to Intel signed QaE identity.",
+        quote3_error_t::SGX_QL_QAE_OUT_OF_DATE => "QaE ISVSVN is smaller than the ISVSVN threshold, or input QaE ISVSVN is too small.",
+        quote3_error_t::SGX_QL_QUOTE_HASH_MISMATCH => "Quote hash in the appraisal result is not derived from the input quote.",
+        quote3_error_t::SGX_QL_REPORT_DATA_MISMATCH => "Report data mismatch during qae report and identity verify.",
         _ => "Unrecognized DCAP error code.",
     };
 
-    format!("{:?} ({:#04x}) - {}", error, error as u32, description)
+    format!("{:#04x} - {description}", error.0)
         .trim()
         .to_string()
 }
@@ -108,8 +108,11 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case(quote3_error_t::SGX_QL_QEIDENTITY_MISMATCH, "SGX_QL_QEIDENTITY_MISMATCH (0xe026) - The Quote’s QE doesn’t match the inputted expected QEIdentity.")]
-    #[case(quote3_error_t::SGX_QL_SUCCESS, "SGX_QL_SUCCESS (0x00) - Success.")]
+    #[case(
+        quote3_error_t::SGX_QL_QEIDENTITY_MISMATCH,
+        "0xe026 - The Quote’s QE doesn’t match the inputted expected QEIdentity."
+    )]
+    #[case(quote3_error_t::SGX_QL_SUCCESS, "0x00 - Success.")]
     fn describe_error_test(#[case] test_data: quote3_error_t, #[case] expected_result: &str) {
         let actual_result = describe_error(test_data);
         assert_eq!(actual_result, expected_result);

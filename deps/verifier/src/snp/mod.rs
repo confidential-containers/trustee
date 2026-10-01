@@ -24,15 +24,16 @@ use sev::{
 };
 use std::{
     collections::HashMap,
+    fmt::Write,
     hash::Hash,
+    path::Path,
     result::Result::Ok,
     sync::{LazyLock, OnceLock},
+    time::Instant,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 use tracing::{debug, instrument, warn};
 use x509_parser::prelude::*;
-
-use std::time::Instant;
 
 #[derive(Serialize, Deserialize)]
 pub struct SnpEvidence {
@@ -107,6 +108,21 @@ fn init_cache_manager() -> MokaManager {
     MokaManager::new(MokaCacheBuilder::new(1024).build())
 }
 
+// convert TCB values into corresponding filename prefix for offline cert
+// caching (only used for OfflineStore option)
+fn format_tcb_prefix(att_report: &AttestationReport) -> String {
+    let tcb = &att_report.reported_tcb;
+    let mut tcb_prefix = format!(
+        "bl{:02}_tee{:02}_snp{:02}_ucode{:02}",
+        tcb.bootloader, tcb.tee, tcb.snp, tcb.microcode,
+    );
+    if let Some(fmc) = tcb.fmc {
+        write!(tcb_prefix, "_fmc{:02}", fmc).unwrap();
+    }
+
+    tcb_prefix
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Snp {
     verifier_config: SnpVerifierConfig,
@@ -153,9 +169,12 @@ impl Snp {
                 }
             };
 
-            if let Ok(vcek_bytes) = result {
-                debug!("fetched vcek from {:?}", source);
-                return Ok(vcek_bytes);
+            match result {
+                Ok(vcek_bytes) => {
+                    debug!("fetched vcek from {:?}", source);
+                    return Ok(vcek_bytes);
+                }
+                Err(e) => debug!("failed to fetch vcek from {:?}: {:#}", source, e),
             }
         }
 
@@ -175,10 +194,25 @@ impl Snp {
         // default dir should contain the /vcek segment
         let path = path.unwrap_or(KDS_OFFLINE_STORE_PATH.to_string());
         let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen.clone());
-        let vcek_path = format!("{}/vcek/{}/vcek.der", path, hw_id);
-        let vcek_bytes = std::fs::read(&vcek_path)
-            .with_context(|| format!("Failed to read VCEK from offline store at {}", vcek_path))?;
-        Ok(vcek_bytes)
+        let tcb_vcek_path = format!(
+            "{path}/vcek/{hw_id}/{}_vcek.der",
+            format_tcb_prefix(&att_report)
+        );
+
+        let default_vcek_path = format!("{path}/vcek/{hw_id}/vcek.der");
+        let effective_path = match Path::new(&tcb_vcek_path).try_exists() {
+            Ok(true) => tcb_vcek_path,
+            Ok(false) => {
+                debug!("{tcb_vcek_path} not found, fall back to {default_vcek_path}");
+                default_vcek_path
+            }
+            // A stat failure (e.g. permission denied) is a real error, not an
+            // absent cert, so surface it instead of silently falling back.
+            Err(e) => bail!("Failed to stat VCEK at {tcb_vcek_path}: {e}"),
+        };
+
+        std::fs::read(&effective_path)
+            .with_context(|| format!("Failed to read VCEK from offline store at {effective_path}"))
     }
 
     fn parse_hw_id_from_vcek(
@@ -621,6 +655,9 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "measurement": hex::encode(report.measurement),
         "report_data": hex::encode(report.report_data),
         "init_data": hex::encode(report.host_data),
+
+        // platform identity
+        "chip_id": hex::encode(report.chip_id),
     });
 
     claims_map as TeeEvidenceParsedClaim
@@ -686,6 +723,41 @@ mod tests {
     const VLEK_REPORT: &[u8; 1184] = include_bytes!("../../test_data/snp/test-vlek-report.bin");
     const DYNAMIC_EVIDENCE: &[u8; 6714] =
         include_bytes!("../../../../attestation-service/tests/e2e/evidence.json");
+
+    #[test]
+    fn test_format_tcb_prefix() {
+        use sev::firmware::host::TcbVersion;
+
+        // Test non-Turin processor (Milan)
+        let mut report_milan = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        report_milan.reported_tcb = TcbVersion {
+            bootloader: 2,
+            tee: 0,
+            snp: 6,
+            microcode: 21,
+            fmc: None,
+        };
+        let result = format_tcb_prefix(&report_milan);
+        assert_eq!(result, "bl02_tee00_snp06_ucode21");
+
+        // Test Turin processor with fmc
+        let mut report_turin = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        report_turin.reported_tcb = TcbVersion {
+            bootloader: 3,
+            tee: 1,
+            snp: 8,
+            microcode: 15,
+            fmc: Some(5),
+        };
+        let result = format_tcb_prefix(&report_turin);
+        assert_eq!(result, "bl03_tee01_snp08_ucode15_fmc05");
+
+        // fmc suffix is driven purely by its existence: a None fmc (as
+        // guaranteed for pre-Turin gens by the sev crate) emits no suffix
+        report_turin.reported_tcb.fmc = None;
+        let result = format_tcb_prefix(&report_turin);
+        assert_eq!(result, "bl03_tee01_snp08_ucode15");
+    }
 
     #[test]
     fn check_milan_certificates() {
@@ -997,10 +1069,11 @@ mod tests {
         // Generate parsed claims
         let claims = parse_tee_evidence(&attestation_report);
 
-        // Extract the three key fields that should be hex-encoded
+        // Extract the key fields that should be hex-encoded
         let measurement = claims.get("measurement").and_then(|v| v.as_str()).unwrap();
         let report_data = claims.get("report_data").and_then(|v| v.as_str()).unwrap();
         let init_data = claims.get("init_data").and_then(|v| v.as_str()).unwrap();
+        let chip_id = claims.get("chip_id").and_then(|v| v.as_str()).unwrap();
 
         // Verify they are valid hex strings by checking:
         // 1. All characters are valid hex digits (0-9, a-f)
@@ -1035,9 +1108,80 @@ mod tests {
             "init_data should only contain hex digits"
         );
 
+        // chip_id is 64 bytes -> 128 hex chars
+        assert_eq!(chip_id.len(), 128, "chip_id should be 128 hex characters");
+        assert!(
+            chip_id.chars().all(|c| c.is_ascii_hexdigit()),
+            "chip_id should only contain hex digits"
+        );
+
         // Verify we can decode them back to bytes (confirms valid hex encoding)
         hex::decode(measurement).expect("measurement should be valid hex");
         hex::decode(report_data).expect("report_data should be valid hex");
         hex::decode(init_data).expect("init_data should be valid hex");
+        hex::decode(chip_id).expect("chip_id should be valid hex");
+    }
+
+    #[test]
+    fn test_fetch_vcek_from_offline_store_fallback() {
+        use tempfile::TempDir;
+
+        let attestation_report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        let snp = Snp::default();
+        let proc_gen = ProcessorGeneration::Milan;
+        let hw_id = snp.parse_hw_id_from_vcek(attestation_report, proc_gen.clone());
+
+        // Test 1: TCB-based path exists, should use it
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().to_str().unwrap().to_string();
+        let tcb_prefix = format_tcb_prefix(&attestation_report);
+        let hw_dir = temp_dir.path().join("vcek").join(&hw_id);
+        std::fs::create_dir_all(&hw_dir).unwrap();
+        std::fs::write(hw_dir.join(format!("{tcb_prefix}_vcek.der")), VCEK).unwrap();
+
+        let result = snp.fetch_vcek_from_offline_store(
+            attestation_report,
+            &proc_gen,
+            Some(store_path.clone()),
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), VCEK);
+
+        // Test 2: Only flat layout exists, should fall back
+        let temp_dir2 = TempDir::new().unwrap();
+        let store_path2 = temp_dir2.path().to_str().unwrap().to_string();
+        let flat_path = temp_dir2.path().join("vcek").join(&hw_id);
+        std::fs::create_dir_all(&flat_path).unwrap();
+        std::fs::write(flat_path.join("vcek.der"), VCEK).unwrap();
+
+        let result =
+            snp.fetch_vcek_from_offline_store(attestation_report, &proc_gen, Some(store_path2));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), VCEK);
+
+        // Test 3: Neither exists, should fail
+        let temp_dir3 = TempDir::new().unwrap();
+        let store_path3 = temp_dir3.path().to_str().unwrap().to_string();
+
+        let result =
+            snp.fetch_vcek_from_offline_store(attestation_report, &proc_gen, Some(store_path3));
+        assert!(result.is_err());
+
+        // Test 4: Both paths exist with distinct contents, TCB path takes precedence
+        let temp_dir4 = TempDir::new().unwrap();
+        let store_path4 = temp_dir4.path().to_str().unwrap().to_string();
+        let flat_content = b"flat-layout-vcek".to_vec();
+
+        let hw_dir4 = temp_dir4.path().join("vcek").join(&hw_id);
+        std::fs::create_dir_all(&hw_dir4).unwrap();
+        std::fs::write(hw_dir4.join(format!("{tcb_prefix}_vcek.der")), VCEK).unwrap();
+        std::fs::write(hw_dir4.join("vcek.der"), &flat_content).unwrap();
+
+        let result =
+            snp.fetch_vcek_from_offline_store(attestation_report, &proc_gen, Some(store_path4));
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert_eq!(bytes, VCEK);
+        assert_ne!(bytes, flat_content);
     }
 }

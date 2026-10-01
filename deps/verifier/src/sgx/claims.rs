@@ -123,7 +123,7 @@ mod tests {
         let quote =
             crate::intel_dcap::quote::parse_quote(quote_bin.as_slice()).expect("parse quote");
         let platform_info =
-            parse_platform_info(&quote.cert_data().qe_certification_data.certificates)
+            parse_platform_info(quote.cert_data().qe_certification_data.certificates)
                 .expect("parse platform info");
         let claims = generate_parsed_claims(&quote, &platform_info).expect("parse claim failed");
         let expected = json!({
