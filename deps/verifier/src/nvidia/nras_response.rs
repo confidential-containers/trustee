@@ -4,66 +4,41 @@
 //
 
 use anyhow::{Result, anyhow, bail};
-use base64::Engine;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use super::TeeEvidenceParsedClaim;
+use super::eat::DetachedEat;
 use crate::nvidia::NrasJwks;
-
-/// Internal struct for deserializing the NRAS Payload
-/// The first element is a slice with two fields:
-/// - The first field is "JWT" string
-/// - The second field is the base64 encoded primary JWT
-///
-/// The second element is a HashMap with the device name as the
-///   key and base64 encoded Individual JWTs as the value.
-///
-/// See the following link for more details
-/// https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/introduction.html
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
-struct NrasResponseInternal(Vec<String>, HashMap<String, String>);
 
 /// Formatted Nras Response
 pub struct NrasResponse {
-    jwt: String,
-    eat: String,
+    eat: DetachedEat,
 }
 
 impl FromStr for NrasResponse {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let response: NrasResponseInternal = serde_json::from_str(s)?;
-
-        if response.0.len() != 2 {
-            bail!("Unexpected Payload Format");
-        };
-        let jwt = response.0[1].clone();
+        let eat = DetachedEat::from_str(s)?;
 
         // For now, there should only be one EAT.
-        if response.1.len() != 1 {
+        if eat.device_jwts().len() != 1 {
             bail!("Unexpected submod count.");
         };
 
-        let eat = response
-            .1
-            .values()
-            .next()
-            .ok_or_else(|| anyhow!("Could not find EAT"))?
-            .to_string();
-
-        Ok(NrasResponse { jwt, eat })
+        Ok(NrasResponse { eat })
     }
 }
 
 impl NrasResponse {
     /// Validates JWT and EAT using the provided JWKs
     pub fn validate(&self, jwks: &NrasJwks) -> Result<()> {
-        validate_jwt(self.jwt.clone(), jwks)?;
-        validate_jwt(self.eat.clone(), jwks)?;
+        validate_jwt(self.eat.overall_jwt().to_string(), jwks)?;
+        for jwt in self.eat.device_jwts() {
+            validate_jwt(jwt.clone(), jwks)?;
+        }
 
         Ok(())
     }
@@ -76,36 +51,11 @@ impl NrasResponse {
     /// usings their original names. This may be refined
     /// in the future.
     pub fn claims(&self) -> Result<TeeEvidenceParsedClaim> {
-        let mut claims = get_jwt_payload(self.eat.clone())?;
-        let jwt_claims = get_jwt_payload(self.jwt.clone())?;
-
-        // If there is an overall attestation result in the JWT,
-        // add it to the claims.
-        if let Some(overall_result) = jwt_claims.pointer("/x-nvidia-overall-att-result") {
-            let claims_dict = claims
-                .as_object_mut()
-                .ok_or_else(|| anyhow!("Unexpected claims format."))?;
-            claims_dict.insert(
-                "x-nvidia-overall-att-result".to_string(),
-                overall_result.clone(),
-            );
-        }
-        Ok(claims)
+        self.eat
+            .claims()?
+            .pop()
+            .ok_or_else(|| anyhow!("Could not find EAT"))
     }
-}
-
-pub fn get_jwt_payload(jwt: String) -> Result<serde_json::Value> {
-    let parts: Vec<&str> = jwt.split('.').collect();
-
-    if parts.len() != 3 {
-        bail!("Malformed JWT");
-    }
-
-    let b64_engine = base64::engine::general_purpose::STANDARD_NO_PAD;
-    let payload_bytes = b64_engine.decode(parts[1])?;
-    let payload_str = String::from_utf8_lossy(&payload_bytes);
-
-    Ok(serde_json::from_str(&payload_str)?)
 }
 
 pub fn get_jwt_kid(jwt: String) -> Result<String> {

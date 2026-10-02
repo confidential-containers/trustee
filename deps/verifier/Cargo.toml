@@ -56,6 +56,9 @@ hygon-dcu-verifier = ["csv-rs"]
 cca-verifier = ["ear", "jsonwebtoken", "veraison-apiclient", "ccatoken"]
 se-verifier = ["openssl", "pv", "serde_with", "tokio/sync"]
 nvidia-verifier = ["jsonwebtoken", "asn1-rs", "openssl", "x509-parser"]
+# NVIDIA NVAT can be used in conjunction with the nvidia-verifier to
+# enable two additional verifier modes on x86.
+nvidia-nvat = ["nv-attestation-sdk", "tokio/rt", "nvidia-verifier"]
 tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
 nvidia-dpu-verifier = ["p384", "serde_with", "x509-parser"]
 
@@ -126,6 +129,9 @@ url = "2.5.7"
 bitflags = { version = "2.13.0", features = ["serde"] }
 time.workspace = true
 tss-esapi = { version = "7.5", optional = true }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+nv-attestation-sdk = { git = "https://github.com/NVIDIA/attestation-sdk", tag = "2026.10.02", optional = true }
 
 [build-dependencies]
 
