@@ -16,6 +16,8 @@ use corim_rs::{CorimMap, ProfileTypeChoice};
 
 use crate::ReferenceValue;
 
+mod intel_poe;
+
 /// Extracts reference values from CoRIMs whose profile it claims.
 pub(super) trait CorimProfileExtractor: Send + Sync {
     /// Whether this extractor claims `profile`.
@@ -31,6 +33,7 @@ pub(super) trait CorimProfileExtractor: Send + Sync {
 /// The built-in profile extractors.
 static REGISTERED_EXTRACTORS: &[&dyn CorimProfileExtractor] = &[
     // A CoRIM is handled by the first extractor that claims its profile.
+    &intel_poe::IntelPoeExtractor,
 ];
 
 /// Runs the extractor claiming `corim`'s profile, or returns `None` if there's

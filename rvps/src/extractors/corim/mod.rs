@@ -222,4 +222,58 @@ mod tests {
             rvs[2].value[0] == "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
         );
     }
+
+    /// `poe-example-corim.cbor` is the unsigned CoRIM (tag 501) of a real
+    /// Intel POE (Platform Ownership Endorsement), generated with Intel's
+    /// `poe-gen-tool prepare` against the same TDX quote used by the
+    /// verifier's own test fixtures (`tdx_quote_4.dat`), binding owner name
+    /// "ACME-DC1" to that quote's PCK cert platform_instance_id. The
+    /// expected RV name/value below were confirmed against
+    /// `poe-gen-tool print`'s own decoding of the signed CoRIM produced from
+    /// the same inputs.
+    #[test]
+    fn extract_poe_corim() {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_test_writer()
+            .try_init()
+            .ok();
+
+        let cbor_bytes = include_bytes!("poe-example-corim.cbor");
+
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cbor_bytes);
+        let extractor = CorimExtractor;
+        let rvs = extractor.verify_and_extract(&b64).unwrap();
+
+        assert_eq!(rvs.len(), 1);
+        assert_eq!(
+            rvs[0].name,
+            "intel.com/tee.poe/021ac64d355ba904e2d5948d228d5482"
+        );
+        assert_eq!(
+            rvs[0].value,
+            serde_json::json!({ "owner-name": "ACME-DC1" })
+        );
+    }
+
+    /// The POE extractor is chosen by the CoRIM's declared profile, not by
+    /// the shape of its triples: the same CoRIM as `poe-example-corim.cbor`
+    /// must not be claimed by it once its profile is changed to one it
+    /// doesn't own, even though the triple itself is unchanged.
+    #[test]
+    fn poe_extractor_ignores_other_profiles() {
+        use super::profiles;
+        use corim_rs::{Corim, ProfileTypeChoice};
+
+        let corim = Corim::from_cbor(include_bytes!("poe-example-corim.cbor").as_slice()).unwrap();
+        let mut corim_map = corim.as_map_ref().clone();
+
+        let rvs = profiles::extract_for_profile(&corim_map)
+            .expect("POE profile is claimed")
+            .unwrap();
+        assert_eq!(rvs.len(), 1);
+
+        corim_map.profile = Some(ProfileTypeChoice::Uri("some-other-vendor-profile".into()));
+        assert!(profiles::extract_for_profile(&corim_map).is_none());
+    }
 }
