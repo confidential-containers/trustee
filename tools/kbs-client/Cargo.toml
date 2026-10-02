@@ -35,7 +35,7 @@ tracing-subscriber.workspace = true
 default = ["default-tls"]
 
 default-tls = ["reqwest/default-tls"]
-native-tls = ["reqwest/native-tls", "kbs_protocol/openssl"]
+native-tls = ["reqwest/native-tls"]
 
 all-attesters = ["kbs_protocol/all-attesters"]
 tdx-attester = ["kbs_protocol/tdx-attester"]
