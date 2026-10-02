@@ -21,6 +21,8 @@ use crate::ReferenceValue;
 
 use super::Extractor;
 
+mod profiles;
+
 #[derive(Default)]
 pub struct CorimExtractor;
 
@@ -177,6 +179,10 @@ impl Extractor for CorimExtractor {
 
         let corim = Corim::from_cbor(cbor_bytes)?;
         let corim_map = corim.as_map_ref();
+
+        if let Some(rvs) = profiles::extract_for_profile(corim_map) {
+            return rvs;
+        }
 
         let mut rvs: Vec<ReferenceValue> = vec![];
 
