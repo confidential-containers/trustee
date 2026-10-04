@@ -7,6 +7,7 @@
 // and the Aliyun KMS Instance secrets API that backs `aliyun_kms.rs`.
 
 use super::backend::{ResourceDesc, StorageBackend};
+use crate::plugins::PluginResult;
 use anyhow::{anyhow, bail, Context, Result};
 use google_cloud_secretmanager_v1::client::SecretManagerService;
 use serde::Deserialize;
@@ -41,7 +42,7 @@ fn secret_version_name(project_id: &str, secret: &str, version: &str) -> String 
 
 #[async_trait::async_trait]
 impl StorageBackend for GcpSmBackend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         info!(
             "Use GCP Secret Manager backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type

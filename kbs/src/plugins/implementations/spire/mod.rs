@@ -26,14 +26,14 @@
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use spire_api::selectors::Selector;
 use spire_api::{DelegateAttestationRequest, DelegatedIdentityClient};
 use tracing::{debug, error, warn};
 
-use crate::plugins::plugin_manager::ClientPlugin;
+use crate::plugins::plugin_manager::{ClientPlugin, PluginResult};
 
 fn default_k8s_selector_prefix() -> String {
     "k8s".to_string()
@@ -277,9 +277,9 @@ impl ClientPlugin for SpirePlugin {
         method: &Method,
         _init_data: Option<&Value>,
         trustee_extensions: &HashMap<String, Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         if method.as_str() != "GET" {
-            bail!("Illegal HTTP method. Only GET is supported");
+            return Err(anyhow!("Illegal HTTP method. Only GET is supported").into());
         }
 
         debug!(?path, "SPIRE plugin: handling request");
@@ -299,15 +299,15 @@ impl ClientPlugin for SpirePlugin {
                 );
 
                 let response = self.fetch_svid(selectors).await?;
-                Ok(serde_json::to_vec(&response)?)
+                Ok(serde_json::to_vec(&response).context("failed to serialize SVID")?)
             }
             ["x509-bundles"] => {
                 let response = self.fetch_bundles().await?;
-                Ok(serde_json::to_vec(&response)?)
+                Ok(serde_json::to_vec(&response).context("failed to serialize bundles")?)
             }
             _ => {
                 warn!(?path, "SPIRE plugin: request to unsupported path");
-                bail!("Illegal path. Only x509 SVIDs and bundles are supported.")
+                Err(anyhow!("Illegal path. Only x509 SVIDs and bundles are supported.").into())
             }
         }
     }
@@ -318,7 +318,7 @@ impl ClientPlugin for SpirePlugin {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         // There is no admin interface.
         Ok(false)
     }
@@ -329,7 +329,7 @@ impl ClientPlugin for SpirePlugin {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(true)
     }
 }

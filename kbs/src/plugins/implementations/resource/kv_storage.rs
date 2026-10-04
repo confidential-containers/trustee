@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{ResourceDesc, StorageBackend};
-use anyhow::{bail, Result};
+use crate::plugins::{PluginError, PluginResult};
+use anyhow::{Context, Result};
 use key_value_storage::{KeyValueStorage, KeyValueStorageInstance, SetParameters};
 use std::sync::Arc;
 
@@ -13,14 +14,21 @@ pub struct KvStorage {
 
 #[async_trait::async_trait]
 impl StorageBackend for KvStorage {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         let ref_resource_path = format!(
             "{}/{}/{}",
             resource_desc.repository_name, resource_desc.resource_type, resource_desc.resource_tag
         );
 
-        let Some(resource_byte) = self.storage.get(&ref_resource_path).await? else {
-            bail!("resource not found: {}", ref_resource_path);
+        let Some(resource_byte) = self
+            .storage
+            .get(&ref_resource_path)
+            .await
+            .context("failed to read resource")?
+        else {
+            return Err(PluginError::NotFound(format!(
+                "resource not found: {ref_resource_path}"
+            )));
         };
 
         Ok(resource_byte)
@@ -69,7 +77,10 @@ impl KvStorage {
 mod tests {
     use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
 
-    use crate::plugins::resource::{kv_storage::KvStorage, RESOURCE_STORAGE_NAMESPACE};
+    use crate::plugins::{
+        resource::{kv_storage::KvStorage, RESOURCE_STORAGE_NAMESPACE},
+        PluginError,
+    };
 
     use super::super::{ResourceDesc, StorageBackend};
 
@@ -99,6 +110,25 @@ mod tests {
             .expect("read secret resource failed");
 
         assert_eq!(&data[..], TEST_DATA);
+    }
+
+    #[tokio::test]
+    async fn read_missing_resource_is_not_found() {
+        let storage = KeyValueStorageStructConfig::default()
+            .to_client_with_namespace(KeyValueStorageType::Memory, RESOURCE_STORAGE_NAMESPACE)
+            .await
+            .expect("create key value storage failed");
+
+        let err = KvStorage::new(storage)
+            .read_secret_resource(ResourceDesc {
+                repository_name: "default".into(),
+                resource_type: "test".into(),
+                resource_tag: "missing".into(),
+            })
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, PluginError::NotFound(_)), "unexpected: {err}");
     }
 
     #[tokio::test]

@@ -124,6 +124,37 @@ async fn run_test(
     test_result
 }
 
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn get_missing_resource() -> Result<()> {
+    init_tracing();
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    let test_result = async {
+        harness.wait().await?;
+        harness.set_policy(PolicyType::AllowAll).await?;
+        harness
+            .set_attestation_policy(
+                EAR_CONTRAINDICATED_ATTESTATION_POLICY.to_string(),
+                "default_cpu".to_string(),
+            )
+            .await?;
+
+        let err = harness
+            .get_secret("default/test/missing".to_string(), None)
+            .await
+            .unwrap_err();
+        if !err.to_string().contains("KBS resource not found") {
+            bail!("expected a not-found error, got: {err}");
+        }
+        Ok(())
+    }
+    .await;
+
+    harness.cleanup().await?;
+    test_result
+}
+
 async fn get_secret(
     harness: &TestHarness,
     policy: PolicyType,

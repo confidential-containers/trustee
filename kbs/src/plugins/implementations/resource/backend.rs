@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::fmt;
 
 use crate::{
-    plugins::resource::kv_storage,
+    plugins::{resource::kv_storage, PluginResult},
     prometheus::{RESOURCE_DELETES_TOTAL, RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
 };
 
@@ -32,7 +32,7 @@ pub const RESOURCE_STORAGE_NAMESPACE: &str = "repository";
 #[async_trait::async_trait]
 pub trait StorageBackend: Send + Sync {
     /// Read secret resource from repository.
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>>;
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>>;
 
     /// Write secret resource into repository
     async fn write_secret_resource(&self, resource_desc: ResourceDesc, data: &[u8]) -> Result<()>;
@@ -185,7 +185,10 @@ impl ResourceStorage {
         self.backend.delete_secret_resource(resource_desc).await
     }
 
-    pub(crate) async fn get_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    pub(crate) async fn get_secret_resource(
+        &self,
+        resource_desc: ResourceDesc,
+    ) -> PluginResult<Vec<u8>> {
         RESOURCE_READS_TOTAL
             .with_label_values(&[&format!("{}", resource_desc)])
             .inc();
