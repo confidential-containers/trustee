@@ -329,9 +329,9 @@ mod tests {
     use serial_test::serial;
     use std::process::Command;
 
-    static LOOKUP_LABEL: &'static str = "trustee-test";
-    static HSM_USER_PIN: &'static str = "12345678";
-    static SOFTHSM_PATH: &'static str = "/usr/lib/softhsm/libsofthsm2.so";
+    static LOOKUP_LABEL: &str = "trustee-test";
+    static HSM_USER_PIN: &str = "12345678";
+    static SOFTHSM_PATH: &str = "/usr/lib/softhsm/libsofthsm2.so";
 
     async fn before_test() {
         let status = Command::new("bash")

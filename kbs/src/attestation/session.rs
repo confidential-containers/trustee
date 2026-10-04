@@ -187,7 +187,7 @@ mod tests {
         };
         let session = SessionStatus::auth(request, 60, challenge);
         session_map.insert(session.clone()).await.unwrap();
-        let session_get = session_map.get(&session.id()).await.unwrap().unwrap();
+        let session_get = session_map.get(session.id()).await.unwrap().unwrap();
 
         // The kbs_types::Challenge and kbs_types::Request does not handle PartialEq
         // so we need to compare the debugging string directly.

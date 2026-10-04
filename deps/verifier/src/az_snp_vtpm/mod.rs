@@ -511,7 +511,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_user_data(#[case] tampered_evidence_json: &str) {
         let report_data = hex::decode(EVIDENCE_V2_REPORT_DATA).unwrap();
-        let evidence: Evidence = serde_json::from_str(&tampered_evidence_json).unwrap();
+        let evidence: Evidence = serde_json::from_str(tampered_evidence_json).unwrap();
         let hcl_report = HclReport::new(evidence.hcl_report().into()).unwrap();
         verify_user_data(&hcl_report, &report_data).unwrap();
 

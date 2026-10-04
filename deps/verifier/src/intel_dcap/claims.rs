@@ -222,9 +222,11 @@ mod tests {
     }
 
     fn create_supp_data_v5() -> sgx_ql_qv_supplemental_t {
-        let mut supp: sgx_ql_qv_supplemental_t = Default::default();
-        supp.tcb_date_current = 1710374400;
-        supp.tcb_status_current = sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE;
+        let mut supp = sgx_ql_qv_supplemental_t {
+            tcb_date_current: 1710374400,
+            tcb_status_current: sgx_ql_qv_result_t::SGX_QL_QV_RESULT_OUT_OF_DATE,
+            ..Default::default()
+        };
         let advisory = b"INTEL-SA-1234\0";
         for (dst, &b) in supp.sa_list_current.iter_mut().zip(advisory) {
             *dst = b as std::os::raw::c_char;
