@@ -150,10 +150,10 @@ mod tests {
     use rstest::rstest;
     use serde_json::json;
     use std::{
-        fs,
-        path::PathBuf,
+        io::Write,
         time::{SystemTime, UNIX_EPOCH},
     };
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     pub async fn make_admin_object_from_json() {
@@ -373,7 +373,7 @@ mod tests {
         assert!(admin.check_admin_access(&req).is_err());
     }
 
-    fn make_test_admin_keypair() -> (String, PathBuf) {
+    fn make_test_admin_keypair() -> (String, NamedTempFile) {
         let keypair = PKey::generate_ed25519().expect("generate test ed25519 keypair");
         let private_key_pem = String::from_utf8(
             keypair
@@ -382,16 +382,12 @@ mod tests {
         )
         .expect("test private key is valid utf8");
         let public_key_pem = keypair.public_key_to_pem().expect("export test public key");
+        let mut public_key_file = NamedTempFile::new().expect("create test public key file");
+        public_key_file
+            .write_all(&public_key_pem)
+            .expect("write test admin public key");
 
-        let now_nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system time before unix epoch")
-            .as_nanos();
-        let public_key_path =
-            std::env::temp_dir().join(format!("kbs-admin-test-pubkey-{now_nanos}.pem"));
-        fs::write(&public_key_path, public_key_pem).expect("write test admin public key");
-
-        (private_key_pem, public_key_path)
+        (private_key_pem, public_key_file)
     }
 
     #[rstest]
@@ -436,7 +432,7 @@ mod tests {
         #[case] expected_audience: &str,
         #[case] expected_allowed: bool,
     ) {
-        let (private_key_pem, public_key_path) = make_test_admin_keypair();
+        let (private_key_pem, public_key_file) = make_test_admin_keypair();
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -470,7 +466,7 @@ mod tests {
                     "identity_providers": [{
                         "issuer": expected_issuer,
                         "audience": expected_audience,
-                        "public_key_uri": public_key_path
+                        "public_key_uri": public_key_file.path()
                     }]
                 }
             }
