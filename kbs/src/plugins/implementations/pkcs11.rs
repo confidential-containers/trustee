@@ -26,7 +26,7 @@ use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginError, PluginResult};
 
 /// Enum representing supported RSA mechanisms.
 #[derive(Educe, Deserialize, Clone, PartialEq, Default)]
@@ -129,16 +129,16 @@ impl ClientPlugin for Pkcs11Backend {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         let desc = path.join("/");
 
         match &desc[..] {
-            "wrap-key" => self.wrap_key_handle(body, method).await,
+            "wrap-key" => Ok(self.wrap_key_handle(body, method).await?),
             _ => {
                 let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
                 match action {
                     "resource" => self.resource_handle(params, body, method).await,
-                    _ => bail!("invalid path"),
+                    _ => Err(anyhow!("invalid path").into()),
                 }
             }
         }
@@ -150,11 +150,11 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         _path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         match *method {
             Method::GET => Ok(false),
             Method::POST | Method::DELETE => Ok(true),
-            _ => bail!("invalid method"),
+            _ => Err(anyhow!("invalid method").into()),
         }
     }
 
@@ -164,30 +164,36 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(true)
     }
 }
 
 #[async_trait::async_trait]
 impl StorageBackend for Pkcs11Backend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         let session = self.session.lock().await;
 
         // find object with matching label
         let attributes = vec![Attribute::Label(Vec::from(resource_desc.to_string()))];
-        let objects = session.find_objects(&attributes)?;
+        let objects = session
+            .find_objects(&attributes)
+            .context("unable to find objects")?;
 
         if objects.is_empty() {
-            bail!("Could not find object with label {}", resource_desc);
+            return Err(PluginError::NotFound(format!(
+                "Could not find object with label {resource_desc}"
+            )));
         }
         let object = objects[0];
 
         // check that object has a readable value attribute
         let value_attribute = vec![AttributeType::Value];
-        let attribute_map = session.get_attribute_info_map(object, &value_attribute)?;
+        let attribute_map = session
+            .get_attribute_info_map(object, &value_attribute)
+            .context("unable to fetch attribute info")?;
         let Some(AttributeInfo::Available(_size)) = attribute_map.get(&AttributeType::Value) else {
-            bail!("Key does not have value attribute available.");
+            return Err(anyhow!("Key does not have value attribute available.").into());
         };
 
         // get the value
@@ -198,7 +204,7 @@ impl StorageBackend for Pkcs11Backend {
         let value = value.first().ok_or(anyhow!("empty attributes returned"))?;
 
         let Attribute::Value(resource_bytes) = value else {
-            bail!("Failed to get value.");
+            return Err(anyhow!("Failed to get value.").into());
         };
 
         Ok(resource_bytes.clone())
@@ -238,7 +244,12 @@ impl StorageBackend for Pkcs11Backend {
 }
 
 impl Pkcs11Backend {
-    async fn resource_handle(&self, tag: &str, body: &[u8], method: &Method) -> Result<Vec<u8>> {
+    async fn resource_handle(
+        &self,
+        tag: &str,
+        body: &[u8],
+        method: &Method,
+    ) -> PluginResult<Vec<u8>> {
         let tag = ResourceDesc::try_from(tag).context("invalid path")?;
 
         match *method {
@@ -251,7 +262,9 @@ impl Pkcs11Backend {
                 self.delete_secret_resource(tag).await?;
                 Ok(vec![])
             }
-            _ => bail!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`"),
+            _ => {
+                Err(anyhow!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`").into())
+            }
         }
     }
 

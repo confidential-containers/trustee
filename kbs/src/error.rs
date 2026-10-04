@@ -71,6 +71,9 @@ pub enum Error {
     #[error("Access denied by policy")]
     PolicyDeny,
 
+    #[error("Resource not found")]
+    ResourceNotFound { detail: String },
+
     #[error("Failed to parse policy: {source}")]
     ParsePolicyError {
         #[source]
@@ -105,6 +108,15 @@ pub enum Error {
     },
 }
 
+impl From<crate::plugins::PluginError> for Error {
+    fn from(e: crate::plugins::PluginError) -> Self {
+        match e {
+            crate::plugins::PluginError::NotFound(detail) => Error::ResourceNotFound { detail },
+            crate::plugins::PluginError::Internal(source) => Error::PluginInternalError { source },
+        }
+    }
+}
+
 impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         let mut detail = String::new();
@@ -123,9 +135,9 @@ impl ResponseError for Error {
 
         // Per the KBS protocol, errors should yield 401, 403 or 404 responses
         let mut res = match self {
-            Error::InvalidRequestPath { .. } | Error::PluginNotFound { .. } => {
-                HttpResponse::NotFound()
-            }
+            Error::InvalidRequestPath { .. }
+            | Error::PluginNotFound { .. }
+            | Error::ResourceNotFound { .. } => HttpResponse::NotFound(),
             Error::PolicyDeny => HttpResponse::Forbidden(),
             _ => HttpResponse::Unauthorized(),
         };
@@ -146,6 +158,7 @@ mod tests {
     #[rstest]
     #[case(Error::InvalidRequestPath{path: "test".into()}, StatusCode::NOT_FOUND)]
     #[case(Error::PluginNotFound{plugin_name: "test".into()}, StatusCode::NOT_FOUND)]
+    #[case(Error::ResourceNotFound{detail: "test".into()}, StatusCode::NOT_FOUND)]
     #[case(Error::PolicyDeny, StatusCode::FORBIDDEN)]
     #[case(Error::TokenNotFound, StatusCode::UNAUTHORIZED)]
     fn into_error_response(#[case] err: Error, #[case] expected: StatusCode) {

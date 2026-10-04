@@ -390,15 +390,13 @@ pub(crate) async fn api(
             let body = body.to_vec();
             if plugin
                 .validate_auth(&body, &query, resource_path, request.method())
-                .await
-                .map_err(|e| Error::PluginInternalError { source: e })?
+                .await?
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
                     .handle(&body, &query, resource_path, request.method(), None)
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .await?;
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
@@ -451,13 +449,11 @@ pub(crate) async fn api(
 
                 let response = plugin
                     .handle(&body, &query, resource_path, request.method(), init_data)
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .await?;
 
                 if plugin
                     .encrypted(&body, &query, resource_path, request.method())
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?
+                    .await?
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
 

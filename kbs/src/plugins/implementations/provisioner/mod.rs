@@ -15,11 +15,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use key_value_storage::{KeyValueStorageInstance, SetParameters, StorageProvider};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::plugins::{PluginError, PluginResult};
 
 const PROVISIONER_STORAGE_NAMESPACE: &str = "provisioner";
 
@@ -102,11 +104,11 @@ impl Provisioner {
         &self,
         path: &[&str],
         init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         let resource_key = path.join("/");
 
         let Some(claims) = init_data else {
-            bail!("provisioner requires init_data for resource access");
+            return Err(anyhow!("provisioner requires init_data for resource access").into());
         };
 
         let bound_resource = claims
@@ -115,14 +117,20 @@ impl Provisioner {
             .ok_or_else(|| anyhow!("init_data missing trustee.kbs.resource"))?;
         let expected = format!("kbs+provisioner:///{resource_key}");
         if bound_resource != expected {
-            bail!("init_data resource mismatch: expected {expected}, got {bound_resource}");
+            return Err(anyhow!(
+                "init_data resource mismatch: expected {expected}, got {bound_resource}"
+            )
+            .into());
         }
 
         let data = self
             .storage
             .get(&resource_key)
-            .await?
-            .ok_or_else(|| anyhow!("provisioner resource not found: {resource_key}"))?;
+            .await
+            .context("failed to read provisioner resource")?
+            .ok_or_else(|| {
+                PluginError::NotFound(format!("provisioner resource not found: {resource_key}"))
+            })?;
         Ok(data)
     }
 
@@ -188,16 +196,17 @@ impl super::super::plugin_manager::ClientPlugin for Provisioner {
         path: &[&str],
         method: &Method,
         init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         match (method.as_str(), path.first().copied()) {
-            ("POST", Some("provision")) => self.handle_provision(body).await,
-            ("DELETE", Some("provision")) => self.handle_deprovision(&path[1..]).await,
+            ("POST", Some("provision")) => Ok(self.handle_provision(body).await?),
+            ("DELETE", Some("provision")) => Ok(self.handle_deprovision(&path[1..]).await?),
             ("GET", _) => self.handle_get_resource(path, init_data).await,
-            _ => bail!(
+            _ => Err(anyhow!(
                 "unsupported: {} /kbs/v0/provisioner/{}",
                 method,
                 path.join("/")
-            ),
+            )
+            .into()),
         }
     }
 
@@ -207,7 +216,7 @@ impl super::super::plugin_manager::ClientPlugin for Provisioner {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         // GET: guest fetches the resource after TEE attestation (validate_auth = false).
         // POST/DELETE: sidecar provisions/deprovisions via admin auth (validate_auth = true).
         match (method.as_str(), path.first().copied()) {
@@ -222,7 +231,7 @@ impl super::super::plugin_manager::ClientPlugin for Provisioner {
         _query: &HashMap<String, String>,
         _path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(method.as_str() == "GET")
     }
 }
