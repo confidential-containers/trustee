@@ -34,7 +34,7 @@ const SECRET_PATH: &str = "default/test/secret";
     false,
     EAR_CONTRAINDICATED_ATTESTATION_POLICY,
     None,
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 //
 // Tests that use a KBS Policy that checks the EAR status
@@ -46,7 +46,7 @@ const SECRET_PATH: &str = "default/test/secret";
     false,
     EAR_CONTRAINDICATED_ATTESTATION_POLICY,
     None,
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 #[case::policy_not_contraindicated(
     KbsConfigType::EarTokenRemoteRvps,
@@ -77,7 +77,7 @@ const SECRET_PATH: &str = "default/test/secret";
     true,
     EAR_RV_ATTESTATION_POLICY,
     Some(EAR_RV_ATTESTATION_POLICY),
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 #[case::device_not_contraindicated(
     KbsConfigType::EarTokenRemoteRvps,
@@ -191,7 +191,11 @@ async fn get_secret(
         }
         // If the test fails, make sure the error message matches.
         else {
-            if secret.unwrap_err().to_string() != expected_result.unwrap_err().to_string() {
+            if !secret
+                .unwrap_err()
+                .to_string()
+                .contains(&expected_result.unwrap_err().to_string())
+            {
                 bail!(
                     "Test is expected to fail, and it did fail, but with the wrong error message."
                 );

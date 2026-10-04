@@ -121,11 +121,12 @@ impl ResponseError for Error {
         // A test covering all the possible error types are given to ensure this.
         let body = serde_json::to_string(&info).expect("Failed to serialize error");
 
-        // Per the KBS protocol, errors should yield 401 or 404 reponses
+        // Per the KBS protocol, errors should yield 401, 403 or 404 responses
         let mut res = match self {
             Error::InvalidRequestPath { .. } | Error::PluginNotFound { .. } => {
                 HttpResponse::NotFound()
             }
+            Error::PolicyDeny => HttpResponse::Forbidden(),
             _ => HttpResponse::Unauthorized(),
         };
 
@@ -137,14 +138,18 @@ impl ResponseError for Error {
 
 #[cfg(test)]
 mod tests {
+    use actix_web::http::StatusCode;
     use rstest::rstest;
 
     use super::Error;
 
     #[rstest]
-    #[case(Error::InvalidRequestPath{path: "test".into()})]
-    #[case(Error::PluginNotFound{plugin_name: "test".into()})]
-    fn into_error_response(#[case] err: Error) {
-        let _ = actix_web::ResponseError::error_response(&err);
+    #[case(Error::InvalidRequestPath{path: "test".into()}, StatusCode::NOT_FOUND)]
+    #[case(Error::PluginNotFound{plugin_name: "test".into()}, StatusCode::NOT_FOUND)]
+    #[case(Error::PolicyDeny, StatusCode::FORBIDDEN)]
+    #[case(Error::TokenNotFound, StatusCode::UNAUTHORIZED)]
+    fn into_error_response(#[case] err: Error, #[case] expected: StatusCode) {
+        let res = actix_web::ResponseError::error_response(&err);
+        assert_eq!(res.status(), expected);
     }
 }

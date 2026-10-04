@@ -767,7 +767,7 @@ format is used for that purpose:
 | `PluginManagerInitialization`   | 401         | The plugin manager failed to initialize.                             |
 | `PluginNotFound`                | 404         | The requested plugin was not found.                                  |
 | `PluginInternalError`           | 401         | An internal error occurred inside a plugin.                          |
-| `PolicyDeny`                    | 401         | Access was denied by the attestation or resource policy.             |
+| `PolicyDeny`                    | 403         | Access denied by resource policy, often due to attestation results.  |
 | `PolicyEngine`                  | 401         | An error occurred in the policy engine.                              |
 | `SerdeError`                    | 401         | Failed to serialize or deserialize a JSON payload.                   |
 | `TokenNotFound`                 | 401         | No attestation token was found in the request.                       |
