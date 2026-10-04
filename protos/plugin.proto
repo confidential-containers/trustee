@@ -60,7 +60,8 @@ message NeedsEncryptionRequest {
 message PluginResponse {
     bytes body = 1;
     // HTTP status code hint. 0 or 2xx: body returned as-is.
-    // Non-2xx: KBS treats the call as a plugin error (caller receives 401).
+    // 404: caller receives 404.
+    // Other non-2xx: KBS treats the call as a plugin error (caller receives 401).
     int32 status_code = 2;
     // Content-Type hint. Reserved for future use; currently ignored by KBS.
     string content_type = 3;
