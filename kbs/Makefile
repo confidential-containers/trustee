@@ -141,7 +141,7 @@ check:
 	cargo test -p kbs -p kbs-client -p integration-tests $(TEST_ARGUMENTS) -- --nocapture
 
 lint:
-	cargo clippy -p kbs -p kbs-client $(TEST_ARGUMENTS) -- -D warnings
+	cargo clippy -p kbs -p kbs-client $(TEST_ARGUMENTS) --all-targets -- -D warnings
 
 format:
 	cargo fmt -p kbs -p kbs-client -- --check --config format_code_in_doc_comments=true
