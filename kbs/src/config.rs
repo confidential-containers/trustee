@@ -764,18 +764,22 @@ type = "Simple"
 
     #[test]
     fn test_tls_version_range_validation_error() {
-        let mut config = TlsConfig::default();
-        config.min_version = Some(TlsVersion::Tls13);
-        config.max_version = Some(TlsVersion::Tls12);
+        let config = TlsConfig {
+            min_version: Some(TlsVersion::Tls13),
+            max_version: Some(TlsVersion::Tls12),
+            ..Default::default()
+        };
 
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_tls_version_range_validation_ok() {
-        let mut config = TlsConfig::default();
-        config.min_version = Some(TlsVersion::Tls12);
-        config.max_version = Some(TlsVersion::Tls13);
+        let config = TlsConfig {
+            min_version: Some(TlsVersion::Tls12),
+            max_version: Some(TlsVersion::Tls13),
+            ..Default::default()
+        };
 
         assert!(config.validate().is_ok());
     }

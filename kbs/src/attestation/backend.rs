@@ -633,7 +633,7 @@ mod tests {
             let found = nonces.contains(&nonce);
 
             // The nonces should be unique
-            assert_eq!(found, false);
+            assert!(!found);
 
             nonces.push(nonce);
         }
