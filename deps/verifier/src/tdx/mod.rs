@@ -111,66 +111,141 @@ async fn verify_evidence(
         }
     }
 
-    if let InitDataHash::Value(expected_init_data_hash) = expected_init_data_hash {
-        debug!("Check the binding of MRCONFIGID.");
-        let expected_init_data_hash =
-            regularize_data(expected_init_data_hash, 48, "MRCONFIGID", "TDX");
-        if expected_init_data_hash != quote.mr_config_id() {
-            error!("MRCONFIGID (Initdata) verification failed.");
-            bail!("MRCONFIGID is different from that in TDX Quote");
-        }
-    }
-
-    info!("MRCONFIGID check succeeded.");
-
-    // Verify Integrity of Eventlog
-    let mut ccel_option = Option::default();
-    match &evidence.cc_eventlog {
+    let ccel = match &evidence.cc_eventlog {
         Some(el) if !el.is_empty() => {
             let ccel_data = base64::engine::general_purpose::STANDARD.decode(el)?;
             let ccel = CcEventLog::try_from(ccel_data)
                 .map_err(|e| anyhow!("Parse CC Eventlog failed: {:?}", e))?;
-            ccel_option = Some(ccel.clone());
-
-            let compare_obj: Vec<ReferenceMeasurement> = vec![
-                ReferenceMeasurement {
-                    index: 1,
-                    algorithm: TcgAlgorithm::Sha384,
-                    reference: quote.rtmr_0().to_vec(),
-                    initial_value: vec![],
-                },
-                ReferenceMeasurement {
-                    index: 2,
-                    algorithm: TcgAlgorithm::Sha384,
-                    reference: quote.rtmr_1().to_vec(),
-                    initial_value: vec![],
-                },
-                ReferenceMeasurement {
-                    index: 3,
-                    algorithm: TcgAlgorithm::Sha384,
-                    reference: quote.rtmr_2().to_vec(),
-                    initial_value: vec![],
-                },
-                ReferenceMeasurement {
-                    index: 4,
-                    algorithm: TcgAlgorithm::Sha384,
-                    reference: quote.rtmr_3().to_vec(),
-                    initial_value: vec![],
-                },
-            ];
-
-            ccel.replay_and_match(compare_obj)?;
-            info!("EventLog integrity check succeeded.");
+            Some(ccel)
         }
         _ => {
             warn!("No Eventlog included inside the TDX evidence.");
+            None
         }
-    }
+    };
+
+    let rtmrs = [
+        quote.rtmr_0(),
+        quote.rtmr_1(),
+        quote.rtmr_2(),
+        quote.rtmr_3(),
+    ];
+    verify_init_data_and_eventlog(
+        quote.mr_config_id(),
+        rtmrs,
+        ccel.as_ref(),
+        expected_init_data_hash,
+    )?;
+
     // Return Evidence parsed claim
-    let mut claim = generate_parsed_claim(&quote, ccel_option, &platform_info)?;
+    let mut claim = generate_parsed_claim(&quote, ccel, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
     Ok(claim)
+}
+
+/// Index of RTMR3 in the CC eventlog, where AA records runtime events.
+const RTMR3_INDEX: u32 = 4;
+
+const COCO_EVENT_DOMAIN: &str = "github.com/confidential-containers";
+
+/// Check that the initdata is bound to the TD and that the eventlog replays to the quoted
+/// RTMRs.
+///
+/// A non-zero MRCONFIGID must match the initdata digest. An all-zero MRCONFIGID means the host
+/// could not set it (e.g. on some CSPs); the initdata must then be bound by exactly one
+/// `InitData` event in RTMR3, which only counts once the eventlog replay has matched the quote.
+fn verify_init_data_and_eventlog(
+    mr_config_id: &[u8],
+    rtmrs: [&[u8]; 4],
+    ccel: Option<&CcEventLog>,
+    expected_init_data_hash: &InitDataHash,
+) -> Result<()> {
+    let bound_by_event = match expected_init_data_hash {
+        InitDataHash::Value(expected) if mr_config_id.iter().all(|b| *b == 0) => Some(*expected),
+        InitDataHash::Value(expected) => {
+            debug!("Check the binding of MRCONFIGID.");
+            let expected = regularize_data(expected, 48, "MRCONFIGID", "TDX");
+            if expected != mr_config_id {
+                error!("MRCONFIGID (Initdata) verification failed.");
+                bail!("MRCONFIGID is different from that in TDX Quote");
+            }
+            info!("MRCONFIGID check succeeded.");
+            None
+        }
+        InitDataHash::NotProvided => None,
+    };
+
+    if let Some(ccel) = ccel {
+        let compare_obj = rtmrs
+            .iter()
+            .zip(1..)
+            .map(|(rtmr, index)| ReferenceMeasurement {
+                index,
+                algorithm: TcgAlgorithm::Sha384,
+                reference: rtmr.to_vec(),
+                initial_value: vec![],
+            })
+            .collect();
+        ccel.replay_and_match(compare_obj)?;
+        info!("EventLog integrity check succeeded.");
+    }
+
+    if let Some(expected) = bound_by_event {
+        debug!("MRCONFIGID is not set, check the InitData event in RTMR3.");
+        let ccel = ccel.context("MRCONFIGID is not set and no eventlog binds the initdata")?;
+        check_init_data_event(ccel, RTMR3_INDEX, expected)?;
+        info!("InitData event check succeeded.");
+    }
+
+    Ok(())
+}
+
+/// Require exactly one CoCo `InitData` event in the given register, whose digest matches
+/// `expected`. The caller must have replayed the eventlog against the quote first.
+fn check_init_data_event(ccel: &CcEventLog, index: u32, expected: &[u8]) -> Result<()> {
+    let entries: Vec<_> = ccel
+        .log
+        .iter()
+        .filter(|entry| entry.index == index)
+        .filter(|entry| {
+            entry.details.data.as_ref().is_some_and(|data| {
+                data["domain"] == COCO_EVENT_DOMAIN && data["operation"] == "InitData"
+            })
+        })
+        .collect();
+    // The replay only covers each entry's digest, so the text read below must hash to it.
+    if entries.iter().any(|entry| !entry.digest_matches_event) {
+        bail!("InitData event data does not match its digest");
+    }
+    let events: Vec<_> = entries
+        .iter()
+        .filter_map(|entry| entry.details.data.as_ref())
+        .collect();
+    let [event] = events.as_slice() else {
+        bail!(
+            "expected exactly one InitData event in the eventlog, found {}",
+            events.len()
+        );
+    };
+
+    let digest = event["content"]["digest"]
+        .as_str()
+        .context("InitData event has no digest")?;
+    let (alg, value) = digest
+        .split_once(':')
+        .context("InitData digest has no algorithm")?;
+    let alg_fits = match expected.len() {
+        32 => matches!(alg, "sha256" | "sm3"),
+        48 => alg == "sha384",
+        64 => alg == "sha512",
+        _ => false,
+    };
+    if !alg_fits || value != hex::encode(expected) {
+        bail!("InitData event digest {digest} does not match the initdata");
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -198,5 +273,121 @@ mod tests {
             "./test_data/evidence_claim_output.txt",
             format!("{:?}", parsed_claim.unwrap()),
         );
+    }
+
+    mod init_data {
+        use super::super::*;
+        use sha2::{Digest, Sha384};
+
+        const INITDATA: [u8; 48] = [7; 48];
+        const ZERO: [u8; 48] = [0; 48];
+
+        /// An AAEL entry as AA appends it after the CCEL.
+        fn aael_entry(index: u32, text: &str) -> Vec<u8> {
+            let mut data = 0x4141454c_u32.to_le_bytes().to_vec();
+            data.extend((text.len() as u32).to_le_bytes());
+            data.extend(text.as_bytes());
+
+            let mut entry = index.to_le_bytes().to_vec();
+            entry.extend(0x6_u32.to_le_bytes()); // EV_EVENT_TAG
+            entry.extend(1_u32.to_le_bytes()); // one digest
+            entry.extend(0xC_u16.to_le_bytes()); // SHA-384
+            entry.extend(Sha384::digest(&data));
+            entry.extend((data.len() as u32).to_le_bytes());
+            entry.extend(data);
+            entry
+        }
+
+        fn init_data_event(digest: &[u8]) -> String {
+            format!(
+                r#"{COCO_EVENT_DOMAIN} InitData {{"digest":"sha384:{}"}}"#,
+                hex::encode(digest)
+            )
+        }
+
+        /// The spec ID header of a real GCP CCEL followed by `texts` as RTMR3 events, and
+        /// the RTMR3 value those events replay to.
+        fn eventlog(texts: &[String]) -> (CcEventLog, Vec<u8>) {
+            let ccel = std::fs::read("../eventlog/test_data/CCEL_data_gcp").unwrap();
+            let header_len = 32 + u32::from_le_bytes(ccel[28..32].try_into().unwrap()) as usize;
+            let mut log = ccel[..header_len].to_vec();
+            let mut rtmr3 = ZERO.to_vec();
+            for text in texts {
+                let entry = aael_entry(RTMR3_INDEX, text);
+                let digest = &entry[14..62];
+                rtmr3 = Sha384::digest([&rtmr3[..], digest].concat()).to_vec();
+                log.extend(entry);
+            }
+            (CcEventLog::try_from(log).unwrap(), rtmr3)
+        }
+
+        fn verify(mr_config_id: &[u8], ccel: Option<&CcEventLog>, rtmr3: &[u8]) -> Result<()> {
+            verify_init_data_and_eventlog(
+                mr_config_id,
+                [&ZERO, &ZERO, &ZERO, rtmr3],
+                ccel,
+                &InitDataHash::Value(&INITDATA),
+            )
+        }
+
+        #[test]
+        fn accepts_one_matching_event_when_mrconfigid_is_unset() {
+            let pull = r#"github.com/confidential-containers PullImage {"image":"busybox"}"#;
+            let (ccel, rtmr3) = eventlog(&[init_data_event(&INITDATA), pull.into()]);
+            verify(&ZERO, Some(&ccel), &rtmr3).unwrap();
+        }
+
+        #[test]
+        fn rejects_an_event_with_another_digest() {
+            let (ccel, rtmr3) = eventlog(&[init_data_event(&[8; 48])]);
+            assert!(verify(&ZERO, Some(&ccel), &rtmr3).is_err());
+        }
+
+        #[test]
+        fn rejects_two_events() {
+            let event = init_data_event(&INITDATA);
+            let (ccel, rtmr3) = eventlog(&[event.clone(), event]);
+            assert!(verify(&ZERO, Some(&ccel), &rtmr3).is_err());
+        }
+
+        #[test]
+        fn rejects_no_event_or_no_eventlog() {
+            let (ccel, rtmr3) = eventlog(&[]);
+            assert!(verify(&ZERO, Some(&ccel), &rtmr3).is_err());
+            assert!(verify(&ZERO, None, &ZERO).is_err());
+        }
+
+        #[test]
+        fn rejects_an_unlogged_extend() {
+            let (ccel, rtmr3) = eventlog(&[init_data_event(&INITDATA)]);
+            let extended = Sha384::digest([&rtmr3[..], &[1; 48]].concat());
+            assert!(verify(&ZERO, Some(&ccel), &extended).is_err());
+        }
+
+        #[test]
+        fn rejects_an_event_whose_text_was_edited() {
+            // Keep the digest of the logged event but swap in the text of another one, so the
+            // replay still matches.
+            let genuine = aael_entry(RTMR3_INDEX, &init_data_event(&[8; 48]));
+            let forged = aael_entry(RTMR3_INDEX, &init_data_event(&INITDATA));
+            let mut edited = forged.clone();
+            edited[14..62].copy_from_slice(&genuine[14..62]);
+
+            let ccel = std::fs::read("../eventlog/test_data/CCEL_data_gcp").unwrap();
+            let header_len = 32 + u32::from_le_bytes(ccel[28..32].try_into().unwrap()) as usize;
+            let mut log = ccel[..header_len].to_vec();
+            log.extend(edited);
+            let ccel = CcEventLog::try_from(log).unwrap();
+            let rtmr3 = Sha384::digest([&ZERO[..], &genuine[14..62]].concat());
+
+            assert!(verify(&ZERO, Some(&ccel), &rtmr3).is_err());
+        }
+
+        #[test]
+        fn a_set_mrconfigid_never_falls_back_to_the_event() {
+            let (ccel, rtmr3) = eventlog(&[init_data_event(&INITDATA)]);
+            assert!(verify(&[9; 48], Some(&ccel), &rtmr3).is_err());
+            verify(&INITDATA, Some(&ccel), &rtmr3).unwrap();
+        }
     }
 }
