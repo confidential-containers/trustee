@@ -166,6 +166,7 @@ Concrete supported `Operation`s and `Content`s are defined in the following tabl
 | Operation | Content | Description | Content Example |
 | --- | --- | --- | --- |
 | `PullImage` | `{"image":"<image-reference>","digest":"<digest>:<hex>"}` | An image pulling event with image reference and manifest digest | `{"image":"alpine","digest":"sha256:0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"}` |
+| `InitData` | `{"digest":"<algorithm>:<hex>"}` | The initdata digest, recorded when the platform cannot bind it otherwise (e.g. TDX with an unset MRCONFIGID). Logged at most once per boot | `{"digest":"sha384:0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"}` |
 
 It's welcomed to add more events by making PRs.
 
