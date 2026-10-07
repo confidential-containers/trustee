@@ -6,6 +6,7 @@ use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use key_value_storage::{KeyValueStorageInstance, SetParameters, StorageProvider};
 use std::{collections::HashMap, sync::Arc};
+use strum::{Display, EnumString};
 use tokio::sync::RwLock;
 
 use openssl::asn1::Asn1Time;
@@ -17,7 +18,7 @@ use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::x509::{
     extension::{AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectKeyIdentifier},
-    X509Builder, X509Name, X509NameBuilder, X509,
+    X509Builder, X509Name, X509NameBuilder, X509NameRef, X509,
 };
 use serde::{Deserialize, Serialize};
 
@@ -79,8 +80,9 @@ pub struct CredGenConfig {
 
 // ---- SecretType ---------------------------------------------------------
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum SecretType {
     Tls,
     Symmetric,
@@ -88,31 +90,6 @@ pub enum SecretType {
     Rsa,
     P256,
     Random,
-}
-
-impl SecretType {
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "tls" => Ok(SecretType::Tls),
-            "symmetric" => Ok(SecretType::Symmetric),
-            "ed25519" => Ok(SecretType::Ed25519),
-            "rsa" => Ok(SecretType::Rsa),
-            "p256" => Ok(SecretType::P256),
-            "random" => Ok(SecretType::Random),
-            other => Err(anyhow!("Unknown secret type: {}", other)),
-        }
-    }
-
-    fn as_str(&self) -> &'static str {
-        match self {
-            SecretType::Tls => "tls",
-            SecretType::Symmetric => "symmetric",
-            SecretType::Ed25519 => "ed25519",
-            SecretType::Rsa => "rsa",
-            SecretType::P256 => "p256",
-            SecretType::Random => "random",
-        }
-    }
 }
 
 // ---- TLS cert helpers ---------------------------------------------------
@@ -150,18 +127,12 @@ impl Default for TlsCertDetails {
 }
 
 impl TlsCertDetails {
-    pub fn builder() -> Self {
-        Default::default()
-    }
-
-    pub fn common_name(mut self, name: impl Into<String>) -> Self {
+    pub fn set_common_name(&mut self, name: impl Into<String>) {
         self.common_name = name.into();
-        self
     }
 
-    pub fn validity_days(mut self, days: u32) -> Self {
+    pub fn set_validity_days(&mut self, days: u32) {
         self.validity_days = days;
-        self
     }
 }
 
@@ -214,15 +185,32 @@ impl CredGenCA {
     }
 
     /// Generate a fresh Ed25519 key pair and a certificate signed by this CA.
-    fn generate_credentials(
-        &self,
-        ca_cert: &X509,
-        ca_private_key: &PKey<Private>,
-        cert_details: &TlsCertDetails,
-    ) -> Result<(PKey<Private>, X509)> {
+    /// Parses `self.key` and `self.cert` to obtain the signing material.
+    fn generate_credentials(&self, cert_details: &TlsCertDetails) -> Result<(PKey<Private>, X509)> {
+        let ca_cert = X509::from_pem(&self.cert)?;
+        let ca_key = PKey::private_key_from_pem(&self.key)?;
         let key = PKey::generate_ed25519()?;
-        let cert = Self::generate_signed_cert(&key, ca_cert, ca_private_key, cert_details)?;
+        let cert = Self::generate_signed_cert(&key, &ca_cert, &ca_key, cert_details)?;
         Ok((key, cert))
+    }
+
+    /// Shared helper: create an `X509Builder` pre-populated with subject/issuer
+    /// names, public key, and validity window.  The caller may append serial
+    /// numbers or extensions before calling `sign` + `build`.
+    fn init_x509_builder(
+        subject: &X509NameRef,
+        issuer: &X509NameRef,
+        pubkey: &PKey<Private>,
+        validity_days: u32,
+    ) -> Result<X509Builder> {
+        let mut b = X509Builder::new()?;
+        b.set_version(2)?;
+        b.set_subject_name(subject)?;
+        b.set_issuer_name(issuer)?;
+        b.set_pubkey(pubkey)?;
+        b.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
+        b.set_not_after(Asn1Time::days_from_now(validity_days)?.as_ref())?;
+        Ok(b)
     }
 
     /// Build an X.509 v3 end-entity certificate signed by the given CA.
@@ -232,131 +220,67 @@ impl CredGenCA {
         ca_private_key: &PKey<Private>,
         cert_details: &TlsCertDetails,
     ) -> Result<X509> {
-        let name = Self::build_x509_name(
-            &cert_details.common_name,
-            &cert_details.country,
-            &cert_details.state,
-            &cert_details.locality,
-            &cert_details.organization,
-            &cert_details.org_unit,
-        )?;
-
-        let mut x509_builder = X509Builder::new()?;
-        x509_builder.set_version(2)?;
-        x509_builder.set_subject_name(&name)?;
-        x509_builder.set_issuer_name(ca_cert.subject_name())?;
-        x509_builder.set_pubkey(private_key)?;
+        let subject = Self::build_x509_name(cert_details)?;
 
         // Use a random 8-byte serial to satisfy RFC 5280 s.4.1.2.2 uniqueness.
         let mut serial_bytes = [0u8; 8];
         openssl::rand::rand_bytes(&mut serial_bytes)?;
-        let serial_bn = BigNum::from_slice(&serial_bytes)?;
-        let serial_asn1 = serial_bn.to_asn1_integer()?;
-        x509_builder.set_serial_number(&serial_asn1)?;
+        let serial_asn1 = BigNum::from_slice(&serial_bytes)?.to_asn1_integer()?;
 
-        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
-        x509_builder
-            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
-
-        x509_builder.append_extension(BasicConstraints::new().critical().build()?)?;
-        x509_builder.append_extension(
+        let mut b = Self::init_x509_builder(
+            &subject,
+            ca_cert.subject_name(),
+            private_key,
+            cert_details.validity_days,
+        )?;
+        b.set_serial_number(&serial_asn1)?;
+        b.append_extension(BasicConstraints::new().critical().build()?)?;
+        b.append_extension(
             KeyUsage::new()
                 .digital_signature()
                 .key_encipherment()
                 .build()?,
         )?;
-        x509_builder.append_extension(
-            SubjectKeyIdentifier::new().build(&x509_builder.x509v3_context(None, None))?,
-        )?;
-        x509_builder.append_extension(
+        b.append_extension(SubjectKeyIdentifier::new().build(&b.x509v3_context(None, None))?)?;
+        b.append_extension(
             AuthorityKeyIdentifier::new()
                 .keyid(false)
                 .issuer(false)
-                .build(&x509_builder.x509v3_context(Some(ca_cert), None))?,
+                .build(&b.x509v3_context(Some(ca_cert), None))?,
         )?;
-
-        x509_builder.sign(ca_private_key, MessageDigest::null())?;
-        Ok(x509_builder.build())
+        b.sign(ca_private_key, MessageDigest::null())?;
+        Ok(b.build())
     }
 
     /// Build a self-signed X.509 v3 CA certificate.
-    fn generate_ca_cert(
-        ca_private_key: &PKey<Private>,
-        cert_details: &TlsCertDetails,
-    ) -> Result<X509> {
-        let name = Self::build_x509_name(
-            &cert_details.common_name,
-            &cert_details.country,
-            &cert_details.state,
-            &cert_details.locality,
-            &cert_details.organization,
-            &cert_details.org_unit,
-        )?;
-
-        let mut x509_builder = X509Builder::new()?;
-        x509_builder.set_version(2)?;
-        x509_builder.set_subject_name(&name)?;
-        x509_builder.set_issuer_name(&name)?;
-        x509_builder.set_pubkey(ca_private_key)?;
-
-        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
-        x509_builder
-            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
-
-        x509_builder.sign(ca_private_key, MessageDigest::null())?;
-        Ok(x509_builder.build())
+    fn generate_ca_cert(ca_private_key: &PKey<Private>, cert_details: &TlsCertDetails) -> Result<X509> {
+        let name = Self::build_x509_name(cert_details)?;
+        let mut b = Self::init_x509_builder(&name, &name, ca_private_key, cert_details.validity_days)?;
+        b.sign(ca_private_key, MessageDigest::null())?;
+        Ok(b.build())
     }
 
     /// Build a self-signed X.509 v3 certificate for a P-256 (ECDSA) key.
+    /// Ed25519 uses `MessageDigest::null()` because the hash is built into the
+    /// algorithm, but ECDSA (P-256) requires an explicit digest.
     pub fn generate_p256_self_signed_cert(
         key: &PKey<Private>,
         cert_details: &TlsCertDetails,
     ) -> Result<X509> {
-        let name = Self::build_x509_name(
-            &cert_details.common_name,
-            &cert_details.country,
-            &cert_details.state,
-            &cert_details.locality,
-            &cert_details.organization,
-            &cert_details.org_unit,
-        )?;
-
-        let mut x509_builder = X509Builder::new()?;
-        x509_builder.set_version(2)?;
-        x509_builder.set_subject_name(&name)?;
-        x509_builder.set_issuer_name(&name)?;
-        x509_builder.set_pubkey(key)?;
-
-        let serial_number = BigNum::from_u32(1)?.to_asn1_integer()?;
-        x509_builder.set_serial_number(&serial_number)?;
-        x509_builder.set_not_before(Asn1Time::days_from_now(0)?.as_ref())?;
-        x509_builder
-            .set_not_after(Asn1Time::days_from_now(cert_details.validity_days)?.as_ref())?;
-
-        x509_builder.append_extension(BasicConstraints::new().critical().build()?)?;
-        x509_builder.append_extension(KeyUsage::new().critical().digital_signature().build()?)?;
-
-        // Ed25519 uses MessageDigest::null() because the hash is built into
-        // the algorithm, but ECDSA (P-256) requires an explicit digest.
-        x509_builder.sign(key, MessageDigest::sha256())?;
-        Ok(x509_builder.build())
+        let name = Self::build_x509_name(cert_details)?;
+        let mut b = Self::init_x509_builder(&name, &name, key, cert_details.validity_days)?;
+        b.sign(key, MessageDigest::sha256())?;
+        Ok(b.build())
     }
 
-    fn build_x509_name(
-        common_name: &str,
-        country: &str,
-        state: &str,
-        locality: &str,
-        organization: &str,
-        org_unit: &str,
-    ) -> Result<X509Name> {
+    fn build_x509_name(cert_details: &TlsCertDetails) -> Result<X509Name> {
         let mut name_builder = X509NameBuilder::new()?;
-        name_builder.append_entry_by_text("C", country)?;
-        name_builder.append_entry_by_text("ST", state)?;
-        name_builder.append_entry_by_text("L", locality)?;
-        name_builder.append_entry_by_text("O", organization)?;
-        name_builder.append_entry_by_text("OU", org_unit)?;
-        name_builder.append_entry_by_text("CN", common_name)?;
+        name_builder.append_entry_by_text("C", &cert_details.country)?;
+        name_builder.append_entry_by_text("ST", &cert_details.state)?;
+        name_builder.append_entry_by_text("L", &cert_details.locality)?;
+        name_builder.append_entry_by_text("O", &cert_details.organization)?;
+        name_builder.append_entry_by_text("OU", &cert_details.org_unit)?;
+        name_builder.append_entry_by_text("CN", &cert_details.common_name)?;
         Ok(name_builder.build())
     }
 }
@@ -595,7 +519,9 @@ impl CredGenPlugin {
             );
         }
 
-        let secret_type = SecretType::from_str(type_str)?;
+        let secret_type = type_str
+            .parse::<SecretType>()
+            .map_err(|_| anyhow!("Unknown secret type: {}", type_str))?;
         // Use `.` not `:` — kvstorage keys only allow [a-zA-Z0-9\-_./ ].
         let spec_sub_key = format!("{}.{}", secret_name, type_str);
 
@@ -627,8 +553,6 @@ impl CredGenPlugin {
                 // Fresh CA on every call; the CA is stored in the entry so
                 // client certs always chain to the same root as this server cert.
                 let ca = CredGenCA::new(&self.ca_config)?;
-                let ca_cert = X509::from_pem(&ca.cert)?;
-                let ca_key = PKey::private_key_from_pem(&ca.key)?;
 
                 let server_config = self
                     .server_cert_config_store
@@ -636,9 +560,14 @@ impl CredGenPlugin {
                     .await
                     .get(&id_key)
                     .cloned()
-                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
+                    .unwrap_or_else(|| {
+                        let mut d = TlsCertDetails::default();
+                        d.set_common_name("server");
+                        d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
+                        d
+                    });
 
-                let (key, cert) = ca.generate_credentials(&ca_cert, &ca_key, &server_config)?;
+                let (key, cert) = ca.generate_credentials(&server_config)?;
 
                 let entry = CredGenEntry::Tls {
                     ca_key: ca.key.clone(),
@@ -698,7 +627,12 @@ impl CredGenPlugin {
                     .await
                     .get(&id_key)
                     .cloned()
-                    .unwrap_or_else(|| TlsCertDetails::builder().common_name("server").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
+                    .unwrap_or_else(|| {
+                        let mut d = TlsCertDetails::default();
+                        d.set_common_name("server");
+                        d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
+                        d
+                    });
                 let cert = CredGenCA::generate_p256_self_signed_cert(&key, &cert_details)?;
                 let cert_pem = cert.to_pem()?;
 
@@ -734,7 +668,7 @@ impl CredGenPlugin {
 
         let response = ServerSecret {
             secret_name,
-            secret_type: secret_type.as_str().to_string(),
+            secret_type: secret_type.to_string(),
             material: server_material,
         };
         Ok(serde_json::to_vec(&response)?)
@@ -767,7 +701,12 @@ impl CredGenPlugin {
             .await
             .get(&id_key)
             .cloned()
-            .unwrap_or_else(|| TlsCertDetails::builder().common_name("Client").validity_days(DEFAULT_CERT_VALIDITY_DAYS));
+            .unwrap_or_else(|| {
+                let mut d = TlsCertDetails::default();
+                d.set_common_name("client");
+                d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
+                d
+            });
 
         // Build the response material from the stored entry.
         let store_key = format!("{}/{}", id_key, spec_key);
@@ -789,21 +728,16 @@ impl CredGenPlugin {
 
         let client_material: ClientMaterial = match &entry {
             CredGenEntry::Tls { ca_key, ca_cert } => {
-                    // Sign a fresh client cert with the CA stored when the
-                    // server last called GET /credentials.
-                    let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
-                    let ca_cert_obj = X509::from_pem(&ca.cert)?;
-                    let ca_key_obj = PKey::private_key_from_pem(&ca.key)?;
-
-                    let (key, cert) =
-                        ca.generate_credentials(&ca_cert_obj, &ca_key_obj, &client_config)?;
-
-                    ClientMaterial::Tls {
-                        private_key: key.private_key_to_pem_pkcs8()?,
-                        cert: cert.to_pem()?,
-                        ca_cert: ca.cert.clone(),
-                    }
+                // Sign a fresh client cert with the CA stored when the
+                // server last called GET /credentials.
+                let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
+                let (key, cert) = ca.generate_credentials(&client_config)?;
+                ClientMaterial::Tls {
+                    private_key: key.private_key_to_pem_pkcs8()?,
+                    cert: cert.to_pem()?,
+                    ca_cert: ca.cert.clone(),
                 }
+            }
             CredGenEntry::Symmetric { key } => ClientMaterial::Symmetric { key: key.clone() },
             CredGenEntry::Ed25519 { public_key, .. } => {
                 ClientMaterial::Ed25519 { public_key: public_key.clone() }
@@ -819,7 +753,7 @@ impl CredGenPlugin {
 
         let response = ClientSecret {
             secret_name,
-            secret_type: secret_type.as_str().to_string(),
+            secret_type: secret_type.to_string(),
             material: client_material,
         };
         Ok(serde_json::to_vec(&response)?)
