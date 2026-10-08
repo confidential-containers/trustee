@@ -7,7 +7,6 @@ use anyhow::{anyhow, bail, Context, Result};
 use key_value_storage::{KeyValueStorageInstance, SetParameters, StorageProvider};
 use std::{collections::HashMap, sync::Arc};
 use strum::{Display, EnumString};
-use tokio::sync::RwLock;
 
 use openssl::asn1::Asn1Time;
 use openssl::bn::BigNum;
@@ -100,7 +99,7 @@ struct CertDetailsWrapper {
     server: Option<TlsCertDetails>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default)]
 pub struct TlsCertDetails {
     pub country: String,
@@ -405,12 +404,9 @@ pub struct CredGenPlugin {
 
     /// Persistent credential store backed by the KBS kvstorage interface.
     /// Keys are `"{id_key}/{spec_key}"` (e.g. `"myvm_default/grpc.tls"`).
+    /// Per-identity cert configuration is stored under `"{id_key}/__config.server"`
+    /// and `"{id_key}/__config.client"`.
     store: KeyValueStorageInstance,
-
-    // Transient per-identity cert customisation. Not persisted: these are
-    // owner-supplied hints applied at the next GET /credentials call.
-    server_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
-    client_cert_config_store: Arc<RwLock<HashMap<String, TlsCertDetails>>>,
 }
 
 impl CredGenPlugin {
@@ -427,8 +423,6 @@ impl CredGenPlugin {
             ca_config: config.credgen.ca,
             limits_config: config.credgen.settings,
             store,
-            server_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
-            client_cert_config_store: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 }
@@ -554,18 +548,7 @@ impl CredGenPlugin {
                 // client certs always chain to the same root as this server cert.
                 let ca = CredGenCA::new(&self.ca_config)?;
 
-                let server_config = self
-                    .server_cert_config_store
-                    .read()
-                    .await
-                    .get(&id_key)
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        let mut d = TlsCertDetails::default();
-                        d.set_common_name("server");
-                        d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
-                        d
-                    });
+                let server_config = self.load_cert_config(&id_key, "server").await?;
 
                 let (key, cert) = ca.generate_credentials(&server_config)?;
 
@@ -621,18 +604,7 @@ impl CredGenPlugin {
                 let key = PKey::from_ec_key(ec_key)?;
                 let private_key = key.private_key_to_pem_pkcs8()?;
 
-                let cert_details = self
-                    .server_cert_config_store
-                    .read()
-                    .await
-                    .get(&id_key)
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        let mut d = TlsCertDetails::default();
-                        d.set_common_name("server");
-                        d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
-                        d
-                    });
+                let cert_details = self.load_cert_config(&id_key, "server").await?;
                 let cert = CredGenCA::generate_p256_self_signed_cert(&key, &cert_details)?;
                 let cert_pem = cert.to_pem()?;
 
@@ -693,20 +665,7 @@ impl CredGenPlugin {
         let id_key = self.identity_key_from_query(query);
         let (secret_name, secret_type, spec_key) = self.parse_spec_params(query)?;
 
-        // Read the client cert config before taking the store lock so that
-        // two RwLock guards are never held at the same time.
-        let client_config = self
-            .client_cert_config_store
-            .read()
-            .await
-            .get(&id_key)
-            .cloned()
-            .unwrap_or_else(|| {
-                let mut d = TlsCertDetails::default();
-                d.set_common_name("client");
-                d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
-                d
-            });
+        let client_config = self.load_cert_config(&id_key, "client").await?;
 
         // Build the response material from the stored entry.
         let store_key = format!("{}/{}", id_key, spec_key);
@@ -773,12 +732,28 @@ impl CredGenPlugin {
         Ok(serde_json::to_vec(&ids)?)
     }
 
+    /// Load per-identity cert configuration from the store for `role` (`"server"` or `"client"`).
+    /// Returns the stored config if present, or a default with `common_name` set to `role`.
+    async fn load_cert_config(&self, id_key: &str, role: &str) -> Result<TlsCertDetails> {
+        let config_key = format!("{}/__config.{}", id_key, role);
+        match self.store.get(&config_key).await.context("credgen: failed to read cert config")? {
+            Some(raw) => serde_json::from_slice(&raw).context("credgen: failed to deserialize cert config"),
+            None => {
+                let mut d = TlsCertDetails::default();
+                d.set_common_name(role);
+                d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
+                Ok(d)
+            }
+        }
+    }
+
     /// Handles `POST /update_cert`.
     ///
     /// Stores custom X.509 certificate details (subject fields, validity) for a
-    /// given identity. These are applied the next time `GET /credentials` is called
-    /// for that identity. The request body must be a JSON object with optional
-    /// `"server"` and `"client"` keys, each containing a `TlsCertDetails` object.
+    /// given identity in the KBS store. These are applied the next time
+    /// `GET /credentials` is called for that identity. The request body must be
+    /// a JSON object with optional `"server"` and `"client"` keys, each
+    /// containing a `TlsCertDetails` object.
     async fn update_cert_details(
         &self,
         query: &HashMap<String, String>,
@@ -791,13 +766,19 @@ impl CredGenPlugin {
             .map_err(|e| anyhow!("Failed to deserialize JSON: {}", e))?;
 
         if let Some(updates) = wrapper.server {
-            let mut store = self.server_cert_config_store.write().await;
-            store.insert(id_key.clone(), updates);
+            let config_key = format!("{}/__config.server", id_key);
+            self.store
+                .set(&config_key, &serde_json::to_vec(&updates)?, SetParameters { overwrite: true })
+                .await
+                .context("credgen: failed to write server cert config")?;
         }
 
         if let Some(updates) = wrapper.client {
-            let mut store = self.client_cert_config_store.write().await;
-            store.insert(id_key, updates);
+            let config_key = format!("{}/__config.client", id_key);
+            self.store
+                .set(&config_key, &serde_json::to_vec(&updates)?, SetParameters { overwrite: true })
+                .await
+                .context("credgen: failed to write client cert config")?;
         }
 
         Ok(())
