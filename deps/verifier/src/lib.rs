@@ -214,8 +214,117 @@ pub async fn to_verifier(
 }
 
 pub type TeeEvidenceParsedClaim = serde_json::Value;
-pub type TeeEvidence = serde_json::Value;
 pub type TeeClass = String;
+
+/// Evidence as produced by an attester: an explicit format version alongside
+/// the opaque, TEE-specific payload.
+///
+/// # Wire contract
+///
+/// Evidence is a single JSON object. Its format version is carried by an
+/// optional top-level `version` field; everything else is the TEE-specific
+/// payload:
+///
+/// ```json
+/// { "version": 1, "tpm_quote": { /* ... */ } }   // explicit version 1
+/// { "attestation_report": { /* ... */ } }        // legacy, implicit version 0
+/// ```
+///
+/// The `version` must be a top-level field named exactly `version` and must
+/// be representable as a `u8`. If `version` is not provided, it defaults to `0`
+/// (legacy).
+///
+/// [`data`](Self::data) holds the whole payload verbatim (including the
+/// `version` field, if any). TEE verifiers deserialize [`data`](Self::data) into their
+/// own concrete evidence type.
+///
+/// Which versions are *supported* is a separate concern that belongs to the
+/// [`Verifier`] (see [`Verifier::max_supported_version`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TeeEvidence {
+    /// The evidence format version, read from the top-level `version` field at
+    /// parse time. Legacy evidence without an explicit version is `0`.
+    pub version: u8,
+    /// The raw TEE-specific evidence payload, verbatim.
+    pub data: serde_json::Value,
+}
+
+/// Read a top-level `version` value as a `u8`. Returns `Ok(None)` when absent,
+/// `Err` when present but not representable as a `u8`.
+fn parse_version_field(value: &serde_json::Value) -> Result<Option<u8>> {
+    let Some(v) = value.get("version") else {
+        return Ok(None);
+    };
+
+    let Some(version) = v.as_u64().and_then(|n| u8::try_from(n).ok()) else {
+        bail!("invalid evidence version: {v}");
+    };
+
+    Ok(Some(version))
+}
+
+impl From<serde_json::Value> for TeeEvidence {
+    fn from(value: serde_json::Value) -> Self {
+        let version = parse_version_field(&value).unwrap_or(None).unwrap_or(0);
+        TeeEvidence {
+            version,
+            data: value,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for TeeEvidence {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Read the payload as an opaque value once, then validate the version
+        // contract up front. This happens before any TEE-specific variant
+        // matching, so a malformed version yields a clear error rather than an
+        // opaque "failed to deserialize" later on.
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let version = parse_version_field(&value)
+            .map_err(<D::Error as serde::de::Error>::custom)?
+            .unwrap_or(0);
+        // Qualified: `use anyhow::*` shadows `Ok` with `anyhow::Ok`.
+        std::result::Result::Ok(TeeEvidence {
+            version,
+            data: value,
+        })
+    }
+}
+
+impl serde::Serialize for TeeEvidence {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // The payload is the wire form: it already carries `version`, so emitting
+        // it verbatim round-trips back to the same evidence.
+        self.data.serialize(serializer)
+    }
+}
+
+/// Reject evidence whose version exceeds what `verifier` supports, with a
+/// uniform, user-facing error message.
+///
+/// This is the generic version guard: it belongs to the dispatch layer, not to
+/// any individual TEE, and should be called before [`Verifier::evaluate`].
+pub fn check_evidence_version(
+    verifier: &dyn Verifier,
+    evidence: &TeeEvidence,
+    tee: &Tee,
+) -> Result<()> {
+    let max = verifier.max_supported_version();
+    let version = evidence.version;
+    if version > max {
+        bail!(
+            "Unsupported {tee:?} evidence version {version}. This verifier \
+             supports evidence versions 0-{max}",
+        );
+    }
+    Ok(())
+}
 
 /// Insert a verified eventlog as a `uefi_event_logs` claim -- a no-op if
 /// `ccel` is `None`.
@@ -265,6 +374,16 @@ impl ToHex for ReportData<'_> {
 
 #[async_trait]
 pub trait Verifier {
+    /// The highest evidence format version this verifier understands.
+    ///
+    /// Support for evidence versions is a property of the verifier, not of the
+    /// evidence itself. The default is `0` (legacy evidence only); a verifier
+    /// opts in to newer formats by overriding this and handling the additional
+    /// versions in [`evaluate`](Verifier::evaluate).
+    fn max_supported_version(&self) -> u8 {
+        0
+    }
+
     /// Verify the hardware signature.
     ///
     ///
@@ -328,5 +447,118 @@ pub fn regularize_data(data: &[u8], len: usize, data_name: &str, arch: &str) -> 
             debug!("The input {data_name} of {arch} is longer than {len} bytes, will be truncated to {len} bytes.");
             data[..len].to_vec()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use serde_json::json;
+
+    #[test]
+    fn evidence_without_version_is_legacy_zero() {
+        let ev: TeeEvidence = serde_json::from_value(json!({ "foo": "bar" })).unwrap();
+        assert_eq!(ev.version, 0);
+        // The payload is preserved verbatim.
+        assert_eq!(ev.data, json!({ "foo": "bar" }));
+    }
+
+    #[test]
+    fn evidence_reads_top_level_version() {
+        let ev: TeeEvidence =
+            serde_json::from_value(json!({ "version": 2, "foo": "bar" })).unwrap();
+        assert_eq!(ev.version, 2);
+        // The version field stays inside the payload handed to the verifier.
+        assert_eq!(ev.data, json!({ "version": 2, "foo": "bar" }));
+    }
+
+    #[test]
+    fn non_u8_version_is_a_deserialization_error() {
+        // A version that is not a u8 (e.g. a date string) must fail clearly
+        // rather than being silently ignored.
+        let err = serde_json::from_value::<TeeEvidence>(json!({ "version": "2026-05-24" }))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("invalid evidence version"), "got: {err}");
+    }
+
+    #[test]
+    fn version_only_applies_to_top_level() {
+        // A nested `version` must not be mistaken for the evidence version.
+        let ev: TeeEvidence = serde_json::from_value(json!({ "inner": { "version": 3 } })).unwrap();
+        assert_eq!(ev.version, 0);
+    }
+
+    #[test]
+    fn from_value_reads_version_leniently() {
+        let ev: TeeEvidence = json!({ "version": 1 }).into();
+        assert_eq!(ev.version, 1);
+        // A non-u8 version via the infallible `From` path reads as legacy.
+        let ev: TeeEvidence = json!({ "version": "nope" }).into();
+        assert_eq!(ev.version, 0);
+    }
+
+    #[test]
+    fn evidence_serializes_back_to_its_payload() {
+        // Serialization emits the payload verbatim, so it round-trips.
+        let data = json!({ "version": 1, "foo": "bar" });
+        let ev = TeeEvidence::from(data.clone());
+        assert_eq!(serde_json::to_value(&ev).unwrap(), data);
+
+        // Legacy (unversioned) evidence round-trips too.
+        let legacy = json!({ "foo": "bar" });
+        let ev = TeeEvidence::from(legacy.clone());
+        assert_eq!(serde_json::to_value(&ev).unwrap(), legacy);
+    }
+
+    // Minimal verifier used to exercise the generic version guard.
+    struct DummyVerifier {
+        max: u8,
+    }
+
+    #[async_trait]
+    impl Verifier for DummyVerifier {
+        fn max_supported_version(&self) -> u8 {
+            self.max
+        }
+
+        async fn evaluate(
+            &self,
+            _evidence: TeeEvidence,
+            _expected_report_data: &ReportData,
+            _expected_init_data_hash: &InitDataHash,
+        ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+            Ok(vec![])
+        }
+    }
+
+    #[test]
+    fn check_version_accepts_supported_and_legacy() {
+        let verifier = DummyVerifier { max: 1 };
+        for v in [json!({}), json!({ "version": 1 })] {
+            let ev = TeeEvidence::from(v);
+            assert!(check_evidence_version(&verifier, &ev, &Tee::Snp).is_ok());
+        }
+    }
+
+    #[test]
+    fn check_version_rejects_too_new_with_clear_error() {
+        let verifier = DummyVerifier { max: 1 };
+        let ev = TeeEvidence::from(json!({ "version": 99 }));
+        let err = check_evidence_version(&verifier, &ev, &Tee::Snp)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Unsupported"), "got: {err}");
+        assert!(err.contains("version 99"), "got: {err}");
+        assert!(err.contains("versions 0-1"), "got: {err}");
+    }
+
+    #[test]
+    fn default_verifier_supports_only_legacy() {
+        let verifier = DummyVerifier { max: 0 };
+        assert_eq!(verifier.max_supported_version(), 0);
+        let ev = TeeEvidence::from(json!({ "version": 1 }));
+        assert!(check_evidence_version(&verifier, &ev, &Tee::Snp).is_err());
     }
 }

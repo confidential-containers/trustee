@@ -34,7 +34,7 @@ impl Verifier for HygonDcuVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let tee_evidence = serde_json::from_value::<DcuEvidence>(evidence)?;
+        let tee_evidence = serde_json::from_value::<DcuEvidence>(evidence.data)?;
 
         let expected_report_data = match expected_report_data {
             ReportData::Value(expected_report_data) => {
