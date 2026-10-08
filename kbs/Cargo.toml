@@ -159,6 +159,7 @@ tempfile.workspace = true
 rstest.workspace = true
 reference-value-provider-service.path = "../rvps"
 serial_test.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 toml.workspace = true
 
 [[bin]]

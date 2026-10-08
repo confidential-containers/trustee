@@ -43,6 +43,22 @@ Data is stored in JSON object (HashMap) format, for example:
 
 Values are stored as base64 encoded string (with URLSAFE alphabet) in JSON.
 
+An entry written with a TTL is stored as an object instead, with its expiry as
+Unix time in milliseconds:
+
+```json
+{
+  "key1": "MTIzCg==",
+  "session": { "value": "MjM0Cg==", "expires_at": 1767225600000 }
+}
+```
+
+Expired entries are hidden from reads and dropped on the next write. Entries
+without a TTL keep the plain string form, so a file only changes shape once
+something is written to it with a TTL. Older versions cannot read the object
+form: before rolling back, remove files that contain it (for example the KBS
+session file).
+
 ## Notes
 
 1. **Performance**: Each write operation reads and writes the entire file, making it unsuitable for high-frequency write scenarios

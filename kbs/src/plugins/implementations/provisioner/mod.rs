@@ -152,7 +152,10 @@ impl Provisioner {
             .set(
                 &resource_path,
                 confdata_toml.as_bytes(),
-                SetParameters { overwrite: false },
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
             )
             .await
             .context("failed to write resource")?;
