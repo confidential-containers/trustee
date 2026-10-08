@@ -77,8 +77,22 @@ The payload format of the request is as follows:
    * e.g. "tdx" or "snp", etc.
    */
   "tee": "$tee",
-  /* Reserved fields to support some special requests sent by HW-TEE. */
-  "extra-params": {}
+  "extra-params": {
+    "tee-metadata": {
+      "primary_tee": {
+        "tee": "$tee",
+        /* Optional TEE-specific metadata used during the handshake. */
+        "metadata": {}
+      },
+      /* TEEs that produce additional_evidence. */
+      "additional_tees": [
+        {
+          "tee": "$additional_tee",
+          "metadata": {}
+        }
+      ]
+    }
+  }
 }
 ```
 
@@ -116,6 +130,17 @@ the attestation of some special HW-TEE platforms, this field may be used to
 transfer some specific information. For example, some attestations follow the
 Diffie–Hellman key exchange protocol to first build a secure channel and
 transfer secret messages (Such as AMD SEV(-ES) pre-attestation).
+
+`extra-params` may carry `tee-metadata`, which describes the primary and
+additional TEEs reported by the KBC:
+
+- `primary_tee.tee` is the primary TEE. KBS checks that it matches the
+  top-level `tee` only when `tee-metadata` is present.
+- `primary_tee.metadata` is optional attester-supplied metadata. KBS forwards
+  it into supplemental challenge generation. It is not verified evidence.
+  When the attester has no metadata, the field is omitted.
+- `additional_tees` lists the TEEs that produce `additional_evidence`. Each
+  entry has the same `tee` and optional `metadata` fields.
 
 `extra-params` may also carry a `attestation-policy-selector`, which selects the Attestation
 Service policies that evaluate this session's evidence:

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{regularize_data, ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex};
+use crate::{regularize_data, ReportData, TeeEvidence, TeeEvidenceParsedClaim, TeeMetadata, ToHex};
 use anyhow::{anyhow, Context, Result};
 use core::result::Result::Ok;
 use openssl::encrypt::{Decrypter, Encrypter};
@@ -296,7 +296,10 @@ impl SeVerifierImpl {
         Ok(serde_json::to_value(claims).map_err(SeError::BuildJsonClaims)?)
     }
 
-    pub async fn generate_supplemental_challenge(&self, _tee_parameters: String) -> Result<String> {
+    pub async fn generate_supplemental_challenge(
+        &self,
+        _tee_metadata: Option<&TeeMetadata>,
+    ) -> Result<String> {
         let se_certificate_root =
             env_or_default!("SE_CERTIFICATES_ROOT", DEFAULT_SE_CERTIFICATES_ROOT);
         let ca_certs = list_files_in_folder(&se_certificate_root)?;
