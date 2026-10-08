@@ -70,6 +70,9 @@ pub struct VerifierConfig {
 
     #[cfg(feature = "nvidia-dpu-verifier")]
     nvidia_dpu_verifier: Option<nvidia_dpu::NvidiaDpuVerifierConfig>,
+
+    #[cfg(feature = "se-verifier")]
+    se_verifier: Option<se::SeVerifierConfig>,
 }
 
 /// Build the [`Verifier`] for `tee`.
@@ -161,7 +164,8 @@ pub async fn to_verifier(
         Tee::Se => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "se-verifier")] {
-                    Ok(Box::<se::SeVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                    let se_config = _config.and_then(|c| c.se_verifier);
+                    Ok(Box::new(se::SeVerifier::new(se_config)?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `se-verifier` is not enabled for `verifier` crate.")
                 }
