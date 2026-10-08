@@ -1,4 +1,4 @@
-use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
+use eventlog::CcEventLog;
 
 use anyhow::anyhow;
 use tracing::{debug, error, info, instrument, warn};
@@ -130,14 +130,14 @@ async fn verify_evidence(
         quote.rtmr_2(),
         quote.rtmr_3(),
     ];
-    verify_init_data_and_eventlog(
-        quote.mr_config_id(),
-        rtmrs,
-        ccel.as_ref(),
-        expected_init_data_hash,
-    )?;
+    let ccel = ccel
+        .map(|ccel| VerifiedCcEventLog::verify(ccel, rtmrs))
+        .transpose()?;
+
+    verify_init_data(quote.mr_config_id(), ccel.as_ref(), expected_init_data_hash)?;
 
     // Return Evidence parsed claim
+    let ccel = ccel.map(VerifiedCcEventLog::into_inner);
     let mut claim = generate_parsed_claim(&quote, ccel, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
 
@@ -149,85 +149,105 @@ const RTMR3_INDEX: u32 = 4;
 
 const COCO_EVENT_DOMAIN: &str = "github.com/confidential-containers";
 
-/// Check that the initdata is bound to the TD and that the eventlog replays to the quoted
-/// RTMRs.
+mod verified_ccel {
+    use anyhow::Result;
+    use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, EventlogEntry, ReferenceMeasurement};
+    use tracing::info;
+
+    /// A CC eventlog whose replay matched the RTMRs in the quote. `verify` is the only way to
+    /// build one, so code holding it can trust the entries' digests.
+    pub(super) struct VerifiedCcEventLog(CcEventLog);
+
+    impl VerifiedCcEventLog {
+        pub(super) fn verify(ccel: CcEventLog, rtmrs: [&[u8]; 4]) -> Result<Self> {
+            let compare_obj = rtmrs
+                .iter()
+                .zip(1..)
+                .map(|(rtmr, index)| ReferenceMeasurement {
+                    index,
+                    algorithm: TcgAlgorithm::Sha384,
+                    reference: rtmr.to_vec(),
+                    initial_value: vec![],
+                })
+                .collect();
+            ccel.replay_and_match(compare_obj)?;
+            info!("EventLog integrity check succeeded.");
+            Ok(Self(ccel))
+        }
+
+        pub(super) fn entries(&self) -> &[EventlogEntry] {
+            &self.0.log
+        }
+
+        pub(super) fn into_inner(self) -> CcEventLog {
+            self.0
+        }
+    }
+}
+
+use verified_ccel::VerifiedCcEventLog;
+
+/// Check that the initdata is bound to the TD.
 ///
 /// A non-zero MRCONFIGID must match the initdata digest. An all-zero MRCONFIGID means the host
-/// could not set it (e.g. on some CSPs); the initdata must then be bound by exactly one
-/// `InitData` event in RTMR3, which only counts once the eventlog replay has matched the quote.
-fn verify_init_data_and_eventlog(
+/// could not set it (e.g. on some CSPs), so the initdata must be bound by exactly one `InitData`
+/// event in RTMR3 instead.
+fn verify_init_data(
     mr_config_id: &[u8],
-    rtmrs: [&[u8]; 4],
-    ccel: Option<&CcEventLog>,
+    ccel: Option<&VerifiedCcEventLog>,
     expected_init_data_hash: &InitDataHash,
 ) -> Result<()> {
-    let bound_by_event = match expected_init_data_hash {
-        InitDataHash::Value(expected) if mr_config_id.iter().all(|b| *b == 0) => Some(*expected),
-        InitDataHash::Value(expected) => {
-            debug!("Check the binding of MRCONFIGID.");
-            let expected = regularize_data(expected, 48, "MRCONFIGID", "TDX");
-            if expected != mr_config_id {
-                error!("MRCONFIGID (Initdata) verification failed.");
-                bail!("MRCONFIGID is different from that in TDX Quote");
-            }
-            info!("MRCONFIGID check succeeded.");
-            None
-        }
-        InitDataHash::NotProvided => None,
+    let InitDataHash::Value(expected) = expected_init_data_hash else {
+        return Ok(());
     };
 
-    if let Some(ccel) = ccel {
-        let compare_obj = rtmrs
-            .iter()
-            .zip(1..)
-            .map(|(rtmr, index)| ReferenceMeasurement {
-                index,
-                algorithm: TcgAlgorithm::Sha384,
-                reference: rtmr.to_vec(),
-                initial_value: vec![],
-            })
-            .collect();
-        ccel.replay_and_match(compare_obj)?;
-        info!("EventLog integrity check succeeded.");
+    if mr_config_id.iter().any(|b| *b != 0) {
+        debug!("Check the binding of MRCONFIGID.");
+        let expected = regularize_data(expected, 48, "MRCONFIGID", "TDX");
+        if expected != mr_config_id {
+            error!(
+                "MRCONFIGID (Initdata) verification failed: expected {}, got {}",
+                hex::encode(&expected),
+                hex::encode(mr_config_id)
+            );
+            bail!("MRCONFIGID is different from that in TDX Quote");
+        }
+        info!("MRCONFIGID check succeeded.");
+        return Ok(());
     }
 
-    if let Some(expected) = bound_by_event {
-        debug!("MRCONFIGID is not set, check the InitData event in RTMR3.");
-        let ccel = ccel.context("MRCONFIGID is not set and no eventlog binds the initdata")?;
-        check_init_data_event(ccel, RTMR3_INDEX, expected)?;
-        info!("InitData event check succeeded.");
-    }
-
+    debug!("MRCONFIGID is not set, check the InitData event in RTMR3.");
+    let ccel = ccel.context("MRCONFIGID is not set and no eventlog binds the initdata")?;
+    check_init_data_event(ccel, RTMR3_INDEX, expected)?;
+    info!("InitData event check succeeded.");
     Ok(())
 }
 
 /// Require exactly one CoCo `InitData` event in the given register, whose digest matches
-/// `expected`. The caller must have replayed the eventlog against the quote first.
-fn check_init_data_event(ccel: &CcEventLog, index: u32, expected: &[u8]) -> Result<()> {
-    let entries: Vec<_> = ccel
-        .log
+/// `expected`.
+fn check_init_data_event(ccel: &VerifiedCcEventLog, index: u32, expected: &[u8]) -> Result<()> {
+    let matching: Vec<_> = ccel
+        .entries()
         .iter()
-        .filter(|entry| entry.index == index)
-        .filter(|entry| {
-            entry.details.data.as_ref().is_some_and(|data| {
-                data["domain"] == COCO_EVENT_DOMAIN && data["operation"] == "InitData"
-            })
+        .filter_map(|entry| {
+            if entry.index != index {
+                return None;
+            }
+            let data = entry.details.data.as_ref()?;
+            (data["domain"] == COCO_EVENT_DOMAIN && data["operation"] == "InitData")
+                .then_some((entry, data))
         })
         .collect();
-    // The replay only covers each entry's digest, so the text read below must hash to it.
-    if entries.iter().any(|entry| !entry.digest_matches_event) {
-        bail!("InitData event data does not match its digest");
-    }
-    let events: Vec<_> = entries
-        .iter()
-        .filter_map(|entry| entry.details.data.as_ref())
-        .collect();
-    let [event] = events.as_slice() else {
+    let [(entry, event)] = matching.as_slice() else {
         bail!(
             "expected exactly one InitData event in the eventlog, found {}",
-            events.len()
+            matching.len()
         );
     };
+    // The replay only covers the entry's digest, so the text read below must hash to it.
+    if !entry.digest_matches_event {
+        bail!("InitData event data does not match its digest");
+    }
 
     let digest = event["content"]["digest"]
         .as_str()
@@ -322,12 +342,11 @@ mod tests {
         }
 
         fn verify(mr_config_id: &[u8], ccel: Option<&CcEventLog>, rtmr3: &[u8]) -> Result<()> {
-            verify_init_data_and_eventlog(
-                mr_config_id,
-                [&ZERO, &ZERO, &ZERO, rtmr3],
-                ccel,
-                &InitDataHash::Value(&INITDATA),
-            )
+            let ccel = ccel
+                .cloned()
+                .map(|ccel| VerifiedCcEventLog::verify(ccel, [&ZERO, &ZERO, &ZERO, rtmr3]))
+                .transpose()?;
+            verify_init_data(mr_config_id, ccel.as_ref(), &InitDataHash::Value(&INITDATA))
         }
 
         #[test]
