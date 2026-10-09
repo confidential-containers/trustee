@@ -36,6 +36,9 @@ pub const DEFAULT_CA_VALIDITY_DAYS: u32 = 365;
 /// Validity period for end-entity (server/client) certificates (days).
 pub const DEFAULT_CERT_VALIDITY_DAYS: u32 = 90;
 
+/// Default symmetric key size in bytes (used when `size` is omitted).
+pub const DEFAULT_SYMMETRIC_KEY_SIZE: usize = 32;
+
 // ---- Config types -------------------------------------------------------
 
 /// Query/init-data fields joined with `_` to form the per-identity store key prefix.
@@ -51,14 +54,13 @@ pub struct CredGenPluginConfig {
 /// Key-size and allowlist settings.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct SettingsConfig {
-    /// Symmetric key length in bytes.
-    pub symmetric_key_size: usize,
+    /// Maximum symmetric key length in bytes. Per-request `size` must be in `1..=this`.
+    pub symmetric_key_size_max: usize,
     /// RSA key size in bits.
     pub rsa_bits: usize,
-    /// Random byte sequence length in bytes.
-    pub random_bytes_size: usize,
-    /// Allowed `"type/algorithm"` pairs (e.g. `"cert/tls"`, `"asymmetric/ed25519"`).
-    /// `"symmetric"` and `"random"` need no algorithm suffix.
+    /// Allowed `"type/kind"` pairs for cert (e.g. `"cert/tls"`),
+    /// `"type/algorithm"` pairs for asymmetric (e.g. `"asymmetric/ed25519"`),
+    /// and plain `"symmetric"` for symmetric.
     pub supported_types: Vec<String>,
 }
 
@@ -84,15 +86,13 @@ pub enum SecretType {
     Asymmetric,
     /// Symmetric key (raw random bytes).
     Symmetric,
-    /// Opaque random bytes.
-    Random,
 }
 
-/// Certificate algorithm (`algorithm` param for `secret_type=cert`).
+/// Certificate kind (`algorithm` param for `secret_type=cert`).
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
-pub enum CertAlgorithm {
+pub enum CertKind {
     /// Ed25519 CA-signed bundle: CA cert + server cert + private key.
     Tls,
     /// P-256 (ECDSA) self-signed certificate.
@@ -113,26 +113,16 @@ pub enum AsymmetricAlgorithm {
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum SymmetricAlgorithm {
-    /// Raw random bytes; the caller determines the cipher usage.
+    /// Raw random bytes
     Raw,
-}
-
-/// Random bytes algorithm (`algorithm` param for `secret_type=random`). Defaults to `csprng`.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum RandomAlgorithm {
-    /// OpenSSL CSPRNG output.
-    Csprng,
 }
 
 /// Fully-resolved `(secret_type, algorithm)` pair parsed from the query string.
 #[derive(Clone, Debug)]
 pub enum SecretSpec {
-    Cert(CertAlgorithm),
+    Cert(CertKind),
     Asymmetric(AsymmetricAlgorithm),
-    Symmetric(SymmetricAlgorithm),
-    Random(RandomAlgorithm),
+    Symmetric(SymmetricAlgorithm, usize),
 }
 
 impl SecretSpec {
@@ -141,28 +131,27 @@ impl SecretSpec {
         match self {
             SecretSpec::Cert(_) => "cert",
             SecretSpec::Asymmetric(_) => "asymmetric",
-            SecretSpec::Symmetric(_) => "symmetric",
-            SecretSpec::Random(_) => "random",
+            SecretSpec::Symmetric(_, _) => "symmetric",
         }
     }
 
-    /// `algorithm` string used in HTTP responses and store keys.
-    pub fn algorithm_str(&self) -> String {
+    /// Sub-type string used in HTTP responses and store keys.
+    /// For cert this is the kind (`tls`, `p256`); for asymmetric it is the algorithm (`ed25519`, `rsa`);
+    /// for symmetric it is the algorithm (`raw`).
+    pub fn subtype_str(&self) -> String {
         match self {
-            SecretSpec::Cert(a) => a.to_string(),
+            SecretSpec::Cert(k) => k.to_string(),
             SecretSpec::Asymmetric(a) => a.to_string(),
-            SecretSpec::Symmetric(a) => a.to_string(),
-            SecretSpec::Random(a) => a.to_string(),
+            SecretSpec::Symmetric(a, _) => a.to_string(),
         }
     }
 
-    /// Key for the `supported_types` allowlist: `"type/algorithm"` or just `"type"`.
+    /// Key for the `supported_types` allowlist: `"type/subtype"` or just `"type"`.
     pub fn allowlist_key(&self) -> String {
         match self {
-            SecretSpec::Cert(a) => format!("cert/{}", a),
+            SecretSpec::Cert(k) => format!("cert/{}", k),
             SecretSpec::Asymmetric(a) => format!("asymmetric/{}", a),
-            SecretSpec::Symmetric(_) => "symmetric".to_string(),
-            SecretSpec::Random(_) => "random".to_string(),
+            SecretSpec::Symmetric(_, _) => "symmetric".to_string(),
         }
     }
 }
@@ -216,16 +205,14 @@ impl TlsCertDetails {
 impl Default for SettingsConfig {
     fn default() -> Self {
         Self {
-            symmetric_key_size: 32,
+            symmetric_key_size_max: 128,
             rsa_bits: 2048,
-            random_bytes_size: 32,
             supported_types: vec![
                 "cert/tls".to_string(),
                 "cert/p256".to_string(),
                 "asymmetric/ed25519".to_string(),
                 "asymmetric/rsa".to_string(),
                 "symmetric".to_string(),
-                "random".to_string(),
             ],
         }
     }
@@ -383,10 +370,6 @@ pub enum CredGenEntry {
         /// Self-signed cert delivered to the owner via `POST /client_creds`.
         cert_pem: Vec<u8>,
     },
-    Random {
-        /// Bytes delivered identically to both server and owner.
-        bytes: Vec<u8>,
-    },
 }
 
 /// TEE-side response (encrypted). Contains private key material.
@@ -394,7 +377,7 @@ pub enum CredGenEntry {
 pub struct ServerSecret {
     pub secret_name: String,
     pub secret_type: String,
-    pub algorithm: String,
+    pub subtype: String,
     #[serde(flatten)]
     pub material: ServerMaterial,
 }
@@ -419,9 +402,6 @@ pub enum ServerMaterial {
     P256 {
         private_key: Vec<u8>,
     },
-    Random {
-        bytes: Vec<u8>,
-    },
 }
 
 /// Owner-side response (plaintext). Contains only public material.
@@ -429,7 +409,7 @@ pub enum ServerMaterial {
 pub struct ClientSecret {
     pub secret_name: String,
     pub secret_type: String,
-    pub algorithm: String,
+    pub subtype: String,
     #[serde(flatten)]
     pub material: ClientMaterial,
 }
@@ -455,10 +435,6 @@ pub enum ClientMaterial {
     },
     P256 {
         cert_pem: Vec<u8>,
-    },
-    Random {
-        /// Same bytes as delivered to the server.
-        bytes: Vec<u8>,
     },
 }
 
@@ -539,9 +515,9 @@ impl CredGenPlugin {
         Ok(())
     }
 
-    /// Parse `secret_name`, `secret_type`, and `algorithm` from the query string.
+    /// Parse and validate `secret_name`, `secret_type`, and type-specific sub-params.
     /// Returns `(secret_name, SecretSpec, spec_sub_key)` where
-    /// `spec_sub_key = "{secret_name}.{type}.{algorithm}"` (e.g. `"grpc.cert.tls"`).
+    /// `spec_sub_key = "{secret_name}.{type}.{subtype}"` (e.g. `"grpc.cert.tls"`).
     fn parse_spec_params(
         &self,
         query: &HashMap<String, String>,
@@ -559,55 +535,50 @@ impl CredGenPlugin {
 
         let secret_type = type_str
             .parse::<SecretType>()
-            .map_err(|_| anyhow!("Unknown secret_type: '{}'. Valid values: cert, asymmetric, symmetric, random", type_str))?;
+            .map_err(|_| anyhow!("Unknown secret_type: '{}'. Valid values: cert, asymmetric, symmetric", type_str))?;
 
-        // Optional; symmetric/random have defaults, cert/asymmetric require it.
-        let algo_str = query
-            .get("algorithm")
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
+        let kind_str = query.get("kind").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+        let algo_str = query.get("algorithm").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+        let size_str = query.get("size").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
 
         let spec = match secret_type {
             SecretType::Cert => {
-                let a = algo_str
-                    .ok_or_else(|| anyhow!("secret_type 'cert' requires an 'algorithm' parameter (tls, p256)"))?
-                    .parse::<CertAlgorithm>()
-                    .map_err(|_| anyhow!("Unknown algorithm for cert. Valid values: tls, p256"))?;
-                SecretSpec::Cert(a)
+                let k = kind_str
+                    .ok_or_else(|| anyhow!("secret_type 'cert' requires 'kind' (tls, p256)"))?
+                    .parse::<CertKind>()
+                    .map_err(|_| anyhow!("Unknown kind for cert. Valid values: tls, p256"))?;
+                SecretSpec::Cert(k)
             }
             SecretType::Asymmetric => {
                 let a = algo_str
-                    .ok_or_else(|| anyhow!("secret_type 'asymmetric' requires an 'algorithm' parameter (ed25519, rsa)"))?
+                    .ok_or_else(|| anyhow!("secret_type 'asymmetric' requires 'algorithm' (ed25519, rsa)"))?
                     .parse::<AsymmetricAlgorithm>()
                     .map_err(|_| anyhow!("Unknown algorithm for asymmetric. Valid values: ed25519, rsa"))?;
                 SecretSpec::Asymmetric(a)
             }
             SecretType::Symmetric => {
-                let a = algo_str
-                    .unwrap_or_else(|| "raw".to_string())
-                    .parse::<SymmetricAlgorithm>()
-                    .map_err(|_| anyhow!("Unknown algorithm for symmetric. Valid values: raw"))?;
-                SecretSpec::Symmetric(a)
-            }
-            SecretType::Random => {
-                let a = algo_str
-                    .unwrap_or_else(|| "csprng".to_string())
-                    .parse::<RandomAlgorithm>()
-                    .map_err(|_| anyhow!("Unknown algorithm for random. Valid values: csprng"))?;
-                SecretSpec::Random(a)
+                let size = match size_str {
+                    Some(s) => {
+                        let n: usize = s.parse()
+                            .map_err(|_| anyhow!("'size' must be a positive integer, got '{}'", s))?;
+                        if n == 0 { bail!("'size' must be at least 1"); }
+                        if n > self.limits_config.symmetric_key_size_max {
+                            bail!("'size' {} exceeds maximum {}", n, self.limits_config.symmetric_key_size_max);
+                        }
+                        n
+                    }
+                    None => DEFAULT_SYMMETRIC_KEY_SIZE,
+                };
+                SecretSpec::Symmetric(SymmetricAlgorithm::Raw, size)
             }
         };
 
         let allowlist_key = spec.allowlist_key();
         if !self.limits_config.supported_types.iter().any(|t| t == &allowlist_key) {
-            bail!(
-                "'{}' is not in supported_types {:?}",
-                allowlist_key,
-                self.limits_config.supported_types
-            );
+            bail!("'{}' is not in supported_types {:?}", allowlist_key, self.limits_config.supported_types);
         }
 
-        let spec_sub_key = format!("{}.{}.{}", secret_name, spec.type_str(), spec.algorithm_str());
+        let spec_sub_key = format!("{}.{}.{}", secret_name, spec.type_str(), spec.subtype_str());
 
         Ok((secret_name, spec, spec_sub_key))
     }
@@ -625,7 +596,7 @@ impl CredGenPlugin {
         let (secret_name, spec, spec_key) = self.parse_spec_params(query)?;
 
         let (entry, server_material) = match &spec {
-            SecretSpec::Cert(CertAlgorithm::Tls) => {
+            SecretSpec::Cert(CertKind::Tls) => {
                 // New CA each call; stored so client certs chain to the same root.
                 let ca = CredGenCA::new(&self.ca_config)?;
 
@@ -645,7 +616,7 @@ impl CredGenPlugin {
                 (entry, material)
             }
 
-            SecretSpec::Cert(CertAlgorithm::P256) => {
+            SecretSpec::Cert(CertKind::P256) => {
                 let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)?;
                 let ec_key = EcKey::generate(&group)?;
                 let key = PKey::from_ec_key(ec_key)?;
@@ -685,23 +656,12 @@ impl CredGenPlugin {
                 (entry, material)
             }
 
-            SecretSpec::Symmetric(SymmetricAlgorithm::Raw) => {
-                let size = self.limits_config.symmetric_key_size;
-                let mut key = vec![0u8; size];
+            SecretSpec::Symmetric(SymmetricAlgorithm::Raw, size) => {
+                let mut key = vec![0u8; *size];
                 openssl::rand::rand_bytes(&mut key)?;
 
                 let entry = CredGenEntry::Symmetric { key: key.clone() };
                 let material = ServerMaterial::Symmetric { key };
-                (entry, material)
-            }
-
-            SecretSpec::Random(RandomAlgorithm::Csprng) => {
-                let size = self.limits_config.random_bytes_size;
-                let mut bytes = vec![0u8; size];
-                openssl::rand::rand_bytes(&mut bytes)?;
-
-                let entry = CredGenEntry::Random { bytes: bytes.clone() };
-                let material = ServerMaterial::Random { bytes };
                 (entry, material)
             }
         };
@@ -719,7 +679,7 @@ impl CredGenPlugin {
         let response = ServerSecret {
             secret_name,
             secret_type: spec.type_str().to_string(),
-            algorithm: spec.algorithm_str(),
+            subtype: spec.subtype_str(),
             material: server_material,
         };
         Ok(serde_json::to_vec(&response)?)
@@ -772,13 +732,12 @@ impl CredGenPlugin {
             CredGenEntry::P256 { cert_pem, .. } => {
                 ClientMaterial::P256 { cert_pem: cert_pem.clone() }
             }
-            CredGenEntry::Random { bytes } => ClientMaterial::Random { bytes: bytes.clone() },
         };
 
         let response = ClientSecret {
             secret_name,
             secret_type: spec.type_str().to_string(),
-            algorithm: spec.algorithm_str(),
+            subtype: spec.subtype_str(),
             material: client_material,
         };
         Ok(serde_json::to_vec(&response)?)
@@ -929,12 +888,28 @@ mod tests {
         query(&[("name", name), ("ns", ns)])
     }
 
-    fn spec_query(name: &str, ns: &str, secret_name: &str, secret_type: &str, algorithm: Option<&str>) -> HashMap<String, String> {
+    fn cert_query(name: &str, ns: &str, secret_name: &str, kind: &str) -> HashMap<String, String> {
         let mut q = identity_query(name, ns);
         q.insert("secret_name".into(), secret_name.into());
-        q.insert("secret_type".into(), secret_type.into());
-        if let Some(a) = algorithm {
-            q.insert("algorithm".into(), a.into());
+        q.insert("secret_type".into(), "cert".into());
+        q.insert("kind".into(), kind.into());
+        q
+    }
+
+    fn asym_query(name: &str, ns: &str, secret_name: &str, algorithm: &str) -> HashMap<String, String> {
+        let mut q = identity_query(name, ns);
+        q.insert("secret_name".into(), secret_name.into());
+        q.insert("secret_type".into(), "asymmetric".into());
+        q.insert("algorithm".into(), algorithm.into());
+        q
+    }
+
+    fn sym_query(name: &str, ns: &str, secret_name: &str, size: Option<usize>) -> HashMap<String, String> {
+        let mut q = identity_query(name, ns);
+        q.insert("secret_name".into(), secret_name.into());
+        q.insert("secret_type".into(), "symmetric".into());
+        if let Some(s) = size {
+            q.insert("size".into(), s.to_string());
         }
         q
     }
@@ -948,86 +923,106 @@ mod tests {
     #[tokio::test]
     async fn parse_spec_cert_tls() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "grpc", "cert", Some("tls"));
+        let q = cert_query("pod", "default", "grpc", "tls");
         let (name, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(name, "grpc");
         assert_eq!(spec.type_str(), "cert");
-        assert_eq!(spec.algorithm_str(), "tls");
+        assert_eq!(spec.subtype_str(), "tls");
         assert_eq!(key, "grpc.cert.tls");
     }
 
     #[tokio::test]
     async fn parse_spec_cert_p256() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "mykey", "cert", Some("p256"));
+        let q = cert_query("pod", "default", "mykey", "p256");
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(spec.type_str(), "cert");
-        assert_eq!(spec.algorithm_str(), "p256");
+        assert_eq!(spec.subtype_str(), "p256");
         assert_eq!(key, "mykey.cert.p256");
     }
 
     #[tokio::test]
     async fn parse_spec_asymmetric_ed25519() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "asymmetric", Some("ed25519"));
+        let q = asym_query("pod", "default", "k", "ed25519");
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(spec.type_str(), "asymmetric");
-        assert_eq!(spec.algorithm_str(), "ed25519");
+        assert_eq!(spec.subtype_str(), "ed25519");
         assert_eq!(key, "k.asymmetric.ed25519");
     }
 
     #[tokio::test]
     async fn parse_spec_asymmetric_rsa() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "asymmetric", Some("rsa"));
+        let q = asym_query("pod", "default", "k", "rsa");
         let (_, spec, _) = p.parse_spec_params(&q).unwrap();
-        assert_eq!(spec.algorithm_str(), "rsa");
+        assert_eq!(spec.subtype_str(), "rsa");
     }
 
     #[tokio::test]
-    async fn parse_spec_symmetric_defaults_to_raw() {
+    async fn parse_spec_symmetric_defaults_to_config_size() {
         let p = default_plugin().await;
-        // algorithm omitted — should default to "raw"
-        let q = spec_query("pod", "default", "k", "symmetric", None);
+        let q = sym_query("pod", "default", "k", None);
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
-        assert_eq!(spec.algorithm_str(), "raw");
+        assert_eq!(spec.subtype_str(), "raw");
         assert_eq!(key, "k.symmetric.raw");
+        assert!(matches!(spec, SecretSpec::Symmetric(_, s) if s == DEFAULT_SYMMETRIC_KEY_SIZE));
     }
 
     #[tokio::test]
-    async fn parse_spec_random_defaults_to_csprng() {
+    async fn parse_spec_symmetric_custom_size() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "random", None);
-        let (_, spec, key) = p.parse_spec_params(&q).unwrap();
-        assert_eq!(spec.algorithm_str(), "csprng");
-        assert_eq!(key, "k.random.csprng");
+        let mut q = sym_query("pod", "default", "k", None);
+        q.insert("size".into(), "16".into());
+        let (_, spec, _) = p.parse_spec_params(&q).unwrap();
+        assert!(matches!(spec, SecretSpec::Symmetric(_, 16)));
+    }
+
+    #[tokio::test]
+    async fn parse_spec_symmetric_size_zero_errors() {
+        let p = default_plugin().await;
+        let mut q = sym_query("pod", "default", "k", None);
+        q.insert("size".into(), "0".into());
+        assert!(p.parse_spec_params(&q).is_err());
+    }
+
+    #[tokio::test]
+    async fn parse_spec_symmetric_size_exceeds_max_errors() {
+        let p = default_plugin().await;
+        let mut q = sym_query("pod", "default", "k", None);
+        q.insert("size".into(), "999".into());
+        assert!(p.parse_spec_params(&q).is_err());
     }
 
     #[tokio::test]
     async fn parse_spec_missing_secret_name_errors() {
         let p = default_plugin().await;
-        let q = query(&[("name", "pod"), ("ns", "default"), ("secret_type", "cert"), ("algorithm", "tls")]);
+        let q = query(&[("name", "pod"), ("ns", "default"), ("secret_type", "cert"), ("kind", "tls")]);
         assert!(p.parse_spec_params(&q).is_err());
     }
 
     #[tokio::test]
     async fn parse_spec_unknown_type_errors() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "unknown", Some("tls"));
+        let q = query(&[("name", "pod"), ("ns", "default"), ("secret_name", "k"), ("secret_type", "unknown")]);
         assert!(p.parse_spec_params(&q).is_err());
     }
 
     #[tokio::test]
-    async fn parse_spec_cert_missing_algorithm_errors() {
+    async fn parse_spec_cert_missing_kind_errors() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "cert", None);
+        let mut q = identity_query("pod", "default");
+        q.insert("secret_name".into(), "k".into());
+        q.insert("secret_type".into(), "cert".into());
         assert!(p.parse_spec_params(&q).is_err());
     }
 
     #[tokio::test]
     async fn parse_spec_asymmetric_missing_algorithm_errors() {
         let p = default_plugin().await;
-        let q = spec_query("pod", "default", "k", "asymmetric", None);
+        let mut q = identity_query("pod", "default");
+        q.insert("secret_name".into(), "k".into());
+        q.insert("secret_type".into(), "asymmetric".into());
         assert!(p.parse_spec_params(&q).is_err());
     }
 
@@ -1035,7 +1030,7 @@ mod tests {
     async fn parse_spec_not_in_allowlist_errors() {
         let mut p = default_plugin().await;
         p.limits_config.supported_types = vec!["cert/tls".to_string()];
-        let q = spec_query("pod", "default", "k", "asymmetric", Some("ed25519"));
+        let q = asym_query("pod", "default", "k", "ed25519");
         assert!(p.parse_spec_params(&q).is_err());
     }
 
@@ -1090,28 +1085,24 @@ mod tests {
     async fn cert_tls_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "grpc", "cert", Some("tls"));
+        let q = cert_query("pod1", "default", "grpc", "tls");
 
-        // Server call generates and stores the TLS bundle.
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
         assert_eq!(server["secret_type"], "cert");
-        assert_eq!(server["algorithm"], "tls");
+        assert_eq!(server["subtype"], "tls");
         assert_eq!(server["material_type"], "Tls");
-        // Material fields are flattened to the top level.
         assert!(server["private_key"].is_array());
         assert!(server["cert"].is_array());
         assert!(server["ca_cert"].is_array());
 
-        // Owner call returns a fresh client cert chained to the same CA.
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
         assert_eq!(client["secret_type"], "cert");
-        assert_eq!(client["algorithm"], "tls");
+        assert_eq!(client["subtype"], "tls");
         assert_eq!(client["material_type"], "Tls");
         assert!(client["private_key"].is_array());
         assert!(client["cert"].is_array());
-        // CA cert must be identical (same CA was used for both).
         assert_eq!(client["ca_cert"], server["ca_cert"]);
     }
 
@@ -1119,11 +1110,11 @@ mod tests {
     async fn cert_p256_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "mycert", "cert", Some("p256"));
+        let q = cert_query("pod1", "default", "mycert", "p256");
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["algorithm"], "p256");
+        assert_eq!(server["subtype"], "p256");
         assert_eq!(server["material_type"], "P256");
         assert!(server["private_key"].is_array());
 
@@ -1137,11 +1128,11 @@ mod tests {
     async fn asymmetric_ed25519_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "sigkey", "asymmetric", Some("ed25519"));
+        let q = asym_query("pod1", "default", "sigkey", "ed25519");
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["algorithm"], "ed25519");
+        assert_eq!(server["subtype"], "ed25519");
         assert_eq!(server["material_type"], "Ed25519");
         assert!(server["private_key"].is_array());
 
@@ -1155,7 +1146,7 @@ mod tests {
     async fn asymmetric_rsa_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "rsakey", "asymmetric", Some("rsa"));
+        let q = asym_query("pod1", "default", "rsakey", "rsa");
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
@@ -1172,55 +1163,49 @@ mod tests {
     async fn symmetric_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "aeskey", "symmetric", None);
+        let q = sym_query("pod1", "default", "aeskey", None);
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
         assert_eq!(server["material_type"], "Symmetric");
         assert!(server["key"].is_array());
+        assert_eq!(server["key"].as_array().unwrap().len(), 32);
 
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
-        // Server and client receive the same key bytes.
         assert_eq!(server["key"], client["key"]);
     }
 
     #[tokio::test]
-    async fn random_roundtrip() {
+    async fn symmetric_custom_size_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = spec_query("pod1", "default", "nonce", "random", None);
+        let q = sym_query("pod1", "default", "aeskey16", Some(16));
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["material_type"], "Random");
-        assert!(server["bytes"].is_array());
-
-        let client_bytes = p.build_client_response(&q).await.unwrap();
-        let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
-        // Server and client receive identical bytes.
-        assert_eq!(server["bytes"], client["bytes"]);
+        assert_eq!(server["key"].as_array().unwrap().len(), 16);
     }
 
     #[tokio::test]
     async fn client_creds_before_server_errors() {
         let p = default_plugin().await;
-        let q = spec_query("pod1", "default", "grpc", "cert", Some("tls"));
+        let q = cert_query("pod1", "default", "grpc", "tls");
         assert!(p.build_client_response(&q).await.is_err());
     }
 
     #[tokio::test]
     async fn server_response_requires_init_data() {
         let p = default_plugin().await;
-        let q = spec_query("pod1", "default", "grpc", "cert", Some("tls"));
+        let q = cert_query("pod1", "default", "grpc", "tls");
         assert!(p.build_server_response(&q, None).await.is_err());
     }
 
     #[tokio::test]
     async fn identities_are_isolated() {
         let p = default_plugin().await;
-        let q1 = spec_query("pod1", "default", "grpc", "cert", Some("tls"));
-        let q2 = spec_query("pod2", "default", "grpc", "cert", Some("tls"));
+        let q1 = cert_query("pod1", "default", "grpc", "tls");
+        let q2 = cert_query("pod2", "default", "grpc", "tls");
 
         let id1 = init_data("pod1", "default");
         p.build_server_response(&q1, Some(&id1)).await.unwrap();
@@ -1271,7 +1256,7 @@ mod tests {
         p.update_cert_details(&q, &body).await.unwrap();
 
         let id = init_data("pod1", "default");
-        let sq = spec_query("pod1", "default", "grpc", "cert", Some("tls"));
+        let sq = cert_query("pod1", "default", "grpc", "tls");
         let server_bytes = p.build_server_response(&sq, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
 
@@ -1301,8 +1286,8 @@ mod tests {
 
         let id1 = init_data("pod1", "default");
         let id2 = init_data("pod2", "prod");
-        p.build_server_response(&spec_query("pod1", "default", "g", "cert", Some("tls")), Some(&id1)).await.unwrap();
-        p.build_server_response(&spec_query("pod2", "prod", "g", "cert", Some("tls")), Some(&id2)).await.unwrap();
+        p.build_server_response(&cert_query("pod1", "default", "g", "tls"), Some(&id1)).await.unwrap();
+        p.build_server_response(&cert_query("pod2", "prod", "g", "tls"), Some(&id2)).await.unwrap();
 
         let list_bytes = p.list_pods().await.unwrap();
         let ids: Vec<String> = serde_json::from_slice(&list_bytes).unwrap();

@@ -4,18 +4,17 @@ The CredGen plugin dynamically generates cryptographic credentials for confident
 
 ## Overview
 
-Credentials are requested by the confidential VM (server side) via `GET /credentials` and retrieved by the workload owner (client side) via `POST /client_creds`. The plugin supports four secret categories, each with one or more algorithms:
+Credentials are requested by the confidential VM (server side) via `GET /credentials` and retrieved by the workload owner (client side) via `POST /client_creds`. The plugin supports three secret categories:
 
-| `secret_type` | `algorithm` | What is generated |
-|---|---|---|
-| `cert` | `tls` | Ed25519 CA-signed TLS bundle (CA cert + server cert + private key) |
-| `cert` | `p256` | P-256 (ECDSA) self-signed certificate + private key |
-| `asymmetric` | `ed25519` | Ed25519 key pair |
-| `asymmetric` | `rsa` | RSA key pair |
-| `symmetric` | `raw` *(default)* | Raw random bytes for use as a symmetric key (AES-256, ChaCha20, …) |
-| `random` | `csprng` *(default)* | Opaque random bytes shared identically with the owner |
+| `secret_type` | Sub-type param | Value | What is generated |
+|---|---|---|---|
+| `cert` | `kind` | `tls` | Ed25519 CA-signed TLS bundle (CA cert + server cert + private key) |
+| `cert` | `kind` | `p256` | P-256 (ECDSA) self-signed certificate + private key |
+| `asymmetric` | `algorithm` | `ed25519` | Ed25519 key pair |
+| `asymmetric` | `algorithm` | `rsa` | RSA key pair |
+| `symmetric` | `size` *(optional)* | bytes | Raw random bytes (default: 32 bytes; max: `symmetric_key_size_max`) |
 
-`symmetric` and `random` do not require an explicit `algorithm` parameter — the default is used when it is omitted.
+Each `secret_type` uses a dedicated sub-type parameter: `kind` for cert, `algorithm` for asymmetric, and `size` for symmetric. Passing the wrong parameter for a given type is an error.
 
 Credentials are persisted via the KBS kvstorage backend and survive restarts.
 
@@ -23,7 +22,7 @@ Credentials are persisted via the KBS kvstorage backend and survive restarts.
 
 The plugin operates in two phases:
 
-1. **Server phase** — The confidential VM attests and calls `GET /credentials`. CredGen generates fresh material, stores the public side (CA key/cert for TLS, public key for asymmetric, shared value for symmetric/random), and returns the private material TEE-encrypted to the VM.
+1. **Server phase** — The confidential VM attests and calls `GET /credentials`. CredGen generates fresh material, stores the public side (CA key/cert for TLS, public key for asymmetric, shared value for symmetric), and returns the private material TEE-encrypted to the VM.
 
 2. **Client phase** — The workload owner calls `POST /client_creds`. CredGen returns the public-side material. For TLS, a fresh client certificate is signed on the fly using the CA stored from the last server call.
 
@@ -76,10 +75,9 @@ common_name = "CredGen CA"
 validity_days = 365
 
 [plugins.credgen.settings]
-symmetric_key_size = 32
+symmetric_key_size_max = 128
 rsa_bits = 2048
-random_bytes_size = 32
-supported_types = ["cert/tls", "cert/p256", "asymmetric/ed25519", "asymmetric/rsa", "symmetric", "random"]
+supported_types = ["cert/tls", "cert/p256", "asymmetric/ed25519", "asymmetric/rsa", "symmetric"]
 ```
 
 #### Configuration Reference
@@ -100,10 +98,9 @@ supported_types = ["cert/tls", "cert/p256", "asymmetric/ed25519", "asymmetric/rs
 
 | Field | Default | Description |
 |---|---|---|
-| `symmetric_key_size` | `32` | Symmetric key length in bytes |
+| `symmetric_key_size_max` | `128` | Maximum allowed `size` for symmetric keys; default is `32` when `size` is omitted |
 | `rsa_bits` | `2048` | RSA key size in bits |
-| `random_bytes_size` | `32` | Random byte sequence length in bytes |
-| `supported_types` | all six | Allowed `"type/algorithm"` pairs; `"symmetric"` and `"random"` need no suffix |
+| `supported_types` | all five | Allowed entries: `"cert/tls"`, `"cert/p256"`, `"asymmetric/ed25519"`, `"asymmetric/rsa"`, `"symmetric"` |
 
 End-entity cert validity defaults to **90 days** and can be overridden per-identity via `POST /update_cert`.
 
@@ -134,29 +131,31 @@ Generate credentials for the VM.
 
 **Query Parameters**:
 - `secret_name` (required) — logical name for this secret (e.g. `grpc`)
-- `secret_type` (required) — `cert`, `asymmetric`, `symmetric`, or `random`
-- `algorithm` (required for `cert` and `asymmetric`; optional otherwise) — see table above
+- `secret_type` (required) — `cert`, `asymmetric`, or `symmetric`
+- `kind` (required for `cert`) — `tls` or `p256`
+- `algorithm` (required for `asymmetric`) — `ed25519` or `rsa`
+- `size` (optional, `symmetric` only) — key length in bytes (`1`–`symmetric_key_size_max`); defaults to `32`
 
-The VM's `name` and `ns` are read from its **init-data**, not from the query string.
+The VM's `name` and `ns` are read from its **init-data**, not from the query string. Unknown or unrelated parameters are ignored.
 
 **Examples**:
 
 ```http
-GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&algorithm=tls
+GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=tls
+GET /kbs/v0/credgen/credentials?secret_name=mycert&secret_type=cert&kind=p256
 GET /kbs/v0/credgen/credentials?secret_name=sigkey&secret_type=asymmetric&algorithm=ed25519
 GET /kbs/v0/credgen/credentials?secret_name=aeskey&secret_type=symmetric
-GET /kbs/v0/credgen/credentials?secret_name=nonce&secret_type=random
+GET /kbs/v0/credgen/credentials?secret_name=aeskey16&secret_type=symmetric&size=16
 ```
 
 **Response** (fields vary by type):
 
-| `secret_type` / `algorithm` | Fields returned to the VM |
+| `secret_type` / sub-type | Fields returned to the VM |
 |---|---|
-| `cert/tls` | `private_key`, `cert`, `ca_cert` |
-| `cert/p256` | `private_key` |
-| `asymmetric/ed25519` or `asymmetric/rsa` | `private_key` |
-| `symmetric/raw` | `key` |
-| `random/csprng` | `bytes` |
+| `cert` / `kind=tls` | `private_key`, `cert`, `ca_cert` |
+| `cert` / `kind=p256` | `private_key` |
+| `asymmetric` / `algorithm=ed25519` or `rsa` | `private_key` |
+| `symmetric` | `key` |
 
 Example response for `cert/tls`:
 
@@ -164,9 +163,9 @@ Example response for `cert/tls`:
 {
   "secret_name": "grpc",
   "secret_type": "cert",
-  "algorithm": "tls",
+  "subtype": "tls",
   "material_type": "Tls",
-  "private_key": [...]
+  "private_key": [...],
   "cert": [...],
   "ca_cert": [...]
 }
@@ -208,24 +207,24 @@ Return the public-side material for a secret previously generated for the VM.
 - `ns` (required) — namespace
 - `secret_name` (required) — secret name
 - `secret_type` (required) — secret category
-- `algorithm` (required for `cert`/`asymmetric`) — algorithm
+- `kind` (required for `cert`) — `tls` or `p256`
+- `algorithm` (required for `asymmetric`) — `ed25519` or `rsa`
 
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
     credgen --admin-token-file kbs/config/admin-token \
-    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&algorithm=tls"
+    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=tls"
 ```
 
 **Response** (fields vary by type):
 
-| `secret_type` / `algorithm` | Fields returned to the owner |
+| `secret_type` / sub-type | Fields returned to the owner |
 |---|---|
-| `cert/tls` | `private_key`, `cert`, `ca_cert` (fresh client cert, same CA as server) |
-| `cert/p256` | `cert_pem` (the self-signed cert generated for the VM) |
-| `asymmetric/ed25519` or `asymmetric/rsa` | `public_key` |
-| `symmetric/raw` | `key` (identical to the value delivered to the VM) |
-| `random/csprng` | `bytes` (identical to the value delivered to the VM) |
+| `cert` / `kind=tls` | `private_key`, `cert`, `ca_cert` (fresh client cert, same CA as server) |
+| `cert` / `kind=p256` | `cert_pem` (the self-signed cert generated for the VM) |
+| `asymmetric` / `algorithm=ed25519` or `rsa` | `public_key` |
+| `symmetric` | `key` (identical to the value delivered to the VM) |
 
 ### POST /update_cert
 
@@ -285,7 +284,7 @@ To change only the expiry:
    ```
 4. **VM requests credentials** after attestation (identity from init-data):
    ```http
-   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&algorithm=tls
+   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=tls
    ```
 5. **Owner lists known identities**:
    ```bash
@@ -293,6 +292,6 @@ To change only the expiry:
    ```
 6. **Owner retrieves client credentials**:
    ```bash
-   kbs-client credgen client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&algorithm=tls"
+   kbs-client credgen client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=tls"
    ```
 7. **Establish mutual TLS** between the VM (server) and the workload owner (client) using the matching credentials.
