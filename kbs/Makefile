@@ -6,6 +6,7 @@ VAULT ?= true
 GCP ?= false
 AWS ?= false
 EXTERNAL_PLUGIN ?= true
+CREDGEN_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -58,6 +59,10 @@ endif
 
 ifeq ($(NEBULA_CA_PLUGIN), true)
   override FEATURES := $(FEATURES),nebula-ca-plugin
+endif
+
+ifeq ($(CREDGEN_PLUGIN), true)
+  override FEATURES := $(FEATURES),credgen-plugin
 endif
 
 ifeq ($(VAULT), true)
