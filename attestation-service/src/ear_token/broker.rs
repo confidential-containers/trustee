@@ -527,7 +527,10 @@ mod tests {
             .set(
                 "ear_no_rv_policy_cpu.rego",
                 include_bytes!("../../tests/coco-as/policy/opa/ear_no_rv_policy_cpu.rego"),
-                SetParameters { overwrite: true },
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
             )
             .await
             .unwrap();
@@ -575,7 +578,10 @@ mod tests {
             .set(
                 "ear_no_rv_policy_cpu.rego",
                 include_bytes!("../../tests/coco-as/policy/opa/ear_no_rv_policy_cpu.rego"),
-                SetParameters { overwrite: true },
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
             )
             .await
             .unwrap();
