@@ -10,7 +10,10 @@ pub mod report;
 pub mod spdm_request;
 pub mod spdm_response;
 
-use anyhow::{bail, Result};
+#[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+pub mod nvat;
+
+use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
@@ -19,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use std::result::Result::Ok;
 use std::str::FromStr;
 use strum::{Display, EnumString};
-use tracing::{instrument, trace};
+use tracing::{instrument, trace, warn};
 
 use super::*;
 use crate::nvidia::nras_jwks::NrasJwks;
@@ -64,6 +67,12 @@ pub enum NvidiaVerifierType {
     Local,
     #[serde(alias = "remote")]
     Remote(NvidiaRemoteVerifierConfig),
+    #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+    #[serde(alias = "nvlocal")]
+    NvLocal(nvat::NvidiaNvatLocalConfig),
+    #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+    #[serde(alias = "nvremote")]
+    NvRemote(nvat::NvidiaNvatRemoteConfig),
 }
 
 #[derive(Default, Debug)]
@@ -74,6 +83,10 @@ enum NvidiaVerifierTypeInternal {
     },
     #[default]
     Local,
+    #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+    NvLocal(nvat::NvidiaNvatLocalConfig),
+    #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+    NvRemote(nvat::NvidiaNvatRemoteConfig),
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -141,6 +154,31 @@ impl NvDeviceReportAndCertClaim {
             config: attestation_report.response.opaque_data.clone(),
         }
     }
+}
+
+fn check_nonce_match(claims: &Value, endpoint: &str) -> Result<()> {
+    // Check if the token reports an error and log it here,
+    // since this can result in the nonce result being null.
+    if let Some(details) = claims
+        .get("x-nvidia-error-details")
+        .filter(|details| !details.is_null())
+    {
+        warn!("NRAS reported an error for the {endpoint} evidence: {details}");
+    }
+
+    let nonce_ok = claims
+        .pointer(&format!(
+            "/x-nvidia-{endpoint}-attestation-report-nonce-match"
+        ))
+        .ok_or_else(|| anyhow!("Couldn't find nonce status."))?;
+    let nonce_ok = nonce_ok
+        .as_bool()
+        .ok_or_else(|| anyhow!("Nonce status not provided."))?;
+    if !nonce_ok {
+        bail!("Report Data Mismatch");
+    }
+
+    Ok(())
 }
 
 /// Check if a set of device claims constitutes a PPCIE configuration.
@@ -231,7 +269,11 @@ impl Nvidia {
                 config,
                 jwks: NrasJwks::new().await?,
             },
-            _ => NvidiaVerifierTypeInternal::Local,
+            NvidiaVerifierType::Local => NvidiaVerifierTypeInternal::Local,
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            NvidiaVerifierType::NvLocal(config) => NvidiaVerifierTypeInternal::NvLocal(config),
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            NvidiaVerifierType::NvRemote(config) => NvidiaVerifierTypeInternal::NvRemote(config),
         };
 
         Ok(Nvidia { verifier_type })
@@ -297,23 +339,13 @@ impl Nvidia {
         };
 
         let response = NrasResponse::from_str(&res.text().await?)?;
+        let claims = response.claims()?;
+        debug!("NRAS {tee_class} EAT:\n{claims:#}");
+
         response.validate(jwks)?;
 
-        let claims = response.claims()?;
-
         // Check that the nonce matches the expected report data.
-        // Consider moving this logic into the NrasResponse struct.
-        let nonce_ok = claims
-            .pointer(&format!(
-                "/x-nvidia-{endpoint}-attestation-report-nonce-match"
-            ))
-            .ok_or_else(|| anyhow!("Couldn't find nonce status."))?;
-        let nonce_ok = nonce_ok
-            .as_bool()
-            .ok_or_else(|| anyhow!("Nonce status malformed"))?;
-        if !nonce_ok {
-            bail!("Report Data Mismatch");
-        }
+        check_nonce_match(&claims, endpoint)?;
 
         Ok((claims, tee_class.to_string()))
     }
@@ -378,18 +410,43 @@ impl Verifier for Nvidia {
         let expected_nonce_vec: Vec<u8> =
             regularize_data(expected_nonce, SPDM_NONCE_SIZE, "REPORT_DATA", "NVIDIA");
 
-        for device in devices.device_evidence_list {
-            let claims = match &self.verifier_type {
-                NvidiaVerifierTypeInternal::Local => {
-                    self.evaluate_device_locally(device, expected_nonce_vec.clone())?
+        match &self.verifier_type {
+            NvidiaVerifierTypeInternal::Local => {
+                for device in devices.device_evidence_list {
+                    all_devices_claims
+                        .push(self.evaluate_device_locally(device, expected_nonce_vec.clone())?);
                 }
-                NvidiaVerifierTypeInternal::Remote { config, jwks } => {
-                    self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
-                        .await?
+            }
+            NvidiaVerifierTypeInternal::Remote { config, jwks } => {
+                for device in devices.device_evidence_list {
+                    all_devices_claims.push(
+                        self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
+                            .await?,
+                    );
                 }
-            };
-
-            all_devices_claims.push(claims);
+            }
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            NvidiaVerifierTypeInternal::NvLocal(config) => {
+                all_devices_claims.extend(
+                    nvat::evaluate_devices(
+                        devices.device_evidence_list,
+                        expected_nonce_vec,
+                        nvat::NvatMode::Local(config.clone()),
+                    )
+                    .await?,
+                );
+            }
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            NvidiaVerifierTypeInternal::NvRemote(config) => {
+                all_devices_claims.extend(
+                    nvat::evaluate_devices(
+                        devices.device_evidence_list,
+                        expected_nonce_vec,
+                        nvat::NvatMode::Remote(config.clone()),
+                    )
+                    .await?,
+                );
+            }
         }
 
         if let Ok(ppcie_claims) = validate_ppcie(all_devices_claims.clone()) {
@@ -459,15 +516,16 @@ mod tests {
     }
 
     #[rstest]
+    // Hopper GPU Evidence. This older evidence will not work with the nvlocal or nvremote modes,
+    // but the local and remote verifiers are more lenient.
     #[case::local_verifier("local", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
-    // Tests with the remote verifier are ignored to avoid putting strain on NRAS.
-    // Please run these tests if you make any changes to the verifier.
-    #[ignore]
     #[case::remote_verifier("remote", "931d8dd0add203ac3d8b4fbde75e115278eefcdceac5b87671a748f32364dfcb", include_str!("../../test_data/nvidia/hopperAttestationReport.txt"), include_str!("../../test_data/nvidia/hopper_cert_chain_case1.txt"), Architecture::Hopper)]
-    // Use the remote verifier with evidence from a CoCo CI run
-    #[ignore]
-    #[case::remote_verifier_coco("remote", "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
-    #[case::local_verifier_coco("local", "87d8e24ab336adafe228d49e83d745f6dba4ae505372b6a5704820856b343fece279b616efefc2aae21da80cf5581250", include_str!("../../test_data/nvidia/hopper_coco_report1.txt"), include_str!("../../test_data/nvidia/hopper_coco_certs1.txt"), Architecture::Hopper)]
+    // Blackwell GPU evidence
+    #[ignore] // This GPU/driver not supported by local verifier
+    #[case::local_verifier_blackwell_coco("local", "d622979b6c3ab8b8e7b30a43f2dc7f553ebbc187536231d531effa496ec03fb5", include_str!("../../test_data/nvidia/blackwell_coco_report.txt"), include_str!("../../test_data/nvidia/blackwell_coco_certs.txt"), Architecture::Blackwell)]
+    #[case::remote_verifier_blackwell_coco("remote", "d622979b6c3ab8b8e7b30a43f2dc7f553ebbc187536231d531effa496ec03fb5", include_str!("../../test_data/nvidia/blackwell_coco_report.txt"), include_str!("../../test_data/nvidia/blackwell_coco_certs.txt"), Architecture::Blackwell)]
+    #[case::nvlocal_verifier_blackwell_coco("nvlocal", "d622979b6c3ab8b8e7b30a43f2dc7f553ebbc187536231d531effa496ec03fb5", include_str!("../../test_data/nvidia/blackwell_coco_report.txt"), include_str!("../../test_data/nvidia/blackwell_coco_certs.txt"), Architecture::Blackwell)]
+    #[case::nvremote_verifier_blackwell_coco("nvremote", "d622979b6c3ab8b8e7b30a43f2dc7f553ebbc187536231d531effa496ec03fb5", include_str!("../../test_data/nvidia/blackwell_coco_report.txt"), include_str!("../../test_data/nvidia/blackwell_coco_certs.txt"), Architecture::Blackwell)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_evaluation(
         #[case] verifier_type: &str,
@@ -480,6 +538,11 @@ mod tests {
         // Architecture of the device
         #[case] arch: Architecture,
     ) {
+        let _ = fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .with_test_writer()
+            .try_init();
+
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
         let device_uuid: &str = "1111-2222-33333-444444-555555";
@@ -510,7 +573,11 @@ mod tests {
             "remote" => {
                 NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None })
             }
-            _ => panic!("Unknown verifier type."),
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            "nvlocal" => NvidiaVerifierType::NvLocal(nvat::NvidiaNvatLocalConfig::default()),
+            #[cfg(all(feature = "nvat", target_arch = "x86_64"))]
+            "nvremote" => NvidiaVerifierType::NvRemote(nvat::NvidiaNvatRemoteConfig::default()),
+            other => panic!("Unknown or unavailable verifier type: {other}."),
         };
 
         let verifier_config = Some(NvidiaVerifierConfig {

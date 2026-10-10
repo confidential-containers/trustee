@@ -73,6 +73,7 @@ jobs:
     - name: Build KBS e2e binaries
       env:
         INPUTS_KBS_CLIENT_FEATURES: ${{ inputs.kbs-client-features }}
+        NVAT: "false"
       run: |
         make kbs-e2e-build TEST_FEATURES="${INPUTS_KBS_CLIENT_FEATURES}"
 

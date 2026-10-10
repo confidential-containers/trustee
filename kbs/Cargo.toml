@@ -12,6 +12,7 @@ default = [
     "coco-as-grpc",
     "intel-trust-authority-as",
     "external-plugin",
+    "nvat",
 ]
 
 # Support a backend attestation service for KBS
@@ -21,7 +22,11 @@ as = []
 coco-as = ["as"]
 
 # Use built-in CoCo-AS as backend attestation service
-coco-as-builtin = ["coco-as", "attestation-service/default"]
+coco-as-builtin = [
+    "coco-as",
+    "attestation-service/grpc-bin",
+    "attestation-service/rvps-grpc",
+]
 
 # Use built-in CoCo-AS as backend attestation service without verifier
 coco-as-builtin-no-verifier = ["coco-as"]
@@ -59,6 +64,8 @@ pqc-experimental = ["dep:ml-kem", "dep:sha3-kmac"]
 
 # Use GCP Secret Manager as KBS resource backend
 gcp = ["google-cloud-secretmanager-v1"]
+
+nvat = ["attestation-service?/nvat"]
 
 [dependencies]
 actix = "0.13.5"

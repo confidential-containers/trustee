@@ -202,7 +202,7 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 
 ## NVIDIA
 
-The local verifier only supports Hopper and returns the following claims.
+The local verifier mode only supports Hopper and returns the following claims.
 
 - `arch`: Device architecture. Only `Hopper` is supported
 - `measurements`: List of measurements and its respective index
@@ -222,9 +222,14 @@ The local verifier only supports Hopper and returns the following claims.
 - `config.protected_pcie_status`: Protected PCIe status
 - `config.vbios_version`: Device VBIOS version
 
-The remote verifier exports the claims that come from NRAS, which are listed [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
-Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
+The `Remote`, `NvRemote` and `NvLocal` verifier modes all emit the same claims,
+which are based on the NRAS attestation token.
+See claims v3 [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
+The `x-nvidia-overall-att-result` from the overall claims is included
 along with the full set of detached claims.
+
+The NVAT verifiers will not produce any claims if the overall attestation result
+is not positive, whereas the `remote` verifier will.
 
 ## NVIDIA DPU (DICE)
 
