@@ -17,7 +17,7 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-    uses: ./.github/workflows/workflow-call-build-staged-images-pr.yml
+    uses: $/.github/workflows/workflow-call-build-staged-images-pr.yml
     with:
       image_group: all
 
@@ -27,7 +27,7 @@ jobs:
     permissions:
       packages: write  # push container images to GHCR
       contents: read
-    uses: ./.github/workflows/workflow-call-build-staged-images-push.yml
+    uses: $/.github/workflows/workflow-call-build-staged-images-push.yml
     with:
       image_group: all
     secrets:
@@ -40,7 +40,7 @@ jobs:
     permissions:
       packages: write  # push multi-arch manifests to GHCR
       contents: read
-    uses: ./.github/workflows/workflow-call-publish-staged-manifests.yml
+    uses: $/.github/workflows/workflow-call-publish-staged-manifests.yml
     with:
       tags: '["kbs","kbs-grpc-as","coco-as-grpc","coco-as-restful","rvps","kbs-client-image"]'
     secrets:
