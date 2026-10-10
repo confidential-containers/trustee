@@ -189,6 +189,10 @@ How KBS verifies attestation tokens, configures trust anchors, and relates AS
 token signing to KBS `[attestation_token]` settings is documented in
 [Attestation Token Verification](./docs/attestation_token_verification.md).
 
+### Rate Limiting
+Why per-client rate limiting belongs on the proxy in front of KBS is covered in
+[Rate Limiting](./docs/rate-limiting.md).
+
 ## Related Tools
 
 ### KBS Client

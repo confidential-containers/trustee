@@ -186,6 +186,16 @@ forward plaintext HTTP to KBS. Do not combine native KBS TLS with Ingress unless
 the chosen Ingress controller is explicitly configured to use HTTPS for its
 backend connection.
 
+### Per-client rate limiting
+
+KBS expects per-client rate limiting on the proxy in front of it; see
+[Rate Limiting](../../kbs/docs/rate-limiting.md) for why. With this chart,
+configure the limit on the Ingress controller and pass any annotations it needs
+through `ingress.annotations`. Neither the Ingress API nor Gateway API expresses
+rate limiting, so follow the controller's own documentation. The chart routes
+the whole KBS API through one Ingress rule, so such a limit covers every
+`/kbs/v0` path, and the KBS side needs no configuration.
+
 ### IBM Secure Execution (s390x)
 
 On **s390x**, the **IBM Secure Execution (SE)** verifier needs attestation materials at runtime. Because KBS talks to a **remote `coco_as_grpc` AS**, the verifier runs inside the **AS Pod**, so these materials must be mounted on **AS**, not KBS. (This differs from the builtin-AS kustomize overlay in `kbs/config/kubernetes/overlays/ibm-se`, which mounts them on KBS.)
