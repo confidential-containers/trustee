@@ -129,7 +129,7 @@ jobs:
           persist-credentials: false
 
       - name: Build ${{ matrix.tag }}
-        uses: ./.github/actions/build-single-image
+        uses: $/.github/actions/build-single-image
         with:
           ghcr_token: ""
           docker_file: ${{ matrix.docker_file }}

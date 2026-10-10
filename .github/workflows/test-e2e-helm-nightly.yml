@@ -40,7 +40,7 @@ jobs:
   # Shared kbs-client + cluster images consumed by every Helm e2e leg.
   build-docker-e2e-materials:
     name: Build Docker/Helm e2e materials
-    uses: ./.github/workflows/workflow-call-build-docker-e2e-materials.yml
+    uses: $/.github/workflows/workflow-call-build-docker-e2e-materials.yml
     permissions:
       contents: read
 
@@ -48,7 +48,7 @@ jobs:
   helm-trustee-e2e-sample:
     name: Helm Trustee e2e (sample-tee on amd64)
     needs: build-docker-e2e-materials
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    uses: $/.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:
@@ -63,7 +63,7 @@ jobs:
   helm-trustee-e2e-tdx:
     name: Helm Trustee e2e (TDX)
     needs: build-docker-e2e-materials
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    uses: $/.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:
@@ -78,7 +78,7 @@ jobs:
   helm-trustee-e2e-snp:
     name: Helm Trustee e2e (SNP)
     needs: build-docker-e2e-materials
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    uses: $/.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:
