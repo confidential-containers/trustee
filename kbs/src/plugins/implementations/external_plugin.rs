@@ -20,7 +20,7 @@ use std::time::Duration;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tracing::{debug, info, warn};
 
-use crate::plugins::plugin_manager::ClientPlugin;
+use crate::plugins::plugin_manager::{ClientPlugin, PluginError, PluginResult};
 use crate::prometheus::{
     PLUGIN_ERRORS_TOTAL, PLUGIN_REQUESTS_TOTAL, PLUGIN_REQUEST_DURATION_SECONDS,
 };
@@ -176,13 +176,17 @@ async fn connect_with_retry(config: &BackendConfig) -> Result<Channel> {
         .context("Failed to connect to plugin after retry window")
 }
 
-fn map_grpc_error(status: tonic::Status) -> Error {
+fn map_grpc_error(status: tonic::Status) -> PluginError {
     debug!(
         "Plugin gRPC error: code={:?}, message={}",
         status.code(),
         status.message()
     );
-    anyhow!("gRPC error from plugin: {:?}", status.code())
+    let message = format!("gRPC error from plugin: {:?}", status.code());
+    match status.code() {
+        tonic::Code::NotFound => PluginError::NotFound(message),
+        _ => PluginError::Internal(anyhow!(message)),
+    }
 }
 
 /// Per-backend gRPC connection and dispatch logic.
@@ -223,7 +227,7 @@ impl GrpcBackend {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         PLUGIN_REQUESTS_TOTAL.with_label_values(&[&self.name]).inc();
         let timer = PLUGIN_REQUEST_DURATION_SECONDS
             .with_label_values(&[&self.name])
@@ -258,12 +262,16 @@ impl GrpcBackend {
         match response.status_code {
             0 | 200..=299 => Ok(response.body),
             code => {
-                bail!(
+                let message = format!(
                     "plugin '{}' returned HTTP status {}: {}",
                     self.name,
                     code,
                     String::from_utf8_lossy(&response.body)
-                )
+                );
+                match code {
+                    404 => Err(PluginError::NotFound(message)),
+                    _ => Err(anyhow!(message).into()),
+                }
             }
         }
     }
@@ -274,7 +282,7 @@ impl GrpcBackend {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         let mut client = self.client.clone();
         let mut request = tonic::Request::new(ValidateAuthRequest {
             body: body.to_vec(),
@@ -301,7 +309,7 @@ impl GrpcBackend {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         let mut client = self.client.clone();
         let mut request = tonic::Request::new(NeedsEncryptionRequest {
             body: body.to_vec(),
@@ -363,14 +371,16 @@ impl ExternalPlugin {
     }
 
     /// Look up the backend for `path[0]`, returning an error if absent.
-    fn backend_for<'a>(&self, path: &'a [&str]) -> Result<(&Arc<GrpcBackend>, &'a [&'a str])> {
-        let sub_name = path
-            .first()
-            .ok_or_else(|| anyhow!("external plugin name missing from request path"))?;
-        let backend = self
-            .backends
-            .get(*sub_name)
-            .ok_or_else(|| anyhow!("external plugin '{}' not registered", sub_name))?;
+    fn backend_for<'a>(
+        &self,
+        path: &'a [&str],
+    ) -> PluginResult<(&Arc<GrpcBackend>, &'a [&'a str])> {
+        let sub_name = path.first().ok_or_else(|| {
+            PluginError::NotFound("external plugin name missing from request path".into())
+        })?;
+        let backend = self.backends.get(*sub_name).ok_or_else(|| {
+            PluginError::NotFound(format!("external plugin '{sub_name}' not registered"))
+        })?;
         Ok((backend, &path[1..]))
     }
 }
@@ -384,7 +394,7 @@ impl ClientPlugin for ExternalPlugin {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         let (backend, sub_path) = self.backend_for(path)?;
         backend.handle(body, query, sub_path, method).await
     }
@@ -395,7 +405,7 @@ impl ClientPlugin for ExternalPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         let (backend, sub_path) = self.backend_for(path)?;
         backend.validate_auth(body, query, sub_path, method).await
     }
@@ -406,7 +416,7 @@ impl ClientPlugin for ExternalPlugin {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         let (backend, sub_path) = self.backend_for(path)?;
         backend.encrypted(body, query, sub_path, method).await
     }
@@ -530,6 +540,7 @@ endpoint = "127.0.0.1:50051"
     fn backend_for_empty_path_errors() {
         let plugin = make_plugin_with_fake_backends();
         let err = plugin.backend_for(&[]).unwrap_err();
+        assert!(matches!(err, PluginError::NotFound(_)), "unexpected: {err}");
         assert!(
             err.to_string().contains("missing from request path"),
             "unexpected: {err}"
@@ -540,9 +551,19 @@ endpoint = "127.0.0.1:50051"
     fn backend_for_unknown_backend_errors() {
         let plugin = make_plugin_with_fake_backends();
         let err = plugin.backend_for(&["unknown"]).unwrap_err();
+        assert!(matches!(err, PluginError::NotFound(_)), "unexpected: {err}");
         assert!(
             err.to_string().contains("not registered"),
             "unexpected: {err}"
         );
+    }
+
+    #[rstest]
+    #[case(tonic::Code::NotFound, true)]
+    #[case(tonic::Code::Unavailable, false)]
+    #[case(tonic::Code::Internal, false)]
+    fn grpc_not_found_maps_to_not_found(#[case] code: tonic::Code, #[case] not_found: bool) {
+        let err = map_grpc_error(tonic::Status::new(code, "boom"));
+        assert_eq!(matches!(err, PluginError::NotFound(_)), not_found);
     }
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::backend::{ResourceDesc, StorageBackend};
+use crate::plugins::PluginResult;
 use anyhow::{Context, Result};
 use educe::Educe;
 use kms::{plugins::aliyun::AliyunKmsClient, Annotations, Getter};
@@ -26,7 +27,7 @@ pub struct AliyunKmsBackend {
 
 #[async_trait::async_trait]
 impl StorageBackend for AliyunKmsBackend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         info!(
             "Use aliyun KMS backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type

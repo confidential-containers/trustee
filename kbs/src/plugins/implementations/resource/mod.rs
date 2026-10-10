@@ -19,12 +19,12 @@ pub mod vault_kv;
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, Context};
 
 pub mod backend;
 pub use backend::*;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginResult};
 
 #[async_trait::async_trait]
 impl ClientPlugin for ResourceStorage {
@@ -35,7 +35,7 @@ impl ClientPlugin for ResourceStorage {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+    ) -> PluginResult<Vec<u8>> {
         let resource_desc = path.join("/");
         match method.as_str() {
             "POST" => {
@@ -45,7 +45,7 @@ impl ClientPlugin for ResourceStorage {
             }
             "GET" if path.is_empty() => {
                 let resources = self.list_secret_resources().await?;
-                Ok(serde_json::to_vec(&resources)?)
+                Ok(serde_json::to_vec(&resources).context("failed to serialize resource list")?)
             }
             "GET" => {
                 let resource_description = ResourceDesc::try_from(&resource_desc[..])?;
@@ -58,7 +58,9 @@ impl ClientPlugin for ResourceStorage {
                 self.delete_secret_resource(resource_description).await?;
                 Ok(vec![])
             }
-            _ => bail!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`"),
+            _ => {
+                Err(anyhow!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`").into())
+            }
         }
     }
 
@@ -68,7 +70,7 @@ impl ClientPlugin for ResourceStorage {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         if method.as_str() == "POST" || method.as_str() == "DELETE" {
             return Ok(true);
         }
@@ -84,7 +86,7 @@ impl ClientPlugin for ResourceStorage {
         _query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         if method.as_str() == "GET" && !path.is_empty() {
             return Ok(true);
         }

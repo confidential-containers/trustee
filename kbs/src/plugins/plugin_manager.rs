@@ -25,6 +25,19 @@ use super::{ExternalPlugin, ExternalPluginConfig};
 
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
+/// Errors a plugin returns to the KBS, which maps each variant to an HTTP
+/// status. Any `anyhow::Error` converts into `Internal` through `?`.
+#[derive(Debug, thiserror::Error)]
+pub enum PluginError {
+    #[error("{0}")]
+    NotFound(String),
+
+    #[error(transparent)]
+    Internal(#[from] anyhow::Error),
+}
+
+pub type PluginResult<T> = std::result::Result<T, PluginError>;
+
 #[async_trait::async_trait]
 pub trait ClientPlugin: Send + Sync {
     /// This function is the entry to a client plugin. The function
@@ -40,7 +53,7 @@ pub trait ClientPlugin: Send + Sync {
         path: &[&str],
         method: &Method,
         init_data: Option<&Value>,
-    ) -> Result<Vec<u8>>;
+    ) -> PluginResult<Vec<u8>>;
 
     /// Whether the concrete request needs to validate the admin auth.
     /// If returns `Ok(true)`, the KBS server will perform an admin auth
@@ -51,7 +64,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool>;
+    ) -> PluginResult<bool>;
 
     /// Whether the body needs to be encrypted via TEE key pair.
     /// If returns `Ok(true)`, the KBS server will encrypt the whole body
@@ -62,7 +75,7 @@ pub trait ClientPlugin: Send + Sync {
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
-    ) -> Result<bool>;
+    ) -> PluginResult<bool>;
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
