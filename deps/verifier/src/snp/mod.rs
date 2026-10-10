@@ -14,7 +14,7 @@ use openssl::{
 use reqwest::{Response as ReqwestResponse, StatusCode};
 use reqwest_middleware::ClientBuilder;
 use serde;
-use serde_json::json;
+use serde_json::{json, Value};
 use sev::{
     certs::snp::{ca::Chain as CaChain, Certificate, Chain, Verifiable},
     firmware::{
@@ -632,7 +632,7 @@ pub(crate) fn verify_report_tcb(
 /// Returns a JSON-formatted map of parsed claims.
 /// Note: Uses hex encoding for consistency with other verifiers (TDX, SGX, vTPM).
 pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParsedClaim {
-    let claims_map = json!({
+    let mut claims_map = json!({
         // policy fields
         "policy_abi_major": report.policy.abi_major(),
         "policy_abi_minor": report.policy.abi_minor(),
@@ -646,6 +646,7 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "reported_tcb_tee": report.reported_tcb.tee,
         "reported_tcb_snp": report.reported_tcb.snp,
         "reported_tcb_microcode": report.reported_tcb.microcode,
+        "reported_tcb_fmc": report.reported_tcb.fmc,
 
         // platform info
         "platform_tsme_enabled": report.plat_info.tsme_enabled(),
@@ -659,6 +660,16 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         // platform identity
         "chip_id": hex::encode(report.chip_id),
     });
+
+    // Add FMC only if processor reports it. If the report does not have
+    // it but it should (new enough generation), verify_report_tcb() will
+    // fail before we get here.
+    if let Some(fmc) = report.reported_tcb.fmc {
+        claims_map
+            .as_object_mut()
+            .unwrap()
+            .insert("reported_tcb_fmc".into(), Value::Number(fmc.into()));
+    }
 
     claims_map as TeeEvidenceParsedClaim
 }
