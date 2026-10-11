@@ -8,17 +8,26 @@ in the attestation token.
 
 ## Claims Data Format
 
-Policy input is a JSON object composed from verifier output. In most cases, it follows this shape:
+Policy input (passed to AS Rego via `TransformedClaims::policy_input_json`)
+is a JSON object composed from verifier output. In most cases, it follows this shape:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
 | `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
 | `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
-| `init_data_claims` | object | Parsed init-data claims (present when init-data is provided and verified) |
-| `runtime_data_claims` | object | Parsed runtime-data claims (present when report-data is provided and verified) |
+| `init_data_claims` | object | Parsed init-data claims (present when init-data plaintext is provided and verified, omitted otherwise) |
+| `runtime_data_claims` | object | Parsed runtime-data claims (present when structured report-data is provided and verified, omitted otherwise) |
 
 `<tee-name>` matches the serialized [`Tee`](https://docs.rs/kbs-types/latest/kbs_types/enum.Tee.html) variant string (for example `az-tdx-vtpm`, not `az_tdx_vtpm`). In Rego, hyphenated keys must use bracket syntax, e.g. `input["az-tdx-vtpm"]`.
+
+On the issued EAR token (draft-04), the same data is split by authority:
+
+| Policy input | Token claim |
+| --- | --- |
+| `<tee-name>` | `ear_attester_claims.tee` + `ear_attester_claims.claims` |
+| raw `report_data`, raw `init_data` | `ear_attester_claims.report_data` / `.init_data` |
+| `runtime_data_claims`, `init_data_claims` | `ear_verifier_claims.runtime_data` / `.init_data` |
 
 Minimal example:
 

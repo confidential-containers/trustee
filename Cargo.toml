@@ -33,12 +33,12 @@ clap = { version = "4", features = ["derive"] }
 config = "0.15.23"
 const_format = "0.2.36"
 educe = "0.7"
-ear = "0.5.0"
+ear = "0.6.0"
 hex = "0.4.3"
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "da8d93f2797088a5f0636c8c1eeb31da73784fe8", default-features = false }
 kbs-types = "0.18.0"
 kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "da8d93f2797088a5f0636c8c1eeb31da73784fe8", default-features = false }
-jsonwebtoken = { version = "10", default-features = false, features = [
+jsonwebtoken = { version = "11", default-features = false, features = [
     "aws_lc_rs",
     "use_pem",
 ] }

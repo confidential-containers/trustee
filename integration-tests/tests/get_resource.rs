@@ -226,7 +226,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"cpu0\"][\"ear_status\"] != \"contraindicated\"
 }
 ";
 
@@ -237,8 +237,8 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
-    input[\"submods\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"cpu0\"][\"ear_status\"] != \"contraindicated\"
+    input[\"submods\"][\"gpu0\"][\"ear_status\"] != \"contraindicated\"
 }
 ";
 
