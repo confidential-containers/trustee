@@ -1,0 +1,27 @@
+name: 'Automatically close stale PRs'
+on:
+  schedule:
+  - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stale:
+    name: stale
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write # Needed to manage caches for state persistence across runs
+      pull-requests: write # Needed to add/remove labels, post comments, or close PRs
+    steps:
+    - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+      with:
+        stale-pr-message: 'This PR has been opened without any activity for 90 days. Please comment on the issue otherwise it will be closed in 7 days'
+        days-before-pr-stale: 90
+        days-before-pr-close: 7
+        days-before-issue-stale: -1
+        days-before-issue-close: -1
