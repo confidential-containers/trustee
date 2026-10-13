@@ -3,13 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonwebtoken::jwk::JwkSet;
+use pluggable_cache::{CacheInstance, CacheKey};
 use reqwest::{get, Url};
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use std::fs;
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 pub(crate) const OPENID_CONFIG_URL_SUFFIX: &str = ".well-known/openid-configuration";
+
+/// Cache namespace for remote JWK sets trusted by KBS.
+pub const JWKS_CACHE_NAMESPACE: &str = "kbs_jwks";
 
 #[derive(Error, Debug)]
 pub(crate) enum JwksGetError {
@@ -105,6 +110,55 @@ pub async fn read_jwk_from_uri(uri: &str) -> Result<JwkSet, JwksGetError> {
     }
 }
 
+/// Like [`read_jwk_from_uri`], keeping the last JWK set successfully fetched
+/// from a remote source in `cache` and falling back to it when the source is
+/// unreachable, e.g. during an outage at startup.
+///
+/// A JWK set is a trust anchor that cannot be verified independently, so its
+/// cache namespace should only be backed by storage trusted as much as the
+/// KBS configuration itself.
+pub async fn read_jwk_from_uri_cached(
+    uri: &str,
+    cache: Option<&CacheInstance>,
+) -> Result<JwkSet, JwksGetError> {
+    let remote = Url::parse(uri).is_ok_and(|url| url.scheme() == "https");
+    let (Some(cache), true) = (cache, remote) else {
+        return read_jwk_from_uri(uri).await;
+    };
+    let Ok(key) = CacheKey::new(hex::encode(Sha256::digest(uri.as_bytes()))) else {
+        return read_jwk_from_uri(uri).await;
+    };
+
+    match read_jwk_from_uri(uri).await {
+        Ok(jwks) => {
+            match serde_json::to_vec(&jwks) {
+                Ok(bytes) => {
+                    if let Err(e) = cache.set(&key, bytes).await {
+                        warn!("failed to cache JWK set from {uri}: {e}");
+                    }
+                }
+                Err(e) => warn!("failed to encode JWK set from {uri}: {e}"),
+            }
+            Ok(jwks)
+        }
+        Err(fetch_error) => {
+            let cached = cache
+                .get(&key)
+                .await
+                .ok()
+                .flatten()
+                .and_then(|bytes| serde_json::from_slice::<JwkSet>(&bytes).ok());
+            match cached {
+                Some(jwks) => {
+                    warn!("using cached JWK set for {uri}, fetching it failed: {fetch_error}");
+                    Ok(jwks)
+                }
+                None => Err(fetch_error),
+            }
+        }
+    }
+}
+
 /// Build the OpenID configuration discovery URL (`{base}/.well-known/openid-configuration`).
 ///
 /// A trailing slash on the base path is significant for [`Url::join`]: without it the last path
@@ -122,7 +176,7 @@ fn build_openid_config_url(base: &Url) -> Result<Url, JwksGetError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_openid_config_url, read_jwk_from_uri};
+    use super::{build_openid_config_url, read_jwk_from_uri, read_jwk_from_uri_cached};
     use jsonwebtoken::jwk::KeyAlgorithm;
     use reqwest::Url;
     use rstest::rstest;
@@ -157,6 +211,32 @@ mod tests {
         let jwtks = read_jwk_from_uri(&p).await.expect("to get jwks");
         assert_eq!(jwtks.keys.len(), 1);
         assert_eq!(jwtks.keys[0].common.key_algorithm, Some(alg));
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_cached_jwks() {
+        use pluggable_cache::{memory::MemoryCache, CacheInstance, CacheKey};
+        use sha2::{Digest, Sha256};
+        use std::sync::Arc;
+
+        let cache: CacheInstance =
+            Arc::new(MemoryCache::new(&Default::default()).expect("memory cache"));
+        // Unreachable, so the fetch fails and the cache must be used.
+        let uri = "https://127.0.0.1:1/jwks.json";
+        assert!(read_jwk_from_uri_cached(uri, Some(&cache)).await.is_err());
+
+        let key = CacheKey::new(hex::encode(Sha256::digest(uri.as_bytes()))).unwrap();
+        cache
+            .set(
+                &key,
+                br#"{"keys":[{"kty":"oct","alg":"HS256","kid":"k","k":"foobar"}]}"#.to_vec(),
+            )
+            .await
+            .unwrap();
+        let jwks = read_jwk_from_uri_cached(uri, Some(&cache))
+            .await
+            .expect("cached JWK set");
+        assert_eq!(jwks.keys.len(), 1);
     }
 
     /// `Url::join` drops the last path segment unless the base ends with `/`, so verify the

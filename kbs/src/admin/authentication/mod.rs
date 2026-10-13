@@ -33,10 +33,13 @@ pub enum AuthenticationType {
 }
 
 impl TokenVerifier {
-    pub async fn new(value: AuthenticationType) -> Result<Self> {
+    pub async fn new(
+        value: AuthenticationType,
+        jwks_cache: Option<&pluggable_cache::CacheInstance>,
+    ) -> Result<Self> {
         match value {
             AuthenticationType::BearerJwt(config) => Ok(TokenVerifier {
-                verifier: Arc::new(BearerJwtTokenVerifier::new(config).await?),
+                verifier: Arc::new(BearerJwtTokenVerifier::new(config, jwks_cache).await?),
             }),
         }
     }

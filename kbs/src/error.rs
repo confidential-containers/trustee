@@ -103,6 +103,12 @@ pub enum Error {
         #[from]
         source: prometheus::Error,
     },
+
+    #[error("Cache error: {source}")]
+    CacheError {
+        #[from]
+        source: pluggable_cache::CacheError,
+    },
 }
 
 impl ResponseError for Error {

@@ -13,7 +13,9 @@ use actix_web::{
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
+use cache_storage::KvByteStoreProvider;
 use key_value_storage::StorageProvider;
+use pluggable_cache::{CacheProvider, ConfiguredCacheProvider};
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
@@ -21,6 +23,7 @@ use tracing::{info, warn};
 use crate::{
     admin::Admin,
     config::KbsConfig,
+    crypto::jwk::JWKS_CACHE_NAMESPACE,
     jwe::jwe,
     plugins::PluginManager,
     prometheus::{
@@ -89,10 +92,24 @@ impl ApiServer {
             "KBS storage backend"
         );
 
+        let cache_provider = ConfiguredCacheProvider::new(
+            config.cache.clone(),
+            Some(KvByteStoreProvider::new(storage_provider.clone())),
+        )?;
+        info!(
+            cache_type = ?config.cache.default.cache_type,
+            "KBS cache backend"
+        );
+        let jwks_cache = cache_provider.get_or_register(JWKS_CACHE_NAMESPACE).await?;
+
         let plugin_manager = PluginManager::new(config.plugins.clone(), storage_provider.clone())
             .await
             .map_err(|e| Error::PluginManagerInitialization { source: e })?;
-        let token_verifier = TokenVerifier::from_config(config.attestation_token.clone()).await?;
+        let token_verifier = TokenVerifier::from_config_with_jwks_cache(
+            config.attestation_token.clone(),
+            Some(&jwks_cache),
+        )
+        .await?;
 
         let policy_storage_backend = storage_provider
             .get_or_register(KBS_STORAGE_NAMESPACE)
@@ -108,7 +125,7 @@ impl ApiServer {
                 false,
             )
             .await?;
-        let admin = Admin::new(config.admin.clone()).await?;
+        let admin = Admin::new_with_jwks_cache(config.admin.clone(), Some(&jwks_cache)).await?;
 
         #[cfg(feature = "as")]
         let attestation_service = crate::attestation::AttestationService::new(
@@ -122,6 +139,7 @@ impl ApiServer {
             }),
             &config.storage_backend,
             storage_provider.clone(),
+            cache_provider.clone(),
         )
         .await?;
 

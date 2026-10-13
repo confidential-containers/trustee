@@ -55,7 +55,10 @@ struct StandardTokenClaims {
 }
 
 impl BearerJwtTokenVerifier {
-    pub async fn new(config: BearerJwtConfig) -> Result<Self> {
+    pub async fn new(
+        config: BearerJwtConfig,
+        jwks_cache: Option<&pluggable_cache::CacheInstance>,
+    ) -> Result<Self> {
         let mut trusted_issuers = Vec::new();
 
         for idp_config in config.identity_providers {
@@ -64,11 +67,12 @@ impl BearerJwtTokenVerifier {
                 idp_config.public_key_uri.into_iter().collect();
             let trusted_jwk_set_uris: Vec<String> = idp_config.jwk_set_uri.into_iter().collect();
 
-            let verifier = JwtVerifier::new(
+            let verifier = JwtVerifier::new_with_jwks_cache(
                 &trusted_jwk_set_uris,
                 &[],
                 &trusted_pem_public_key_uris,
                 false,
+                jwks_cache,
             )
             .await
             .map_err(|e| Error::InvalidTokenVerifierConfig(e.to_string()))?;

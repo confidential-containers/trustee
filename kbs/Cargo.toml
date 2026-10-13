@@ -87,6 +87,8 @@ educe.workspace = true
 hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
 kbs-types.workspace = true
+cache-storage = { path = "../deps/cache-storage" }
+pluggable-cache = "0.1"
 key-value-storage.path = "../deps/key-value-storage"
 kms = { workspace = true, default-features = false }
 mobc = { workspace = true, optional = true }

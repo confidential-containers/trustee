@@ -23,7 +23,7 @@ use serde_json::Value;
 use std::fs;
 use std::str::FromStr;
 
-use crate::crypto::jwk::read_jwk_from_uri;
+use crate::crypto::jwk::read_jwk_from_uri_cached;
 
 fn path_to_file_uri(path: &str) -> Result<String> {
     let abs = std::path::Path::new(path)
@@ -133,10 +133,29 @@ impl JwtVerifier {
         trusted_pem_public_key_uris: &[String],
         insecure_public_key_from_jwt: bool,
     ) -> Result<Self> {
+        Self::new_with_jwks_cache(
+            trusted_jwk_set_uris,
+            trusted_cert_paths,
+            trusted_pem_public_key_uris,
+            insecure_public_key_from_jwt,
+            None,
+        )
+        .await
+    }
+
+    /// Like [`JwtVerifier::new`], falling back to the JWK sets last fetched
+    /// into `jwks_cache` when a remote JWK set source is unreachable.
+    pub async fn new_with_jwks_cache(
+        trusted_jwk_set_uris: &[String],
+        trusted_cert_paths: &[String],
+        trusted_pem_public_key_uris: &[String],
+        insecure_public_key_from_jwt: bool,
+        jwks_cache: Option<&pluggable_cache::CacheInstance>,
+    ) -> Result<Self> {
         let mut trusted_jwk_sets = JwkSet { keys: Vec::new() };
         for uri in trusted_jwk_set_uris {
             let uri = normalize_jwk_set_source(&uri[..])?;
-            let mut jwk_set = read_jwk_from_uri(&uri[..]).await?;
+            let mut jwk_set = read_jwk_from_uri_cached(&uri[..], jwks_cache).await?;
             trusted_jwk_sets.keys.append(&mut jwk_set.keys);
         }
 

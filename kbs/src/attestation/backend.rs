@@ -184,6 +184,7 @@ impl AttestationService {
         session_storage_backend_type: KeyValueStorageType,
         storage_backend_config: &StorageBackendConfig,
         storage_provider: Arc<dyn StorageProvider>,
+        #[allow(unused_variables)] cache_provider: Arc<dyn pluggable_cache::CacheProvider>,
     ) -> Result<Self> {
         // A attestation-policy-selector without any policy would leave the evidence
         // unevaluated, which some Attestation Services accept silently.
@@ -204,6 +205,7 @@ impl AttestationService {
                     cfg,
                     storage_backend_config,
                     storage_provider.clone(),
+                    cache_provider,
                 )
                 .await
                 .map_err(|e| Error::AttestationServiceInitialization { source: e })?;

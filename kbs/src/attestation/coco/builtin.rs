@@ -11,6 +11,7 @@ use attestation_service::{
 };
 use kbs_types::{Challenge, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
+use pluggable_cache::CacheProvider;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -55,6 +56,7 @@ impl Config {
             attestation_token_broker: self.attestation_token_broker.clone(),
             verifier_config: self.verifier_config.clone(),
             storage_backend,
+            // The built-in AS shares the KBS cache provider instead.
             cache: Default::default(),
         }
     }
@@ -164,9 +166,13 @@ impl BuiltInCoCoAs {
         config: Config,
         storage_backend_config: &StorageBackendConfig,
         storage_provider: Arc<dyn StorageProvider>,
+        cache_provider: Arc<dyn CacheProvider>,
     ) -> Result<Self> {
         let config = config.derive_as_config(storage_backend_config);
-        let inner = RwLock::new(AttestationService::new(config, storage_provider).await?);
+        let inner = RwLock::new(
+            AttestationService::new_with_cache_provider(config, storage_provider, cache_provider)
+                .await?,
+        );
         Ok(Self { inner })
     }
 }

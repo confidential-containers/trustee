@@ -176,6 +176,12 @@ pub struct KbsConfig {
 
     #[serde(default)]
     pub plugins: Vec<PluginsConfig>,
+
+    /// Cache for data that is expensive to obtain, shared by KBS and the
+    /// built-in Attestation Service: e.g. VCEKs, DCAP collateral and trusted
+    /// JWK sets. Persistent and tiered caches use `storage_backend`.
+    #[serde(default)]
+    pub cache: pluggable_cache::CacheConfig,
 }
 
 /// The commit ref of the config documentation in the Trustee repository
@@ -394,6 +400,7 @@ mod tests {
             },
         },
         session_storage_type: None,
+        cache: Default::default(),
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
@@ -447,6 +454,7 @@ mod tests {
             },
         },
         session_storage_type: None,
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-1.toml",         KbsConfig {
@@ -499,6 +507,7 @@ mod tests {
             },
         },
         session_storage_type: None,
+        cache: Default::default(),
         plugins: vec![PluginsConfig::Sample(SampleConfig {
             item: "value1".into(),
         }),
@@ -540,6 +549,7 @@ mod tests {
             },
         },
         session_storage_type: Some(KeyValueStorageType::Memory),
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-2.toml",         KbsConfig {
@@ -584,6 +594,7 @@ mod tests {
             },
         },
         session_storage_type: Some(KeyValueStorageType::Memory),
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-2.toml",         KbsConfig {
@@ -618,6 +629,7 @@ mod tests {
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: Some(KeyValueStorageType::Memory),
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-grpc-3.toml",         KbsConfig {
@@ -643,6 +655,7 @@ mod tests {
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: None,
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/intel-ta-3.toml",         KbsConfig {
@@ -674,6 +687,7 @@ mod tests {
         admin: AdminConfig::DenyAll {},
         storage_backend: StorageBackendConfig::default(),
         session_storage_type: None,
+        cache: Default::default(),
         plugins: Vec::new(),
     })]
     #[case("test_data/configs/coco-as-builtin-3.toml",         KbsConfig {
@@ -717,6 +731,7 @@ mod tests {
             },
         },
         session_storage_type: None,
+        cache: Default::default(),
         plugins: vec![
             PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage),
         ],
