@@ -58,9 +58,8 @@ pub struct SettingsConfig {
     pub symmetric_key_size_max: usize,
     /// RSA key size in bits.
     pub rsa_bits: usize,
-    /// Allowed `"type/kind"` pairs for cert (e.g. `"cert/tls"`),
-    /// `"type/algorithm"` pairs for asymmetric (e.g. `"asymmetric/ed25519"`),
-    /// and plain `"symmetric"` for symmetric.
+    /// Allowed secret specs, `/`-joined: `"cert/{kind}/{algorithm}"` (e.g. `"cert/ca_signed/ed25519"`),
+    /// `"asymmetric/{algorithm}"` (e.g. `"asymmetric/rsa"`), and plain `"symmetric"`.
     pub supported_types: Vec<String>,
 }
 
@@ -73,86 +72,107 @@ pub struct CredGenConfig {
     pub settings: SettingsConfig,
 }
 
-// ---- SecretType / Algorithm enums ---------------------------------------
+// ---- SecretType / Kind / Algorithm enums --------------------------------
 
 /// High-level secret category (`secret_type` query parameter).
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum SecretType {
-    /// X.509 certificate; algorithm selects the specific kind.
+    /// X.509 certificate; selected by `kind` and `algorithm`.
     Cert,
-    /// Asymmetric key pair; algorithm selects ed25519 or rsa.
+    /// Asymmetric key pair; selected by `algorithm`.
     Asymmetric,
-    /// Symmetric key (raw random bytes).
+    /// Symmetric key (raw random bytes); sized by `size`.
     Symmetric,
 }
 
-/// Certificate kind (`algorithm` param for `secret_type=cert`).
+/// How a certificate is issued (`kind` param for `secret_type=cert`).
+/// Orthogonal to the key algorithm; `supported_types` selects which combinations are enabled.
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum CertKind {
+    /// Signed by a per-secret CA; delivered with the CA cert.
+    CaSigned,
+    /// Signed by its own key.
+    SelfSigned,
+}
+
+/// Key algorithm (`algorithm` param for `secret_type=cert` and `secret_type=asymmetric`).
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
-pub enum CertKind {
-    /// Ed25519 CA-signed bundle: CA cert + server cert + private key.
-    Tls,
-    /// P-256 (ECDSA) self-signed certificate.
+pub enum KeyAlgorithm {
+    Ed25519,
+    Rsa,
     P256,
 }
 
-/// Asymmetric key algorithm (`algorithm` param for `secret_type=asymmetric`).
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum AsymmetricAlgorithm {
-    Ed25519,
-    Rsa,
+impl KeyAlgorithm {
+    /// Generate a fresh private key. `rsa_bits` is only used for RSA.
+    fn generate(&self, rsa_bits: u32) -> Result<PKey<Private>> {
+        Ok(match self {
+            KeyAlgorithm::Ed25519 => PKey::generate_ed25519()?,
+            KeyAlgorithm::Rsa => PKey::from_rsa(Rsa::generate(rsa_bits)?)?,
+            KeyAlgorithm::P256 => {
+                let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)?;
+                PKey::from_ec_key(EcKey::generate(&group)?)?
+            }
+        })
+    }
 }
 
-/// Symmetric key algorithm (`algorithm` param for `secret_type=symmetric`). Defaults to `raw`.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum SymmetricAlgorithm {
-    /// Raw random bytes
-    Raw,
-}
-
-/// Fully-resolved `(secret_type, algorithm)` pair parsed from the query string.
+/// Fully-resolved secret specification parsed from the query string.
 #[derive(Clone, Debug)]
 pub enum SecretSpec {
-    Cert(CertKind),
-    Asymmetric(AsymmetricAlgorithm),
-    Symmetric(SymmetricAlgorithm, usize),
+    Cert(CertKind, KeyAlgorithm),
+    Asymmetric(KeyAlgorithm),
+    Symmetric(usize),
 }
 
 impl SecretSpec {
     /// `secret_type` string used in HTTP responses and store keys.
     pub fn type_str(&self) -> &'static str {
         match self {
-            SecretSpec::Cert(_) => "cert",
+            SecretSpec::Cert(..) => "cert",
             SecretSpec::Asymmetric(_) => "asymmetric",
-            SecretSpec::Symmetric(_, _) => "symmetric",
+            SecretSpec::Symmetric(_) => "symmetric",
         }
     }
 
-    /// Sub-type string used in HTTP responses and store keys.
-    /// For cert this is the kind (`tls`, `p256`); for asymmetric it is the algorithm (`ed25519`, `rsa`);
-    /// for symmetric it is the algorithm (`raw`).
-    pub fn subtype_str(&self) -> String {
+    /// Certificate kind, if this is a cert.
+    pub fn kind_str(&self) -> Option<String> {
         match self {
-            SecretSpec::Cert(k) => k.to_string(),
-            SecretSpec::Asymmetric(a) => a.to_string(),
-            SecretSpec::Symmetric(a, _) => a.to_string(),
+            SecretSpec::Cert(k, _) => Some(k.to_string()),
+            _ => None,
         }
     }
 
-    /// Key for the `supported_types` allowlist: `"type/subtype"` or just `"type"`.
+    /// Key algorithm, if this is a cert or an asymmetric key.
+    pub fn algorithm_str(&self) -> Option<String> {
+        match self {
+            SecretSpec::Cert(_, a) | SecretSpec::Asymmetric(a) => Some(a.to_string()),
+            SecretSpec::Symmetric(_) => None,
+        }
+    }
+
+    /// `[type, kind?, algorithm?]` path components, used for the store key and the allowlist.
+    fn parts(&self) -> Vec<String> {
+        std::iter::once(self.type_str().to_string())
+            .chain(self.kind_str())
+            .chain(self.algorithm_str())
+            .collect()
+    }
+
+    /// Key for the `supported_types` allowlist, e.g. `"cert/ca_signed/ed25519"`.
     pub fn allowlist_key(&self) -> String {
-        match self {
-            SecretSpec::Cert(k) => format!("cert/{}", k),
-            SecretSpec::Asymmetric(a) => format!("asymmetric/{}", a),
-            SecretSpec::Symmetric(_, _) => "symmetric".to_string(),
-        }
+        self.parts().join("/")
+    }
+
+    /// Store sub-key for a secret of this spec, e.g. `"grpc.cert.ca_signed.ed25519"`.
+    pub fn store_sub_key(&self, secret_name: &str) -> String {
+        format!("{}.{}", secret_name, self.parts().join("."))
     }
 }
 
@@ -208,8 +228,8 @@ impl Default for SettingsConfig {
             symmetric_key_size_max: 128,
             rsa_bits: 2048,
             supported_types: vec![
-                "cert/tls".to_string(),
-                "cert/p256".to_string(),
+                "cert/ca_signed/ed25519".to_string(),
+                "cert/self_signed/p256".to_string(),
                 "asymmetric/ed25519".to_string(),
                 "asymmetric/rsa".to_string(),
                 "symmetric".to_string(),
@@ -312,15 +332,19 @@ impl CredGenCA {
     }
 
     /// Build a self-signed CA certificate.
-    fn generate_ca_cert(ca_private_key: &PKey<Private>, cert_details: &TlsCertDetails) -> Result<X509> {
+    fn generate_ca_cert(
+        ca_private_key: &PKey<Private>,
+        cert_details: &TlsCertDetails,
+    ) -> Result<X509> {
         let name = Self::build_x509_name(cert_details)?;
-        let mut b = Self::init_x509_builder(&name, &name, ca_private_key, cert_details.validity_days)?;
+        let mut b =
+            Self::init_x509_builder(&name, &name, ca_private_key, cert_details.validity_days)?;
         b.sign(ca_private_key, MessageDigest::null())?;
         Ok(b.build())
     }
 
-    /// Build a self-signed P-256 (ECDSA) certificate. Uses SHA-256 digest (unlike Ed25519).
-    pub fn generate_p256_self_signed_cert(
+    /// Build a self-signed ECDSA (P-256) certificate. Uses SHA-256 digest (unlike Ed25519).
+    pub fn generate_self_signed_cert(
         key: &PKey<Private>,
         cert_details: &TlsCertDetails,
     ) -> Result<X509> {
@@ -344,40 +368,46 @@ impl CredGenCA {
 
 // ---- Store types --------------------------------------------------------
 
-/// Public material persisted after a `GET /credentials` call.
-/// Private keys are never stored, except the TLS CA key (needed to issue client certs).
+/// Public material persisted after a `GET /credentials` call, classified like [`SecretType`].
+/// Private keys are never stored, except the CA key of a `ca_signed` cert (needed to issue
+/// client certs).
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
 pub enum CredGenEntry {
-    Tls {
-        /// CA key/cert retained so `POST /client_creds` can issue a matching client cert.
-        ca_key: Vec<u8>,
-        ca_cert: Vec<u8>,
+    Cert(CertEntry),
+    Asymmetric {
+        /// Public key delivered to the owner via `POST /client_creds`.
+        public_key: Vec<u8>,
     },
     Symmetric {
         /// Shared key delivered to both server and client.
         key: Vec<u8>,
     },
-    Ed25519 {
-        /// Public key delivered to the owner via `POST /client_creds`.
-        public_key: Vec<u8>,
+}
+
+/// Stored data for a certificate, classified like [`CertKind`].
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CertEntry {
+    CaSigned {
+        /// CA key/cert retained so `POST /client_creds` can issue a matching client cert.
+        ca_key: Vec<u8>,
+        ca_cert: Vec<u8>,
     },
-    Rsa {
-        /// Public key delivered to the owner via `POST /client_creds`.
-        public_key: Vec<u8>,
-    },
-    P256 {
+    SelfSigned {
         /// Self-signed cert delivered to the owner via `POST /client_creds`.
         cert_pem: Vec<u8>,
     },
 }
 
 /// TEE-side response (encrypted). Contains private key material.
+/// `kind` is set for certs; `algorithm` for certs and asymmetric keys.
 #[derive(Debug, Serialize)]
 pub struct ServerSecret {
     pub secret_name: String,
     pub secret_type: String,
-    pub subtype: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub algorithm: Option<String>,
     #[serde(flatten)]
     pub material: ServerMaterial,
 }
@@ -385,31 +415,31 @@ pub struct ServerSecret {
 #[derive(Debug, Serialize)]
 #[serde(tag = "material_type")]
 pub enum ServerMaterial {
-    Tls {
+    Cert {
         private_key: Vec<u8>,
         cert: Vec<u8>,
-        ca_cert: Vec<u8>,
+        /// Present for `ca_signed` certs only.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ca_cert: Option<Vec<u8>>,
+    },
+    Asymmetric {
+        private_key: Vec<u8>,
     },
     Symmetric {
         key: Vec<u8>,
     },
-    Ed25519 {
-        private_key: Vec<u8>,
-    },
-    Rsa {
-        private_key: Vec<u8>,
-    },
-    P256 {
-        private_key: Vec<u8>,
-    },
 }
 
-/// Owner-side response (plaintext). Contains only public material.
+/// Owner-side response (plaintext). Contains only public material for asymmetric
+/// secrets and self-signed certs. Same `kind`/`algorithm` convention as [`ServerSecret`].
 #[derive(Debug, Serialize)]
 pub struct ClientSecret {
     pub secret_name: String,
     pub secret_type: String,
-    pub subtype: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub algorithm: Option<String>,
     #[serde(flatten)]
     pub material: ClientMaterial,
 }
@@ -417,24 +447,21 @@ pub struct ClientSecret {
 #[derive(Debug, Serialize)]
 #[serde(tag = "material_type")]
 pub enum ClientMaterial {
-    Tls {
-        /// Freshly-issued client key and cert, plus the shared CA cert.
-        private_key: Vec<u8>,
+    Cert {
         cert: Vec<u8>,
-        ca_cert: Vec<u8>,
+        /// Freshly-issued client key (`ca_signed` certs only).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        private_key: Option<Vec<u8>>,
+        /// Shared CA cert (`ca_signed` certs only).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ca_cert: Option<Vec<u8>>,
+    },
+    Asymmetric {
+        public_key: Vec<u8>,
     },
     Symmetric {
         /// Same bytes as delivered to the server.
         key: Vec<u8>,
-    },
-    Ed25519 {
-        public_key: Vec<u8>,
-    },
-    Rsa {
-        public_key: Vec<u8>,
-    },
-    P256 {
-        cert_pem: Vec<u8>,
     },
 }
 
@@ -474,12 +501,9 @@ impl CredGenPlugin {
     /// Build the identity key from TEE-measured `init_data`.
     /// Uses attestation-bound data so query-string forgery cannot overwrite another guest's entry.
     /// Errors if `init_data` is absent or any [`IDENTITY_FIELDS`] field is missing/empty.
-    fn identity_key_from_init_data(
-        &self,
-        init_data: Option<&serde_json::Value>,
-    ) -> Result<String> {
-        let claims = init_data
-            .ok_or_else(|| anyhow!("init_data is required for credential generation"))?;
+    fn identity_key_from_init_data(&self, init_data: Option<&serde_json::Value>) -> Result<String> {
+        let claims =
+            init_data.ok_or_else(|| anyhow!("init_data is required for credential generation"))?;
 
         let mut parts = Vec::with_capacity(IDENTITY_FIELDS.len());
         for key in IDENTITY_FIELDS {
@@ -516,8 +540,8 @@ impl CredGenPlugin {
     }
 
     /// Parse and validate `secret_name`, `secret_type`, and type-specific sub-params.
-    /// Returns `(secret_name, SecretSpec, spec_sub_key)` where
-    /// `spec_sub_key = "{secret_name}.{type}.{subtype}"` (e.g. `"grpc.cert.tls"`).
+    /// Returns `(secret_name, SecretSpec, spec_sub_key)` where `spec_sub_key` is
+    /// `"{secret_name}.{type}[.{kind}][.{algorithm}]"` (e.g. `"grpc.cert.ca_signed.ed25519"`).
     fn parse_spec_params(
         &self,
         query: &HashMap<String, String>,
@@ -533,52 +557,104 @@ impl CredGenPlugin {
             .filter(|v| !v.trim().is_empty())
             .ok_or_else(|| anyhow!("Missing or empty query parameter: secret_type"))?;
 
-        let secret_type = type_str
-            .parse::<SecretType>()
-            .map_err(|_| anyhow!("Unknown secret_type: '{}'. Valid values: cert, asymmetric, symmetric", type_str))?;
+        let secret_type = type_str.parse::<SecretType>().map_err(|_| {
+            anyhow!(
+                "Unknown secret_type: '{}'. Valid values: cert, asymmetric, symmetric",
+                type_str
+            )
+        })?;
 
-        let kind_str = query.get("kind").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-        let algo_str = query.get("algorithm").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-        let size_str = query.get("size").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+        let kind_str = query
+            .get("kind")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let algo_str = query
+            .get("algorithm")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let size_str = query
+            .get("size")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
 
         let spec = match secret_type {
             SecretType::Cert => {
                 let k = kind_str
-                    .ok_or_else(|| anyhow!("secret_type 'cert' requires 'kind' (tls, p256)"))?
+                    .ok_or_else(|| {
+                        anyhow!("secret_type 'cert' requires 'kind' (ca_signed, self_signed)")
+                    })?
                     .parse::<CertKind>()
-                    .map_err(|_| anyhow!("Unknown kind for cert. Valid values: tls, p256"))?;
-                SecretSpec::Cert(k)
+                    .map_err(|_| {
+                        anyhow!("Unknown kind for cert. Valid values: ca_signed, self_signed")
+                    })?;
+                let a = algo_str
+                    .ok_or_else(|| {
+                        anyhow!("secret_type 'cert' requires 'algorithm' (ed25519, p256)")
+                    })?
+                    .parse::<KeyAlgorithm>()
+                    .map_err(|_| anyhow!("Unknown algorithm. Valid values: ed25519, rsa, p256"))?;
+                // Only these combinations are implemented.
+                if !matches!(
+                    (&k, &a),
+                    (CertKind::CaSigned, KeyAlgorithm::Ed25519)
+                        | (CertKind::SelfSigned, KeyAlgorithm::P256)
+                ) {
+                    bail!(
+                        "cert kind '{}' with algorithm '{}' is not implemented",
+                        k,
+                        a
+                    );
+                }
+                SecretSpec::Cert(k, a)
             }
             SecretType::Asymmetric => {
                 let a = algo_str
-                    .ok_or_else(|| anyhow!("secret_type 'asymmetric' requires 'algorithm' (ed25519, rsa)"))?
-                    .parse::<AsymmetricAlgorithm>()
-                    .map_err(|_| anyhow!("Unknown algorithm for asymmetric. Valid values: ed25519, rsa"))?;
+                    .ok_or_else(|| {
+                        anyhow!("secret_type 'asymmetric' requires 'algorithm' (ed25519, rsa)")
+                    })?
+                    .parse::<KeyAlgorithm>()
+                    .map_err(|_| anyhow!("Unknown algorithm. Valid values: ed25519, rsa, p256"))?;
                 SecretSpec::Asymmetric(a)
             }
             SecretType::Symmetric => {
                 let size = match size_str {
                     Some(s) => {
-                        let n: usize = s.parse()
-                            .map_err(|_| anyhow!("'size' must be a positive integer, got '{}'", s))?;
-                        if n == 0 { bail!("'size' must be at least 1"); }
+                        let n: usize = s.parse().map_err(|_| {
+                            anyhow!("'size' must be a positive integer, got '{}'", s)
+                        })?;
+                        if n == 0 {
+                            bail!("'size' must be at least 1");
+                        }
                         if n > self.limits_config.symmetric_key_size_max {
-                            bail!("'size' {} exceeds maximum {}", n, self.limits_config.symmetric_key_size_max);
+                            bail!(
+                                "'size' {} exceeds maximum {}",
+                                n,
+                                self.limits_config.symmetric_key_size_max
+                            );
                         }
                         n
                     }
                     None => DEFAULT_SYMMETRIC_KEY_SIZE,
                 };
-                SecretSpec::Symmetric(SymmetricAlgorithm::Raw, size)
+                SecretSpec::Symmetric(size)
             }
         };
 
         let allowlist_key = spec.allowlist_key();
-        if !self.limits_config.supported_types.iter().any(|t| t == &allowlist_key) {
-            bail!("'{}' is not in supported_types {:?}", allowlist_key, self.limits_config.supported_types);
+        if !self
+            .limits_config
+            .supported_types
+            .iter()
+            .any(|t| t == &allowlist_key)
+        {
+            bail!(
+                "'{}' is not in supported_types {:?}",
+                allowlist_key,
+                self.limits_config.supported_types
+            );
         }
 
-        let spec_sub_key = format!("{}.{}.{}", secret_name, spec.type_str(), spec.subtype_str());
+        let spec_sub_key = spec.store_sub_key(&secret_name);
 
         Ok((secret_name, spec, spec_sub_key))
     }
@@ -596,7 +672,8 @@ impl CredGenPlugin {
         let (secret_name, spec, spec_key) = self.parse_spec_params(query)?;
 
         let (entry, server_material) = match &spec {
-            SecretSpec::Cert(CertKind::Tls) => {
+            // `parse_spec_params` guarantees the algorithm is Ed25519 for `ca_signed`.
+            SecretSpec::Cert(CertKind::CaSigned, _) => {
                 // New CA each call; stored so client certs chain to the same root.
                 let ca = CredGenCA::new(&self.ca_config)?;
 
@@ -604,59 +681,51 @@ impl CredGenPlugin {
 
                 let (key, cert) = ca.generate_credentials(&server_config)?;
 
-                let entry = CredGenEntry::Tls {
+                let entry = CredGenEntry::Cert(CertEntry::CaSigned {
                     ca_key: ca.key.clone(),
                     ca_cert: ca.cert.clone(),
-                };
-                let material = ServerMaterial::Tls {
+                });
+                let material = ServerMaterial::Cert {
                     private_key: key.private_key_to_pem_pkcs8()?,
                     cert: cert.to_pem()?,
-                    ca_cert: ca.cert,
+                    ca_cert: Some(ca.cert),
                 };
                 (entry, material)
             }
 
-            SecretSpec::Cert(CertKind::P256) => {
-                let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)?;
-                let ec_key = EcKey::generate(&group)?;
-                let key = PKey::from_ec_key(ec_key)?;
+            // `parse_spec_params` guarantees the algorithm is P-256 for `self_signed`.
+            SecretSpec::Cert(CertKind::SelfSigned, algorithm) => {
+                let key = algorithm.generate(self.limits_config.rsa_bits as u32)?;
                 let private_key = key.private_key_to_pem_pkcs8()?;
 
                 let cert_details = self.load_cert_config(&id_key, "server").await?;
-                let cert = CredGenCA::generate_p256_self_signed_cert(&key, &cert_details)?;
+                let cert = CredGenCA::generate_self_signed_cert(&key, &cert_details)?;
                 let cert_pem = cert.to_pem()?;
 
                 // Store cert only; private key is not needed after delivery.
-                let entry = CredGenEntry::P256 { cert_pem };
-                let material = ServerMaterial::P256 { private_key };
+                let entry = CredGenEntry::Cert(CertEntry::SelfSigned {
+                    cert_pem: cert_pem.clone(),
+                });
+                let material = ServerMaterial::Cert {
+                    private_key,
+                    cert: cert_pem,
+                    ca_cert: None,
+                };
                 (entry, material)
             }
 
-            SecretSpec::Asymmetric(AsymmetricAlgorithm::Ed25519) => {
-                let key = PKey::generate_ed25519()?;
+            SecretSpec::Asymmetric(algorithm) => {
+                let key = algorithm.generate(self.limits_config.rsa_bits as u32)?;
                 let private_key = key.private_key_to_pem_pkcs8()?;
                 let public_key = key.public_key_to_pem()?;
 
                 // Store public key only; private key is not needed after delivery.
-                let entry = CredGenEntry::Ed25519 { public_key };
-                let material = ServerMaterial::Ed25519 { private_key };
+                let entry = CredGenEntry::Asymmetric { public_key };
+                let material = ServerMaterial::Asymmetric { private_key };
                 (entry, material)
             }
 
-            SecretSpec::Asymmetric(AsymmetricAlgorithm::Rsa) => {
-                let bits = self.limits_config.rsa_bits as u32;
-                let rsa = Rsa::generate(bits)?;
-                let key = PKey::from_rsa(rsa)?;
-                let private_key = key.private_key_to_pem_pkcs8()?;
-                let public_key = key.public_key_to_pem()?;
-
-                // Store public key only; private key is not needed after delivery.
-                let entry = CredGenEntry::Rsa { public_key };
-                let material = ServerMaterial::Rsa { private_key };
-                (entry, material)
-            }
-
-            SecretSpec::Symmetric(SymmetricAlgorithm::Raw, size) => {
+            SecretSpec::Symmetric(size) => {
                 let mut key = vec![0u8; *size];
                 openssl::rand::rand_bytes(&mut key)?;
 
@@ -679,7 +748,8 @@ impl CredGenPlugin {
         let response = ServerSecret {
             secret_name,
             secret_type: spec.type_str().to_string(),
-            subtype: spec.subtype_str(),
+            kind: spec.kind_str(),
+            algorithm: spec.algorithm_str(),
             material: server_material,
         };
         Ok(serde_json::to_vec(&response)?)
@@ -712,32 +782,32 @@ impl CredGenPlugin {
             serde_json::from_slice(&raw).context("credgen: failed to deserialize entry")?;
 
         let client_material: ClientMaterial = match &entry {
-            CredGenEntry::Tls { ca_key, ca_cert } => {
+            CredGenEntry::Cert(CertEntry::CaSigned { ca_key, ca_cert }) => {
                 // Issue a fresh client cert from the CA stored by the last GET /credentials call.
                 let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
                 let (key, cert) = ca.generate_credentials(&client_config)?;
-                ClientMaterial::Tls {
-                    private_key: key.private_key_to_pem_pkcs8()?,
+                ClientMaterial::Cert {
                     cert: cert.to_pem()?,
-                    ca_cert: ca.cert.clone(),
+                    private_key: Some(key.private_key_to_pem_pkcs8()?),
+                    ca_cert: Some(ca.cert.clone()),
                 }
             }
+            CredGenEntry::Cert(CertEntry::SelfSigned { cert_pem }) => ClientMaterial::Cert {
+                cert: cert_pem.clone(),
+                private_key: None,
+                ca_cert: None,
+            },
+            CredGenEntry::Asymmetric { public_key } => ClientMaterial::Asymmetric {
+                public_key: public_key.clone(),
+            },
             CredGenEntry::Symmetric { key } => ClientMaterial::Symmetric { key: key.clone() },
-            CredGenEntry::Ed25519 { public_key, .. } => {
-                ClientMaterial::Ed25519 { public_key: public_key.clone() }
-            }
-            CredGenEntry::Rsa { public_key, .. } => {
-                ClientMaterial::Rsa { public_key: public_key.clone() }
-            }
-            CredGenEntry::P256 { cert_pem, .. } => {
-                ClientMaterial::P256 { cert_pem: cert_pem.clone() }
-            }
         };
 
         let response = ClientSecret {
             secret_name,
             secret_type: spec.type_str().to_string(),
-            subtype: spec.subtype_str(),
+            kind: spec.kind_str(),
+            algorithm: spec.algorithm_str(),
             material: client_material,
         };
         Ok(serde_json::to_vec(&response)?)
@@ -745,7 +815,11 @@ impl CredGenPlugin {
 
     /// `POST /list_pods` — return a JSON array of all identity keys in the store.
     async fn list_pods(&self) -> Result<Vec<u8>> {
-        let all_keys = self.store.list().await.context("credgen: store list failed")?;
+        let all_keys = self
+            .store
+            .list()
+            .await
+            .context("credgen: store list failed")?;
         // Keys are "{id_key}/…"; extract unique prefixes.
         let mut ids: Vec<String> = all_keys
             .into_iter()
@@ -758,8 +832,15 @@ impl CredGenPlugin {
     /// Load cert config for `role` (`"server"` or `"client"`), falling back to defaults.
     async fn load_cert_config(&self, id_key: &str, role: &str) -> Result<TlsCertDetails> {
         let config_key = format!("{}/__config.{}", id_key, role);
-        match self.store.get(&config_key).await.context("credgen: failed to read cert config")? {
-            Some(raw) => serde_json::from_slice(&raw).context("credgen: failed to deserialize cert config"),
+        match self
+            .store
+            .get(&config_key)
+            .await
+            .context("credgen: failed to read cert config")?
+        {
+            Some(raw) => {
+                serde_json::from_slice(&raw).context("credgen: failed to deserialize cert config")
+            }
             None => {
                 let mut d = TlsCertDetails::default();
                 d.set_common_name(role);
@@ -785,7 +866,11 @@ impl CredGenPlugin {
         if let Some(updates) = wrapper.server {
             let config_key = format!("{}/__config.server", id_key);
             self.store
-                .set(&config_key, &serde_json::to_vec(&updates)?, SetParameters { overwrite: true })
+                .set(
+                    &config_key,
+                    &serde_json::to_vec(&updates)?,
+                    SetParameters { overwrite: true },
+                )
                 .await
                 .context("credgen: failed to write server cert config")?;
         }
@@ -793,7 +878,11 @@ impl CredGenPlugin {
         if let Some(updates) = wrapper.client {
             let config_key = format!("{}/__config.client", id_key);
             self.store
-                .set(&config_key, &serde_json::to_vec(&updates)?, SetParameters { overwrite: true })
+                .set(
+                    &config_key,
+                    &serde_json::to_vec(&updates)?,
+                    SetParameters { overwrite: true },
+                )
                 .await
                 .context("credgen: failed to write client cert config")?;
         }
@@ -862,7 +951,9 @@ impl ClientPlugin for CredGenPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use key_value_storage::{KvStorageProvider, StorageBackendConfig, KeyValueStorageType, KeyValueStorageStructConfig};
+    use key_value_storage::{
+        KeyValueStorageStructConfig, KeyValueStorageType, KvStorageProvider, StorageBackendConfig,
+    };
     use serde_json::json;
 
     // ---- helpers --------------------------------------------------------
@@ -881,22 +972,37 @@ mod tests {
     }
 
     fn query(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     fn identity_query(name: &str, ns: &str) -> HashMap<String, String> {
         query(&[("name", name), ("ns", ns)])
     }
 
-    fn cert_query(name: &str, ns: &str, secret_name: &str, kind: &str) -> HashMap<String, String> {
+    fn cert_query(
+        name: &str,
+        ns: &str,
+        secret_name: &str,
+        kind: &str,
+        algorithm: &str,
+    ) -> HashMap<String, String> {
         let mut q = identity_query(name, ns);
         q.insert("secret_name".into(), secret_name.into());
         q.insert("secret_type".into(), "cert".into());
         q.insert("kind".into(), kind.into());
+        q.insert("algorithm".into(), algorithm.into());
         q
     }
 
-    fn asym_query(name: &str, ns: &str, secret_name: &str, algorithm: &str) -> HashMap<String, String> {
+    fn asym_query(
+        name: &str,
+        ns: &str,
+        secret_name: &str,
+        algorithm: &str,
+    ) -> HashMap<String, String> {
         let mut q = identity_query(name, ns);
         q.insert("secret_name".into(), secret_name.into());
         q.insert("secret_type".into(), "asymmetric".into());
@@ -904,7 +1010,12 @@ mod tests {
         q
     }
 
-    fn sym_query(name: &str, ns: &str, secret_name: &str, size: Option<usize>) -> HashMap<String, String> {
+    fn sym_query(
+        name: &str,
+        ns: &str,
+        secret_name: &str,
+        size: Option<usize>,
+    ) -> HashMap<String, String> {
         let mut q = identity_query(name, ns);
         q.insert("secret_name".into(), secret_name.into());
         q.insert("secret_type".into(), "symmetric".into());
@@ -921,24 +1032,26 @@ mod tests {
     // ---- parse_spec_params ----------------------------------------------
 
     #[tokio::test]
-    async fn parse_spec_cert_tls() {
+    async fn parse_spec_cert_ca_signed() {
         let p = default_plugin().await;
-        let q = cert_query("pod", "default", "grpc", "tls");
+        let q = cert_query("pod", "default", "grpc", "ca_signed", "ed25519");
         let (name, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(name, "grpc");
         assert_eq!(spec.type_str(), "cert");
-        assert_eq!(spec.subtype_str(), "tls");
-        assert_eq!(key, "grpc.cert.tls");
+        assert_eq!(spec.kind_str().as_deref(), Some("ca_signed"));
+        assert_eq!(spec.algorithm_str().as_deref(), Some("ed25519"));
+        assert_eq!(key, "grpc.cert.ca_signed.ed25519");
     }
 
     #[tokio::test]
-    async fn parse_spec_cert_p256() {
+    async fn parse_spec_cert_self_signed() {
         let p = default_plugin().await;
-        let q = cert_query("pod", "default", "mykey", "p256");
+        let q = cert_query("pod", "default", "mykey", "self_signed", "p256");
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(spec.type_str(), "cert");
-        assert_eq!(spec.subtype_str(), "p256");
-        assert_eq!(key, "mykey.cert.p256");
+        assert_eq!(spec.kind_str().as_deref(), Some("self_signed"));
+        assert_eq!(spec.algorithm_str().as_deref(), Some("p256"));
+        assert_eq!(key, "mykey.cert.self_signed.p256");
     }
 
     #[tokio::test]
@@ -947,7 +1060,8 @@ mod tests {
         let q = asym_query("pod", "default", "k", "ed25519");
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
         assert_eq!(spec.type_str(), "asymmetric");
-        assert_eq!(spec.subtype_str(), "ed25519");
+        assert_eq!(spec.kind_str(), None);
+        assert_eq!(spec.algorithm_str().as_deref(), Some("ed25519"));
         assert_eq!(key, "k.asymmetric.ed25519");
     }
 
@@ -956,7 +1070,7 @@ mod tests {
         let p = default_plugin().await;
         let q = asym_query("pod", "default", "k", "rsa");
         let (_, spec, _) = p.parse_spec_params(&q).unwrap();
-        assert_eq!(spec.subtype_str(), "rsa");
+        assert_eq!(spec.algorithm_str().as_deref(), Some("rsa"));
     }
 
     #[tokio::test]
@@ -964,9 +1078,10 @@ mod tests {
         let p = default_plugin().await;
         let q = sym_query("pod", "default", "k", None);
         let (_, spec, key) = p.parse_spec_params(&q).unwrap();
-        assert_eq!(spec.subtype_str(), "raw");
-        assert_eq!(key, "k.symmetric.raw");
-        assert!(matches!(spec, SecretSpec::Symmetric(_, s) if s == DEFAULT_SYMMETRIC_KEY_SIZE));
+        assert_eq!(spec.kind_str(), None);
+        assert_eq!(spec.algorithm_str(), None);
+        assert_eq!(key, "k.symmetric");
+        assert!(matches!(spec, SecretSpec::Symmetric(s) if s == DEFAULT_SYMMETRIC_KEY_SIZE));
     }
 
     #[tokio::test]
@@ -975,7 +1090,7 @@ mod tests {
         let mut q = sym_query("pod", "default", "k", None);
         q.insert("size".into(), "16".into());
         let (_, spec, _) = p.parse_spec_params(&q).unwrap();
-        assert!(matches!(spec, SecretSpec::Symmetric(_, 16)));
+        assert!(matches!(spec, SecretSpec::Symmetric(16)));
     }
 
     #[tokio::test]
@@ -997,14 +1112,25 @@ mod tests {
     #[tokio::test]
     async fn parse_spec_missing_secret_name_errors() {
         let p = default_plugin().await;
-        let q = query(&[("name", "pod"), ("ns", "default"), ("secret_type", "cert"), ("kind", "tls")]);
+        let q = query(&[
+            ("name", "pod"),
+            ("ns", "default"),
+            ("secret_type", "cert"),
+            ("kind", "ca_signed"),
+            ("algorithm", "ed25519"),
+        ]);
         assert!(p.parse_spec_params(&q).is_err());
     }
 
     #[tokio::test]
     async fn parse_spec_unknown_type_errors() {
         let p = default_plugin().await;
-        let q = query(&[("name", "pod"), ("ns", "default"), ("secret_name", "k"), ("secret_type", "unknown")]);
+        let q = query(&[
+            ("name", "pod"),
+            ("ns", "default"),
+            ("secret_name", "k"),
+            ("secret_type", "unknown"),
+        ]);
         assert!(p.parse_spec_params(&q).is_err());
     }
 
@@ -1027,9 +1153,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn parse_spec_cert_missing_algorithm_errors() {
+        let p = default_plugin().await;
+        let mut q = cert_query("pod", "default", "k", "ca_signed", "ed25519");
+        q.remove("algorithm");
+        assert!(p.parse_spec_params(&q).is_err());
+    }
+
+    #[tokio::test]
+    async fn parse_spec_cert_unimplemented_combination_errors() {
+        let p = default_plugin().await;
+        assert!(p
+            .parse_spec_params(&cert_query("pod", "default", "k", "ca_signed", "p256"))
+            .is_err());
+        assert!(p
+            .parse_spec_params(&cert_query("pod", "default", "k", "self_signed", "ed25519"))
+            .is_err());
+    }
+
+    #[tokio::test]
     async fn parse_spec_not_in_allowlist_errors() {
         let mut p = default_plugin().await;
-        p.limits_config.supported_types = vec!["cert/tls".to_string()];
+        p.limits_config.supported_types = vec!["cert/ca_signed/ed25519".to_string()];
         let q = asym_query("pod", "default", "k", "ed25519");
         assert!(p.parse_spec_params(&q).is_err());
     }
@@ -1075,7 +1220,7 @@ mod tests {
         let key = openssl::pkey::PKey::from_ec_key(ec_key).unwrap();
         let mut details = TlsCertDetails::default();
         details.set_common_name("test");
-        let cert = CredGenCA::generate_p256_self_signed_cert(&key, &details).unwrap();
+        let cert = CredGenCA::generate_self_signed_cert(&key, &details).unwrap();
         assert!(!cert.to_pem().unwrap().is_empty());
     }
 
@@ -1085,13 +1230,14 @@ mod tests {
     async fn cert_tls_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = cert_query("pod1", "default", "grpc", "tls");
+        let q = cert_query("pod1", "default", "grpc", "ca_signed", "ed25519");
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
         assert_eq!(server["secret_type"], "cert");
-        assert_eq!(server["subtype"], "tls");
-        assert_eq!(server["material_type"], "Tls");
+        assert_eq!(server["kind"], "ca_signed");
+        assert_eq!(server["algorithm"], "ed25519");
+        assert_eq!(server["material_type"], "Cert");
         assert!(server["private_key"].is_array());
         assert!(server["cert"].is_array());
         assert!(server["ca_cert"].is_array());
@@ -1099,8 +1245,9 @@ mod tests {
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
         assert_eq!(client["secret_type"], "cert");
-        assert_eq!(client["subtype"], "tls");
-        assert_eq!(client["material_type"], "Tls");
+        assert_eq!(client["kind"], "ca_signed");
+        assert_eq!(client["algorithm"], "ed25519");
+        assert_eq!(client["material_type"], "Cert");
         assert!(client["private_key"].is_array());
         assert!(client["cert"].is_array());
         assert_eq!(client["ca_cert"], server["ca_cert"]);
@@ -1110,18 +1257,23 @@ mod tests {
     async fn cert_p256_roundtrip() {
         let p = default_plugin().await;
         let id = init_data("pod1", "default");
-        let q = cert_query("pod1", "default", "mycert", "p256");
+        let q = cert_query("pod1", "default", "mycert", "self_signed", "p256");
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["subtype"], "p256");
-        assert_eq!(server["material_type"], "P256");
+        assert_eq!(server["kind"], "self_signed");
+        assert_eq!(server["algorithm"], "p256");
+        assert_eq!(server["material_type"], "Cert");
         assert!(server["private_key"].is_array());
+        assert!(server["cert"].is_array());
+        assert!(server.get("ca_cert").is_none());
 
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
-        assert_eq!(client["material_type"], "P256");
-        assert!(client["cert_pem"].is_array());
+        assert_eq!(client["material_type"], "Cert");
+        assert_eq!(client["cert"], server["cert"]);
+        assert!(client.get("private_key").is_none());
+        assert!(client.get("ca_cert").is_none());
     }
 
     #[tokio::test]
@@ -1132,13 +1284,14 @@ mod tests {
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["subtype"], "ed25519");
-        assert_eq!(server["material_type"], "Ed25519");
+        assert_eq!(server["algorithm"], "ed25519");
+        assert!(server.get("kind").is_none());
+        assert_eq!(server["material_type"], "Asymmetric");
         assert!(server["private_key"].is_array());
 
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
-        assert_eq!(client["material_type"], "Ed25519");
+        assert_eq!(client["material_type"], "Asymmetric");
         assert!(client["public_key"].is_array());
     }
 
@@ -1150,12 +1303,13 @@ mod tests {
 
         let server_bytes = p.build_server_response(&q, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-        assert_eq!(server["material_type"], "Rsa");
+        assert_eq!(server["algorithm"], "rsa");
+        assert_eq!(server["material_type"], "Asymmetric");
         assert!(server["private_key"].is_array());
 
         let client_bytes = p.build_client_response(&q).await.unwrap();
         let client: serde_json::Value = serde_json::from_slice(&client_bytes).unwrap();
-        assert_eq!(client["material_type"], "Rsa");
+        assert_eq!(client["material_type"], "Asymmetric");
         assert!(client["public_key"].is_array());
     }
 
@@ -1190,22 +1344,22 @@ mod tests {
     #[tokio::test]
     async fn client_creds_before_server_errors() {
         let p = default_plugin().await;
-        let q = cert_query("pod1", "default", "grpc", "tls");
+        let q = cert_query("pod1", "default", "grpc", "ca_signed", "ed25519");
         assert!(p.build_client_response(&q).await.is_err());
     }
 
     #[tokio::test]
     async fn server_response_requires_init_data() {
         let p = default_plugin().await;
-        let q = cert_query("pod1", "default", "grpc", "tls");
+        let q = cert_query("pod1", "default", "grpc", "ca_signed", "ed25519");
         assert!(p.build_server_response(&q, None).await.is_err());
     }
 
     #[tokio::test]
     async fn identities_are_isolated() {
         let p = default_plugin().await;
-        let q1 = cert_query("pod1", "default", "grpc", "tls");
-        let q2 = cert_query("pod2", "default", "grpc", "tls");
+        let q1 = cert_query("pod1", "default", "grpc", "ca_signed", "ed25519");
+        let q2 = cert_query("pod2", "default", "grpc", "ca_signed", "ed25519");
 
         let id1 = init_data("pod1", "default");
         p.build_server_response(&q1, Some(&id1)).await.unwrap();
@@ -1224,7 +1378,8 @@ mod tests {
         let body = serde_json::to_vec(&serde_json::json!({
             "server": { "common_name": "my-server", "validity_days": 30 },
             "client": { "common_name": "my-client", "validity_days": 15 }
-        })).unwrap();
+        }))
+        .unwrap();
 
         p.update_cert_details(&q, &body).await.unwrap();
 
@@ -1252,11 +1407,12 @@ mod tests {
 
         let body = serde_json::to_vec(&serde_json::json!({
             "server": { "common_name": "custom-cn" }
-        })).unwrap();
+        }))
+        .unwrap();
         p.update_cert_details(&q, &body).await.unwrap();
 
         let id = init_data("pod1", "default");
-        let sq = cert_query("pod1", "default", "grpc", "tls");
+        let sq = cert_query("pod1", "default", "grpc", "ca_signed", "ed25519");
         let server_bytes = p.build_server_response(&sq, Some(&id)).await.unwrap();
         let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
 
@@ -1268,7 +1424,8 @@ mod tests {
             .map(|b| b.as_u64().unwrap() as u8)
             .collect::<Vec<u8>>();
         let cert = openssl::x509::X509::from_pem(&cert_der).unwrap();
-        let cn = cert.subject_name()
+        let cn = cert
+            .subject_name()
             .entries_by_nid(openssl::nid::Nid::COMMONNAME)
             .next()
             .unwrap()
@@ -1286,8 +1443,18 @@ mod tests {
 
         let id1 = init_data("pod1", "default");
         let id2 = init_data("pod2", "prod");
-        p.build_server_response(&cert_query("pod1", "default", "g", "tls"), Some(&id1)).await.unwrap();
-        p.build_server_response(&cert_query("pod2", "prod", "g", "tls"), Some(&id2)).await.unwrap();
+        p.build_server_response(
+            &cert_query("pod1", "default", "g", "ca_signed", "ed25519"),
+            Some(&id1),
+        )
+        .await
+        .unwrap();
+        p.build_server_response(
+            &cert_query("pod2", "prod", "g", "ca_signed", "ed25519"),
+            Some(&id2),
+        )
+        .await
+        .unwrap();
 
         let list_bytes = p.list_pods().await.unwrap();
         let ids: Vec<String> = serde_json::from_slice(&list_bytes).unwrap();

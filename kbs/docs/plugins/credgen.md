@@ -6,15 +6,14 @@ The CredGen plugin dynamically generates cryptographic credentials for confident
 
 Credentials are requested by the confidential VM (server side) via `GET /credentials` and retrieved by the workload owner (client side) via `POST /client_creds`. The plugin supports three secret categories:
 
-| `secret_type` | Sub-type param | Value | What is generated |
-|---|---|---|---|
-| `cert` | `kind` | `tls` | Ed25519 CA-signed TLS bundle (CA cert + server cert + private key) |
-| `cert` | `kind` | `p256` | P-256 (ECDSA) self-signed certificate + private key |
-| `asymmetric` | `algorithm` | `ed25519` | Ed25519 key pair |
-| `asymmetric` | `algorithm` | `rsa` | RSA key pair |
-| `symmetric` | `size` *(optional)* | bytes | Raw random bytes (default: 32 bytes; max: `symmetric_key_size_max`) |
+| `secret_type` | Parameters | What is generated |
+|---|---|---|
+| `cert` | `kind=ca_signed`, `algorithm=ed25519` | Ed25519 certificate signed by a per-secret CA (CA cert + server cert + private key) |
+| `cert` | `kind=self_signed`, `algorithm=p256` | P-256 (ECDSA) self-signed certificate + private key |
+| `asymmetric` | `algorithm=ed25519` or `rsa` | Key pair |
+| `symmetric` | `size` *(optional)* | Raw random bytes (default: 32 bytes; max: `symmetric_key_size_max`) |
 
-Each `secret_type` uses a dedicated sub-type parameter: `kind` for cert, `algorithm` for asymmetric, and `size` for symmetric. Passing the wrong parameter for a given type is an error.
+The parameters are orthogonal: `kind` describes how a certificate is issued, and `algorithm` is the key algorithm (shared by `cert` and `asymmetric`). Only the `cert` combinations listed above are currently implemented; other combinations are rejected. Passing a parameter that does not belong to the given `secret_type` is an error.
 
 Credentials are persisted via the KBS kvstorage backend and survive restarts.
 
@@ -77,7 +76,7 @@ validity_days = 365
 [plugins.credgen.settings]
 symmetric_key_size_max = 128
 rsa_bits = 2048
-supported_types = ["cert/tls", "cert/p256", "asymmetric/ed25519", "asymmetric/rsa", "symmetric"]
+supported_types = ["cert/ca_signed/ed25519", "cert/self_signed/p256", "asymmetric/ed25519", "asymmetric/rsa", "symmetric"]
 ```
 
 #### Configuration Reference
@@ -100,7 +99,7 @@ supported_types = ["cert/tls", "cert/p256", "asymmetric/ed25519", "asymmetric/rs
 |---|---|---|
 | `symmetric_key_size_max` | `128` | Maximum allowed `size` for symmetric keys; default is `32` when `size` is omitted |
 | `rsa_bits` | `2048` | RSA key size in bits |
-| `supported_types` | all five | Allowed entries: `"cert/tls"`, `"cert/p256"`, `"asymmetric/ed25519"`, `"asymmetric/rsa"`, `"symmetric"` |
+| `supported_types` | all five | Allowed entries: `"cert/ca_signed/ed25519"`, `"cert/self_signed/p256"`, `"asymmetric/ed25519"`, `"asymmetric/rsa"`, `"symmetric"` |
 
 End-entity cert validity defaults to **90 days** and can be overridden per-identity via `POST /update_cert`.
 
@@ -132,8 +131,8 @@ Generate credentials for the VM.
 **Query Parameters**:
 - `secret_name` (required) — logical name for this secret (e.g. `grpc`)
 - `secret_type` (required) — `cert`, `asymmetric`, or `symmetric`
-- `kind` (required for `cert`) — `tls` or `p256`
-- `algorithm` (required for `asymmetric`) — `ed25519` or `rsa`
+- `kind` (required for `cert`) — `ca_signed` or `self_signed`
+- `algorithm` (required for `cert` and `asymmetric`) — `ed25519`, `rsa` or `p256` (see the table above for valid `cert` combinations)
 - `size` (optional, `symmetric` only) — key length in bytes (`1`–`symmetric_key_size_max`); defaults to `32`
 
 The VM's `name` and `ns` are read from its **init-data**, not from the query string. Unknown or unrelated parameters are ignored.
@@ -141,8 +140,8 @@ The VM's `name` and `ns` are read from its **init-data**, not from the query str
 **Examples**:
 
 ```http
-GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=tls
-GET /kbs/v0/credgen/credentials?secret_name=mycert&secret_type=cert&kind=p256
+GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=ca_signed&algorithm=ed25519
+GET /kbs/v0/credgen/credentials?secret_name=mycert&secret_type=cert&kind=self_signed&algorithm=p256
 GET /kbs/v0/credgen/credentials?secret_name=sigkey&secret_type=asymmetric&algorithm=ed25519
 GET /kbs/v0/credgen/credentials?secret_name=aeskey&secret_type=symmetric
 GET /kbs/v0/credgen/credentials?secret_name=aeskey16&secret_type=symmetric&size=16
@@ -150,21 +149,24 @@ GET /kbs/v0/credgen/credentials?secret_name=aeskey16&secret_type=symmetric&size=
 
 **Response** (fields vary by type):
 
-| `secret_type` / sub-type | Fields returned to the VM |
-|---|---|
-| `cert` / `kind=tls` | `private_key`, `cert`, `ca_cert` |
-| `cert` / `kind=p256` | `private_key` |
-| `asymmetric` / `algorithm=ed25519` or `rsa` | `private_key` |
-| `symmetric` | `key` |
+| `secret_type` / `kind` | `material_type` | Fields returned to the VM |
+|---|---|---|
+| `cert` / `ca_signed` | `Cert` | `private_key`, `cert`, `ca_cert` |
+| `cert` / `self_signed` | `Cert` | `private_key`, `cert` |
+| `asymmetric` | `Asymmetric` | `private_key` |
+| `symmetric` | `Symmetric` | `key` |
 
-Example response for `cert/tls`:
+The response also carries `kind` (certs only) and `algorithm` (certs and asymmetric keys); absent fields are omitted.
+
+Example response for `cert/ca_signed/ed25519`:
 
 ```json
 {
   "secret_name": "grpc",
   "secret_type": "cert",
-  "subtype": "tls",
-  "material_type": "Tls",
+  "kind": "ca_signed",
+  "algorithm": "ed25519",
+  "material_type": "Cert",
   "private_key": [...],
   "cert": [...],
   "ca_cert": [...]
@@ -207,24 +209,24 @@ Return the public-side material for a secret previously generated for the VM.
 - `ns` (required) — namespace
 - `secret_name` (required) — secret name
 - `secret_type` (required) — secret category
-- `kind` (required for `cert`) — `tls` or `p256`
-- `algorithm` (required for `asymmetric`) — `ed25519` or `rsa`
+- `kind` (required for `cert`) — `ca_signed` or `self_signed`
+- `algorithm` (required for `cert` and `asymmetric`)
 
 ```bash
 ../target/release/kbs-client \
     --url http://localhost:8090 \
     credgen --admin-token-file kbs/config/admin-token \
-    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=tls"
+    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=ca_signed&algorithm=ed25519"
 ```
 
 **Response** (fields vary by type):
 
-| `secret_type` / sub-type | Fields returned to the owner |
-|---|---|
-| `cert` / `kind=tls` | `private_key`, `cert`, `ca_cert` (fresh client cert, same CA as server) |
-| `cert` / `kind=p256` | `cert_pem` (the self-signed cert generated for the VM) |
-| `asymmetric` / `algorithm=ed25519` or `rsa` | `public_key` |
-| `symmetric` | `key` (identical to the value delivered to the VM) |
+| `secret_type` / `kind` | `material_type` | Fields returned to the owner |
+|---|---|---|
+| `cert` / `ca_signed` | `Cert` | `private_key`, `cert`, `ca_cert` (fresh client cert, same CA as server) |
+| `cert` / `self_signed` | `Cert` | `cert` (the self-signed cert generated for the VM) |
+| `asymmetric` | `Asymmetric` | `public_key` |
+| `symmetric` | `Symmetric` | `key` (identical to the value delivered to the VM) |
 
 ### POST /update_cert
 
@@ -284,7 +286,7 @@ To change only the expiry:
    ```
 4. **VM requests credentials** after attestation (identity from init-data):
    ```http
-   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=tls
+   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=ca_signed&algorithm=ed25519
    ```
 5. **Owner lists known identities**:
    ```bash
@@ -292,6 +294,6 @@ To change only the expiry:
    ```
 6. **Owner retrieves client credentials**:
    ```bash
-   kbs-client credgen client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=tls"
+   kbs-client credgen client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=ca_signed&algorithm=ed25519"
    ```
 7. **Establish mutual TLS** between the VM (server) and the workload owner (client) using the matching credentials.
