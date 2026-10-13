@@ -19,6 +19,7 @@ use tracing::info;
 use crate::attestation::{
     backend::{make_nonce, Attest, IndependentEvidence},
     coco::DEFAULT_POLICY_ID,
+    primary_tee_metadata,
 };
 
 use self::attestation::{
@@ -165,11 +166,17 @@ impl Attest for GrpcClientPool {
         tee: Tee,
         tee_parameters: serde_json::Value,
     ) -> Result<Challenge> {
+        let metadata = primary_tee_metadata(tee, &tee_parameters)?;
         let nonce = match tee {
             Tee::Se => {
                 let mut inner = HashMap::new();
                 inner.insert(String::from("tee"), String::from("se"));
-                inner.insert(String::from("tee_params"), tee_parameters.to_string());
+                // Older AS versions require tee_params to be present. JSON null
+                // preserves that wire contract while representing no metadata.
+                inner.insert(
+                    String::from("tee_params"),
+                    metadata.unwrap_or(serde_json::Value::Null).to_string(),
+                );
                 let req = tonic::Request::new(ChallengeRequest { inner });
 
                 let mut client = self.pool.get().await?;
