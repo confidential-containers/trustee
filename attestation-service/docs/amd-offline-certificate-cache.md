@@ -265,3 +265,21 @@ echo "RUST_LOG=debug" > debug.env
 docker compose --env-file debug.env up -d
 docker logs trustee-as-1 | grep -i vcek
 ```
+
+## Alternative: Seeding the Attestation Cache
+
+Instead of (or in addition to) an offline store, VCEKs can be loaded into the
+attestation cache (namespace `snp_vcek`). The `trustee` CLI computes the KDS
+URL and cache key from a guest's attestation report:
+
+```bash
+trustee cache fetch-vcek --report report.bin --dir ./cache
+```
+
+The resulting directory can be used as a `Directory` preload source, uploaded
+to a running KBS with `kbs-client config cache upload --dir ./cache`, or packed
+into a signed OCI bundle. Cached VCEKs are verified against the AMD root like
+fetched ones. Unlike the offline store, cache entries expire and can be
+evicted, so the offline store remains the better fit for a permanent,
+hardware-inventory driven setup. See the
+[cache README](../../deps/cache/README.md#air-gapped-workflow).
