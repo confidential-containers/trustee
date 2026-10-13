@@ -9,8 +9,10 @@ pub mod rvps;
 use crate::rvps::RvpsClient;
 
 use base64::Engine;
+use cache_storage::KvByteStoreProvider;
 pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 use key_value_storage::KeyValueStorageError;
+use pluggable_cache::{CacheError, CacheProvider, ConfiguredCacheProvider};
 pub use serde_json::Value;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -72,6 +74,8 @@ pub enum ServiceError {
     Anyhow(#[from] anyhow::Error),
     #[error(transparent)]
     KeyValueStorage(#[from] KeyValueStorageError),
+    #[error(transparent)]
+    Cache(#[from] CacheError),
 }
 
 /// Initdata defined in
@@ -125,6 +129,7 @@ pub struct AttestationService {
     rvps: RvpsClient,
     token_broker: EarAttestationTokenBroker,
     storage_provider: Arc<dyn StorageProvider>,
+    cache_provider: Arc<dyn CacheProvider>,
 }
 
 impl AttestationService {
@@ -136,6 +141,25 @@ impl AttestationService {
     pub async fn new(
         config: Config,
         storage_provider: Arc<dyn StorageProvider>,
+    ) -> Result<Self, ServiceError> {
+        info!(
+            cache_type = ?config.cache.default.cache_type,
+            "Attestation Service cache backend"
+        );
+        let cache_provider: Arc<dyn CacheProvider> = ConfiguredCacheProvider::new(
+            config.cache.clone(),
+            Some(KvByteStoreProvider::new(storage_provider.clone())),
+        )?;
+        Self::new_with_cache_provider(config, storage_provider, cache_provider).await
+    }
+
+    /// Like [`AttestationService::new`], but use `cache_provider` instead of
+    /// building one from `config.cache`, e.g. to share it with a co-located
+    /// KBS.
+    pub async fn new_with_cache_provider(
+        config: Config,
+        storage_provider: Arc<dyn StorageProvider>,
+        cache_provider: Arc<dyn CacheProvider>,
     ) -> Result<Self, ServiceError> {
         info!(
             backend_type = ?config.storage_backend.storage_type,
@@ -166,6 +190,7 @@ impl AttestationService {
             rvps,
             token_broker,
             storage_provider,
+            cache_provider,
         })
     }
 
@@ -222,6 +247,7 @@ impl AttestationService {
                 &verification_request.tee,
                 self.config.clone().verifier_config,
                 self.storage_provider.clone(),
+                self.cache_provider.clone(),
             )
             .await?;
 
@@ -328,6 +354,7 @@ impl AttestationService {
             &tee,
             self.config.clone().verifier_config,
             self.storage_provider.clone(),
+            self.cache_provider.clone(),
         )
         .await?;
         verifier

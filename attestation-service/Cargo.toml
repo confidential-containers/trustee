@@ -57,6 +57,8 @@ ear.workspace = true
 hex.workspace = true
 jsonwebtoken.workspace = true
 kbs-types.workspace = true
+cache-storage = { path = "../deps/cache-storage" }
+pluggable-cache = "0.1"
 key-value-storage.path = "../deps/key-value-storage"
 mobc = { workspace = true, optional = true }
 openssl.workspace = true

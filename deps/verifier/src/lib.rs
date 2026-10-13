@@ -5,6 +5,7 @@ use anyhow::*;
 use async_trait::async_trait;
 use kbs_types::Tee;
 use key_value_storage::StorageProvider;
+use pluggable_cache::CacheProvider;
 use serde::Deserialize;
 use tracing::debug;
 
@@ -78,10 +79,20 @@ pub struct VerifierConfig {
 /// (e.g. cached DCAP collateral) mints its own namespace in-place with
 /// `storage.get_or_register("intel-dcap-collateral")`. Verifiers that don't
 /// need storage simply ignore it.
+///
+/// `cache` works the same way for caching data that is expensive to obtain:
+///
+/// | Namespace               | Verifier          | Content                     |
+/// |-------------------------|-------------------|-----------------------------|
+/// | `snp_vcek`              | SNP               | VCEKs                       |
+/// | `intel_dcap_collateral` | TDX, SGX, Az TDX  | PCS/PCCS collateral         |
+/// | `hygon_csv_hsk_cek`     | Hygon CSV         | HSK/CEK certificates        |
+/// | `nvidia_nras_jwks`      | NVIDIA (remote)   | NRAS token signing key set  |
 pub async fn to_verifier(
     tee: &Tee,
     _config: Option<VerifierConfig>,
     _storage: Arc<dyn StorageProvider>,
+    _cache: Arc<dyn CacheProvider>,
 ) -> Result<Box<dyn Verifier + Send + Sync>> {
     match tee {
         Tee::AzSnpVtpm => {
@@ -98,7 +109,8 @@ pub async fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "az-tdx-vtpm-verifier")] {
                     let dcap_config = _config.and_then(|c| c.dcap_verifier);
-                    Ok(Box::new(az_tdx_vtpm::AzTdxVtpm::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
+                    let collateral_cache = _cache.get_or_register(intel_dcap::COLLATERAL_CACHE_NAMESPACE).await?;
+                    Ok(Box::new(az_tdx_vtpm::AzTdxVtpm::new(dcap_config).with_collateral_cache(collateral_cache)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `az-tdx-vtpm-verifier` is not enabled for `verifier` crate.");
                 }
@@ -108,7 +120,8 @@ pub async fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "tdx-verifier")] {
                     let dcap_config = _config.and_then(|c| c.dcap_verifier);
-                    Ok(Box::new(tdx::Tdx::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
+                    let collateral_cache = _cache.get_or_register(intel_dcap::COLLATERAL_CACHE_NAMESPACE).await?;
+                    Ok(Box::new(tdx::Tdx::new(dcap_config).with_collateral_cache(collateral_cache)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `tdx-verifier` is not enabled for `verifier` crate.")
                 }
@@ -118,7 +131,8 @@ pub async fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "snp-verifier")] {
                     let snp_config = _config.map(|c| c.snp_verifier).unwrap_or(None);
-                    Ok(Box::<snp::Snp>::new(snp::Snp::new(snp_config).await?) as Box<dyn Verifier + Send + Sync>)
+                    let vcek_cache = _cache.get_or_register(snp::VCEK_CACHE_NAMESPACE).await?;
+                    Ok(Box::<snp::Snp>::new(snp::Snp::new(snp_config, vcek_cache).await?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `snp-verifier` is not enabled for `verifier` crate.")
                 }
@@ -131,7 +145,8 @@ pub async fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "sgx-verifier")] {
                     let dcap_config = _config.and_then(|c| c.dcap_verifier);
-                    Ok(Box::new(sgx::SgxVerifier::new(dcap_config)) as Box<dyn Verifier + Send + Sync>)
+                    let collateral_cache = _cache.get_or_register(intel_dcap::COLLATERAL_CACHE_NAMESPACE).await?;
+                    Ok(Box::new(sgx::SgxVerifier::new(dcap_config).with_collateral_cache(collateral_cache)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `sgx-verifier` is not enabled for `verifier` crate.")
                 }
@@ -141,7 +156,8 @@ pub async fn to_verifier(
         Tee::Csv => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "csv-verifier")] {
-                    Ok(Box::<csv::CsvVerifier>::default() as Box<dyn Verifier + Send + Sync>)
+                    let hsk_cek_cache = _cache.get_or_register(csv::HSK_CEK_CACHE_NAMESPACE).await?;
+                    Ok(Box::new(csv::CsvVerifier::default().with_hsk_cek_cache(hsk_cek_cache)) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `csv-verifier` is not enabled for `verifier` crate.")
                 }
@@ -182,7 +198,8 @@ pub async fn to_verifier(
             cfg_if::cfg_if! {
                 if #[cfg(feature = "nvidia-verifier")] {
                     let nvidia_config = _config.map(|c| c.nvidia_verifier).unwrap_or(None);
-                    Ok(Box::<nvidia::Nvidia>::new(nvidia::Nvidia::new(nvidia_config).await?) as Box<dyn Verifier + Send + Sync>)
+                    let jwks_cache = _cache.get_or_register(nvidia::nras_jwks::NRAS_JWKS_CACHE_NAMESPACE).await?;
+                    Ok(Box::<nvidia::Nvidia>::new(nvidia::Nvidia::new(nvidia_config, jwks_cache).await?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `nvidia-verifier` is not enabled for `verifier` crate.")
                 }

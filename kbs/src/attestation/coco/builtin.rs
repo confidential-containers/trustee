@@ -55,6 +55,7 @@ impl Config {
             attestation_token_broker: self.attestation_token_broker.clone(),
             verifier_config: self.verifier_config.clone(),
             storage_backend,
+            cache: Default::default(),
         }
     }
 }

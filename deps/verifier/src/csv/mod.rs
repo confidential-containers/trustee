@@ -82,8 +82,95 @@ pub enum CsvError {
 
 pub const HRK: &[u8] = include_bytes!("hrk.cert");
 
+/// Cache namespace for HSK/CEK certificates, keyed by chip serial number.
+pub const HSK_CEK_CACHE_NAMESPACE: &str = "hygon_csv_hsk_cek";
+
 #[derive(Debug, Default)]
-pub struct CsvVerifier {}
+pub struct CsvVerifier {
+    hsk_cek_cache: Option<pluggable_cache::CacheInstance>,
+}
+
+impl CsvVerifier {
+    /// Keep HSK/CEK certificates fetched from the KDS in `cache`.
+    pub fn with_hsk_cek_cache(mut self, cache: pluggable_cache::CacheInstance) -> Self {
+        self.hsk_cek_cache = Some(cache);
+        self
+    }
+
+    /// Return a cached HSK/CEK for `key`; cache failures count as misses.
+    async fn cached_hsk_cek(&self, key: &pluggable_cache::CacheKey) -> Option<Vec<u8>> {
+        self.hsk_cek_cache
+            .as_ref()?
+            .get(key)
+            .await
+            .unwrap_or_else(|e| {
+                warn!("HSK/CEK cache lookup for {key} failed: {e}");
+                None
+            })
+    }
+
+    /// Obtain the HSK/CEK for `chip_id`, preferring the cache, and verify the
+    /// report against it. A cached HSK/CEK that fails verification is
+    /// discarded and fetched again; only certificates that verified the
+    /// report are cached.
+    async fn verify_with_fetched_hsk_cek(
+        &self,
+        report: &AttestationReport,
+        chip_id: &str,
+        pek: csv::Certificate,
+    ) -> Result<()> {
+        // The serial number comes from the evidence; one that is not a valid
+        // key is simply not cached.
+        let key = pluggable_cache::CacheKey::new(chip_id).ok();
+        if let Some(key) = &key {
+            if let Some(cert_data) = self.cached_hsk_cek(key).await {
+                let Err(e) = verify_with_hsk_cek(report, cert_data, pek) else {
+                    debug!("HSK/CEK cache hit for {key}");
+                    return Ok(());
+                };
+                warn!("Discarding cached HSK/CEK for {key}: {e:#}");
+                if let Some(cache) = &self.hsk_cek_cache {
+                    let _ = cache.delete(key).await;
+                }
+            }
+        }
+
+        let cert_data = match try_load_hskcek_offline(chip_id).await {
+            Some(cert_data) => cert_data,
+            None => download_hskcek_from_kds(chip_id).await?,
+        };
+        verify_with_hsk_cek(report, cert_data.clone(), pek)?;
+
+        if let (Some(key), Some(cache)) = (&key, &self.hsk_cek_cache) {
+            if let Err(e) = cache.set(key, cert_data).await {
+                warn!("Failed to cache HSK/CEK for {key}: {e}");
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Decode the concatenated HSK and CEK in `cert_data` and verify the report
+/// against them.
+fn verify_with_hsk_cek(
+    report: &AttestationReport,
+    cert_data: Vec<u8>,
+    pek: csv::Certificate,
+) -> Result<()> {
+    debug!(
+        hsk_cek = cert_data
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<Vec<String>>()
+            .join(""),
+        "Load HSK and CEK",
+    );
+
+    let mut reader = Cursor::new(cert_data);
+    let hsk = ca::Certificate::decode(&mut reader, ())?;
+    let cek = csv::Certificate::decode(&mut reader, ())?;
+    Ok(verify_report_signature(report, hsk, cek, pek)?)
+}
 
 #[async_trait]
 impl Verifier for CsvVerifier {
@@ -104,35 +191,16 @@ impl Verifier for CsvVerifier {
         let report = AttestationReport::try_from(&report_wrapper)?;
         let chip_id = std::str::from_utf8(&serial_number)?.trim_end_matches('\0');
 
-        let (hsk, cek, pek) = match cert_chain.hsk_cek {
+        match cert_chain.hsk_cek {
             Some(hsk_cek) => {
                 debug!("HSK and CEK are both included in the evidence");
-                (hsk_cek.hsk, hsk_cek.cek, cert_chain.pek)
+                verify_report_signature(&report, hsk_cek.hsk, hsk_cek.cek, cert_chain.pek)?;
             }
             None => {
-                let cert_data = match try_load_hskcek_offline(chip_id).await {
-                    Some(cert_data) => cert_data,
-                    None => download_hskcek_from_kds(chip_id).await?,
-                };
-
-                debug!(
-                    hsk_cek = cert_data
-                        .iter()
-                        .map(|b| format!("{:02x}", b))
-                        .collect::<Vec<String>>()
-                        .join(""),
-                    "Load HSK and CEK",
-                );
-
-                let mut reader = Cursor::new(cert_data);
-                let hsk = ca::Certificate::decode(&mut reader, ())?;
-                let cek = csv::Certificate::decode(&mut reader, ())?;
-                let pek = cert_chain.pek;
-                (hsk, cek, pek)
+                self.verify_with_fetched_hsk_cek(&report, chip_id, cert_chain.pek)
+                    .await?;
             }
-        };
-
-        verify_report_signature(&report, hsk, cek, pek)?;
+        }
 
         if let ReportData::Value(expected_report_data) = expected_report_data {
             debug!("Check the binding of REPORT_DATA.");

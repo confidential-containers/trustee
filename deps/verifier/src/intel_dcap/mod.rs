@@ -24,6 +24,9 @@ pub(crate) mod quote;
 
 const INTEL_PCS_URL: &str = "https://api.trustedservices.intel.com/sgx/certification/v4/";
 
+/// Cache namespace for collateral fetched from PCS/PCCS.
+pub(crate) const COLLATERAL_CACHE_NAMESPACE: &str = "intel_dcap_collateral";
+
 #[derive(Debug, Default, Deserialize, Clone, Serialize, PartialEq, Display)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -53,12 +56,16 @@ impl Default for QcnlConfig {
 }
 
 impl QcnlConfig {
-    /// Build a [`pcs::Pcs`] collateral client from the configured `collateral_service` URL.
+    /// Build a [`pcs::Pcs`] collateral client from the configured `collateral_service` URL,
+    /// caching HTTP collateral in `cache`.
     ///
     /// A `file://` URL selects the offline file backend; any other URL selects
     /// the PCS/PCCS HTTPS backend.
-    pub(crate) fn pcs(&self) -> Result<pcs::Pcs, pcs::PcsError> {
-        pcs::Pcs::new(self)
+    pub(crate) fn cached_pcs(
+        &self,
+        cache: Option<pluggable_cache::CacheInstance>,
+    ) -> Result<pcs::Pcs, pcs::PcsError> {
+        Ok(pcs::Pcs::new(self)?.with_cache(cache))
     }
 }
 
