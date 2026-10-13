@@ -8543,6 +8543,7 @@ dependencies = [
  "jsonwebtoken",
  "kbs-types 0.18.0",
  "key-value-storage",
+ "nv-attestation-sdk",
  "openssl",
  "p384",
  "reqwest 0.13.4",

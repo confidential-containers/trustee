@@ -99,7 +99,7 @@ The `verifier_config` section allows for TEE-specific verifier configuration. Ea
 
 ##### NVIDIA GPU Verifier
 
-Available when the `nvidia-verifier` feature is enabled. See details in [`nvidia-verifier` documentation](../../deps/verifier/src/nvidia/README.md).
+Available when the `nvidia-verifier` feature is enabled. [More info](../../deps/verifier/src/nvidia/README.md).
 
 | Property          | Type                             | Description                                     | Required | Default |
 |-------------------|----------------------------------|-------------------------------------------------|----------|---------|
@@ -109,10 +109,39 @@ Available when the `nvidia-verifier` feature is enabled. See details in [`nvidia
 
 ###### NvidiaVerifierConfig
 
+The NVIDIA verifier provides four modes.
+The `NvLocal` and `NvRemote` modes use the official NVIDIA Attestation SDK,
+depend on the `nvat` feature, and are x86 only. 
+The `Local` and `Remote` modes have no dependencies.
+For more information, see the [here](../../deps/verifier/src/nvidia/README.md).
+
 | Property | Type   | Description                                                     | Required | Default |
 |----------|--------|-----------------------------------------------------------------|----------|---------|
-| `type`   | String | Verification type: `"Local"` or `"Remote"`                      | No       | `"Local"` |
-| `verifier_url` | String | Remote verifier URL (only for `"Remote"` type)            | No       | `https://nras.attestation.nvidia.com/v4/attest` |
+| `type`   | String | Verification type: `"Local"`, `"Remote"`, `"NvLocal"` or `"NvRemote"` | No | `"Local"` |
+
+Properties for `type = "Remote"`:
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `verifier_url` | String | NRAS attestation endpoint (the `/v4/attest` path)         | No       | `https://nras.attestation.nvidia.com/v4/attest` |
+
+Properties for `type = "NvRemote"` (NVAT SDK, x86_64 only):
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `nras_url` | String | NRAS base URL (e.g. `https://nras.attestation.nvidia.com`)    | No       | SDK default / `NVAT_NRAS_BASE_URL` |
+| `service_key` | String | NVIDIA cloud service key for NRAS                          | No       | -       |
+
+Properties for `type = "NvLocal"` (NVAT SDK, x86_64 only):
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `rim_url` | String | Remote RIM service base URL (ignored if `rim_store_path` set)  | No       | SDK default / `NVAT_RIM_STORE_BASE_URL` |
+| `rim_store_path` | String | Filesystem RIM store path (used instead of a remote store) | No | -   |
+| `ocsp_url` | String | OCSP service base URL                                         | No       | SDK default / `NVAT_OCSP_BASE_URL` |
+| `service_key` | String | NVIDIA cloud service key for RIM/OCSP                      | No       | -       |
+| `verify_rim_signature` | Boolean | Verify RIM signatures                             | No       | `true`  |
+| `verify_rim_cert_chain` | Boolean | Verify the RIM certificate chain                | No       | `true`  |
 
 ##### TPM Verifier
 

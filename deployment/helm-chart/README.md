@@ -308,8 +308,13 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.tolerations | list | `[]` | Tolerations for scheduling AS Pods onto tainted nodes. |
 | as.verifier.dcap.collateral_service | string | `"https://api.trustedservices.intel.com/sgx/certification/v4/"` | Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured. |
 | as.verifier.dcap.tcb_update_type | string | `"early"` | DCAP TCB update type (for example `early`). |
-| as.verifier.nvidia.type | string | `"Local"` | NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set. |
-| as.verifier.nvidia.verifierUrl | string | `"https://nras.attestation.nvidia.com/v4/attest"` | NRAS URL when `as.verifier.nvidia.type` is `Remote`. |
+| as.verifier.nvidia.nrasUrl | string | `""` | NRAS base URL when `type` is `NvRemote`. Empty uses the SDK default. |
+| as.verifier.nvidia.ocspUrl | string | `""` | OCSP service base URL when `type` is `NvLocal`. Empty uses the SDK default. |
+| as.verifier.nvidia.rimStorePath | string | `""` | Filesystem RIM store path when `type` is `NvLocal`. When set, used instead of `rimUrl`. |
+| as.verifier.nvidia.rimUrl | string | `""` | Remote RIM service base URL when `type` is `NvLocal`. Empty uses the SDK default. |
+| as.verifier.nvidia.serviceKey | string | `""` | NVIDIA cloud service key for `NvLocal`/`NvRemote`. Empty to omit. |
+| as.verifier.nvidia.type | string | `"Local"` | NVIDIA verifier type: `Local`, `Remote`, `NvLocal` or `NvRemote`. `NvLocal`/`NvRemote` require an x86_64 build with the `nvat` feature (enabled by default). |
+| as.verifier.nvidia.verifierUrl | string | `"https://nras.attestation.nvidia.com/v4/attest"` | NRAS attestation endpoint (the `/v4/attest` path) when `as.verifier.nvidia.type` is `Remote`. Optional: if empty, the verifier uses its built-in default. |
 | as.verifier.se.credsDir | string | `""` | Absolute path on the target node to the directory containing IBM SE attestation materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires `as.verifier.se.nodeName`. |
 | as.verifier.se.nodeName | string | `""` | Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`) resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume `nodeAffinity`. |
 | as.verifier.snp.kdsStoreHostPath | string | `""` | Absolute path on the target node to the directory containing the AMD SNP offline VCEK certificate store (must contain a `vcek/` subdirectory). When non-empty, the chart creates a `local`-type PV + PVC and mounts it at `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod, which is where an `OfflineStore` entry in `as.verifier.snp.vcekSources` reads from. Requires `as.verifier.snp.nodeName`. See [the offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for the directory layout. |

@@ -90,6 +90,9 @@ jobs:
             target/
           key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
 
+      - name: Install NVIDIA Attestation SDK
+        uses: ./.github/actions/install-nvat-sdk
+
       - name: Run KBS Vault integration e2e (no SSL + SSL)
         run: make test-kbs-vault-e2e
 
@@ -183,6 +186,9 @@ jobs:
           ~/.cargo/registry/cache/
           target/
         key: rust-${{ runner.arch }}-${{ env.OS_VERSION }}-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install NVIDIA Attestation SDK
+      uses: ./.github/actions/install-nvat-sdk
 
     - name: Install build dependencies
       run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev

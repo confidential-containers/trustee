@@ -23,6 +23,21 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -L https://download.01.org/intel-sgx/
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
     apt-get update && apt-get install --no-install-recommends -y libsgx-dcap-quote-verify-dev; fi
 
+# Build and install libnvat from source
+ARG NVAT_VERSION=2026.03.02
+ENV NVAT_USE_SYSTEM_LIB=1
+ENV LIBRARY_PATH=/usr/local/lib
+RUN mkdir -p /opt/nvat-lib && if [ "${ARCH}" = "x86_64" ]; then \
+    apt-get update && apt-get install --no-install-recommends -y libxml2-dev zlib1g-dev && \
+    git clone --depth=1 --branch "${NVAT_VERSION}" https://github.com/NVIDIA/attestation-sdk /tmp/attestation-sdk && \
+    cmake -S /tmp/attestation-sdk/nv-attestation-sdk-cpp -B /tmp/attestation-sdk/build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build /tmp/attestation-sdk/build --parallel "$(nproc)" && \
+    cmake --install /tmp/attestation-sdk/build && \
+    ln -sf /usr/local/include/nvat.h /usr/include/nvat.h && \
+    cp -a /usr/local/lib/libnvat.so* /opt/nvat-lib/ && \
+    ldconfig && \
+    rm -rf /tmp/attestation-sdk; fi
+
 # Build and Install RESTful attestation-service
 RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
     export GCC_PACKAGE="gcc-${ARCH}-linux-gnu"; \
@@ -66,6 +81,14 @@ RUN if [ "${ARCH}" = "x86_64" ] && ( [ "${VERIFIER}" = "all-verifier" ] || [ "${
 # Install TPM Runtime Dependencies
 RUN if [ "${VERIFIER}" = "all-verifier" ] || [ "${VERIFIER}" = "az-snp-vtpm-verifier" ] || [ "${VERIFIER}" = "az-tdx-vtpm-verifier" ]; \
     then apt-get update && apt-get install libtss2-dev -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*; fi
+
+# Install libnvat
+COPY --from=builder /opt/nvat-lib/ /usr/local/lib/
+RUN if [ "${ARCH}" = "x86_64" ]; then \
+    apt-get update && apt-get install --no-install-recommends -y libxml2 && \
+    ldconfig && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*; fi
 

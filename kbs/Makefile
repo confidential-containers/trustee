@@ -76,6 +76,11 @@ ifeq ($(EXTERNAL_PLUGIN), true)
   override FEATURES := $(FEATURES),external-plugin
 endif
 
+NVAT ?= true
+ifeq ($(NVAT), true)
+  override FEATURES := $(FEATURES),nvat
+endif
+
 ifeq ($(PQC_EXPERIMENTAL), true)
   override FEATURES := $(FEATURES),pqc-experimental
 endif

@@ -213,10 +213,15 @@ as:
   imagePullSecrets: []
   verifier:
     nvidia:
-      # -- NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set.
+      # -- NVIDIA verifier type: `Local`, `Remote`, `NvLocal` or `NvRemote`. `NvLocal`/`NvRemote` require an x86_64 build with the `nvat` feature (enabled by default).
       type: "Local"
-      # -- NRAS URL when `as.verifier.nvidia.type` is `Remote`.
+      # -- NRAS attestation endpoint (the `/v4/attest` path) when `as.verifier.nvidia.type` is `Remote`. Optional: if empty, the verifier uses its built-in default.
       verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
+      nrasUrl: ""
+      rimUrl: ""
+      rimStorePath: ""
+      ocspUrl: ""
+      serviceKey: ""
     dcap:
       # -- Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured.
       collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"

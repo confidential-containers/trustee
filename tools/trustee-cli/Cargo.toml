@@ -12,10 +12,15 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-attestation-service = { path = "../../attestation-service" }
+attestation-service = { path = "../../attestation-service", default-features = false }
 clap = { workspace = true, features = ["string"] }
 dirs = "6.0.0"
-kbs = { path = "../../kbs" }
+kbs = { path = "../../kbs", default-features = false, features = [
+    "coco-as-builtin",
+    "coco-as-grpc",
+    "intel-trust-authority-as",
+    "external-plugin",
+] }
 nix = { version = "0.31.3", features = ["user"] }
 openssl.workspace = true
 jsonwebtoken.workspace = true
