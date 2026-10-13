@@ -236,9 +236,155 @@ pub(crate) static BUILD_INFO: LazyLock<Gauge> = LazyLock::new(|| {
     Gauge::with_opts(opts).unwrap()
 });
 
+type CounterOf = fn(&pluggable_cache::CacheStats) -> u64;
+type GaugeOf = fn(&pluggable_cache::CacheStats) -> Option<u64>;
+
+/// Per-namespace cache statistics. The cache keeps its own counters, so
+/// they are copied in from a snapshot taken before each scrape.
+pub(crate) struct CacheMetrics {
+    snapshot: std::sync::Mutex<Vec<(String, pluggable_cache::CacheStats)>>,
+    counters: Vec<(Opts, CounterOf)>,
+    gauges: Vec<(Opts, GaugeOf)>,
+    descs: Vec<prometheus::core::Desc>,
+}
+
+impl CacheMetrics {
+    fn new() -> Self {
+        use prometheus::core::Describer;
+
+        let opts = |name: &str, help: &str| Opts::new(name, help);
+        let counters: Vec<(Opts, CounterOf)> = vec![
+            (
+                opts("kbs_cache_hits_total", "Cache lookups that found an entry"),
+                |s| s.hits,
+            ),
+            (
+                opts(
+                    "kbs_cache_misses_total",
+                    "Cache lookups that found no entry",
+                ),
+                |s| s.misses,
+            ),
+            (
+                opts("kbs_cache_insertions_total", "Values written to the cache"),
+                |s| s.insertions,
+            ),
+            (
+                opts("kbs_cache_evictions_total", "Entries evicted to make room"),
+                |s| s.evictions,
+            ),
+            (
+                opts(
+                    "kbs_cache_expirations_total",
+                    "Entries dropped after their time-to-live",
+                ),
+                |s| s.expirations,
+            ),
+            (
+                opts(
+                    "kbs_cache_rejections_total",
+                    "Values refused for exceeding a size limit",
+                ),
+                |s| s.rejections,
+            ),
+        ];
+        let gauges: Vec<(Opts, GaugeOf)> = vec![
+            (
+                opts("kbs_cache_entries", "Entries held by the cache"),
+                |s| Some(s.entries as u64),
+            ),
+            (
+                opts("kbs_cache_capacity", "Maximum number of cache entries"),
+                |s| s.capacity.map(|c| c as u64),
+            ),
+            (opts("kbs_cache_bytes", "Bytes held by the cache"), |s| {
+                s.bytes.map(|b| b as u64)
+            }),
+            (
+                opts(
+                    "kbs_cache_max_bytes",
+                    "Maximum number of bytes held by the cache",
+                ),
+                |s| s.max_bytes.map(|b| b as u64),
+            ),
+        ];
+        let descs = counters
+            .iter()
+            .map(|(o, _)| o)
+            .chain(gauges.iter().map(|(o, _)| o))
+            .map(|o| {
+                o.clone()
+                    .variable_label("namespace")
+                    .describe()
+                    .expect("valid metric options")
+            })
+            .collect();
+        Self {
+            snapshot: Default::default(),
+            counters,
+            gauges,
+            descs,
+        }
+    }
+
+    /// Replace the statistics reported on the next scrape.
+    pub(crate) fn update(&self, snapshot: Vec<(String, pluggable_cache::CacheStats)>) {
+        *self.snapshot.lock().unwrap_or_else(|e| e.into_inner()) = snapshot;
+    }
+}
+
+impl prometheus::core::Collector for CacheMetrics {
+    fn desc(&self) -> Vec<&prometheus::core::Desc> {
+        self.descs.iter().collect()
+    }
+
+    fn collect(&self) -> Vec<prometheus::proto::MetricFamily> {
+        let snapshot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+        let mut families = Vec::new();
+        for (opts, value) in &self.counters {
+            let vec = prometheus::IntCounterVec::new(opts.clone(), &["namespace"])
+                .expect("valid metric options");
+            for (namespace, stats) in snapshot.iter() {
+                vec.with_label_values(&[namespace]).inc_by(value(stats));
+            }
+            families.extend(prometheus::core::Collector::collect(&vec));
+        }
+        for (opts, value) in &self.gauges {
+            let vec = prometheus::IntGaugeVec::new(opts.clone(), &["namespace"])
+                .expect("valid metric options");
+            for (namespace, stats) in snapshot.iter() {
+                if let Some(v) = value(stats) {
+                    vec.with_label_values(&[namespace]).set(v as i64);
+                }
+            }
+            families.extend(prometheus::core::Collector::collect(&vec));
+        }
+        families
+    }
+}
+
+pub(crate) static CACHE_METRICS: LazyLock<std::sync::Arc<CacheMetrics>> =
+    LazyLock::new(|| std::sync::Arc::new(CacheMetrics::new()));
+
+struct SharedCacheMetrics(std::sync::Arc<CacheMetrics>);
+
+impl prometheus::core::Collector for SharedCacheMetrics {
+    fn desc(&self) -> Vec<&prometheus::core::Desc> {
+        self.0.desc()
+    }
+
+    fn collect(&self) -> Vec<prometheus::proto::MetricFamily> {
+        self.0.collect()
+    }
+}
+
 /// Prometheus instance to get the metrics
 static INSTANCE: LazyLock<Registry> = LazyLock::new(|| {
     let registry = Registry::default();
+
+    registry
+        .register(Box::new(SharedCacheMetrics(CACHE_METRICS.clone())))
+        .unwrap();
 
     registry
         .register(Box::new(RESOURCE_READS_TOTAL.clone()))
@@ -346,5 +492,24 @@ mod tests {
         assert!(metrics.contains("http_request_size_bytes_count 1"));
         assert!(metrics.contains("http_response_size_bytes_sum 2048"));
         assert!(metrics.contains("http_response_size_bytes_count 1"));
+    }
+
+    #[test]
+    fn cache_metrics() {
+        crate::prometheus::CACHE_METRICS.update(vec![(
+            "snp_vcek".into(),
+            pluggable_cache::CacheStats {
+                hits: 3,
+                entries: 2,
+                capacity: Some(10),
+                ..Default::default()
+            },
+        )]);
+        let metrics = export_metrics().unwrap();
+        assert!(metrics.contains("# TYPE kbs_cache_hits_total counter"));
+        assert!(metrics.contains("kbs_cache_hits_total{namespace=\"snp_vcek\"} 3"));
+        assert!(metrics.contains("kbs_cache_entries{namespace=\"snp_vcek\"} 2"));
+        assert!(metrics.contains("kbs_cache_capacity{namespace=\"snp_vcek\"} 10"));
+        assert!(!metrics.contains("kbs_cache_bytes{"));
     }
 }

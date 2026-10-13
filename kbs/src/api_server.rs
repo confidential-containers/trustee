@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{
     http::{header::Header, Method},
@@ -15,7 +15,7 @@ use anyhow::Context;
 use base64::Engine;
 use cache_storage::KvByteStoreProvider;
 use key_value_storage::StorageProvider;
-use pluggable_cache::{CacheProvider, ConfiguredCacheProvider};
+use pluggable_cache::{CacheKey, CacheProvider, ConfiguredCacheProvider};
 use policy_engine::{rego::Regorus, PolicyEngine};
 use serde_json::json;
 use tracing::{info, warn};
@@ -37,6 +37,10 @@ use crate::{
 const KBS_PREFIX: &str = "/kbs/v0";
 
 pub const KBS_STORAGE_NAMESPACE: &str = "kbs";
+
+/// Cache namespaces holding keys that verify tokens. Their entries cannot be
+/// checked independently, so the admin API refuses to write them.
+const TRUST_ANCHOR_NAMESPACES: &[&str] = &[JWKS_CACHE_NAMESPACE, "nvidia_nras_jwks"];
 
 /// The name of the policy rule that determines if the request is allowed or denied
 pub const KBS_POLICY_RULE: &str = "data.policy.allow";
@@ -62,6 +66,7 @@ pub struct ApiServer {
     admin: Admin,
     config: KbsConfig,
     token_verifier: TokenVerifier,
+    cache_provider: Arc<ConfiguredCacheProvider>,
 }
 
 impl ApiServer {
@@ -151,10 +156,109 @@ impl ApiServer {
             policy_engine,
             admin,
             token_verifier,
+            cache_provider,
 
             #[cfg(feature = "as")]
             attestation_service,
         })
+    }
+
+    /// Serve the cache admin API, `/kbs/v0/cache/...`:
+    ///
+    /// | Request                        | Effect                                  |
+    /// |--------------------------------|-----------------------------------------|
+    /// | `GET /cache`                   | statistics of all registered namespaces |
+    /// | `POST /cache/purge`            | drop expired entries everywhere         |
+    /// | `GET /cache/<ns>`              | statistics and keys of a namespace      |
+    /// | `DELETE /cache/<ns>`           | clear a namespace                       |
+    /// | `GET /cache/<ns>/<key>`        | read an entry                           |
+    /// | `PUT /cache/<ns>/<key>`        | write an entry (raw body)               |
+    /// | `DELETE /cache/<ns>/<key>`     | delete an entry                         |
+    ///
+    /// Most cached values are verified by their consumers like fetched ones,
+    /// so writing them can only seed or replace data. Trust anchors (see
+    /// [`TRUST_ANCHOR_NAMESPACES`]) are not verifiable, so they cannot be
+    /// written through this API, only read and deleted.
+    async fn cache_admin(
+        &self,
+        method: &Method,
+        path: &[&str],
+        body: &[u8],
+    ) -> Result<HttpResponse> {
+        let json = |value: serde_json::Value| -> Result<HttpResponse> {
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(serde_json::to_string(&value)?))
+        };
+
+        match (method, path) {
+            (&Method::GET, []) => {
+                let mut namespaces = serde_json::Map::new();
+                for (namespace, cache) in self.cache_provider.namespaces().await {
+                    namespaces.insert(namespace, serde_json::to_value(cache.stats().await?)?);
+                }
+                json(serde_json::Value::Object(namespaces))
+            }
+            (&Method::POST, ["purge"]) => {
+                json(json!({ "purged": self.cache_provider.purge_expired().await }))
+            }
+            (method, [namespace]) => {
+                let cache = self.cache_provider.get_or_register(namespace).await?;
+                match *method {
+                    Method::GET => {
+                        let keys: Vec<String> = cache
+                            .keys()
+                            .await?
+                            .into_iter()
+                            .map(CacheKey::into_string)
+                            .collect();
+                        json(json!({ "stats": cache.stats().await?, "keys": keys }))
+                    }
+                    Method::DELETE => {
+                        cache.clear().await?;
+                        Ok(HttpResponse::Ok().finish())
+                    }
+                    _ => Err(Error::InvalidRequestPath {
+                        path: format!("cache/{namespace}"),
+                    }),
+                }
+            }
+            (method, [namespace, key @ ..]) => {
+                let cache = self.cache_provider.get_or_register(namespace).await?;
+                let key = CacheKey::new(key.join("/"))?;
+                let not_found = || Error::CacheEntryNotFound {
+                    namespace: namespace.to_string(),
+                    key: key.to_string(),
+                };
+                match *method {
+                    Method::GET => {
+                        let value = cache.get(&key).await?.ok_or_else(not_found)?;
+                        Ok(HttpResponse::Ok()
+                            .content_type("application/octet-stream")
+                            .body(value))
+                    }
+                    Method::PUT if TRUST_ANCHOR_NAMESPACES.contains(namespace) => {
+                        Err(Error::CacheWriteForbidden {
+                            namespace: namespace.to_string(),
+                        })
+                    }
+                    Method::PUT => {
+                        cache.set(&key, body.to_vec()).await?;
+                        Ok(HttpResponse::Ok().finish())
+                    }
+                    Method::DELETE => {
+                        cache.delete(&key).await?.ok_or_else(not_found)?;
+                        Ok(HttpResponse::Ok().finish())
+                    }
+                    _ => Err(Error::InvalidRequestPath {
+                        path: format!("cache/{namespace}/{key}"),
+                    }),
+                }
+            }
+            _ => Err(Error::InvalidRequestPath {
+                path: format!("cache/{}", path.join("/")),
+            }),
+        }
     }
 
     /// Start the HTTP server and serve API requests.
@@ -338,6 +442,17 @@ pub(crate) async fn api(
             Ok(HttpResponse::Ok().content_type("application/json").finish())
         }
 
+        "cache" => {
+            core.admin
+                .check_admin_access(&request)
+                .map_err(|e| Error::AdminAuthAccess {
+                    source: e,
+                    endpoint: "cache".to_string(),
+                })?;
+            core.cache_admin(request.method(), resource_path, &body)
+                .await
+        }
+
         // TODO: consider to rename the api name for it is not only for
         // resource retrievement but for all plugins.
         "resource-policy" if request.method() == Method::POST => {
@@ -495,8 +610,17 @@ pub(crate) async fn api(
 
 pub(crate) async fn prometheus_metrics_handler(
     _request: HttpRequest,
-    _core: web::Data<ApiServer>,
+    core: web::Data<ApiServer>,
 ) -> Result<HttpResponse> {
+    let mut snapshot = Vec::new();
+    for (namespace, cache) in core.cache_provider.namespaces().await {
+        match cache.stats().await {
+            Ok(stats) => snapshot.push((namespace, stats)),
+            Err(e) => warn!(namespace, "failed to read cache statistics: {e}"),
+        }
+    }
+    crate::prometheus::CACHE_METRICS.update(snapshot);
+
     let report =
         crate::prometheus::export_metrics().map_err(|e| Error::PrometheusError { source: e })?;
     Ok(HttpResponse::Ok().body(report))

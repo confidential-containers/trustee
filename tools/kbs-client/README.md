@@ -59,3 +59,17 @@ Set a resource policy
 ./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token set-resource-policy --policy-file allow_all.rego
 ```
 
+
+Inspect and manage the KBS cache
+
+```shell
+# Statistics of all namespaces, or statistics and keys of one
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token cache stats
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token cache stats --namespace snp_vcek
+
+# Seed the cache from a directory with one subdirectory per namespace
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token cache upload --dir ./cache
+
+# Clear a namespace
+./kbs-client --url http://127.0.0.1:8080 config --admin-token-file ../../kbs/config/docker-compose/admin-token cache delete --namespace snp_vcek
+```

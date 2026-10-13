@@ -99,6 +99,56 @@ struct Config {
     admin_token_file: Option<PathBuf>,
 }
 
+#[derive(Subcommand)]
+enum CacheCommands {
+    /// Show statistics of all namespaces, or statistics and keys of one
+    Stats {
+        /// Namespace, e.g. snp_vcek
+        #[clap(long, value_parser)]
+        namespace: Option<String>,
+    },
+
+    /// Read an entry
+    Get {
+        #[clap(long, value_parser)]
+        namespace: String,
+        #[clap(long, value_parser)]
+        key: String,
+        /// Write the value to this file instead of printing it base64-encoded
+        #[clap(long, value_parser)]
+        output: Option<PathBuf>,
+    },
+
+    /// Write an entry
+    Set {
+        #[clap(long, value_parser)]
+        namespace: String,
+        #[clap(long, value_parser)]
+        key: String,
+        /// File holding the value
+        #[clap(long, value_parser)]
+        file: PathBuf,
+    },
+
+    /// Delete an entry, or clear a namespace if no key is given
+    Delete {
+        #[clap(long, value_parser)]
+        namespace: String,
+        #[clap(long, value_parser)]
+        key: Option<String>,
+    },
+
+    /// Drop expired entries in every namespace
+    Purge,
+
+    /// Upload a directory with one subdirectory per namespace, each file
+    /// becoming an entry keyed by its relative path
+    Upload {
+        #[clap(long, value_parser)]
+        dir: PathBuf,
+    },
+}
+
 #[allow(clippy::enum_variant_names)]
 #[derive(Subcommand)]
 enum ConfigCommands {
@@ -153,6 +203,10 @@ enum ConfigCommands {
         #[clap(long, value_parser)]
         resource_file: PathBuf,
     },
+
+    /// Inspect and manage the KBS cache
+    #[clap(subcommand)]
+    Cache(CacheCommands),
 
     /// Delete confidential resource
     DeleteResource {
@@ -380,6 +434,85 @@ async fn main() -> Result<()> {
                         STANDARD.encode(resource_bytes)
                     );
                 }
+                ConfigCommands::Cache(command) => match command {
+                    CacheCommands::Stats { namespace } => {
+                        let stats = kbs_client::get_cache_stats(
+                            &cli.url,
+                            admin_token.clone(),
+                            namespace.as_deref(),
+                            kbs_cert.clone(),
+                        )
+                        .await?;
+                        println!("{}", serde_json::to_string_pretty(&stats)?);
+                    }
+                    CacheCommands::Get {
+                        namespace,
+                        key,
+                        output,
+                    } => {
+                        let Some(value) = kbs_client::get_cache_entry(
+                            &cli.url,
+                            admin_token.clone(),
+                            &namespace,
+                            &key,
+                            kbs_cert.clone(),
+                        )
+                        .await?
+                        else {
+                            bail!("cache entry {namespace}/{key} not found");
+                        };
+                        match output {
+                            Some(path) => std::fs::write(path, value)?,
+                            None => println!("{}", STANDARD.encode(value)),
+                        }
+                    }
+                    CacheCommands::Set {
+                        namespace,
+                        key,
+                        file,
+                    } => {
+                        kbs_client::set_cache_entry(
+                            &cli.url,
+                            admin_token.clone(),
+                            &namespace,
+                            &key,
+                            std::fs::read(file)?,
+                            kbs_cert.clone(),
+                        )
+                        .await?;
+                        println!("Set cache entry {namespace}/{key} success");
+                    }
+                    CacheCommands::Delete { namespace, key } => {
+                        kbs_client::delete_cache_entry(
+                            &cli.url,
+                            admin_token.clone(),
+                            &namespace,
+                            key.as_deref(),
+                            kbs_cert.clone(),
+                        )
+                        .await?;
+                        println!("Delete cache entry success");
+                    }
+                    CacheCommands::Purge => {
+                        let purged = kbs_client::purge_cache(
+                            &cli.url,
+                            admin_token.clone(),
+                            kbs_cert.clone(),
+                        )
+                        .await?;
+                        println!("Purged {purged} expired cache entries");
+                    }
+                    CacheCommands::Upload { dir } => {
+                        let uploaded = kbs_client::upload_cache_directory(
+                            &cli.url,
+                            admin_token.clone(),
+                            &dir,
+                            kbs_cert.clone(),
+                        )
+                        .await?;
+                        println!("Uploaded {uploaded} cache entries");
+                    }
+                },
                 ConfigCommands::DeleteResource { path } => {
                     kbs_client::delete_resource(
                         &cli.url,

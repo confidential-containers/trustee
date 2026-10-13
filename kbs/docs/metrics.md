@@ -91,3 +91,21 @@ spec:
       path: /metrics
       interval: 30s
 ```
+
+### Cache Metrics
+
+All cache metrics carry a `namespace` label. Counters are kept by each KBS
+process, also for caches shared between replicas.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `kbs_cache_hits_total` | Counter | Lookups that found an entry. |
+| `kbs_cache_misses_total` | Counter | Lookups that found no entry. |
+| `kbs_cache_insertions_total` | Counter | Values written to the cache. |
+| `kbs_cache_evictions_total` | Counter | Entries evicted to make room for others. |
+| `kbs_cache_expirations_total` | Counter | Entries dropped after their time-to-live. |
+| `kbs_cache_rejections_total` | Counter | Values refused for exceeding a size limit. |
+| `kbs_cache_entries` | Gauge | Entries held. |
+| `kbs_cache_capacity` | Gauge | Maximum number of entries, for bounded backends. |
+| `kbs_cache_bytes` | Gauge | Bytes held, for byte-bounded backends. |
+| `kbs_cache_max_bytes` | Gauge | Maximum number of bytes, for byte-bounded backends. |
