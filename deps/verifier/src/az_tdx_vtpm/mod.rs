@@ -21,19 +21,39 @@ use crate::{InitDataHash, ReportData};
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use az_tdx_vtpm::hcl::HclReport;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 #[derive(Default)]
 pub struct AzTdxVtpm {
     config: QcnlConfig,
+    collateral_cache: Option<pluggable_cache::CacheInstance>,
 }
 
 impl AzTdxVtpm {
     pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
         Self {
             config: config.unwrap_or_default(),
+            collateral_cache: None,
         }
     }
+
+    /// Cache collateral fetched from PCS/PCCS in `cache`.
+    pub(crate) fn with_collateral_cache(mut self, cache: pluggable_cache::CacheInstance) -> Self {
+        self.collateral_cache = Some(cache);
+        self
+    }
+}
+
+/// Fetch the collateral for a TD quote from `pcs` and verify the quote.
+async fn verify_td_quote(
+    td_quote: &[u8],
+    fmspc: [u8; 6],
+    is_platform_ca: bool,
+    tee_type: [u8; 4],
+    pcs: &crate::intel_dcap::pcs::Pcs,
+) -> Result<serde_json::Map<String, serde_json::Value>> {
+    let collateral = build_quote_collateral(fmspc, is_platform_ca, tee_type, pcs).await?;
+    ecdsa_quote_verification(td_quote, Some(collateral))
 }
 
 #[async_trait]
@@ -76,16 +96,24 @@ impl Verifier for AzTdxVtpm {
         let platform_info =
             parse_platform_info(td_quote.cert_data().qe_certification_data.certificates)?;
 
-        let pcs = self.config.pcs()?;
-        let collateral = build_quote_collateral(
+        let (fmspc, is_platform_ca, tee_type) = (
             platform_info.fmspc,
             platform_info.is_platform_ca,
             td_quote.tee_type(),
-            &pcs,
-        )
-        .await?;
-
-        let custom_claims = ecdsa_quote_verification(evidence.td_quote(), Some(collateral))?;
+        );
+        let pcs = self.config.cached_pcs(self.collateral_cache.clone())?;
+        let mut verified =
+            verify_td_quote(evidence.td_quote(), fmspc, is_platform_ca, tee_type, &pcs).await;
+        if verified.is_err() && pcs.served_from_cache() {
+            warn!("TD quote verification failed with cached collateral, retrying with fresh collateral");
+            let fresh = self
+                .config
+                .cached_pcs(self.collateral_cache.clone())?
+                .refreshing();
+            verified =
+                verify_td_quote(evidence.td_quote(), fmspc, is_platform_ca, tee_type, &fresh).await;
+        }
+        let custom_claims = verified?;
 
         verify_hcl_var_data(&hcl_report, &td_quote)?;
 

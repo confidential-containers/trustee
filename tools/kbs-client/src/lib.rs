@@ -284,6 +284,203 @@ pub async fn delete_resource(
     }
 }
 
+/// Send an admin request to the KBS cache API at `cache/<path>`.
+/// Returns the response body; a 404 maps to `Ok(None)`.
+async fn cache_request(
+    url: &str,
+    admin_token: Option<String>,
+    method: reqwest::Method,
+    path: &str,
+    body: Option<Vec<u8>>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<Option<Vec<u8>>> {
+    let http_client = build_http_client(kbs_root_certs_pem)?;
+    let cache_url = match path {
+        "" => format!("{url}/{KBS_URL_PREFIX}/cache"),
+        path => format!("{url}/{KBS_URL_PREFIX}/cache/{path}"),
+    };
+
+    let mut req = http_client.request(method, cache_url);
+    if let Some(body) = body {
+        req = req
+            .header("Content-Type", "application/octet-stream")
+            .body(body);
+    }
+    if let Some(token) = admin_token {
+        req = req.bearer_auth(token);
+    } else {
+        warn!("No admin token provided; sending anonymous request");
+    }
+    let res = req.send().await?;
+    match res.status() {
+        reqwest::StatusCode::OK => Ok(Some(res.bytes().await?.to_vec())),
+        reqwest::StatusCode::NOT_FOUND => Ok(None),
+        _ => bail!("Request Failed, Response: {:?}", res.text().await?),
+    }
+}
+
+/// Validate `namespace` and `key` client-side, so that a malformed key
+/// cannot address a different entry once embedded in the URL.
+fn cache_path(namespace: &str, key: Option<&str>) -> Result<String> {
+    pluggable_cache::provider::validate_namespace(namespace)?;
+    Ok(match key {
+        Some(key) => format!("{namespace}/{}", pluggable_cache::CacheKey::new(key)?),
+        None => namespace.to_string(),
+    })
+}
+
+/// Get cache statistics: for all registered namespaces if `namespace` is
+/// `None`, else statistics and keys of `namespace`.
+pub async fn get_cache_stats(
+    url: &str,
+    admin_token: Option<String>,
+    namespace: Option<&str>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<serde_json::Value> {
+    let path = match namespace {
+        Some(namespace) => cache_path(namespace, None)?,
+        None => String::new(),
+    };
+    let body = cache_request(
+        url,
+        admin_token,
+        reqwest::Method::GET,
+        &path,
+        None,
+        kbs_root_certs_pem,
+    )
+    .await?
+    .ok_or_else(|| anyhow!("cache namespace not found"))?;
+    Ok(serde_json::from_slice(&body)?)
+}
+
+/// Read a cache entry. Returns `None` if it does not exist.
+pub async fn get_cache_entry(
+    url: &str,
+    admin_token: Option<String>,
+    namespace: &str,
+    key: &str,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<Option<Vec<u8>>> {
+    cache_request(
+        url,
+        admin_token,
+        reqwest::Method::GET,
+        &cache_path(namespace, Some(key))?,
+        None,
+        kbs_root_certs_pem,
+    )
+    .await
+}
+
+/// Write a cache entry, e.g. to seed an air-gapped deployment.
+pub async fn set_cache_entry(
+    url: &str,
+    admin_token: Option<String>,
+    namespace: &str,
+    key: &str,
+    value: Vec<u8>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<()> {
+    cache_request(
+        url,
+        admin_token,
+        reqwest::Method::PUT,
+        &cache_path(namespace, Some(key))?,
+        Some(value),
+        kbs_root_certs_pem,
+    )
+    .await?
+    .ok_or_else(|| anyhow!("cache namespace not found"))?;
+    Ok(())
+}
+
+/// Delete a cache entry, or clear the whole namespace if `key` is `None`.
+pub async fn delete_cache_entry(
+    url: &str,
+    admin_token: Option<String>,
+    namespace: &str,
+    key: Option<&str>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<()> {
+    let path = cache_path(namespace, key)?;
+    cache_request(
+        url,
+        admin_token,
+        reqwest::Method::DELETE,
+        &path,
+        None,
+        kbs_root_certs_pem,
+    )
+    .await?
+    .ok_or_else(|| anyhow!("cache entry not found"))?;
+    Ok(())
+}
+
+/// Drop expired entries in every cache namespace. Returns how many were
+/// removed.
+pub async fn purge_cache(
+    url: &str,
+    admin_token: Option<String>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<u64> {
+    let body = cache_request(
+        url,
+        admin_token,
+        reqwest::Method::POST,
+        "purge",
+        None,
+        kbs_root_certs_pem,
+    )
+    .await?
+    .ok_or_else(|| anyhow!("cache API not found"))?;
+    let response: serde_json::Value = serde_json::from_slice(&body)?;
+    response["purged"]
+        .as_u64()
+        .ok_or_else(|| anyhow!("malformed purge response"))
+}
+
+/// Upload every file under `<dir>/<namespace>/` as a cache entry keyed by its
+/// relative path, the same layout as a `Directory` preload source. Returns
+/// the number of entries uploaded.
+pub async fn upload_cache_directory(
+    url: &str,
+    admin_token: Option<String>,
+    dir: &std::path::Path,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<usize> {
+    let mut uploaded = 0;
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let namespace = entry.file_name();
+        let namespace = namespace
+            .to_str()
+            .ok_or_else(|| anyhow!("invalid namespace directory {:?}", entry.path()))?;
+        pluggable_cache::provider::validate_namespace(namespace)?;
+        for (key, value) in pluggable_cache::preload::read_tree(
+            &entry.path(),
+            pluggable_cache::DEFAULT_MAX_VALUE_BYTES,
+        )
+        .await?
+        {
+            set_cache_entry(
+                url,
+                admin_token.clone(),
+                namespace,
+                key.as_str(),
+                value,
+                kbs_root_certs_pem.clone(),
+            )
+            .await?;
+            uploaded += 1;
+        }
+    }
+    Ok(uploaded)
+}
+
 /// Set a reference value in the RVPS at <url>
 /// RVPS must be configured with the non-secure sample extractor
 /// The RVPS-tool should be used in production environments

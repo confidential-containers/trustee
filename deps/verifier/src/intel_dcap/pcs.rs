@@ -9,10 +9,18 @@
 //!   to a user-provided output path. The deserialized data is cached per path behind
 //!   an `Arc<tokio::sync::RwLock<_>>`; the cache is invalidated when the file's mtime changes.
 //! - Any other scheme — fetches collateral from a PCS/PCCS HTTPS endpoint.
+//!   Responses are kept in an optional pluggable cache (see [`Pcs::with_cache`]),
+//!   keyed by the endpoint and the collateral requested. Cached collateral is
+//!   verified by the quote verification library exactly like fresh collateral;
+//!   verifiers retry a failed verification once with [`Pcs::refreshing`] when
+//!   [`Pcs::served_from_cache`], so stale or bad entries are replaced.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, LazyLock};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, LazyLock,
+};
 use std::time::SystemTime;
 
 use tokio::sync::RwLock;
@@ -21,11 +29,9 @@ use thiserror::Error;
 use tracing::debug;
 use urlencoding::decode as urldecode;
 
-use http_cache_reqwest::{
-    Cache, CacheMode, HttpCache, HttpCacheOptions, MokaCacheBuilder, MokaManager,
-};
-use reqwest_middleware::ClientBuilder;
-use std::time::Duration;
+use pluggable_cache::{CacheInstance, CacheKey};
+use sha2::{Digest, Sha256};
+use tracing::warn;
 
 use super::collateral_service::{
     CollateralData, CollateralService, CollateralType, IntelTee, PcsCollaterals,
@@ -33,21 +39,7 @@ use super::collateral_service::{
 };
 use super::{QcnlConfig, TcbUpdateType};
 
-const PCS_CACHE_MAX_AGE: Duration = Duration::from_secs(168 * 3600);
-
-static PCS_CLIENT: LazyLock<reqwest_middleware::ClientWithMiddleware> = LazyLock::new(|| {
-    ClientBuilder::new(reqwest::Client::new())
-        .with(Cache(HttpCache {
-            mode: CacheMode::ForceCache,
-            manager: MokaManager::new(MokaCacheBuilder::new(1024).build()),
-            options: HttpCacheOptions {
-                cache_status_headers: true,
-                max_ttl: Some(PCS_CACHE_MAX_AGE),
-                ..Default::default()
-            },
-        }))
-        .build()
-});
+static PCS_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
 struct Cached {
     data: Arc<PcsCollaterals>,
@@ -67,7 +59,7 @@ pub enum PcsError {
     #[error("unexpected HTTP response from PCS: {0}")]
     Response(#[from] reqwest::Error),
     #[error("failed to send request to PCS: {0}")]
-    Send(#[from] reqwest_middleware::Error),
+    Send(#[source] reqwest::Error),
     #[error("invalid collateral service URL: {0}")]
     UrlParse(#[from] url::ParseError),
     #[error("collateral file I/O error: {0}")]
@@ -97,6 +89,12 @@ impl From<hex::FromHexError> for PcsError {
 pub struct Pcs {
     inner: PcsInner,
     tcb_update_type: TcbUpdateType,
+    cache: Option<CacheInstance>,
+    /// Whether to serve collateral from `cache`; fetched collateral is
+    /// written to it either way.
+    read_cache: bool,
+    /// Whether any collateral was served from `cache`.
+    cache_hit: AtomicBool,
 }
 
 impl Pcs {
@@ -111,6 +109,9 @@ impl Pcs {
             return Ok(Self {
                 inner: PcsInner::File { path },
                 tcb_update_type,
+                cache: None,
+                read_cache: true,
+                cache_hit: AtomicBool::new(false),
             });
         }
 
@@ -124,7 +125,79 @@ impl Pcs {
         Ok(Self {
             inner: PcsInner::Http { url: base, is_pcs },
             tcb_update_type,
+            cache: None,
+            read_cache: true,
+            cache_hit: AtomicBool::new(false),
         })
+    }
+
+    /// Cache collateral fetched over HTTP in `cache`. The `file://` backend
+    /// reads local data and is not cached here.
+    pub fn with_cache(mut self, cache: Option<CacheInstance>) -> Self {
+        self.cache = cache;
+        self
+    }
+
+    /// Fetch all collateral afresh, replacing what is cached. Used to retry a
+    /// verification that failed with cached collateral, which may be stale.
+    pub fn refreshing(mut self) -> Self {
+        self.read_cache = false;
+        self
+    }
+
+    /// Whether any collateral was served from the cache so far.
+    pub fn served_from_cache(&self) -> bool {
+        self.cache_hit.load(Ordering::Relaxed)
+    }
+
+    /// The cache key for `ct` fetched from `url`: a short hash of the
+    /// endpoint (so different PCCS instances never share entries), the kind
+    /// of collateral and its parameters.
+    fn cache_key(&self, url: &url::Url, ct: &CollateralType<'_>) -> Option<CacheKey> {
+        let endpoint = &hex::encode(Sha256::digest(url.as_str().as_bytes()))[..16];
+        let update = &self.tcb_update_type;
+        let key = match ct {
+            CollateralType::TcbInfo(tee, fmspc) => {
+                format!("{endpoint}/tcb/{tee}/{}/{update}", hex::encode(fmspc))
+            }
+            CollateralType::QeIdentity(tee) => format!("{endpoint}/qe/{tee}/{update}"),
+            CollateralType::PckCrl(ca) => format!("{endpoint}/pckcrl/{ca}"),
+            CollateralType::RootCaCrl(cdp) => {
+                let cdp = hex::encode(Sha256::digest(cdp.unwrap_or_default().as_bytes()));
+                format!("{endpoint}/rootcacrl/{}", &cdp[..16])
+            }
+        };
+        CacheKey::new(key).ok()
+    }
+
+    async fn cached(&self, key: &CacheKey) -> Option<CollateralData> {
+        if !self.read_cache {
+            return None;
+        }
+        let cache = self.cache.as_ref()?;
+        match cache.get(key).await {
+            Ok(Some(bytes)) => {
+                let data = decode_collateral(&bytes);
+                if data.is_none() {
+                    warn!("discarding malformed cached collateral {key}");
+                    let _ = cache.delete(key).await;
+                }
+                data
+            }
+            Ok(None) => None,
+            Err(e) => {
+                warn!("collateral cache lookup for {key} failed: {e}");
+                None
+            }
+        }
+    }
+
+    async fn store(&self, key: &CacheKey, data: &CollateralData) {
+        if let Some(cache) = &self.cache {
+            if let Err(e) = cache.set(key, encode_collateral(data)).await {
+                warn!("failed to cache collateral {key}: {e}");
+            }
+        }
     }
 
     fn cert_chain_header(ct: &CollateralType<'_>) -> Option<&'static str> {
@@ -298,6 +371,15 @@ impl Pcs {
         // on return.
         let needs_hex_decode = matches!(ct, CollateralType::RootCaCrl(_)) && !is_pcs;
 
+        let cache_key = self.cache_key(url, &ct);
+        if let Some(key) = &cache_key {
+            if let Some(data) = self.cached(key).await {
+                debug!("collateral cache hit for {key}");
+                self.cache_hit.store(true, Ordering::Relaxed);
+                return Ok(data);
+            }
+        }
+
         let mut endpoint = match ct {
             CollateralType::TcbInfo(tee, fmspc) => {
                 params.insert("fmspc", hex::encode_upper(fmspc));
@@ -365,7 +447,11 @@ impl Pcs {
         } else {
             Vec::from(response_bytes)
         };
-        Ok(CollateralData { body, cert_chain })
+        let data = CollateralData { body, cert_chain };
+        if let Some(key) = &cache_key {
+            self.store(key, &data).await;
+        }
+        Ok(data)
     }
 }
 
@@ -380,12 +466,53 @@ impl CollateralService for Pcs {
     }
 }
 
+/// `[u32 BE body length][body][u8 has chain][chain]`
+fn encode_collateral(data: &CollateralData) -> Vec<u8> {
+    let chain = data.cert_chain.as_deref();
+    let mut out = Vec::with_capacity(5 + data.body.len() + chain.map_or(0, <[u8]>::len));
+    out.extend_from_slice(&(data.body.len() as u32).to_be_bytes());
+    out.extend_from_slice(&data.body);
+    out.push(chain.is_some() as u8);
+    out.extend_from_slice(chain.unwrap_or_default());
+    out
+}
+
+fn decode_collateral(bytes: &[u8]) -> Option<CollateralData> {
+    let len = u32::from_be_bytes(bytes.get(..4)?.try_into().ok()?) as usize;
+    let body = bytes.get(4..4 + len)?.to_vec();
+    let rest = bytes.get(4 + len..)?;
+    let cert_chain = match rest.split_first()? {
+        (0, []) => None,
+        (1, chain) => Some(chain.to_vec()),
+        _ => return None,
+    };
+    Some(CollateralData { body, cert_chain })
+}
+
 fn url_decode_bytes(s: &str) -> Result<Vec<u8>, PcsError> {
     Ok(urldecode(s)?.into_owned().into_bytes())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{decode_collateral, encode_collateral, CollateralData};
+
+    #[test]
+    fn collateral_encoding_round_trip() {
+        for cert_chain in [None, Some(vec![]), Some(b"chain".to_vec())] {
+            let data = CollateralData {
+                body: b"body".to_vec(),
+                cert_chain,
+            };
+            let decoded = decode_collateral(&encode_collateral(&data)).unwrap();
+            assert_eq!(decoded.body, data.body);
+            assert_eq!(decoded.cert_chain, data.cert_chain);
+        }
+        assert!(decode_collateral(b"").is_none());
+        assert!(decode_collateral(&[0, 0, 0, 9, 1]).is_none());
+        assert!(decode_collateral(&[0, 0, 0, 0, 2]).is_none());
+    }
+
     #[tokio::test]
     #[ignore = "requires PCS network connectivity; run with: cargo test -p verifier --no-default-features --features tdx-verifier -- tcb_info_signature --include-ignored"]
     async fn tcb_info_signature() {

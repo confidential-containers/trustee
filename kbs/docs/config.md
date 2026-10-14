@@ -354,6 +354,46 @@ Backend-specific configuration is always reused from `storage_backend.backends`.
 
 The attestation session storage namespace is always `kbs_protocol_session`.
 
+### Cache Configuration
+
+The optional `cache` section configures the cache shared by KBS and the
+built-in CoCo AS, for data that is expensive to obtain: VCEKs, DCAP
+collateral, HSK/CEK certificates and JWK sets. It defaults to a bounded
+in-memory LRU cache with a 7 day time-to-live. Persistent and tiered caches
+store entries through `storage_backend`. All properties are described in the
+[pluggable-cache README](https://github.com/larrydewey/pluggable-cache/blob/main/crates/pluggable-cache/README.md#configuration); the AS
+namespaces are listed in the
+[CoCo AS configuration](../../attestation-service/docs/config.md#cache-namespaces-in-coco-as).
+
+In addition, KBS uses the namespace `kbs_jwks` for the JWK sets configured in
+`attestation_token.trusted_jwk_sets` and for admin identity providers. They
+are always fetched at startup; the cached copy is only used if the source is
+unreachable. A key removed from a JWK set therefore stays trusted during an
+outage for up to the namespace's time-to-live after the last successful
+fetch; bound it with e.g. `namespaces.kbs_jwks.memory.ttl_secs`. The admin API
+refuses to write trust-anchor namespaces (`kbs_jwks`, `nvidia_nras_jwks`).
+
+Caches are managed through the admin API under `/kbs/v0/cache` (see
+`kbs-client config cache --help`) and reported in the
+[Prometheus metrics](./metrics.md#cache-metrics).
+
+```toml
+[cache]
+cache_type = "Tiered"
+purge_interval_secs = 3600
+
+[cache.memory]
+max_entries = 4096
+ttl_secs = 3600
+
+[cache.persistent]
+ttl_secs = 604800
+
+[[cache.preload]]
+type = "Directory"
+path = "/opt/confidential-containers/cache"
+```
+
 ### Plugins Configuration
 
 KBS supports different kinds of plugins, and they can be enabled via add corresponding configs.

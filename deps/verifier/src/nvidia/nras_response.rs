@@ -68,6 +68,14 @@ impl NrasResponse {
         Ok(())
     }
 
+    /// Key ids of the keys that signed the JWT and the EAT.
+    pub fn key_ids(&self) -> Result<Vec<String>> {
+        Ok(vec![
+            get_jwt_kid(self.jwt.clone())?,
+            get_jwt_kid(self.eat.clone())?,
+        ])
+    }
+
     /// Extracts TCB Claims from EAT
     /// These claims will not be validated unless
     /// the validate method is called.

@@ -7,7 +7,7 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 use super::intel_dcap::{
     collateral::build_quote_collateral,
@@ -31,13 +31,21 @@ struct SgxEvidence {
 #[derive(Debug, Default)]
 pub struct SgxVerifier {
     config: QcnlConfig,
+    collateral_cache: Option<pluggable_cache::CacheInstance>,
 }
 
 impl SgxVerifier {
     pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
         Self {
             config: config.unwrap_or_default(),
+            collateral_cache: None,
         }
+    }
+
+    /// Cache collateral fetched from PCS/PCCS in `cache`.
+    pub(crate) fn with_collateral_cache(mut self, cache: pluggable_cache::CacheInstance) -> Self {
+        self.collateral_cache = Some(cache);
+        self
     }
 }
 
@@ -50,20 +58,37 @@ impl Verifier for SgxVerifier {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let tee_evidence =
-            serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
+        let parse = || {
+            serde_json::from_value::<SgxEvidence>(evidence.clone())
+                .context("Deserialize Quote failed.")
+        };
+        let tee_evidence = parse()?;
 
         debug!("evidence: {}", serde_json::to_string(&tee_evidence)?);
 
-        let pcs = self.config.pcs()?;
-        let claims = verify_evidence(
+        let pcs = self.config.cached_pcs(self.collateral_cache.clone())?;
+        let mut result = verify_evidence(
             expected_report_data,
             expected_init_data_hash,
             tee_evidence,
             &pcs,
         )
-        .await
-        .context("SGX Verifier")?;
+        .await;
+        if result.is_err() && pcs.served_from_cache() {
+            warn!("SGX verification failed with cached collateral, retrying with fresh collateral");
+            let fresh = self
+                .config
+                .cached_pcs(self.collateral_cache.clone())?
+                .refreshing();
+            result = verify_evidence(
+                expected_report_data,
+                expected_init_data_hash,
+                parse()?,
+                &fresh,
+            )
+            .await;
+        }
+        let claims = result.context("SGX Verifier")?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }

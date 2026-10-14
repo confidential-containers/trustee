@@ -9,6 +9,7 @@ members = [
     "integration-tests",
     "tools/trustee-cli",
     "deps/key-value-storage",
+    "deps/cache-storage",
     "deps/policy-engine",
 ]
 resolver = "2"

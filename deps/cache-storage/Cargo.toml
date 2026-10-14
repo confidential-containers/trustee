@@ -1,0 +1,15 @@
+[package]
+name = "cache-storage"
+version.workspace = true
+authors.workspace = true
+description = "Adapter that backs pluggable-cache with Trustee's key-value-storage"
+edition.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+key-value-storage = { path = "../key-value-storage", default-features = false }
+pluggable-cache = "0.1"
+serde.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

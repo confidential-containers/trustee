@@ -13,6 +13,7 @@ use std::{
 
 use dirs::home_dir;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+mod cache_cmd;
 mod keygen;
 mod run;
 
@@ -44,6 +45,9 @@ pub(crate) enum Commands {
         #[arg(long)]
         allow_all: bool,
     },
+    /// Prepare cache contents, e.g. for air-gapped deployments
+    #[command(subcommand)]
+    Cache(cache_cmd::CacheCommands),
 }
 
 /// default_home calculates a default home folder for trustee according to the current user.
@@ -83,6 +87,7 @@ async fn main() -> Result<()> {
             config_file,
             allow_all,
         } => run::trustee_run(&cli.home, config_file, allow_all).await,
+        Commands::Cache(command) => cache_cmd::run(command).await,
     }
 }
 

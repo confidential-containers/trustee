@@ -19,11 +19,13 @@ section:
 | `attestation_token_broker` | [AttestationTokenBroker][1] | Attestation result token configuration.             | No       | See below |
 | `verifier_config`          | Object                      | Optional verifier specific configuration (for example TPM) | No | None |
 | `storage_backend`          | [StorageBackendConfig][4]   | Unified storage backend configuration for all storage needs | No | See below |
+| `cache`                    | [CacheConfig][5]            | Cache for data that is expensive to obtain, e.g. VCEKs | No | In-memory LRU, 1024 entries |
 
 [1]: #attestationtokenbroker
 [2]: #tokensignerconfig
 [3]: #rvps-configuration
 [4]: #unified-storage-backend-configuration
+[5]: #cache-configuration
 
 #### AttestationTokenBroker
 
@@ -488,3 +490,55 @@ When using the unified storage backend configuration, CoCo AS creates the follow
 The unified storage backend configuration is optional. If not provided, CoCo AS uses the default storage backend (in-memory). For production, configure a persistent backend (e.g. LocalFs or Postgres) in the configuration file.
 
 For detailed configuration options and examples, see the [Key-Value Storage README](../../deps/key-value-storage/README.md#unified-storage-backend-configuration).
+
+### Cache Configuration
+
+CoCo AS caches data that is expensive to obtain, such as VCEKs fetched from
+the AMD KDS. Each use case gets its own cache namespace, so entries of one
+use case can neither collide with nor evict those of another. Cached values
+are verified exactly like freshly fetched ones.
+
+The `cache` section selects a backend (`Memory`, `Persistent`, `Tiered` or
+`Disabled`), per-namespace overrides, preload sources (a directory, or a
+signed OCI bundle from a registry or image layout) and the purge interval.
+Persistent and tiered caches store entries through `storage_backend`. See the
+[pluggable-cache README](https://github.com/larrydewey/pluggable-cache/blob/main/crates/pluggable-cache/README.md#configuration) for all
+properties.
+
+When CoCo AS is built into KBS, it shares the KBS `cache` configuration
+instead, and this section is ignored.
+
+#### Cache Namespaces in CoCo AS
+
+| Namespace               | Component                  | Content |
+|-------------------------|----------------------------|---------|
+| `snp_vcek`              | SNP verifier               | VCEKs that passed chain verification, keyed `<Milan\|Genoa\|Turin>/<hw_id>/<tcb>`, `<tcb>` as in the [offline store](./amd-offline-certificate-cache.md), e.g. `bl03_tee00_snp08_ucode115`. Not used if the chip ID is masked. |
+| `intel_dcap_collateral` | TDX, SGX, Azure TDX verifiers | Collateral fetched from PCS/PCCS |
+| `hygon_csv_hsk_cek`     | Hygon CSV verifier         | HSK/CEK certificates that verified a report, keyed by chip serial number |
+| `nvidia_nras_jwks`      | NVIDIA remote verifier     | NRAS token signing keys; refreshed when a token is signed by an unknown key |
+
+Example:
+
+```json
+{
+    "cache": {
+        "cache_type": "Tiered",
+        "memory": { "max_entries": 4096, "ttl_secs": 3600 },
+        "persistent": { "ttl_secs": 604800 },
+        "namespaces": {
+            "nvidia_nras_jwks": { "cache_type": "Memory" }
+        },
+        "preload": [
+            {
+                "type": "OciLayout",
+                "path": "/opt/confidential-containers/cache-bundle",
+                "reference": "v1",
+                "verification": {
+                    "type": "CosignPublicKey",
+                    "public_keys": ["/etc/trustee/cache-bundle.pub"]
+                }
+            }
+        ]
+    }
+}
+```

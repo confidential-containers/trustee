@@ -32,13 +32,21 @@ struct TdxEvidence {
 #[derive(Debug, Default)]
 pub struct Tdx {
     config: QcnlConfig,
+    collateral_cache: Option<pluggable_cache::CacheInstance>,
 }
 
 impl Tdx {
     pub(crate) fn new(config: Option<QcnlConfig>) -> Self {
         Self {
             config: config.unwrap_or_default(),
+            collateral_cache: None,
         }
+    }
+
+    /// Cache collateral fetched from PCS/PCCS in `cache`.
+    pub(crate) fn with_collateral_cache(mut self, cache: pluggable_cache::CacheInstance) -> Self {
+        self.collateral_cache = Some(cache);
+        self
     }
 }
 
@@ -51,18 +59,34 @@ impl Verifier for Tdx {
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
-        let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
-            .context("Deserialize TDX Evidence failed.")?;
+        let parse = || {
+            serde_json::from_value::<TdxEvidence>(evidence.clone())
+                .context("Deserialize TDX Evidence failed.")
+        };
 
-        let pcs = self.config.pcs()?;
-        let claims = verify_evidence(
+        let pcs = self.config.cached_pcs(self.collateral_cache.clone())?;
+        let mut result = verify_evidence(
             expected_report_data,
             expected_init_data_hash,
-            tdx_evidence,
+            parse()?,
             &pcs,
         )
-        .await
-        .context("TDX Verifier")?;
+        .await;
+        if result.is_err() && pcs.served_from_cache() {
+            warn!("TDX verification failed with cached collateral, retrying with fresh collateral");
+            let fresh = self
+                .config
+                .cached_pcs(self.collateral_cache.clone())?
+                .refreshing();
+            result = verify_evidence(
+                expected_report_data,
+                expected_init_data_hash,
+                parse()?,
+                &fresh,
+            )
+            .await;
+        }
+        let claims = result.context("TDX Verifier")?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }

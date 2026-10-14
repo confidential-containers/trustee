@@ -98,6 +98,15 @@ impl AdminConfig {
 
 impl Admin {
     pub async fn new(config: AdminConfig) -> Result<Self> {
+        Self::new_with_jwks_cache(config, None).await
+    }
+
+    /// Like [`Admin::new`], with a fallback cache for remote JWK sets of
+    /// identity providers.
+    pub async fn new_with_jwks_cache(
+        config: AdminConfig,
+        jwks_cache: Option<&pluggable_cache::CacheInstance>,
+    ) -> Result<Self> {
         config.validate()?;
 
         match config {
@@ -107,7 +116,7 @@ impl Admin {
                 authentication,
                 authorization,
             } => Ok(Admin::AuthenticatedAuthorization(
-                TokenVerifier::new(authentication).await?,
+                TokenVerifier::new(authentication, jwks_cache).await?,
                 authorization.try_into()?,
             )),
         }

@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 use std::result::Result::Ok;
 use std::str::FromStr;
 use strum::{Display, EnumString};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use super::*;
 use crate::nvidia::nras_jwks::NrasJwks;
@@ -71,6 +71,7 @@ enum NvidiaVerifierTypeInternal {
     Remote {
         config: NvidiaRemoteVerifierConfig,
         jwks: NrasJwks,
+        jwks_cache: pluggable_cache::CacheInstance,
     },
     #[default]
     Local,
@@ -79,6 +80,16 @@ enum NvidiaVerifierTypeInternal {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NvidiaRemoteVerifierConfig {
     verifier_url: Option<String>,
+    /// Where to fetch the NRAS token signing keys from. Defaults to NVIDIA's
+    /// public endpoint; set it to use a mirror.
+    #[serde(default)]
+    jwks_url: Option<String>,
+}
+
+impl NvidiaRemoteVerifierConfig {
+    fn jwks_url(&self) -> &str {
+        self.jwks_url.as_deref().unwrap_or(nras_jwks::NRAS_JWKS_URL)
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -222,14 +233,20 @@ fn validate_ppcie(
 }
 
 impl Nvidia {
-    pub async fn new(config: Option<NvidiaVerifierConfig>) -> Result<Self> {
+    /// `jwks_cache` holds the NRAS token signing keys between verifier
+    /// instances; it is only used by the remote verifier.
+    pub async fn new(
+        config: Option<NvidiaVerifierConfig>,
+        jwks_cache: pluggable_cache::CacheInstance,
+    ) -> Result<Self> {
         let verifier_type = config
             .map(|c| c.verifier)
             .unwrap_or(NvidiaVerifierType::Local);
         let verifier_type = match verifier_type {
             NvidiaVerifierType::Remote(config) => NvidiaVerifierTypeInternal::Remote {
+                jwks: NrasJwks::load(&jwks_cache, config.jwks_url(), false).await?,
                 config,
-                jwks: NrasJwks::new().await?,
+                jwks_cache,
             },
             _ => NvidiaVerifierTypeInternal::Local,
         };
@@ -244,6 +261,7 @@ impl Nvidia {
         expected_nonce_vec: Vec<u8>,
         config: &NvidiaRemoteVerifierConfig,
         jwks: &NrasJwks,
+        jwks_cache: &pluggable_cache::CacheInstance,
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
@@ -297,7 +315,15 @@ impl Nvidia {
         };
 
         let response = NrasResponse::from_str(&res.text().await?)?;
-        response.validate(jwks)?;
+        // NRAS may have rotated its keys since the set was cached: refetch
+        // once if a token is signed by a key we do not know.
+        if response.key_ids()?.iter().all(|kid| jwks.contains(kid)) {
+            response.validate(jwks)?;
+        } else {
+            debug!("NRAS token signed by unknown key, refreshing JWKS");
+            let fresh = NrasJwks::load(jwks_cache, config.jwks_url(), true).await?;
+            response.validate(&fresh)?;
+        }
 
         let claims = response.claims()?;
 
@@ -383,9 +409,19 @@ impl Verifier for Nvidia {
                 NvidiaVerifierTypeInternal::Local => {
                     self.evaluate_device_locally(device, expected_nonce_vec.clone())?
                 }
-                NvidiaVerifierTypeInternal::Remote { config, jwks } => {
-                    self.evaluate_device_nras(device, expected_nonce_vec.clone(), config, jwks)
-                        .await?
+                NvidiaVerifierTypeInternal::Remote {
+                    config,
+                    jwks,
+                    jwks_cache,
+                } => {
+                    self.evaluate_device_nras(
+                        device,
+                        expected_nonce_vec.clone(),
+                        config,
+                        jwks,
+                        jwks_cache,
+                    )
+                    .await?
                 }
             };
 
@@ -507,16 +543,19 @@ mod tests {
 
         let verifier_type = match verifier_type {
             "local" => NvidiaVerifierType::Local,
-            "remote" => {
-                NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig { verifier_url: None })
-            }
+            "remote" => NvidiaVerifierType::Remote(NvidiaRemoteVerifierConfig::default()),
             _ => panic!("Unknown verifier type."),
         };
 
         let verifier_config = Some(NvidiaVerifierConfig {
             verifier: verifier_type,
         });
-        let verifier = Nvidia::new(verifier_config).await.unwrap();
+        let verifier = Nvidia::new(
+            verifier_config,
+            std::sync::Arc::new(pluggable_cache::disabled::DisabledCache),
+        )
+        .await
+        .unwrap();
         let claims = verifier
             .evaluate(evidence, &report_data, &init_data)
             .await

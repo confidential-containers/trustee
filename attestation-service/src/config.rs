@@ -2,6 +2,7 @@ use crate::ear_token::EarTokenConfiguration;
 use crate::rvps::RvpsConfig;
 
 use key_value_storage::StorageBackendConfig;
+pub use pluggable_cache::CacheConfig;
 pub use verifier::VerifierConfig;
 
 use serde::Deserialize;
@@ -29,6 +30,11 @@ pub struct Config {
     /// - Built-in AS RVPS storage (instance: "reference_value")
     #[serde(default)]
     pub storage_backend: StorageBackendConfig,
+
+    /// Cache for data that is expensive to obtain, e.g. VCEKs fetched by the
+    /// SNP verifier. Defaults to a bounded in-memory LRU cache.
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
 #[derive(Error, Debug)]
@@ -85,6 +91,7 @@ mod tests {
     use key_value_storage::{
         local_fs, KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig,
     };
+    use pluggable_cache::CacheConfig;
 
     #[rstest]
     #[case("./tests/configs/example1.json", Config {
@@ -99,6 +106,7 @@ mod tests {
             verbose_token: true,
         },
         verifier_config: None,
+        cache: CacheConfig::default(),
         storage_backend: StorageBackendConfig {
             storage_type: KeyValueStorageType::LocalFs,
             backends: KeyValueStorageStructConfig {
@@ -131,6 +139,7 @@ mod tests {
             backends: KeyValueStorageStructConfig::default(),
         },
         verifier_config: None,
+        cache: CacheConfig::default(),
     })]
     fn read_config(#[case] config: &str, #[case] expected: Config) {
         let config = std::fs::read_to_string(config).unwrap();

@@ -76,11 +76,21 @@ impl TokenVerifier {
     }
 
     pub async fn from_config(config: AttestationTokenVerifierConfig) -> Result<Self> {
-        let verifier = JwtVerifier::new(
+        Self::from_config_with_jwks_cache(config, None).await
+    }
+
+    /// Like [`TokenVerifier::from_config`], with a fallback cache for remote
+    /// JWK sets.
+    pub async fn from_config_with_jwks_cache(
+        config: AttestationTokenVerifierConfig,
+        jwks_cache: Option<&pluggable_cache::CacheInstance>,
+    ) -> Result<Self> {
+        let verifier = JwtVerifier::new_with_jwks_cache(
             &config.trusted_jwk_sets,
             &config.trusted_certs_paths,
             &Vec::new(),
             config.insecure_header_jwk,
+            jwks_cache,
         )
         .await
         .map_err(|e| Error::TokenVerifierInitialization { source: e })?;

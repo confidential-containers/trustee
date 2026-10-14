@@ -103,6 +103,18 @@ pub enum Error {
         #[from]
         source: prometheus::Error,
     },
+
+    #[error("Cache error: {source}")]
+    CacheError {
+        #[from]
+        source: pluggable_cache::CacheError,
+    },
+
+    #[error("Cache entry {namespace}/{key} not found")]
+    CacheEntryNotFound { namespace: String, key: String },
+
+    #[error("Cache namespace {namespace} holds trust anchors and cannot be written")]
+    CacheWriteForbidden { namespace: String },
 }
 
 impl ResponseError for Error {
@@ -123,10 +135,10 @@ impl ResponseError for Error {
 
         // Per the KBS protocol, errors should yield 401, 403 or 404 responses
         let mut res = match self {
-            Error::InvalidRequestPath { .. } | Error::PluginNotFound { .. } => {
-                HttpResponse::NotFound()
-            }
-            Error::PolicyDeny => HttpResponse::Forbidden(),
+            Error::InvalidRequestPath { .. }
+            | Error::PluginNotFound { .. }
+            | Error::CacheEntryNotFound { .. } => HttpResponse::NotFound(),
+            Error::PolicyDeny | Error::CacheWriteForbidden { .. } => HttpResponse::Forbidden(),
             _ => HttpResponse::Unauthorized(),
         };
 

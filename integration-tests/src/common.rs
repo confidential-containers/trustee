@@ -202,6 +202,16 @@ impl TestHarness {
         Ok(token)
     }
 
+    /// A freshly signed admin token, for calling admin APIs directly.
+    pub fn admin_token(&self) -> Result<String> {
+        self.sign_admin_token()
+    }
+
+    /// Root URL of the KBS under test.
+    pub fn kbs_url(&self) -> &'static str {
+        KBS_URL
+    }
+
     pub async fn new(test_parameters: TestParameters) -> Result<TestHarness> {
         let auth_keypair = PKey::generate_ed25519()?;
         let auth_pubkey = String::from_utf8(auth_keypair.public_key_to_pem()?)?;
@@ -364,6 +374,7 @@ impl TestHarness {
                 },
             },
             session_storage_type: None,
+            cache: Default::default(),
             plugins: vec![PluginsConfig::ResourceStorage(RepositoryConfig::KvStorage)],
         };
         // Spawn the KBS Server
