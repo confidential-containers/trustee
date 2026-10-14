@@ -361,7 +361,7 @@ built-in CoCo AS, for data that is expensive to obtain: VCEKs, DCAP
 collateral, HSK/CEK certificates and JWK sets. It defaults to a bounded
 in-memory LRU cache with a 7 day time-to-live. Persistent and tiered caches
 store entries through `storage_backend`. All properties are described in the
-[cache crate README](../../deps/cache/README.md#configuration); the AS
+[pluggable-cache README](https://github.com/larrydewey/pluggable-cache/blob/main/crates/pluggable-cache/README.md#configuration); the AS
 namespaces are listed in the
 [CoCo AS configuration](../../attestation-service/docs/config.md#cache-namespaces-in-coco-as).
 

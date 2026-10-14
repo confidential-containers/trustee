@@ -282,4 +282,4 @@ into a signed OCI bundle. Cached VCEKs are verified against the AMD root like
 fetched ones. Unlike the offline store, cache entries expire and can be
 evicted, so the offline store remains the better fit for a permanent,
 hardware-inventory driven setup. See the
-[cache README](../../deps/cache/README.md#air-gapped-workflow).
+[cache documentation](../../docs/cache.md#air-gapped-workflow).

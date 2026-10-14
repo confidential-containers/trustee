@@ -502,7 +502,7 @@ The `cache` section selects a backend (`Memory`, `Persistent`, `Tiered` or
 `Disabled`), per-namespace overrides, preload sources (a directory, or a
 signed OCI bundle from a registry or image layout) and the purge interval.
 Persistent and tiered caches store entries through `storage_backend`. See the
-[cache crate README](../../deps/cache/README.md#configuration) for all
+[pluggable-cache README](https://github.com/larrydewey/pluggable-cache/blob/main/crates/pluggable-cache/README.md#configuration) for all
 properties.
 
 When CoCo AS is built into KBS, it shares the KBS `cache` configuration
