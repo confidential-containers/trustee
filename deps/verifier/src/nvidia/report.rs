@@ -15,6 +15,7 @@ use tracing::{info, warn};
 
 use super::spdm_request::{SpdmGetMeasurementRequest, SPDM_GET_MEASUREMENT_REQUEST_SIZE};
 use super::spdm_response::SpdmGetMeasurementsResponse;
+use super::Architecture;
 use crate::nvidia::cert_chain::NvidiaCertificateChain;
 use crate::nvidia::spdm_response::OpaqueDataType;
 
@@ -33,11 +34,12 @@ impl fmt::Display for NvidiaAttestationReport {
 }
 
 impl NvidiaAttestationReport {
-    pub fn try_new(
+    pub(super) fn try_new(
         report_bytes: &[u8],
         report_signature_length: usize,
         cert_chain_bytes: &[u8],
         expected_nonce: &[u8],
+        architecture: Architecture,
     ) -> Result<Self> {
         let (report, report_size) =
             NvidiaAttestationReport::decode(report_bytes, &report_signature_length)?;
@@ -59,7 +61,7 @@ impl NvidiaAttestationReport {
         info!("Report signature verified");
 
         // Verify report certificate chain
-        cert_chain.verify(report.get_fwid()?)?;
+        cert_chain.verify(report.get_fwid()?, architecture)?;
         info!("Report certificate chain verified");
 
         // Verify report nonce
@@ -147,7 +149,7 @@ impl NvidiaAttestationReport {
 mod tests {
     use openssl::x509::X509;
 
-    use crate::nvidia::{report::NvidiaAttestationReport, HOPPER_SIGNATURE_LENGTH};
+    use crate::nvidia::{report::NvidiaAttestationReport, NVIDIA_REPORT_SIGNATURE_LENGTH};
 
     #[test]
     fn test_verify_report_signature() {
@@ -156,13 +158,15 @@ mod tests {
         let report_vec = hex::decode(report_str).unwrap();
 
         let (report, report_size) =
-            NvidiaAttestationReport::decode(report_vec.as_slice(), &HOPPER_SIGNATURE_LENGTH)
+            NvidiaAttestationReport::decode(report_vec.as_slice(), &NVIDIA_REPORT_SIGNATURE_LENGTH)
                 .unwrap();
 
         let signing_cert_bytes = include_bytes!("../../test_data/nvidia/hopper_signing_cert.pem");
         let signing_cert = X509::from_pem(signing_cert_bytes).unwrap();
 
-        let signed_data_size = report_size.checked_sub(HOPPER_SIGNATURE_LENGTH).unwrap();
+        let signed_data_size = report_size
+            .checked_sub(NVIDIA_REPORT_SIGNATURE_LENGTH)
+            .unwrap();
 
         let signed_data = report_vec.get(..signed_data_size).unwrap();
 

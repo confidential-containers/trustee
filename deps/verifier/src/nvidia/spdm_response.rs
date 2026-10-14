@@ -174,6 +174,9 @@ struct NvidiaOpaqueDataItem {
     data: Value,
 }
 
+const NVDEC_STATUS_ENABLED: u8 = 0xaa;
+const NVDEC_STATUS_DISABLED: u8 = 0x55;
+
 impl OpaqueData {
     /// Decode the OpaqueData for Nvidia. We store the OpaqueDataItems
     /// in a hashmap, which is more convenient for generating device claims
@@ -194,7 +197,14 @@ impl OpaqueData {
 
         let mut offset: usize = 0;
 
-        while offset + 4 < bytes_len {
+        while offset < bytes_len {
+            if bytes_len - offset < 4 {
+                bail!(
+                    "OpaqueData item header overflow: {} trailing byte(s)",
+                    bytes_len - offset
+                );
+            }
+
             let mut item = NvidiaOpaqueDataItem::default();
 
             // DataType
@@ -210,26 +220,28 @@ impl OpaqueData {
             offset += 2;
 
             // Data
-            let data_bytes = bytes.get(offset..offset + item.size).ok_or(anyhow!(
+            let data_end = offset
+                .checked_add(item.size)
+                .ok_or_else(|| anyhow!("OpaqueData size overflow"))?;
+            let data_bytes = bytes.get(offset..data_end).ok_or(anyhow!(
                 "OpaqueData overflow: offset {:#x}, data_size {:#x}",
                 offset,
                 item.size,
             ))?;
-            offset += item.size;
+            offset = data_end;
 
             item.data = match item.r#type {
                 OpaqueDataType::DriverVersion
                 | OpaqueDataType::ChipSku
                 | OpaqueDataType::ChipSkuMod
-                | OpaqueDataType::Nvdec0Status
                 | OpaqueDataType::Project
                 | OpaqueDataType::ProjectSku
-                | OpaqueDataType::ProtectedPcieStatus
                 | OpaqueDataType::ChipInfo => Value::String(
                     String::from_utf8_lossy(data_bytes)
                         .trim_end_matches('\0')
                         .to_string(),
                 ),
+                OpaqueDataType::Nvdec0Status => Self::decode_nvdec_status(data_bytes)?,
                 OpaqueDataType::VbiosVersion => Value::String(
                     Self::format_vbios_version(data_bytes)
                         .ok_or(anyhow!("Invalid gpu vbios version"))?,
@@ -329,6 +341,16 @@ impl OpaqueData {
             _ => "unknown",
         };
         Ok(Value::String(feature.to_string()))
+    }
+
+    fn decode_nvdec_status(bytes: &[u8]) -> Result<Value> {
+        let status = match bytes {
+            [NVDEC_STATUS_ENABLED] => "enabled",
+            [NVDEC_STATUS_DISABLED] => "disabled",
+            _ => bail!("Invalid NVDEC0 status: {}", hex::encode(bytes)),
+        };
+
+        Ok(Value::String(status.to_string()))
     }
 
     fn decode_le_u64(bytes: &[u8]) -> Result<u64> {
@@ -576,5 +598,84 @@ impl fmt::Display for OpaqueDataType {
             OpaqueDataType::FeatureFlag => write!(f, "feature_flag"),
             OpaqueDataType::Invalid => write!(f, "invalid"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::OpaqueData;
+
+    fn opaque_item(data_type: u16, data: &[u8]) -> Vec<u8> {
+        let mut item = data_type.to_le_bytes().to_vec();
+        item.extend((data.len() as u16).to_le_bytes());
+        item.extend(data);
+        item
+    }
+
+    fn required_opaque_data() -> Vec<u8> {
+        let mut data = opaque_item(3, b"595.58.03\0");
+        data.extend(opaque_item(6, &[0x00, 0x81, 0x02, 0x98, 0x01, 0, 0, 0]));
+        data
+    }
+
+    #[rstest]
+    #[case::enabled(0xaa, "enabled")]
+    #[case::disabled(0x55, "disabled")]
+    fn test_decodes_nvdec_status(#[case] status: u8, #[case] expected: &str) {
+        let mut data = required_opaque_data();
+        data.extend(opaque_item(11, &[status]));
+
+        let claims = OpaqueData::decode(&data).unwrap();
+
+        assert_eq!(claims["nvdec0_status"], expected);
+    }
+
+    #[rstest]
+    #[case::unknown(&[0])]
+    #[case::multiple(&[0xaa, 0x55])]
+    fn test_rejects_invalid_nvdec_status(#[case] status: &[u8]) {
+        let mut data = required_opaque_data();
+        data.extend(opaque_item(11, status));
+
+        let error = OpaqueData::decode(&data).unwrap_err();
+
+        assert!(error.to_string().starts_with("Invalid NVDEC0 status:"));
+    }
+
+    #[test]
+    fn test_decodes_protected_pcie_status_as_hex() {
+        let mut data = required_opaque_data();
+        data.extend(opaque_item(21, &[0x55]));
+
+        let claims = OpaqueData::decode(&data).unwrap();
+
+        assert_eq!(claims["protected_pcie_status"], "55");
+    }
+
+    #[rstest]
+    #[case::one_byte(&[0])]
+    #[case::two_bytes(&[0, 0])]
+    #[case::three_bytes(&[0, 0, 0])]
+    fn test_rejects_truncated_opaque_item_header(#[case] suffix: &[u8]) {
+        let mut data = required_opaque_data();
+        data.extend(suffix);
+
+        let error = OpaqueData::decode(&data).unwrap_err();
+
+        assert!(error
+            .to_string()
+            .starts_with("OpaqueData item header overflow:"));
+    }
+
+    #[test]
+    fn test_rejects_final_unknown_zero_length_opaque_item() {
+        let mut data = required_opaque_data();
+        data.extend([37, 0, 0, 0]);
+
+        let error = OpaqueData::decode(&data).unwrap_err();
+
+        assert_eq!(error.to_string(), "Invalid OpaqueDataType 37");
     }
 }
