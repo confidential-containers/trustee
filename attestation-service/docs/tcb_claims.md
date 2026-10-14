@@ -89,10 +89,18 @@ The following fields always exist.
 - `tdx.quote.size`: **Optional**. String (hex for 4 bytes). Quote body length. Only quote format V5 contains this field.
 - `tdx.td_attributes`: Object. Translated flags for `tdx.quote.body.td_attributes`.
   - `tdx.td_attributes.debug`: Boolean. Indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
+  - `tdx.td_attributes.hgs_plus_prof`: Boolean. Indicates whether the TD is subject to HGS+ operation, which monitors the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.icssd`: Boolean. Indicates whether the TDX Module must use Instruction-Count-based Single-Step Defense to protect the TD against single-step attacks. This flag may only be set when the TDX Module supports ICSSD.
   - `tdx.td_attributes.key_locker`: Boolean. Indicates whether the TD is allowed to use Key Locker.
-  - `tdx.td_attributes.perfmon`: Boolean. Indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
-  - `tdx.td_attributes.protection_keys`: Boolean. Indicates whether the TD is allowed to use Supervisor Protection Keys.
+  - `tdx.td_attributes.lass`: Boolean. Indicates whether the TD is allowed to use Linear Address Space Separation. This flag may only be set when both the TDX Module and CPU support LASS.
+  - `tdx.td_attributes.migratable`: Boolean. Indicates whether the TD is migratable using a Migration TD. This flag may only be set when the TDX Module supports TD Migration.
+  - `tdx.td_attributes.perf_prof`: Boolean. Indicates whether the TD is subject to system profiling using performance-monitoring counters. These counters are not context-switched on TD entry and exit and monitor the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.perfmon`: Boolean. Indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities. This flag may only be set when the TDX Module supports Performance Monitoring virtualization.
+  - `tdx.td_attributes.pmt_prof`: Boolean. Indicates whether the TD is subject to system profiling using core out-of-band telemetry, which monitors the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.protection_keys`: Boolean. Indicates whether the TD is allowed to use Supervisor Protection Keys. This flag may only be set when both the TDX Module and CPU support PKS.
   - `tdx.td_attributes.septve_disable`: Boolean. Determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+  - `tdx.td_attributes.servtd_ext`: Boolean. Indicates whether `TDREPORT_STRUCT` contains a hash of `SERVTD_EXT_STRUCT` instead of `SERVTD_HASH`.
+  - `tdx.td_attributes.tpa`: Boolean. Indicates whether the TD is a TDX Connect Provisioning Agent. This flag may only be set when both the TDX Module and CPU support TDX Connect.
 - `tdx.advisory_ids`: String List. Intel® Product Security Center Advisories.
 - `tdx.collateral_expiration_status`: String. If none of the inputted collateral has expired as compared to the inputted `expiration_check_date`, it should be `"0"`.
 - `tdx.earliest_expiration_date`: String. Date time value in RFC3339 format - The earliest nextUpdate value, or expiration date, among all collaterals.
