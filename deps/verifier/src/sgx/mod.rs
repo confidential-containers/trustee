@@ -118,6 +118,7 @@ async fn verify_evidence(
 
     let mut claim = claims::generate_parsed_claims(&quote, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
+    crate::hardware_type::insert(&mut claim, crate::hardware_type::types::INTEL_SGX);
 
     Ok(claim)
 }

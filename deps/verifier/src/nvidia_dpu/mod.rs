@@ -152,6 +152,7 @@ impl crate::Verifier for NvidiaDpuVerifier {
         if let ReportData::Value(expected) = expected_report_data {
             claims["session_nonce"] = serde_json::Value::String(hex::encode(expected));
         }
+        crate::hardware_type::insert(&mut claims, crate::hardware_type::types::NVIDIA_DPU);
 
         info!("NVIDIA DPU verifier: evidence verified successfully");
         Ok(vec![(claims, TEE_CLASS_NVIDIA_DPU.to_string())])

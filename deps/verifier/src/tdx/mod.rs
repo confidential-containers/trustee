@@ -140,6 +140,7 @@ async fn verify_evidence(
     let ccel = ccel.map(VerifiedCcEventLog::into_inner);
     let mut claim = generate_parsed_claim(&quote, ccel, &platform_info)?;
     extend_using_custom_claims(&mut claim, custom_claims)?;
+    crate::hardware_type::insert(&mut claim, crate::hardware_type::types::INTEL_TDX);
 
     Ok(claim)
 }
