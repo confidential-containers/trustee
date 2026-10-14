@@ -192,9 +192,17 @@ bitflags! {
     #[derive(Debug, Clone)]
     struct TdAttributesFlags: u64 {
         const DEBUG            = 1 << 0;
+        const HGS_PLUS_PROF    = 1 << 4;
+        const PERF_PROF        = 1 << 5;
+        const PMT_PROF         = 1 << 6;
+        const ICSSD            = 1 << 16;
+        const SERVTD_EXT       = 1 << 17;
+        const LASS             = 1 << 27;
         const SEPTVE_DISABLE   = 1 << 28;
+        const MIGRATABLE       = 1 << 29;
         const PROTECTION_KEYS  = 1 << 30;
         const KEY_LOCKER       = 1 << 31;
+        const TPA              = 1 << 62;
         const PERFMON          = 1 << 63;
     }
 }
