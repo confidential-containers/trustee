@@ -16,7 +16,6 @@ path = "src/main.rs"
 anyhow.workspace = true
 base64.workspace = true
 clap.workspace = true
-jsonwebtoken.workspace = true
 kbs_protocol = { workspace = true, default-features = false, features = [
     "background_check",
     "passport",
@@ -34,8 +33,12 @@ tracing-subscriber.workspace = true
 [features]
 default = ["default-tls"]
 
-default-tls = ["reqwest/default-tls"]
-native-tls = ["reqwest/native-tls", "kbs_protocol/openssl"]
+# 2 types of native-TLS backend. There are two independent reqwest clients here: kbs-client's own and kbs_protocol's.
+#   default-tls: kbs-client's reqwest uses rustls (reqwest 0.13's default), and kbs_protocol stays on vendored OpenSSL -> preserves historical behavior.
+
+#   native-tls: both link the system OpenSSL dynamically (FIPS builds); no vendored openssl-src is compiled into the binary. Cryptobackend calls go through FIPS certified binaries dynamically compiled.
+default-tls = ["reqwest/default-tls", "kbs_protocol/native-tls-vendored"]
+native-tls = ["reqwest/native-tls", "kbs_protocol/native-tls"]
 
 all-attesters = ["kbs_protocol/all-attesters"]
 tdx-attester = ["kbs_protocol/tdx-attester"]
