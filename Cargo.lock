@@ -623,7 +623,7 @@ dependencies = [
  "clap",
  "ear",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "mobc",
@@ -1566,7 +1566,7 @@ dependencies = [
  "ear",
  "hex",
  "hex-literal",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "multimap 0.9.1",
  "openssl",
  "serde",
@@ -2593,7 +2593,7 @@ dependencies = [
  "ciborium",
  "cose-rust",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "lazy_static",
  "openssl",
  "phf 0.13.1",
@@ -4002,7 +4002,7 @@ dependencies = [
  "attestation-service",
  "base64 0.23.1",
  "const_format",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs",
  "kbs-client",
  "key-value-storage",
@@ -4292,6 +4292,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "11.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e75fe14a82d81e5f5af639997db37d8b96045938a7ac6ab18cdbe1c7467e05e1"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "getrandom 0.2.17",
+ "js-sys",
+ "pem",
+ "serde",
+ "serde_json",
+ "signature 2.2.0",
+ "simple_asn1",
+ "zeroize",
+]
+
+[[package]]
 name = "jwt-simple"
 version = "0.12.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4359,7 +4377,7 @@ dependencies = [
  "google-cloud-secretmanager-v1",
  "hex",
  "josekit",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "kms",
@@ -4412,7 +4430,7 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "clap",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs_protocol",
  "reqwest 0.13.5",
  "serde",
@@ -8281,7 +8299,7 @@ dependencies = [
  "attestation-service",
  "clap",
  "dirs 6.0.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs",
  "nix",
  "openssl",
@@ -8585,7 +8603,7 @@ dependencies = [
  "http-cache-reqwest",
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.1.0",
  "kbs-types 0.18.0",
  "key-value-storage",
  "openssl",
