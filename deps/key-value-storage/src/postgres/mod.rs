@@ -236,7 +236,14 @@ mod tests {
         };
         let client = PostgresClient::new(config, "key_value").await.unwrap();
         client
-            .set("test", b"test", SetParameters { overwrite: true })
+            .set(
+                "test",
+                b"test",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let keys = client.list().await.unwrap();
@@ -244,7 +251,14 @@ mod tests {
         let value = client.get("test").await.unwrap();
         assert_eq!(value, Some(b"test".to_vec()));
         let res = client
-            .set("test", b"test2", SetParameters { overwrite: false })
+            .set(
+                "test",
+                b"test2",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await;
         let res = res.unwrap();
         assert_eq!(res, SetResult::AlreadyExists);
