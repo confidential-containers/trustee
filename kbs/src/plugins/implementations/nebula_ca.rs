@@ -456,8 +456,9 @@ impl ClientPlugin for NebulaCaPlugin {
 
 #[cfg(test)]
 mod tests {
+    use actix_web::web::Query;
     use rstest::rstest;
-    use std::ffi::OsString;
+    use std::{collections::HashMap, ffi::OsString};
 
     use super::NebulaCredentialParams;
 
@@ -530,7 +531,8 @@ mod tests {
         #[case] query: &str,
         #[case] expected: Option<Vec<OsString>>,
     ) {
-        let credential_params = NebulaCredentialParams::try_from(query);
+        let query = Query::<HashMap<String, String>>::from_query(query).unwrap();
+        let credential_params = NebulaCredentialParams::try_from(&*query);
         if expected.is_none() {
             assert!(credential_params.is_err())
         } else {
