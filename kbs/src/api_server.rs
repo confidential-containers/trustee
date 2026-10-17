@@ -451,8 +451,7 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims
-                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+                let init_data = claims.pointer("/submods/cpu0/ear_verifier_claims/init_data");
 
                 // Extract only custom extensions scoped to Trustee
                 let mut trustee_extensions = HashMap::new();
