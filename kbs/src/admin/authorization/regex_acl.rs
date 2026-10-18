@@ -63,7 +63,7 @@ impl AuthorizationTrait for RegexAclAuthorizer {
                 continue;
             }
 
-            if acl.regex.is_match(&request.uri().to_string()) {
+            if acl.regex.is_match(request.uri().path()) {
                 return Ok(AuthorizationDecision {
                     allowed: true,
                     reason: "Subject allowed".to_string(),
@@ -74,8 +74,42 @@ impl AuthorizationTrait for RegexAclAuthorizer {
             reason: format!(
                 "Role {} not allowed for path {}",
                 claims.role,
-                request.uri()
+                request.uri().path()
             ),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use actix_web::test::TestRequest;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn matches_the_request_path_for_an_absolute_uri() {
+        let config: RegexAclConfig = serde_json::from_value(json!({
+            "acls": [{
+                "role": "admin",
+                "allowed_endpoints": "^/kbs/v0/resource/.+$"
+            }]
+        }))
+        .expect("valid ACL config");
+        let authorizer = RegexAclAuthorizer::try_from(config).expect("valid ACL authorizer");
+        let request = TestRequest::post()
+            .uri("https://kbs.example.test:8080/kbs/v0/resource/default/key")
+            .to_http_request();
+
+        let decision = authorizer
+            .authorize(
+                Claims {
+                    role: "admin".to_string(),
+                },
+                &request,
+            )
+            .expect("authorization decision");
+
+        assert!(decision.allowed);
     }
 }
