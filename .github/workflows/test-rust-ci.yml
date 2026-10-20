@@ -70,7 +70,7 @@ jobs:
           softhsm2-util --init-token --free --label "Trustee pkcs11 test" --so-pin 12345678 --pin 12345678
 
       - name: Install NVIDIA Attestation SDK
-        uses: ./.github/actions/install-nvat-sdk
+        uses: $/.github/actions/install-nvat-sdk
 
       - name: Run KBS lint/format/test
         timeout-minutes: 10
@@ -114,7 +114,7 @@ jobs:
         run: make opa-check
 
       - name: Install NVIDIA Attestation SDK
-        uses: ./.github/actions/install-nvat-sdk
+        uses: $/.github/actions/install-nvat-sdk
 
       - name: Run fmt/clippy/test
         run: make test-as-unit
