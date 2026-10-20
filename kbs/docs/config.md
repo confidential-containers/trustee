@@ -457,7 +457,7 @@ or [generated out-of-band](https://nebula.defined.net/docs/guides/quick-start/#c
 the plugin will just (re-)use them; otherwise, the plugin will generate new ones by calling the `nebula-cert` binary
 with the `[plugins.self_signed_ca]` properties.
 
-Detailed [documentation](#kbs/docs/plugins/nebula_ca.md).
+Detailed [documentation](plugins/nebula_ca.md).
 
 #### SPIRE Plugin Configuration
 
@@ -477,7 +477,7 @@ admin_socket_path = "/run/spire/sockets/admin.sock"
 | `k8s_selector_prefix`       | String | Selector type used for known k8s workload attestor selector keys                     | `k8s`     |
 | `trustee_selector_prefix`   | String | Selector type used for non-ks selector keys                                          | `trustee` |
 
-Detailed [documentation](#kbs/docs/plugins/spire.md).
+Detailed [documentation](plugins/spire.md).
 
 #### External Plugin Configuration
 
