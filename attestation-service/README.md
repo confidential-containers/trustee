@@ -160,4 +160,4 @@ store and provide reference values. RVPS receives and verifies the provenance in
 stores the measurement values, and generates reference value claims for the AS according to the evidence content when the AS verifies the evidence.
 
 The Reference Value Provider Service supports different deployment modes,
-please refer to [the doc](../rvps/README.md#run-mode) for more details.
+please refer to [the doc](../rvps/README.md#run-rvps) for more details.
