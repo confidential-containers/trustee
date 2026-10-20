@@ -10,6 +10,7 @@ use serde::Deserialize;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 pub mod error;
@@ -34,6 +35,12 @@ pub use provider::{KvStorageProvider, StorageProvider};
 pub struct SetParameters {
     /// Whether to overwrite the existing value.
     pub overwrite: bool,
+
+    /// How long the entry lives before it expires. An overwrite replaces the
+    /// previous TTL, and `None` means the entry never expires; so does a TTL too
+    /// large for the backend to represent. Only honored when
+    /// [`KeyValueStorage::supports_ttl`] returns `true`.
+    pub ttl: Option<Duration>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -56,6 +63,12 @@ pub trait KeyValueStorage: Send + Sync {
     /// Delete a value for a key.
     /// Return the deleted value if it exists.
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>>;
+
+    /// Whether the backend expires entries set with a TTL. Backends that
+    /// return `false` ignore `SetParameters::ttl`.
+    fn supports_ttl(&self) -> bool {
+        false
+    }
 }
 
 pub type KeyValueStorageInstance = Arc<dyn KeyValueStorage>;
