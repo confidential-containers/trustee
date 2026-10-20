@@ -29,6 +29,9 @@ ENV NVAT_USE_SYSTEM_LIB=1
 RUN mkdir -p /opt/nvat-lib && if [ "${ARCH}" = "x86_64" ]; then \
     curl -fsSL -o /tmp/cuda-keyring.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb && \
     dpkg -i /tmp/cuda-keyring.deb && \
+    # Allow NVIDIA SHA-1 keys
+    mkdir -p /etc/crypto-policies/back-ends && \
+    printf '[hash_algorithms]\nsha1.second_preimage_resistance = 2028-02-01\n' > /etc/crypto-policies/back-ends/apt-sequoia.config && \
     apt-get update && apt-get install --no-install-recommends -y "libnvat-dev=${NVAT_VERSION}*" && \
     cp -a /usr/lib/x86_64-linux-gnu/libnvat.so* /opt/nvat-lib/ && \
     rm -rf /tmp/cuda-keyring.deb; fi
