@@ -1,14 +1,14 @@
 {
     "eat_profile": "tag:github.com,2024:confidential-containers/Trustee",
     "iat": 1760426134,
-    "ear.verifier-id": {
+    "ear_verifier_id": {
         "developer": "https://confidentialcontainers.org",
         "build": "attestation-service 0.1.0"
     },
     "submods": {
         "cpu0": {
-            "ear.status": "contraindicated",
-            "ear.trustworthiness-vector": {
+            "ear_status": "contraindicated",
+            "ear_trustworthiness_vector": {
                 "instance-identity": 0,
                 "configuration": 36,
                 "executables": 33,
@@ -18,13 +18,12 @@
                 "storage-opaque": 0,
                 "sourced-data": 0
             },
-            "ear.appraisal-policy-id": "default",
-            "ear.veraison.annotated-evidence": {
+            "ear_appraisal_policy_ids": ["default"],
+            "ear_attester_claims": {
                 "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "init_data_claims": null,
                 "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "runtime_data_claims": null,
-                "sgx": {
+                "tee": "sgx",
+                "claims": {
                     "advisory_ids": [
                         "INTEL-SA-00586",
                         "INTEL-SA-00614",
