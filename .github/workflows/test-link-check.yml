@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main"]
   pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
   workflow_dispatch:
 
 permissions: {}
@@ -29,3 +31,28 @@ jobs:
         with:
           args: "--offline --include-fragments=anchor-only ."
           fail: true
+
+  check-external-links:
+    name: Check external links
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check external links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --max-retries 2
+            --retry-wait-time 5
+            --timeout 30
+            --exclude '^file://'
+            --exclude '^https://github\.com/confidential-containers/trustee(?:/|$)'
+            --exclude '^https://github\.com/orgs/confidential-containers/packages(?:\?|$)'
+            .
+          fail: false
