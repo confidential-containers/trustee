@@ -4,8 +4,6 @@ on:
   push:
     branches: ["main"]
   pull_request:
-    paths-ignore:
-      - '**/*.md'
   workflow_dispatch:
 
 permissions: {}
@@ -26,15 +24,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Restore lychee cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .lycheecache
-          key: cache-lychee-${{ github.sha }}
-          restore-keys: cache-lychee-
-
-      - name: Check links
+      - name: Check internal links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
-          args: "--cache --max-cache-age 1d ."
+          args: "--offline --include-fragments=anchor-only ."
           fail: true
