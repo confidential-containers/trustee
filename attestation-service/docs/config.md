@@ -23,7 +23,7 @@ section:
 [1]: #attestationtokenbroker
 [2]: #tokensignerconfig
 [3]: #rvps-configuration
-[4]: #unified-storage-backend-configuration
+[4]: #storage-backend-configuration
 
 #### AttestationTokenBroker
 
