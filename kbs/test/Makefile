@@ -217,7 +217,7 @@ $(ADMIN_TOKEN): $(KBS_KEY)
 	}
 
 $(TEE_KEY):
-	openssl genrsa -traditional -out "$(TEE_KEY)" 2048
+	openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt -out "$(TEE_KEY)"
 
 $(SECRET_FILE):
 	mkdir -p $$(dirname "$(SECRET_FILE)") && \
