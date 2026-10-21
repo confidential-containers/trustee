@@ -20,10 +20,15 @@ test-kbs-unit:
 	$(MAKE) -C kbs check TEST_FEATURES="$(TEST_FEATURES)"
 
 # Attestation service / RVPS / shared deps: fmt, clippy, tests
+NVAT ?= true
+ifeq ($(NVAT), true)
+  AS_UNIT_FEATURES := --features attestation-service/nvidia-nvat
+endif
+
 test-as-unit:
 	cargo fmt -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine --check
-	cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine --all-targets -- -D warnings
-	cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog -p key-value-storage -p policy-engine
+	cargo clippy -p attestation-service -p reference-value-provider-service -p eventlog -p verifier -p key-value-storage -p policy-engine $(AS_UNIT_FEATURES) --all-targets -- -D warnings
+	cargo test -p attestation-service -p reference-value-provider-service -p verifier -p eventlog -p key-value-storage -p policy-engine $(AS_UNIT_FEATURES)
 
 # Trustee CLI: lint, fmt, unit tests
 test-trustee-cli-unit:
