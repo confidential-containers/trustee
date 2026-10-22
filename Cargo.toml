@@ -18,7 +18,7 @@ version = "0.1.0"
 authors = ["The Confidential Container Authors"]
 description = "Confidential Container Tools and Components for the tenant side"
 documentation = "https://github.com/confidential-containers/kbs"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 actix-web = "4"
