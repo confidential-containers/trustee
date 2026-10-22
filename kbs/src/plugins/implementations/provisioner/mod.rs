@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use actix_web::http::Method;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use key_value_storage::{KeyValueStorageInstance, SetParameters, StorageProvider};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};

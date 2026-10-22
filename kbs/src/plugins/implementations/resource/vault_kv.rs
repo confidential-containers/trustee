@@ -21,7 +21,9 @@ use vaultrs::{
 pub enum VaultError {
     #[error("Secret not found at path '{path}'")]
     SecretNotFound { path: String, source: anyhow::Error },
-    #[error("Secret exists at path '{path}' but missing required 'data' key. Available keys: {available_keys:?}")]
+    #[error(
+        "Secret exists at path '{path}' but missing required 'data' key. Available keys: {available_keys:?}"
+    )]
     DataKeyMissing {
         path: String,
         available_keys: Vec<String>,
@@ -273,8 +275,8 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::super::{
-        vault_kv::{VaultKvBackend, VaultKvBackendConfig},
         ResourceDesc, StorageBackend,
+        vault_kv::{VaultKvBackend, VaultKvBackendConfig},
     };
     use rstest::{fixture, rstest};
     use serde_json::json;

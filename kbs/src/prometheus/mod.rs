@@ -313,8 +313,8 @@ pub(crate) fn export_metrics() -> Result<String, prometheus::Error> {
 #[cfg(test)]
 mod tests {
     use crate::prometheus::{
-        export_metrics, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL, RESOURCE_READS_TOTAL,
-        RESOURCE_WRITES_TOTAL, RESPONSE_SIZES,
+        REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL, RESOURCE_READS_TOTAL,
+        RESOURCE_WRITES_TOTAL, RESPONSE_SIZES, export_metrics,
     };
 
     #[test]

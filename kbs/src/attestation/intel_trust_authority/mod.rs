@@ -4,15 +4,15 @@
 
 use crate::{
     attestation::{
-        backend::{generic_generate_challenge, make_nonce, Attest, IndependentEvidence},
         SELECTED_HASH_ALGORITHM_JSON_KEY, SUPPORTED_HASH_ALGORITHMS_JSON_KEY,
+        backend::{Attest, IndependentEvidence, generic_generate_challenge, make_nonce},
     },
     crypto::jwt::JwtVerifier,
 };
 use anyhow::*;
 use async_trait::async_trait;
 use az_cvm_vtpm::hcl::HclReport;
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use educe::Educe;
 use kbs_types::{Challenge, HashAlgorithm, Tee};
 use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
@@ -391,7 +391,9 @@ impl Attest for IntelTrustAuthority {
 
         let Some(hash_algorithms_found) = tee_parameters.get(SUPPORTED_HASH_ALGORITHMS_JSON_KEY)
         else {
-            info!("ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour");
+            info!(
+                "ITA: generate_challenge: no TEE hash parameters, so falling back to legacy behaviour"
+            );
 
             return generic_generate_challenge(tee, tee_parameters).await;
         };

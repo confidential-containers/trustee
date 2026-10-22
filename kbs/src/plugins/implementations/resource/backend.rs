@@ -4,14 +4,14 @@
 
 use std::sync::{Arc, OnceLock};
 
-use anyhow::{bail, Error, Result};
+use anyhow::{Error, Result, bail};
 use key_value_storage::StorageProvider;
 use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
 
 use crate::{
-    plugins::{resource::kv_storage, PluginResult},
+    plugins::{PluginResult, resource::kv_storage},
     prometheus::{RESOURCE_DELETES_TOTAL, RESOURCE_READS_TOTAL, RESOURCE_WRITES_TOTAL},
 };
 

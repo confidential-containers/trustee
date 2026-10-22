@@ -9,7 +9,7 @@
 //! want join an encrypted Nebula overlay network. More information can
 //! be found in the [plugin](#kbs/docs/plugins/nebula_ca.md) documentation.
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use semver::{Version, VersionReq};
 use std::{
     collections::HashMap,

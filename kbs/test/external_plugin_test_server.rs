@@ -29,9 +29,9 @@ pub mod plugin_api {
 }
 
 use plugin_api::{
-    kbs_plugin_server::{KbsPlugin, KbsPluginServer},
     NeedsEncryptionRequest, NeedsEncryptionResponse, PluginRequest, PluginResponse,
     ValidateAuthRequest, ValidateAuthResponse,
+    kbs_plugin_server::{KbsPlugin, KbsPluginServer},
 };
 
 const ENV_LISTEN_ADDR: &str = "PLUGIN_LISTEN_ADDR";

@@ -8,16 +8,16 @@ pub mod akp;
 use core::{clone::Clone, convert::TryInto};
 
 use aes_gcm::{
-    aead::{AeadInOut, Generate},
     Aes256Gcm, KeyInit, Nonce,
+    aead::{AeadInOut, Generate},
 };
 use aes_kw::KwAes256;
-use anyhow::{anyhow, bail, Context, Result};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use anyhow::{Context, Result, anyhow, bail};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
 use p256::elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint};
-use rsa::{rand_core::OsRng, sha2::Sha256, BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey};
-use serde_json::{json, Map};
+use rsa::{BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey, rand_core::OsRng, sha2::Sha256};
+use serde_json::{Map, json};
 use tracing::warn;
 use zeroize::Zeroizing;
 
@@ -72,7 +72,9 @@ const AES_GCM_256_ALGORITHM: &str = "A256GCM";
 /// <https://www.ietf.org/archive/id/draft-madden-jose-deprecate-none-rsa15-00.html#section-1.2>
 #[deprecated(note = "This algorithm is no longer recommended.")]
 fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    warn!("Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues.");
+    warn!(
+        "Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues."
+    );
     let aes_sym_key = Zeroizing::new(<[u8; 32]>::generate());
     let cipher = Aes256Gcm::new_from_slice(aes_sym_key.as_slice())
         .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
@@ -362,10 +364,10 @@ pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
 mod tests {
     use core::assert_eq;
 
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     use josekit::jwe::{
-        alg::{ecdh_es::EcdhEsJweAlgorithm::EcdhEsA256kw, rsaes::RsaesJweAlgorithm::RsaOaep256},
         JweContext, JweHeader, JweHeaderSet,
+        alg::{ecdh_es::EcdhEsJweAlgorithm::EcdhEsA256kw, rsaes::RsaesJweAlgorithm::RsaOaep256},
     };
     use kbs_types::TeePubKey;
     use openssl::rsa::Rsa;
@@ -373,8 +375,8 @@ mod tests {
     use rsa::rand_core::OsRng;
 
     use crate::jwe::{
-        AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA1_5_ALGORITHM,
-        RSA_OAEP256_ALGORITHM,
+        AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA_OAEP256_ALGORITHM,
+        RSA1_5_ALGORITHM,
     };
 
     use super::jwe;

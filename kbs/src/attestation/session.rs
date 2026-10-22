@@ -5,8 +5,8 @@
 use std::sync::Arc;
 
 use actix_web::cookie::{
-    time::{Duration, OffsetDateTime},
     Cookie,
+    time::{Duration, OffsetDateTime},
 };
 use anyhow::Result;
 use kbs_types::{Challenge, Request};

@@ -6,7 +6,7 @@
 
 use std::fmt::Write;
 
-use actix_web::{body::BoxBody, HttpResponse, ResponseError};
+use actix_web::{HttpResponse, ResponseError, body::BoxBody};
 use kbs_types::ErrorInformation;
 use strum::AsRefStr;
 use thiserror::Error;

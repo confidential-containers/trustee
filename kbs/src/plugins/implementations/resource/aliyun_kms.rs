@@ -6,7 +6,7 @@ use super::backend::{ResourceDesc, StorageBackend};
 use crate::plugins::PluginResult;
 use anyhow::{Context, Result};
 use educe::Educe;
-use kms::{plugins::aliyun::AliyunKmsClient, Annotations, Getter};
+use kms::{Annotations, Getter, plugins::aliyun::AliyunKmsClient};
 use serde::Deserialize;
 use tracing::info;
 

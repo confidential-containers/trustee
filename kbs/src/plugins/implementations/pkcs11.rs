@@ -10,13 +10,13 @@
 //! * [PKCS_11 Base Specification v3.0](<https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/os/pkcs11-base-v3.0-os.html>)
 use crate::plugins::resource::{ResourceDesc, StorageBackend};
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use cryptoki::{
     context::{CInitializeArgs, CInitializeFlags, Pkcs11},
     error::{Error, RvError},
     mechanism::{
-        rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
         Mechanism, MechanismType,
+        rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
     },
     object::{Attribute, AttributeInfo, AttributeType, KeyType, ObjectClass},
     session::{Session, UserType},

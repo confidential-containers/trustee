@@ -10,7 +10,7 @@ use key_value_storage::StorageProvider;
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::{sample, RepositoryConfig, ResourceStorage};
+use super::{RepositoryConfig, ResourceStorage, sample};
 
 use super::{Provisioner, ProvisionerConfig};
 
