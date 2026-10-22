@@ -116,15 +116,14 @@ impl KeyValueStorage for LocalJson {
             serde_json::from_slice(&file).map_err(|e| KeyValueStorageError::MalformedValue {
                 source: anyhow::anyhow!("failed to deserialize the file: {}", e),
             })?;
-        let value = items
+        items
             .get(key)
             .map(|v| URL_SAFE.decode(v))
             .transpose()
             .map_err(|e| KeyValueStorageError::GetKeyFailed {
                 source: anyhow::anyhow!("failed to base64 decode the content inside json: {e}"),
                 key: key.to_string(),
-            });
-        value
+            })
     }
 
     async fn list(&self) -> Result<Vec<String>> {
