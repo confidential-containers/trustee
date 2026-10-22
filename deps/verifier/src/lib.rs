@@ -253,7 +253,7 @@ pub(crate) fn extend_eventlog_claim(
         return Ok(());
     };
 
-    let serde_json::Value::Object(ref mut map) = claim else {
+    let serde_json::Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
     map.insert(
