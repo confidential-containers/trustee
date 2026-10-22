@@ -4,14 +4,14 @@
 
 //! KBS client SDK.
 
-use anyhow::{anyhow, bail, Result};
-use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+use anyhow::{Result, anyhow, bail};
 use base64::Engine;
-use kbs_protocol::evidence_provider::NativeEvidenceProvider;
-use kbs_protocol::token_provider::TestTokenProvider;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use kbs_protocol::KbsClientBuilder;
 use kbs_protocol::KbsClientCapabilities;
 use kbs_protocol::ResourceUri;
+use kbs_protocol::evidence_provider::NativeEvidenceProvider;
+use kbs_protocol::token_provider::TestTokenProvider;
 use serde::Serialize;
 use serde_json::json;
 use tracing::warn;

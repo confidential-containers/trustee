@@ -4,14 +4,14 @@
 
 //! A Client for accessing admin and guest APIs of the KBS
 
-use anyhow::{bail, Result};
-use base64::engine::general_purpose::STANDARD;
+use anyhow::{Result, bail};
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use clap::{Args, Parser, Subcommand};
 use serde_json::json;
 use std::path::PathBuf;
 use tracing::warn;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[derive(Parser)]
 #[clap(name = "KBS client")]
@@ -215,8 +215,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let kbs_cert = match cli.cert_file {
-        Some(ref p) => vec![std::fs::read_to_string(p)
-            .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?],
+        Some(ref p) => vec![
+            std::fs::read_to_string(p)
+                .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?,
+        ],
         None => vec![],
     };
 
@@ -290,7 +292,9 @@ async fn main() -> Result<()> {
 
             if let Some(token) = token {
                 let Some(tee_key) = tee_key else {
-                    bail!("if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token.");
+                    bail!(
+                        "if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token."
+                    );
                 };
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
