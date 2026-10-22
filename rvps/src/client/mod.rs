@@ -7,9 +7,9 @@
 use anyhow::*;
 
 use crate::rvps_api::reference::{
-    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
     ReferenceValueDeleteRequest, ReferenceValueListRequest, ReferenceValueQueryRequest,
     ReferenceValueRegisterRequest,
+    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
 };
 
 pub async fn register(address: String, message: String) -> Result<()> {
