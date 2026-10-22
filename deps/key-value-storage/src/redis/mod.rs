@@ -8,12 +8,12 @@ use std::{collections::HashSet, env};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use redis::{cmd, AsyncCommands};
+use redis::{AsyncCommands, cmd};
 use serde::Deserialize;
 use tracing::instrument;
 
 use crate::{
-    is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
+    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, is_valid_key,
 };
 
 /// Default Redis URL.
@@ -183,8 +183,8 @@ impl KeyValueStorage for RedisClient {
 mod tests {
 
     use crate::{
-        redis::{Config, RedisClient},
         KeyValueStorage, SetParameters, SetResult,
+        redis::{Config, RedisClient},
     };
 
     #[ignore]

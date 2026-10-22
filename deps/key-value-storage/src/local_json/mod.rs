@@ -9,7 +9,7 @@
 use std::{collections::HashMap, fs, path::PathBuf};
 
 use async_trait::async_trait;
-use base64::{engine::general_purpose::URL_SAFE, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 use tracing::{debug, instrument};
