@@ -10,11 +10,11 @@ pub mod report;
 pub mod spdm_request;
 pub mod spdm_response;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::result::Result::Ok;
 use std::str::FromStr;
@@ -258,7 +258,9 @@ impl Nvidia {
         let evidence_b64 = match hex::decode(&device.evidence) {
             Ok(evidence) => b64_engine.encode(evidence),
             Err(e) => {
-                debug!("Device evidence is not hex encoded (decoding failed with: {e}). Using it as is.");
+                debug!(
+                    "Device evidence is not hex encoded (decoding failed with: {e}). Using it as is."
+                );
                 device.evidence
             }
         };
@@ -336,7 +338,9 @@ impl Nvidia {
         let report_vec: Vec<u8> = match hex::decode(&device.evidence) {
             Ok(evidence) => evidence,
             Err(e) => {
-                debug!("Device evidence is not hex encoded (decoding failed with: {e}). Trying base64 decode.");
+                debug!(
+                    "Device evidence is not hex encoded (decoding failed with: {e}). Trying base64 decode."
+                );
                 b64_engine.decode(device.evidence)?
             }
         };
@@ -404,7 +408,7 @@ impl Verifier for Nvidia {
 mod tests {
     use assert_json_diff::assert_json_eq;
     use rstest::rstest;
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
 
     use super::*;
 

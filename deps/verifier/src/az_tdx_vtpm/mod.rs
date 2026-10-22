@@ -7,18 +7,18 @@ mod compat;
 
 use self::compat::Evidence;
 use super::az_snp_vtpm::{
-    extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs, verify_tpm_signature,
-    verify_user_data, TpmQuote,
+    TpmQuote, extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs,
+    verify_tpm_signature, verify_user_data,
 };
-use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
+use super::intel_dcap::quote::{Quote as TdQuote, parse_quote};
 use super::intel_dcap::{
-    collateral::build_quote_collateral, ecdsa_quote_verification, extend_using_custom_claims,
-    pck::parse_platform_info, QcnlConfig,
+    QcnlConfig, collateral::build_quote_collateral, ecdsa_quote_verification,
+    extend_using_custom_claims, pck::parse_platform_info,
 };
 use super::tdx::claims::generate_parsed_claim;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::{InitDataHash, ReportData};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use az_tdx_vtpm::hcl::HclReport;
 use tracing::{debug, instrument};

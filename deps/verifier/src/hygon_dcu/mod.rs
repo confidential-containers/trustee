@@ -3,16 +3,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
-use csv_rs::api::dcu::{verify_reports, AttestationReport};
+use csv_rs::api::dcu::{AttestationReport, verify_reports};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{instrument, warn};
 
 use crate::{
-    regularize_data, InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim,
-    Verifier,
+    InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier,
+    regularize_data,
 };
 
 #[derive(Serialize, Deserialize)]

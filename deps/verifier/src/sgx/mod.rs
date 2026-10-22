@@ -3,21 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 use super::intel_dcap::{
+    QcnlConfig,
     collateral::build_quote_collateral,
     collateral_service::CollateralService,
     ecdsa_quote_verification, extend_using_custom_claims,
     pck::parse_platform_info,
-    quote::{parse_quote, Quote},
-    QcnlConfig,
+    quote::{Quote, parse_quote},
 };
-use super::{regularize_data, InitDataHash, ReportData};
+use super::{InitDataHash, ReportData, regularize_data};
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
 mod claims;

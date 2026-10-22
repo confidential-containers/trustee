@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use core::fmt;
 use scroll::Pread;
 use std::mem::size_of;
@@ -465,7 +465,9 @@ fn parse_certification_data(data: &[u8], is_sgx_v3: bool) -> Result<QuoteCertifi
 
         // Expect QE Report Certification Data
         if qe_report_cert_data_type != QE_REPORT_CERT_DATA_TYPE {
-            bail!("expected cert data type {QE_REPORT_CERT_DATA_TYPE}, got {qe_report_cert_data_type}");
+            bail!(
+                "expected cert data type {QE_REPORT_CERT_DATA_TYPE}, got {qe_report_cert_data_type}"
+            );
         }
 
         // Advance past the QE Report Certification Data length field.
@@ -545,7 +547,9 @@ pub(crate) fn parse_quote(quote_bin: &[u8]) -> Result<Quote<'_>> {
     let att_key_type = u16::from_le_bytes(header.att_key_type);
 
     if att_key_type != ATT_KEY_TYPE_ECDSA_P256 {
-        bail!("unsupported att_key_type {att_key_type}, expected {ATT_KEY_TYPE_ECDSA_P256} (ECDSA-256-with-P-256)");
+        bail!(
+            "unsupported att_key_type {att_key_type}, expected {ATT_KEY_TYPE_ECDSA_P256} (ECDSA-256-with-P-256)"
+        );
     }
 
     match (version, tee_type) {
@@ -623,8 +627,8 @@ mod tests {
 
     use super::*;
     use crate::intel_dcap::{
-        collateral::build_quote_collateral, ecdsa_quote_verification, pck::parse_platform_info,
-        pcs::Pcs, QcnlConfig,
+        QcnlConfig, collateral::build_quote_collateral, ecdsa_quote_verification,
+        pck::parse_platform_info, pcs::Pcs,
     };
     use std::fs;
 

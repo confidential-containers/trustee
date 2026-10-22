@@ -38,12 +38,12 @@
 //! }
 //! ```
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
+use crate::TeeEvidenceParsedClaim;
 use crate::intel_dcap::pck::PlatformInfo;
 use crate::intel_dcap::quote::Quote;
-use crate::TeeEvidenceParsedClaim;
 
 macro_rules! parse_claim {
     ($map_name: ident, $key_name: literal, $field: ident) => {

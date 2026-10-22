@@ -7,8 +7,8 @@
 use super::*;
 use anyhow::anyhow;
 use async_trait::async_trait;
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use core::result::Result::Ok;
 use ear::{Ear, RawValue};
 use serde::{Deserialize, Serialize};

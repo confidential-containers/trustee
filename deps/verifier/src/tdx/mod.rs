@@ -7,12 +7,12 @@ use crate::tdx::claims::generate_parsed_claim;
 
 use super::*;
 use crate::intel_dcap::{
+    QcnlConfig,
     collateral::build_quote_collateral,
     collateral_service::CollateralService,
     ecdsa_quote_verification, extend_using_custom_claims,
     pck::parse_platform_info,
-    quote::{parse_quote, Quote},
-    QcnlConfig,
+    quote::{Quote, parse_quote},
 };
 use async_trait::async_trait;
 use base64::Engine;
@@ -151,7 +151,7 @@ const COCO_EVENT_DOMAIN: &str = "github.com/confidential-containers";
 
 mod verified_ccel {
     use anyhow::Result;
-    use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, EventlogEntry, ReferenceMeasurement};
+    use eventlog::{CcEventLog, EventlogEntry, ReferenceMeasurement, ccel::tcg_enum::TcgAlgorithm};
     use tracing::info;
 
     /// A CC eventlog whose replay matched the RTMRs in the quote. `verify` is the only way to

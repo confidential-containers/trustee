@@ -5,8 +5,8 @@
 //! Fetch verification collateral from a `CollateralService` and assemble it
 //! into a `QuoteCollateral` for use with `tee_verify_quote`.
 
-use anyhow::{anyhow, bail, Context, Result};
-use asn1_rs::{oid, Oid};
+use anyhow::{Context, Result, anyhow, bail};
+use asn1_rs::{Oid, oid};
 use intel_tee_quote_verification_rs::QuoteCollateral;
 use std::os::raw::c_char;
 use x509_parser::prelude::*;
@@ -15,7 +15,7 @@ use super::collateral_service::{
     CollateralData, CollateralService, CollateralType, IntelTee, PckCaType,
 };
 
-const CRL_DISTRIBUTION_POINTS: Oid<'static> = oid!(2.5.29 .31);
+const CRL_DISTRIBUTION_POINTS: Oid<'static> = oid!(2.5.29.31);
 
 fn to_c_str(bytes: Vec<u8>) -> Vec<c_char> {
     let mut v: Vec<c_char> = bytes.into_iter().map(|b| b as c_char).collect();

@@ -8,27 +8,27 @@ pub(crate) mod compat;
 use self::compat::Evidence;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
-    get_common_name, get_oid_int, get_oid_octets, get_processor_generation, CERT_CHAINS, HW_ID_OID,
-    LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
+    CERT_CHAINS, HW_ID_OID, LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
+    get_common_name, get_oid_int, get_oid_octets, get_processor_generation,
 };
 use crate::{InitDataHash, ReportData};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek};
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::QuoteError;
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 pub(crate) use compat::TpmQuote;
-use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
+use eventlog::{CcEventLog, ReferenceMeasurement, ccel::tcg_enum::TcgAlgorithm};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Verifier as OsslVerifier;
 use openssl::x509::X509;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sev::parser::ByteParser;
 use thiserror::Error;
 use tracing::{debug, instrument, warn};

@@ -3,8 +3,8 @@ use intel_tee_quote_verification_rs::{sgx_ql_qv_result_t, sgx_ql_qv_supplemental
 use serde_json::{Map, Number, Value};
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 struct SgxQlQvResultWrapper(pub sgx_ql_qv_result_t);
 
@@ -162,8 +162,8 @@ fn format_rfc3339(timestamp: i64) -> anyhow::Result<String> {
 mod tests {
     use super::prepare_custom_claims_map;
     use assert_json_diff::assert_json_eq;
-    use base64::engine::general_purpose::STANDARD;
     use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
     use intel_tee_quote_verification_rs::{sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t};
     use serde_json::json;
 
