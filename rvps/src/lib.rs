@@ -20,7 +20,7 @@ use extractors::Extractors;
 
 pub use serde_json::Value;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::extractors::ExtractorsConfig;

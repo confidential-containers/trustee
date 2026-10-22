@@ -61,7 +61,7 @@ fn extract_rvs_from_comid(comid: &ConciseMidTag) -> Result<Vec<ReferenceValue>> 
                             claim_rv_path_components.push(format!("claim{val}"))
                         }
                         MeasuredElementTypeChoice::Uuid(val) => {
-                            let uuid = &val.0 .0.as_slice();
+                            let uuid = &val.0.0.as_slice();
                             let uuid = uuid::Uuid::from_slice(uuid)?.to_string();
                             claim_rv_path_components.push(uuid);
                         }
