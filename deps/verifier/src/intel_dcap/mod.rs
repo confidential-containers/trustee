@@ -1,7 +1,7 @@
+use crate::TeeEvidenceParsedClaim;
 use crate::intel_dcap::claims::prepare_custom_claims_map;
 use crate::intel_dcap::error::describe_error;
-use crate::TeeEvidenceParsedClaim;
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use intel_tee_quote_verification_rs::{
     quote3_error_t, sgx_ql_qv_result_t, sgx_ql_qv_supplemental_t, sgx_ql_request_policy_t,
     sgx_qv_set_enclave_load_policy, tee_get_supplemental_data_version_and_size,
@@ -104,7 +104,9 @@ pub(crate) fn ecdsa_quote_verification(
     // this build and expects a bigger buffer than we can provide.
     let max_size = mem::size_of::<sgx_ql_qv_supplemental_t>() as u32;
     if supp_size > max_size {
-        bail!("Supplemental data size unsupported: runtime QVL version requires {supp_size} bytes, but this build only supports up to {max_size}");
+        bail!(
+            "Supplemental data size unsupported: runtime QVL version requires {supp_size} bytes, but this build only supports up to {max_size}"
+        );
     }
 
     let mut supp_data: sgx_ql_qv_supplemental_t = Default::default();

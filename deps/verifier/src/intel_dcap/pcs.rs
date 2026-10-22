@@ -151,10 +151,10 @@ impl Pcs {
 
         {
             let guard = FILE_CACHE.read().await;
-            if let Some(cached) = guard.get(path) {
-                if cached.mtime == mtime {
-                    return Ok(cached.data.clone());
-                }
+            if let Some(cached) = guard.get(path)
+                && cached.mtime == mtime
+            {
+                return Ok(cached.data.clone());
             }
         }
 
@@ -164,10 +164,10 @@ impl Pcs {
 
         let mut guard = FILE_CACHE.write().await;
         // Re-check: another task may have populated the cache while we were loading.
-        if let Some(cached) = guard.get(path) {
-            if cached.mtime == mtime {
-                return Ok(cached.data.clone());
-            }
+        if let Some(cached) = guard.get(path)
+            && cached.mtime == mtime
+        {
+            return Ok(cached.data.clone());
         }
         guard.insert(
             path.clone(),
@@ -267,11 +267,13 @@ impl Pcs {
             // Use rootcacrl from the file directly, but validate the CDP matches
             // what was extracted from the certificate chain.
             CollateralType::RootCaCrl(crl_distpoint) => {
-                if let (Some(requested), Some(stored)) = (crl_distpoint, &col.rootcacrl_cdp) {
-                    if requested != stored {
-                        debug!("rootcacrl_cdp mismatch: {source} has {stored}, certificate has {requested}");
-                        return Err(PcsError::Collateral(source.to_string()));
-                    }
+                if let (Some(requested), Some(stored)) = (crl_distpoint, &col.rootcacrl_cdp)
+                    && requested != stored
+                {
+                    debug!(
+                        "rootcacrl_cdp mismatch: {source} has {stored}, certificate has {requested}"
+                    );
+                    return Err(PcsError::Collateral(source.to_string()));
                 }
                 Ok(CollateralData {
                     body: hex::decode(&col.rootcacrl)?,
@@ -341,14 +343,13 @@ impl Pcs {
             .map_err(PcsError::Send)?
             .error_for_status()
             .map_err(|e| {
-                if let Some(status) = e.status() {
-                    if status == reqwest::StatusCode::NOT_FOUND
-                        || status == reqwest::StatusCode::GONE
-                    {
-                        let url = e.url().map(|u| u.as_str()).unwrap_or(source);
-                        debug!("HTTP {status} from {url}");
-                        return PcsError::Collateral(url.to_string());
-                    }
+                if let Some(status) = e.status()
+                    && (status == reqwest::StatusCode::NOT_FOUND
+                        || status == reqwest::StatusCode::GONE)
+                {
+                    let url = e.url().map(|u| u.as_str()).unwrap_or(source);
+                    debug!("HTTP {status} from {url}");
+                    return PcsError::Collateral(url.to_string());
                 }
                 PcsError::Response(e)
             })?;
@@ -391,8 +392,8 @@ mod tests {
     async fn tcb_info_signature() {
         use super::{CollateralService, CollateralType, Pcs};
         use crate::intel_dcap::{
-            collateral_service::{CollateralData, IntelTee, TcbInfoJson},
             QcnlConfig,
+            collateral_service::{CollateralData, IntelTee, TcbInfoJson},
         };
         use openssl::bn::BigNum;
         use openssl::ec::EcKey;
@@ -434,8 +435,10 @@ mod tests {
         let bytes = serde_json::to_vec(&d.tcb_info).expect("serialize tcbInfo for verification");
         let ec_key = EcKey::try_from(public_key).expect("extract EC key");
 
-        assert!(ecdsa_sig
-            .verify(&sha256(bytes.as_slice()), &ec_key)
-            .is_ok_and(|res| res));
+        assert!(
+            ecdsa_sig
+                .verify(&sha256(bytes.as_slice()), &ec_key)
+                .is_ok_and(|res| res)
+        );
     }
 }

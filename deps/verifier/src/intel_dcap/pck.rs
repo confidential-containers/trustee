@@ -8,11 +8,11 @@
 //! and are present in both TDX and SGX PCK certificate chains.
 //! See "Intel® SGX PCK Certificate and Certificate Revocation List Profile Specification".
 
-use anyhow::{anyhow, bail, Context, Result};
-use asn1_rs::{oid, DerSequence, Enumerated, FromDer, Oid};
+use anyhow::{Context, Result, anyhow, bail};
+use asn1_rs::{DerSequence, Enumerated, FromDer, Oid, oid};
 use x509_parser::prelude::*;
 
-const DCAP_SGX_EXTENSIONS: Oid<'static> = oid!(1.2.840 .113741 .1 .13 .1);
+const DCAP_SGX_EXTENSIONS: Oid<'static> = oid!(1.2.840.113741.1.13.1);
 const PCK_PLATFORM_CA_CN: &str = "Intel SGX PCK Platform CA";
 const PCK_PROCESSOR_CA_CN: &str = "Intel SGX PCK Processor CA";
 

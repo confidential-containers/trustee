@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use openssl::bn::BigNum;
 use openssl::ec::EcKey;
 use openssl::ecdsa::EcdsaSig;
@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::fmt;
 use tracing::{info, warn};
 
-use super::spdm_request::{SpdmGetMeasurementRequest, SPDM_GET_MEASUREMENT_REQUEST_SIZE};
+use super::spdm_request::{SPDM_GET_MEASUREMENT_REQUEST_SIZE, SpdmGetMeasurementRequest};
 use super::spdm_response::SpdmGetMeasurementsResponse;
 use crate::nvidia::cert_chain::NvidiaCertificateChain;
 use crate::nvidia::spdm_response::OpaqueDataType;
@@ -147,7 +147,7 @@ impl NvidiaAttestationReport {
 mod tests {
     use openssl::x509::X509;
 
-    use crate::nvidia::{report::NvidiaAttestationReport, HOPPER_SIGNATURE_LENGTH};
+    use crate::nvidia::{HOPPER_SIGNATURE_LENGTH, report::NvidiaAttestationReport};
 
     #[test]
     fn test_verify_report_signature() {

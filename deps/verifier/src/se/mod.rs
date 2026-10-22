@@ -31,7 +31,9 @@ impl Verifier for SeVerifier {
             .get_or_try_init(|| async { SeVerifierImpl::new() })
             .await?;
         if let InitDataHash::Value(_) = expected_init_data_hash {
-            warn!("IBM SE verifier does not support verify init data hash, will ignore the input `init_data_hash`.");
+            warn!(
+                "IBM SE verifier does not support verify init data hash, will ignore the input `init_data_hash`."
+            );
         }
         let claims = se_verifier.evaluate(evidence, expected_report_data)?;
         Ok(vec![(claims, "cpu".to_string())])

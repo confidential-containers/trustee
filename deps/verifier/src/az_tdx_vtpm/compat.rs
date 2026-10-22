@@ -5,8 +5,8 @@
 
 //! Compatibility layer for legacy (v0) evidence format conversion.
 
-use super::super::az_snp_vtpm::compat::VersionCheck;
 use super::super::az_snp_vtpm::TpmQuote;
+use super::super::az_snp_vtpm::compat::VersionCheck;
 use az_tdx_vtpm::vtpm::Quote;
 use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};

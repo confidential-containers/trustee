@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use crate::{regularize_data, ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex};
-use anyhow::{anyhow, Context, Result};
+use crate::{ReportData, TeeEvidence, TeeEvidenceParsedClaim, ToHex, regularize_data};
+use anyhow::{Context, Result, anyhow};
 use core::result::Result::Ok;
 use openssl::encrypt::{Decrypter, Encrypter};
 use openssl::pkey::{PKey, Private, Public};
@@ -58,10 +58,10 @@ fn list_files_in_folder(dir: &str) -> Result<Vec<String>> {
 
     for entry in fs::read_dir(dir)? {
         let path = entry?.path();
-        if path.is_file() {
-            if let Some(path_str) = path.to_str() {
-                file_paths.push(path_str.to_string());
-            }
+        if path.is_file()
+            && let Some(path_str) = path.to_str()
+        {
+            file_paths.push(path_str.to_string());
         }
     }
 
@@ -251,7 +251,9 @@ impl SeVerifierImpl {
                 .into());
             }
         } else {
-            info!("No expected runtime_data_digest provided for IBM SEL verification, skipping user_data validation");
+            info!(
+                "No expected runtime_data_digest provided for IBM SEL verification, skipping user_data validation"
+            );
         }
 
         let meas_key = PKey::hmac(&meas_key)?;

@@ -7,17 +7,17 @@
 //! serialize them into a JSON. The format will look like example available in test data:
 //! ./test_data/parse_tdx_claims_expected.json
 
-use anyhow::{bail, Result};
-use bitflags::{bitflags, Flags};
+use anyhow::{Result, bail};
+use bitflags::{Flags, bitflags};
 use serde_json::{Map, Value};
 
 use crate::intel_dcap::quote::Quote;
 use crate::{
+    TeeEvidenceParsedClaim,
     intel_dcap::{
         pck::PlatformInfo,
         quote::{QuoteV5Body, QuoteV5Type},
     },
-    TeeEvidenceParsedClaim,
 };
 
 macro_rules! body_field {
@@ -296,7 +296,7 @@ mod tests {
     use crate::intel_dcap::quote::parse_quote;
     use crate::tdx::claims::PlatformConfigInfoError;
 
-    use super::{generate_parsed_claim, TdShimPlatformConfigInfo};
+    use super::{TdShimPlatformConfigInfo, generate_parsed_claim};
 
     use eventlog::CcEventLog;
     use rstest::rstest;
