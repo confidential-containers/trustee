@@ -88,7 +88,7 @@ pub enum CertError {
 }
 
 pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, tpm_quote: &TpmQuote) -> Result<()> {
-    let Value::Object(ref mut map) = claim else {
+    let Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
     let mut tpm_values = serde_json::Map::new();

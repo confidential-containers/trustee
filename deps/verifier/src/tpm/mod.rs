@@ -182,7 +182,7 @@ fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
 }
 
 fn extend_claim(claim: &mut TeeEvidenceParsedClaim, quote: &VtpmQuote) -> Result<()> {
-    let serde_json::Value::Object(ref mut map) = claim else {
+    let serde_json::Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
     let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
