@@ -78,8 +78,8 @@ mod tests {
     use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType};
 
     use crate::plugins::{
-        resource::{kv_storage::KvStorage, RESOURCE_STORAGE_NAMESPACE},
         PluginError,
+        resource::{RESOURCE_STORAGE_NAMESPACE, kv_storage::KvStorage},
     };
 
     use super::super::{ResourceDesc, StorageBackend};

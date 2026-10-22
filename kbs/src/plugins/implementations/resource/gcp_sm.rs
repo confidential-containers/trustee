@@ -8,7 +8,7 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use crate::plugins::PluginResult;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use google_cloud_secretmanager_v1::client::SecretManagerService;
 use serde::Deserialize;
 use tracing::info;
@@ -73,11 +73,15 @@ impl StorageBackend for GcpSmBackend {
         _resource_desc: ResourceDesc,
         _data: &[u8],
     ) -> Result<()> {
-        bail!("GCP Secret Manager backend does not support write operations; provision secrets via GCP APIs")
+        bail!(
+            "GCP Secret Manager backend does not support write operations; provision secrets via GCP APIs"
+        )
     }
 
     async fn delete_secret_resource(&self, _resource_desc: ResourceDesc) -> Result<()> {
-        bail!("GCP Secret Manager backend does not support delete operations; manage secret lifecycle via GCP APIs")
+        bail!(
+            "GCP Secret Manager backend does not support delete operations; manage secret lifecycle via GCP APIs"
+        )
     }
 }
 

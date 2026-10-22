@@ -10,7 +10,7 @@
 //! the backend name and forwarding `path[1..]` to the matching backend.
 
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use backon::{ExponentialBuilder, Retryable};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ use tracing::{debug, info, warn};
 
 use crate::plugins::plugin_manager::{ClientPlugin, PluginError, PluginResult};
 use crate::prometheus::{
-    PLUGIN_ERRORS_TOTAL, PLUGIN_REQUESTS_TOTAL, PLUGIN_REQUEST_DURATION_SECONDS,
+    PLUGIN_ERRORS_TOTAL, PLUGIN_REQUEST_DURATION_SECONDS, PLUGIN_REQUESTS_TOTAL,
 };
 
 mod plugin_api {
@@ -30,7 +30,7 @@ mod plugin_api {
 }
 
 use plugin_api::{
-    kbs_plugin_client::KbsPluginClient, NeedsEncryptionRequest, PluginRequest, ValidateAuthRequest,
+    NeedsEncryptionRequest, PluginRequest, ValidateAuthRequest, kbs_plugin_client::KbsPluginClient,
 };
 
 #[derive(Deserialize)]
@@ -54,7 +54,9 @@ impl TryFrom<BackendConfigRaw> for BackendConfig {
             )?)
         } else if raw.endpoint.starts_with("http://") {
             if raw.ca_cert_path.is_some() {
-                bail!("`http://` endpoint is plaintext and must not set `ca_cert_path`; use `https://` for TLS");
+                bail!(
+                    "`http://` endpoint is plaintext and must not set `ca_cert_path`; use `https://` for TLS"
+                );
             }
             None
         } else {

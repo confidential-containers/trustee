@@ -4,14 +4,14 @@
 
 //! This module implements the BearerJwt token verifier.
 
-use actix_web::{http::header::Header, HttpRequest};
+use actix_web::{HttpRequest, http::header::Header};
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 
 use serde::Deserialize;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
-use crate::admin::{authentication::TokenVerifierTrait, error::*, Claims};
+use crate::admin::{Claims, authentication::TokenVerifierTrait, error::*};
 use crate::crypto::jwt::JwtVerifier;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -129,7 +129,9 @@ impl TokenVerifierTrait for BearerJwtTokenVerifier {
                 );
             }
 
-            info!("Endorsement of a token has been verified successfully. Continue to check the authorization.");
+            info!(
+                "Endorsement of a token has been verified successfully. Continue to check the authorization."
+            );
             debug!("Admin claims: {:?}", claims);
             return Ok(claims);
         }

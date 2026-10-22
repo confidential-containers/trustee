@@ -26,7 +26,7 @@
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use spire_api::selectors::Selector;

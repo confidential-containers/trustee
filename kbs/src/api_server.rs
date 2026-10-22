@@ -5,20 +5,21 @@
 use std::collections::HashMap;
 
 use actix_web::{
-    http::{header::Header, Method},
+    App, HttpRequest, HttpResponse, HttpServer,
+    http::{Method, header::Header},
     middleware,
     web::{self, Query},
-    App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
 use key_value_storage::StorageProvider;
-use policy_engine::{rego::Regorus, PolicyEngine};
+use policy_engine::{PolicyEngine, rego::Regorus};
 use serde_json::json;
 use tracing::{info, warn};
 
 use crate::{
+    Error, Result,
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
@@ -28,7 +29,6 @@ use crate::{
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
     token::TokenVerifier,
-    Error, Result,
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";

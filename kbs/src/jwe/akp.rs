@@ -15,12 +15,12 @@
 //! vectors when those emerge.
 
 use aes_gcm::{
-    aead::{AeadInOut, Generate},
     Aes256Gcm, KeyInit, Nonce,
+    aead::{AeadInOut, Generate},
 };
 use aes_kw::KwAes192;
-use anyhow::{anyhow, bail, Context, Result};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use anyhow::{Context, Result, anyhow, bail};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{ProtectedHeader, Response};
 use ml_kem::{Encapsulate, EncapsulationKey, Key, MlKem768};
 use serde_json::{Map, Value};
@@ -140,7 +140,7 @@ pub fn ml_kem_768_a192kw(pub_key_b64: &str, mut payload_data: Vec<u8>) -> Result
 mod tests {
     use super::*;
     use kbs_types::TeePubKey;
-    use ml_kem::{kem::KeyExport, Decapsulate, Kem};
+    use ml_kem::{Decapsulate, Kem, kem::KeyExport};
 
     #[test]
     fn ml_kem_768_a192kw_roundtrip() {

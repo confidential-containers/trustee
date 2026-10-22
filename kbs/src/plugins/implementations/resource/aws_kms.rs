@@ -9,7 +9,7 @@
 
 use super::backend::{ResourceDesc, StorageBackend};
 use crate::plugins::PluginResult;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_secretsmanager::Client as SecretsManagerClient;
 use serde::Deserialize;
@@ -63,11 +63,15 @@ impl StorageBackend for AwsKmsBackend {
         _resource_desc: ResourceDesc,
         _data: &[u8],
     ) -> Result<()> {
-        bail!("AWS Secrets Manager backend does not support write operations; provision secrets via AWS APIs")
+        bail!(
+            "AWS Secrets Manager backend does not support write operations; provision secrets via AWS APIs"
+        )
     }
 
     async fn delete_secret_resource(&self, _resource_desc: ResourceDesc) -> Result<()> {
-        bail!("AWS Secrets Manager backend does not support delete operations; manage secret lifecycle via AWS APIs")
+        bail!(
+            "AWS Secrets Manager backend does not support delete operations; manage secret lifecycle via AWS APIs"
+        )
     }
 }
 

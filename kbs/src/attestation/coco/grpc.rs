@@ -5,10 +5,10 @@
 use anyhow::*;
 use async_trait::async_trait;
 use attestation::{
-    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
     ReferenceValueQueryRequest, ReferenceValueQueryResponse, ReferenceValueRegisterRequest,
+    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{Challenge, HashAlgorithm, Tee};
 use mobc::{Manager, Pool};
 use serde::Deserialize;
@@ -17,14 +17,14 @@ use tonic::transport::Channel;
 use tracing::info;
 
 use crate::attestation::{
-    backend::{make_nonce, Attest, IndependentEvidence},
+    backend::{Attest, IndependentEvidence, make_nonce},
     coco::DEFAULT_POLICY_ID,
 };
 
 use self::attestation::{
+    AttestationRequest, ChallengeRequest, IndividualAttestationRequest, SetPolicyRequest,
     attestation_service_client::AttestationServiceClient,
     individual_attestation_request::{InitData, RuntimeData},
-    AttestationRequest, ChallengeRequest, IndividualAttestationRequest, SetPolicyRequest,
 };
 
 mod attestation {

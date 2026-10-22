@@ -6,7 +6,7 @@ use actix_web::HttpRequest;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::admin::{authorization::AuthorizationTrait, error::*, AuthorizationDecision, Claims};
+use crate::admin::{AuthorizationDecision, Claims, authorization::AuthorizationTrait, error::*};
 
 /// An ACL rule that grants a specific role access to selected endpoints.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]

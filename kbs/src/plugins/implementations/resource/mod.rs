@@ -19,7 +19,7 @@ pub mod vault_kv;
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 
 pub mod backend;
 pub use backend::*;

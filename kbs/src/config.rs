@@ -5,7 +5,7 @@
 use crate::admin::AdminConfig;
 use crate::plugins::PluginsConfig;
 use crate::token::AttestationTokenVerifierConfig;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
 use config::{Config, File};
 use const_format::concatcp;
@@ -89,17 +89,17 @@ impl TlsConfig {
         }
 
         // Validate version range
-        if let (Some(min_version), Some(max_version)) = (&self.min_version, &self.max_version) {
-            if matches!(
+        if let (Some(min_version), Some(max_version)) = (&self.min_version, &self.max_version)
+            && matches!(
                 (min_version, max_version),
                 (TlsVersion::Tls13, TlsVersion::Tls12)
-            ) {
-                bail!(
-                    "tls_min_version ({}) cannot be greater than tls_max_version ({})",
-                    min_version.as_ref(),
-                    max_version.as_ref()
-                );
-            }
+            )
+        {
+            bail!(
+                "tls_min_version ({}) cannot be greater than tls_max_version ({})",
+                min_version.as_ref(),
+                max_version.as_ref()
+            );
         }
 
         Ok(())
@@ -270,12 +270,12 @@ mod tests {
     use crate::{
         admin::AdminConfig,
         config::{
-            HttpServerConfig, TlsConfig, TlsProfile, TlsVersion, DEFAULT_INSECURE_HTTP,
-            DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET,
+            DEFAULT_INSECURE_HTTP, DEFAULT_PAYLOAD_REQUEST_SIZE, DEFAULT_SOCKET, HttpServerConfig,
+            TlsConfig, TlsProfile, TlsVersion,
         },
         plugins::{
-            implementations::{RepositoryConfig, SampleConfig},
             PluginsConfig,
+            implementations::{RepositoryConfig, SampleConfig},
         },
         token::AttestationTokenVerifierConfig,
     };
@@ -284,12 +284,12 @@ mod tests {
 
     #[cfg(feature = "coco-as-builtin")]
     use attestation_service::{
-        ear_token::{EarTokenConfiguration, COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION},
-        rvps::{grpc::RvpsRemoteConfig, RvpsConfig},
+        ear_token::{COCO_AS_ISSUER_NAME, DEFAULT_TOKEN_DURATION, EarTokenConfiguration},
+        rvps::{RvpsConfig, grpc::RvpsRemoteConfig},
     };
 
     use key_value_storage::{
-        local_json, KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig,
+        KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig, local_json,
     };
 
     use rstest::rstest;

@@ -145,7 +145,7 @@ impl Admin {
 mod tests {
 
     use super::*;
-    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
     use openssl::pkey::PKey;
     use rstest::rstest;
     use serde_json::json;

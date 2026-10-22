@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Result};
-use anyhow::{bail, Context};
-use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+use anyhow::{Context, bail};
+use anyhow::{Result, anyhow};
 use base64::Engine;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve, Jwk, JwkSet};
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, Header, Validation, decode, decode_header};
 use openssl::{
     bn::{BigNum, BigNumContext},
     ec::{EcGroup, EcKey, EcPoint},
@@ -15,7 +15,7 @@ use openssl::{
     pkey::PKey,
     rsa::Rsa,
     stack::Stack,
-    x509::{store::X509StoreBuilder, X509StoreContext, X509},
+    x509::{X509, X509StoreContext, store::X509StoreBuilder},
 };
 use reqwest::Url;
 use serde::de::DeserializeOwned;
@@ -168,8 +168,10 @@ impl JwtVerifier {
             && trusted_certs.is_empty()
             && !insecure_public_key_from_jwt
         {
-            bail!("Cannot verify token since no trusted verification materials are provided. \
-                Please provide at least one of trusted JWK sets, trusted PEM public keys, or trusted certificates.");
+            bail!(
+                "Cannot verify token since no trusted verification materials are provided. \
+                Please provide at least one of trusted JWK sets, trusted PEM public keys, or trusted certificates."
+            );
         }
 
         Ok(Self {

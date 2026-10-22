@@ -5,9 +5,9 @@
 use std::sync::{Arc, LazyLock};
 
 use actix_web::{HttpRequest, HttpResponse};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use rsa::rand_core::{OsRng, RngCore};
@@ -17,16 +17,16 @@ use serde_json::json;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
-use crate::attestation::session::{SessionMap, KBS_SESSION_ID};
+use crate::attestation::session::{KBS_SESSION_ID, SessionMap};
 use crate::prometheus::{
     ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
     AUTH_ERRORS, AUTH_REQUESTS, AUTH_SUCCESSES,
 };
 
 use super::{
+    ATTESTATION_POLICY_SELECTOR_JSON_KEY, Error, Result,
     config::{AttestationConfig, AttestationServiceConfig},
     session::SessionStatus,
-    Error, Result, ATTESTATION_POLICY_SELECTOR_JSON_KEY,
 };
 
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
@@ -402,7 +402,9 @@ impl AttestationService {
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
         if nonce != attestation.runtime_data.nonce {
-            bail!("the nonce in the handshake session is different from the client side in KBS protocol's Attestation message");
+            bail!(
+                "the nonce in the handshake session is different from the client side in KBS protocol's Attestation message"
+            );
         }
 
         let kbs_evidence_runtime_data = json!({
@@ -592,14 +594,18 @@ mod tests {
     fn test_resolve_policy_ids_without_map() {
         let policy_id_map = HashMap::new();
 
-        assert!(resolve_policy_ids(&policy_id_map, &json!({}))
-            .unwrap()
-            .is_none());
-        assert!(resolve_policy_ids(
-            &policy_id_map,
-            &json!({"attestation-policy-selector": "alice"})
-        )
-        .is_err());
+        assert!(
+            resolve_policy_ids(&policy_id_map, &json!({}))
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            resolve_policy_ids(
+                &policy_id_map,
+                &json!({"attestation-policy-selector": "alice"})
+            )
+            .is_err()
+        );
     }
 
     #[tokio::test]
