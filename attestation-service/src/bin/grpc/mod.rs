@@ -1,29 +1,29 @@
 use anyhow::bail;
 use attestation_service::HashAlgorithm;
 use attestation_service::{
-    config::Config, config::ConfigError, AttestationService as Service, ServiceError, Tee,
-    TeeEvidence, VerificationRequest,
+    AttestationService as Service, ServiceError, Tee, TeeEvidence, VerificationRequest,
+    config::Config, config::ConfigError,
 };
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::get,
 };
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use jsonwebtoken::jwk::JwkSet;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tonic::{Request, Response, Status};
 use tonic::{
     service::Routes,
     transport::{Identity, Server, ServerTlsConfig},
 };
-use tonic::{Request, Response, Status};
 use tonic_health::server::health_reporter;
-use tracing::{debug, info, instrument, warn, Span};
+use tracing::{Span, debug, info, instrument, warn};
 use uuid::Uuid;
 
 use crate::as_api::attestation_service_server::{AttestationService, AttestationServiceServer};
@@ -32,12 +32,12 @@ use crate::as_api::{
     SetPolicyResponse,
 };
 use crate::rvps_api::{
-    reference_value_provider_service_server::{
-        ReferenceValueProviderService, ReferenceValueProviderServiceServer,
-    },
     ReferenceValueDeleteRequest, ReferenceValueDeleteResponse, ReferenceValueListRequest,
     ReferenceValueListResponse, ReferenceValueQueryRequest, ReferenceValueQueryResponse,
     ReferenceValueRegisterRequest, ReferenceValueRegisterResponse,
+    reference_value_provider_service_server::{
+        ReferenceValueProviderService, ReferenceValueProviderServiceServer,
+    },
 };
 
 fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {

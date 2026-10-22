@@ -7,9 +7,9 @@ use tonic::transport::Channel;
 use tracing::{debug, info};
 
 use self::rvps_api::{
-    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
     ReferenceValueDeleteRequest, ReferenceValueListRequest, ReferenceValueQueryRequest,
     ReferenceValueRegisterRequest,
+    reference_value_provider_service_client::ReferenceValueProviderServiceClient,
 };
 
 use super::{Result, RvpsApi};

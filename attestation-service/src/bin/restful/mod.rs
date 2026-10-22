@@ -1,19 +1,19 @@
 use std::{collections::HashMap, sync::Arc};
 
-use actix_web::{body::BoxBody, web, HttpRequest, HttpResponse, ResponseError};
-use anyhow::{anyhow, bail, Context};
+use actix_web::{HttpRequest, HttpResponse, ResponseError, body::BoxBody, web};
+use anyhow::{Context, anyhow, bail};
 use attestation_service::{
     AttestationService, HashAlgorithm, InitDataInput as InnerInitDataInput,
     RuntimeData as InnerRuntimeData, VerificationRequest,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::Tee;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use strum::AsRefStr;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, instrument, Span};
+use tracing::{Span, debug, error, info, instrument};
 use uuid::Uuid;
 
 #[derive(Error, Debug, AsRefStr)]

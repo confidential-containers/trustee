@@ -83,7 +83,7 @@ mod tests {
     use crate::ear_token::TokenSignerConfig;
     use crate::{ear_token::EarTokenConfiguration, rvps::RvpsConfig};
     use key_value_storage::{
-        local_fs, KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig,
+        KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig, local_fs,
     };
 
     #[rstest]
