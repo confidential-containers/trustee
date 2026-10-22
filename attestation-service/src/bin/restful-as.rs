@@ -1,9 +1,9 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{http::header, web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, http::header, web};
 use anyhow::Result;
-use attestation_service::{config::Config, config::ConfigError, AttestationService, ServiceError};
+use attestation_service::{AttestationService, ServiceError, config::Config, config::ConfigError};
 use clap::Parser;
 use openssl::{
     pkey::PKey,
@@ -14,7 +14,7 @@ use strum::{AsRefStr, EnumString};
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::Subscriber};
 
 use crate::restful::{attestation, get_challenge, get_jwks, get_policies, set_policy};
 

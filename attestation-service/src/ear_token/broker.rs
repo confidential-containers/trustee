@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 
-use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use ear::{Algorithm, Appraisal, Ear, Extensions, RawValue, RawValueKind, VerifierID};
 use jsonwebtoken::jwk::{self, JwkSet};
 use kbs_types::Tee;
@@ -17,18 +17,18 @@ use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use policy_engine::rego::RegorusExtension;
-use policy_engine::{rego::Regorus, PolicyEngine};
+use policy_engine::{PolicyEngine, rego::Regorus};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serde_variant::to_variant_name;
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use time::{Duration as TimeDuration, OffsetDateTime};
 use tracing::{debug, info, warn};
 
+use crate::TeeClaims;
 use crate::ear_token::EarTokenConfiguration;
 use crate::rvps::RvpsClient;
-use crate::TeeClaims;
 
 /// The policy claim that will hold trust claims.
 pub const TRUST_CLAIMS_RULE: &str = "data.policy.trust_claims";
@@ -75,7 +75,9 @@ impl EarAttestationTokenBroker {
             .await?;
 
         if config.signer.is_none() {
-            info!("No Token Signer key in config file, create an ephemeral key and without CA pubkey cert");
+            info!(
+                "No Token Signer key in config file, create an ephemeral key and without CA pubkey cert"
+            );
             return Ok(Self {
                 private_key: generate_ec_keys()?.0,
                 config,
@@ -208,7 +210,9 @@ impl EarAttestationTokenBroker {
                                 Ok(value)
                             }
                             None => {
-                                warn!("No reference value found for the given id: {id}, use NULL as the returned value");
+                                warn!(
+                                    "No reference value found for the given id: {id}, use NULL as the returned value"
+                                );
                                 Ok(regorus::Value::Null)
                             }
                         }
@@ -252,7 +256,9 @@ impl EarAttestationTokenBroker {
                     }
                 }
                 None => {
-                    warn!("No trust claims found by enforcing policy {policy_id}, set all TrustVector claims to 0");
+                    warn!(
+                        "No trust claims found by enforcing policy {policy_id}, set all TrustVector claims to 0"
+                    );
                     appraisal.trust_vector.set_all(0);
                 }
             }
@@ -502,14 +508,14 @@ pub fn transform_claims(
 #[cfg(test)]
 mod tests {
     use assert_json_diff::assert_json_eq;
-    use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve};
     use jsonwebtoken::DecodingKey;
+    use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve};
     use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType, SetParameters};
     use serde_json::json;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
-    use crate::{ear_token::TokenSignerConfig, TeeClaims, AS_POLICY_STORAGE_NAMESPACE};
+    use crate::{AS_POLICY_STORAGE_NAMESPACE, TeeClaims, ear_token::TokenSignerConfig};
 
     use super::*;
 
