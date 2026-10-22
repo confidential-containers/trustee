@@ -4,8 +4,8 @@
 //
 
 use super::{DevicePathParser, DeviceSubTypeParser};
-use anyhow::{anyhow, Result};
-use scroll::{Pread, LE};
+use anyhow::{Result, anyhow};
+use scroll::{LE, Pread};
 use std::str::from_utf8;
 
 /// Parser for Type 5 - BIOS Boot Specification Device Path.

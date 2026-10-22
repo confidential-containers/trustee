@@ -5,10 +5,10 @@
 
 use super::{EventDataParser, EventDetails};
 use crate::GUID_SIZE;
-use anyhow::{anyhow, Result};
-use base64::engine::general_purpose::STANDARD;
+use anyhow::{Result, anyhow};
 use base64::Engine;
-use scroll::{Pread, LE};
+use base64::engine::general_purpose::STANDARD;
+use scroll::{LE, Pread};
 
 pub struct EvEfiVariableParser;
 
@@ -96,8 +96,8 @@ fn format_guid(guid: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ccel::tcg_enum::TcgAlgorithm;
     use crate::ElDigest;
+    use crate::ccel::tcg_enum::TcgAlgorithm;
     use rstest::rstest;
 
     #[rstest]
