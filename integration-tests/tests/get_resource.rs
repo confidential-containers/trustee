@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use rstest::rstest;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serial_test::serial;
 use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness, init_tracing};
 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";

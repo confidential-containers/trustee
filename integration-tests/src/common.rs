@@ -3,18 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use const_format::concatcp;
+use kbs::ApiServer;
 use kbs::admin::AdminConfig;
 use kbs::attestation::config::{AttestationConfig, AttestationServiceConfig};
 use kbs::config::KbsConfig;
 use kbs::config::{HttpServerConfig, TlsConfig};
 use kbs::token::AttestationTokenVerifierConfig;
-use kbs::ApiServer;
 
-use kbs::plugins::{implementations::RepositoryConfig, PluginsConfig};
+use kbs::plugins::{PluginsConfig, implementations::RepositoryConfig};
 
 use attestation_service::{
     ear_token::EarTokenConfiguration,
-    rvps::{grpc::RvpsRemoteConfig, RvpsConfig},
+    rvps::{RvpsConfig, grpc::RvpsRemoteConfig},
 };
 
 use key_value_storage::{KeyValueStorageStructConfig, KeyValueStorageType, StorageBackendConfig, local_fs, local_json};
@@ -23,23 +23,23 @@ use reference_value_provider_service::config::Config as RVPSConfig;
 use reference_value_provider_service::rvps_api::reference::reference_value_provider_service_server::ReferenceValueProviderServiceServer;
 use reference_value_provider_service::{server::RvpsServer, Rvps};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use base64::{
-    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
     Engine,
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
 };
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use openssl::pkey::PKey;
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::{Arc, Once};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
-use tokio::sync::oneshot;
 use tokio::sync::RwLock;
+use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tonic::transport::Server;
-use tracing::{info, Level};
+use tracing::{Level, info};
 use tracing_subscriber::fmt;
 
 const KBS_TCP: &str = "127.0.0.1:8081";
