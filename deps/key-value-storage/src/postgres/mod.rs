@@ -8,16 +8,16 @@ use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use async_trait::async_trait;
 use educe::Educe;
 use serde::Deserialize;
 use sqlx::PgPool;
-use sqlx::{postgres::PgPoolOptions, query, Row};
+use sqlx::{Row, postgres::PgPoolOptions, query};
 use tracing::{debug, info, instrument};
 
 use crate::{
-    is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
+    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, is_valid_key,
 };
 
 /// The maximum number of connections to the PostgreSQL database.

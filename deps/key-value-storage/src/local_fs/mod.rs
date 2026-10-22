@@ -14,7 +14,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, instrument};
 
 use crate::{
-    is_valid_key, KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult,
+    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, is_valid_key,
 };
 
 /// Default directory path for the local file system.
