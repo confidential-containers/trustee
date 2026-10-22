@@ -4,7 +4,7 @@
 //
 
 use super::{EventDataParser, EventDetails};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 pub struct SimpleStringParser;
 
 /// Parser for EV_EFI_HANDOFF_TABLES2 & EV_EFI_PLATFORM_FIRMWARE_BLOB2
@@ -59,8 +59,14 @@ mod tests {
         "0b74645f7061796c6f61640000109000000000000000001000000000",
         EventDetails::from_string(String::from("td_payload"))
     )]
-    #[case::ev_efi_platform_firmware_blob2("2946762858585858585858582d585858582d585858582d585858582d58585858585858585858585829000000c0ff000000000040080000000000", EventDetails::from_string(String::from("Fv(XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX)")))]
-    #[case::ev_efi_platform_firmware_blob2("2946762834384442354531372d373037432d343732442d393143442d31363133453745463531423029000000e0ff000000000000020000000000", EventDetails::from_string(String::from("Fv(48DB5E17-707C-472D-91CD-1613E7EF51B0)")))]
+    #[case::ev_efi_platform_firmware_blob2(
+        "2946762858585858585858582d585858582d585858582d585858582d58585858585858585858585829000000c0ff000000000040080000000000",
+        EventDetails::from_string(String::from("Fv(XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX)"))
+    )]
+    #[case::ev_efi_platform_firmware_blob2(
+        "2946762834384442354531372d373037432d343732442d393143442d31363133453745463531423029000000e0ff000000000000020000000000",
+        EventDetails::from_string(String::from("Fv(48DB5E17-707C-472D-91CD-1613E7EF51B0)"))
+    )]
     fn test_simple_string_parser(#[case] test_data: &str, #[case] expected_result: EventDetails) {
         let parser = SimpleStringParser;
         let actual_result = parser.parse(hex::decode(test_data).unwrap());

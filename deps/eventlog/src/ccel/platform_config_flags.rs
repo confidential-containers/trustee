@@ -23,9 +23,9 @@ impl EventDataParser for EvPlatformConfigFlagsParser {
 
 #[cfg(test)]
 mod tests {
+    use crate::EventDetails;
     use crate::ccel::EvPlatformConfigFlagsParser;
     use crate::ccel::EventDataParser;
-    use crate::EventDetails;
     use rstest::rstest;
 
     #[rstest]

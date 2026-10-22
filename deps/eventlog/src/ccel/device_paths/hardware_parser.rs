@@ -4,7 +4,7 @@
 //
 
 use super::{DevicePathParser, DeviceSubTypeParser};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 
 /// Parser for Type 1 - Hardware Device Path.
 /// Defined in section 10.3.2 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#hardware-device-path>
