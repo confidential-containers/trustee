@@ -169,7 +169,7 @@ pub(crate) fn extend_using_custom_claims(
     claim: &mut TeeEvidenceParsedClaim,
     custom: Map<String, Value>,
 ) -> anyhow::Result<()> {
-    let Value::Object(ref mut map) = claim else {
+    let Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
     map.extend(custom);
