@@ -70,6 +70,7 @@ fn parse_tee_evidence(quote: &SampleDeviceEvidence) -> Result<TeeEvidenceParsedC
     let claims_map = json!({
         "svn": quote.svn,
         "report_data": quote.report_data,
+        "hardware_type": crate::hardware_type::types::SAMPLE_DEVICE,
     });
 
     Ok(claims_map as TeeEvidenceParsedClaim)
