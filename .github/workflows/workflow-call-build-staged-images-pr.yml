@@ -36,7 +36,7 @@ jobs:
             tag: kbs
             docker_file: kbs/docker/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
           - name: built-in AS
             tag: kbs
@@ -48,7 +48,7 @@ jobs:
             tag: kbs-grpc-as
             docker_file: kbs/docker/coco-as-grpc/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
           - name: Intel Trust Authority AS
             tag: kbs-ita-as
@@ -60,7 +60,7 @@ jobs:
             tag: kbs-ita-as
             docker_file: kbs/docker/intel-trust-authority/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
           - name: RHEL UBI AS
             tag: rhel-ubi
@@ -97,7 +97,7 @@ jobs:
             tag: coco-as-grpc
             docker_file: attestation-service/docker/as-grpc/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x --build-arg VERIFIER=snp-verifier,nvidia-verifier,se-verifier
           - name: RESTful CoCo-AS
             tag: coco-as-restful
@@ -109,7 +109,7 @@ jobs:
             tag: coco-as-restful
             docker_file: attestation-service/docker/as-restful/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x --build-arg VERIFIER=snp-verifier,nvidia-verifier,se-verifier
           - name: RESTful CoCo-AS
             tag: coco-as-restful
@@ -146,7 +146,7 @@ jobs:
             tag: rvps
             docker_file: rvps/docker/Dockerfile
             platform: linux/s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
     runs-on: ${{ matrix.instance }}
     steps:
@@ -178,7 +178,7 @@ jobs:
             instance: ubuntu-24.04
           - tag: kbs-client-image
             docker_file: kbs/docker/kbs-client-image/Dockerfile
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
           - tag: kbs-client-image
             docker_file: kbs/docker/kbs-client-image/Dockerfile
             instance: ubuntu-24.04-arm
