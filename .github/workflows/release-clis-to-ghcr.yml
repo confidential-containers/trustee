@@ -27,7 +27,7 @@ jobs:
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
           - component: kbs-client
             arch: s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             dockerfile: kbs/docker/kbs-client/Dockerfile
             output_path: kbs-client
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
@@ -46,7 +46,7 @@ jobs:
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli
           - component: trustee-cli
             arch: s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             dockerfile: tools/trustee-cli/Dockerfile
             output_path: ./usr/local/bin/trustee
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli

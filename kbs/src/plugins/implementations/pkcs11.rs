@@ -13,6 +13,7 @@ use actix_web::http::Method;
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
     context::{CInitializeArgs, CInitializeFlags, Pkcs11},
+    error::{Error, RvError},
     mechanism::{
         rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
         Mechanism, MechanismType,
@@ -95,9 +96,10 @@ impl TryFrom<Pkcs11Config> for Pkcs11Backend {
     fn try_from(config: Pkcs11Config) -> anyhow::Result<Self> {
         let rsa_mechanism = Arc::new(config.rsa_mechanism);
         let pkcs11 = Pkcs11::new(config.module).context("unable to open pkcs11 module")?;
-        pkcs11
-            .initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK))
-            .unwrap();
+        match pkcs11.initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK)) {
+            Ok(()) | Err(Error::Pkcs11(RvError::CryptokiAlreadyInitialized, _)) => {}
+            Err(e) => return Err(e).context("unable to initialize pkcs11 module"),
+        }
 
         let slots = pkcs11.get_slots_with_token()?;
         let slot_index = usize::from(config.slot_index);
