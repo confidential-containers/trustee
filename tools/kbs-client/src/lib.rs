@@ -304,17 +304,38 @@ pub async fn set_sample_rv(
     admin_token: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
+    let provenance = json!({key: value}).to_string();
+    set_rv(
+        url,
+        "sample",
+        provenance.as_bytes(),
+        admin_token,
+        kbs_root_certs_pem,
+    )
+    .await
+}
+
+/// Register reference values with the RVPS behind the KBS at <url>, by
+/// handing it `provenance` to be processed by the RVPS extractor registered
+/// for `provenance_type` (e.g. "corim", "swid").
+///
+/// RVPS extractors don't authenticate provenance themselves, so it must be
+/// verified before it is registered.
+pub async fn set_rv(
+    url: String,
+    provenance_type: &str,
+    provenance: &[u8],
+    admin_token: Option<String>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<()> {
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
 
-    let provenance = json!({key: value}).to_string();
-    let provenance = STANDARD.encode(provenance);
-
     let message = json!({
         "version": "0.1.0",
-        "type": "sample",
-        "payload": provenance
+        "type": provenance_type,
+        "payload": STANDARD.encode(provenance)
     });
 
     let mut req = http_client
