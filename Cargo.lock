@@ -2586,6 +2586,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d57d423b3c82e89b9a24ca3091fee61f456a26edbd28d26c65906f4bc1dcd8f"
+dependencies = [
+ "dirs-sys 0.5.0",
+]
+
+[[package]]
 name = "dirs-sys"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8559,7 +8568,7 @@ dependencies = [
  "anyhow",
  "attestation-service",
  "clap",
- "dirs 6.0.0",
+ "dirs 7.0.0",
  "jsonwebtoken",
  "kbs",
  "nix",
