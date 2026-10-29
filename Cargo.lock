@@ -4494,7 +4494,7 @@ dependencies = [
  "hmac-sha256",
  "hmac-sha512",
  "k256",
- "p256 0.14.0",
+ "p256",
  "p384 0.14.0",
  "rand 0.10.3",
  "serde",
@@ -4554,7 +4554,7 @@ dependencies = [
  "ml-kem",
  "mobc",
  "openssl",
- "p256 0.13.2",
+ "p256",
  "p521",
  "policy-engine",
  "polyval 0.6.2",
@@ -5442,18 +5442,6 @@ name = "outref"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
-
-[[package]]
-name = "p256"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9863ad85fa8f4460f9c48cb909d38a0d689dba1f6f6988a5e3e0d31071bcd4b"
-dependencies = [
- "ecdsa 0.16.9",
- "elliptic-curve 0.13.8",
- "primeorder 0.13.6",
- "sha2 0.10.9",
-]
 
 [[package]]
 name = "p256"
