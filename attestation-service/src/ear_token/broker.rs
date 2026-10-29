@@ -21,6 +21,7 @@ use policy_engine::{PolicyEngine, rego::Regorus};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use serde_variant::to_variant_name;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -34,6 +35,38 @@ use crate::rvps::RvpsClient;
 pub const TRUST_CLAIMS_RULE: &str = "data.policy.trust_claims";
 /// The policy claim that will hold extensions.
 pub const EXTENSIONS_RULE: &str = "data.policy.extensions";
+
+/// Decode a hex-encoded string parameter of a policy extension.
+///
+/// Rego strings are UTF-8, so raw bytes cannot be passed between calls and
+/// the extensions below exchange hex instead.
+fn hex_param(name: &str, value: &regorus::Value) -> Result<Vec<u8>> {
+    let input = value
+        .as_string()
+        .with_context(|| format!("{name} extension parameter must be a string"))?;
+    hex::decode(input.as_ref())
+        .with_context(|| format!("{name} extension parameter must be hex-encoded"))
+}
+
+/// Build the `sha256_extend` policy extension.
+///
+/// It takes two hex-encoded strings, `old` and `digest`, and returns the hex-encoded
+/// SHA-256 of their concatenation, like a TPM PCR extend.
+fn sha256_extend_extension() -> RegorusExtension {
+    RegorusExtension {
+        name: "sha256_extend".to_string(),
+        id: 2,
+        extension: Box::new(|params: Vec<regorus::Value>| {
+            if params.len() != 2 {
+                bail!("sha256_extend extension requires exactly two parameters");
+            }
+            let old = hex_param("sha256_extend", &params[0])?;
+            let digest = hex_param("sha256_extend", &params[1])?;
+            let extended = Sha256::new().chain_update(old).chain_update(digest);
+            Ok(regorus::Value::from(hex::encode(extended.finalize())))
+        }),
+    }
+}
 
 pub struct EarAttestationTokenBroker {
     config: EarTokenConfiguration,
@@ -167,7 +200,7 @@ impl EarAttestationTokenBroker {
             // There is a policy for each tee class.
             // The cpu tee class is loaded as the default.
             let policy_id = format!("{}_{}", policy_ids[0], tee_claims.tee_class);
-            let mut extensions = vec![];
+            let mut extensions = vec![sha256_extend_extension()];
             if let Some(ref rvps_client) = rvps_client {
                 let rvps_client = rvps_client.clone();
                 let extension = RegorusExtension {
@@ -518,6 +551,58 @@ mod tests {
     use crate::{AS_POLICY_STORAGE_NAMESPACE, TeeClaims, ear_token::TokenSignerConfig};
 
     use super::*;
+
+    fn eval_sha256_extend(policy: &str, input: &str) -> regorus::Value {
+        let mut engine = regorus::Engine::new();
+        let ext = sha256_extend_extension();
+        engine
+            .add_extension(ext.name, ext.id, ext.extension)
+            .unwrap();
+        engine
+            .add_policy("".to_string(), policy.to_string())
+            .unwrap();
+        engine.set_input_json(input).unwrap();
+        engine.eval_rule("data.policy.out".to_string()).unwrap()
+    }
+
+    /// The result is the SHA-256 of the concatenated bytes: "a" || "bc" is "abc".
+    #[test]
+    fn test_sha256_extend_extension() {
+        let out = eval_sha256_extend(
+            "package policy\nout := sha256_extend(hex.encode(\"a\"), hex.encode(\"bc\"))",
+            "{}",
+        );
+        assert_eq!(
+            out.as_string().unwrap().as_ref(),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    /// PCR[8] = SHA256(pcr8_base || SHA256(init-data)), with an arbitrary non-zero base.
+    #[test]
+    fn test_sha256_extend_extension_pcr8() {
+        let out = eval_sha256_extend(
+            "package policy\nout := sha256_extend(input.base, input.init_data_digest)",
+            &json!({
+                // Bytes 0x00..0x1f.
+                "base": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+                // SHA256("init-data")
+                "init_data_digest": "d61c6a7f2f8d5bdb3b2d573e434c2b15c8a4babd11bb288b08be3534566ba3ee",
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            out.as_string().unwrap().as_ref(),
+            "2b08e35daa2aee3d0d3f1bfdae7a43251faedaf43e2d488db2a068fb66d2c461"
+        );
+    }
+
+    #[test]
+    fn test_sha256_extend_extension_rejects_bad_params() {
+        let mut extend = sha256_extend_extension().extension;
+        assert!(extend(vec![regorus::Value::from("00"), regorus::Value::from("zz")]).is_err());
+        assert!(extend(vec![regorus::Value::from("00")]).is_err());
+    }
 
     #[tokio::test]
     async fn test_issue_ear_ephemeral_key() {
