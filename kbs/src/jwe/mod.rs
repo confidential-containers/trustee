@@ -15,8 +15,7 @@ use aes_kw::KwAes256;
 use anyhow::{Context, Result, anyhow, bail};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
-use p256::elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint};
-use p521::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};
+use p256::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};
 use rsa::{BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey, rand_core::OsRng, sha2::Sha256};
 use serde_json::{Map, json};
 use tracing::warn;
@@ -179,15 +178,15 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .context("base64 decode y failed")?
         .try_into()
         .map_err(|_| anyhow!("invalid bytes length of coordinates Y"))?;
-    let client_point = p256::EncodedPoint::from_affine_coordinates(
-        &GenericArray::from(x),
-        &GenericArray::from(y),
+    let client_point = p256::Sec1Point::from_affine_coordinates(
+        &p256::FieldBytes::from(x),
+        &p256::FieldBytes::from(y),
         false,
     );
-    let public_key = p256::PublicKey::from_encoded_point(&client_point)
+    let public_key = p256::PublicKey::from_sec1_point(&client_point)
         .into_option()
         .ok_or(anyhow!("invalid TEE public key"))?;
-    let encrypter_secret = p256::ecdh::EphemeralSecret::random(&mut OsRng);
+    let encrypter_secret = p256::ecdh::EphemeralSecret::generate();
     let z = Zeroizing::new(
         encrypter_secret
             .diffie_hellman(&public_key)
@@ -202,7 +201,7 @@ fn ecdh_es_a256kw_p256(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
         .wrap_key(cek.as_slice(), &mut encrypted_key)
         .map_err(|e| anyhow!("failed to do AES wrapping: {e:?}"))?;
 
-    let point = p256::EncodedPoint::from(encrypter_secret.public_key());
+    let point = encrypter_secret.public_key().to_sec1_point(false);
     let epk_x = point
         .x()
         .ok_or(anyhow!("invalid public key: without coordinate X"))?;
@@ -373,10 +372,8 @@ mod tests {
     };
     use kbs_types::TeePubKey;
     use openssl::rsa::Rsa;
+    use p256::elliptic_curve::sec1::ToSec1Point;
     use p256::pkcs8::EncodePrivateKey;
-    use p521::elliptic_curve::sec1::ToSec1Point;
-    use p521::pkcs8::EncodePrivateKey as _;
-    use rsa::rand_core::OsRng;
 
     use crate::jwe::{
         AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA_OAEP256_ALGORITHM,
@@ -473,8 +470,8 @@ mod tests {
         let test_data = b"this is a test data";
 
         // Generate a EC key pair
-        let private_key = p256::SecretKey::random(&mut OsRng);
-        let point = p256::EncodedPoint::from(private_key.public_key());
+        let private_key = p256::SecretKey::generate();
+        let point = private_key.public_key().to_sec1_point(false);
         let x = point.x().unwrap();
         let y = point.y().unwrap();
         let x = URL_SAFE_NO_PAD.encode(x);
@@ -497,7 +494,7 @@ mod tests {
 
         // Decrypt JWE with JOSEkit crate
         let private_key = private_key
-            .to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)
+            .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
             .unwrap();
         let decrypter = EcdhEsA256kw.decrypter_from_pem(&private_key).unwrap();
 
