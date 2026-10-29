@@ -76,6 +76,31 @@ See the [default policy](../src/ear_token/ear_default_policy_cpu.rego) for an ex
 > }
 > ```
 
+> [!NOTE]
+> AS policies can also call `sha256_extend(old, digest)`, which computes the value of a
+> register after it is extended, i.e. the SHA-256 of `old` followed by `digest`.
+> Both arguments are hex-encoded strings and the result is a lowercase hex string.
+> Rego strings are UTF-8 and cannot carry raw bytes, so values are exchanged as hex.
+> The call returns an error if an argument is not a string or not valid hex, for example
+> when `query_reference_value` returned `null` because the key was not found.
+> To convert a plain string to hex, use the Rego builtin `hex.encode`.
+>
+> This allows registering the inputs of a measurement as separate reference values and
+> letting the policy compute the expected value, instead of precomputing it for every
+> combination and registering the result.
+> For example, on Azure SNP vTPM the init-data is attested through PCR[8], which holds
+> `SHA256(pcr8_base || SHA256(init-data))`. `pcr8_base` is the value the guest image leaves
+> in PCR[8] and is not zeros. With `pcr8_base` and the init-data digest registered in RVPS
+> (the key names and fields below are examples), the policy can be written as
+> ```
+> configuration := 2 if {
+> 	podvm := query_reference_value("podvm")
+> 	init := query_reference_value("init-data")
+> 	input["az-snp-vtpm"]["tpm"]["pcr08"] == sha256_extend(podvm["initdata_base"], init["digest"])
+> }
+> ```
+> When the init-data changes, only its new digest has to be registered.
+
 For EAR token issuance, policy lookup is done by appending the device class to the policy id.
 For a request with `policy_ids: ["default"]`, AS evaluates:
 
