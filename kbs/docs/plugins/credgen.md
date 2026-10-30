@@ -4,18 +4,17 @@ The CredGen plugin dynamically generates cryptographic credentials for confident
 
 ## Overview
 
-Credentials are requested by the confidential VM (server side) via `GET /credentials` and retrieved by the workload owner (client side) via `POST /client_creds`. The plugin supports three secret categories:
+Credentials are requested by the confidential VM (server side) via `GET /credentials` and retrieved by the workload owner (client side) via `GET /client_creds`. The plugin supports three secret types (`cert`, `asymmetric` and `symmetric`); the `cert` type has two kinds:
 
 | `secret_type` | Parameters | What is generated |
 |---|---|---|
-| `cert` | `kind=leaf_cert` | Ed25519 leaf certificate signed by a per-secret CA (CA cert + server cert + private key) |
-| `cert` | `kind=self_signed_ca` | P-256 (ECDSA) self-signed CA certificate + private key |
+| `cert` | `kind=leaf_cert`<br>`kind=self_signed_ca` | Ed25519 leaf certificate signed by a per-secret CA (CA cert + server cert + private key)<br>P-256 (ECDSA) self-signed CA certificate + private key |
 | `asymmetric` | `algorithm=ec_ed25519` or `rsa` | Key pair |
 | `symmetric` | `size` *(optional)* | Raw random bytes (default: 32 bytes; max: `symmetric_key_size_max`) |
 
 `kind` describes how a certificate is issued; for certs the key algorithm is implied by the kind (`leaf_cert` → `ec_ed25519`, `self_signed_ca` → `ec_p256`). For `asymmetric`, `algorithm` is required. Only the combinations listed above are currently implemented; others are rejected.
 
-Credentials are persisted via the KBS kvstorage backend and survive restarts.
+Generated material is stored in the KBS key-value storage backend, so whether it survives a KBS restart depends on the configured backend. The default `Memory` backend loses everything on restart; `LocalJson`, `LocalFs` and `Postgres` persist it, and `Redis` persists it only if the Redis server itself is configured to.
 
 ## Architecture
 
@@ -23,29 +22,36 @@ The plugin operates in two phases:
 
 1. **Server phase** — The confidential VM attests and calls `GET /credentials`. CredGen generates fresh material, stores the public side (CA key/cert for `leaf_cert`, public key for asymmetric, shared value for symmetric), and returns the private material TEE-encrypted to the VM.
 
-2. **Client phase** — The workload owner calls `POST /client_creds`. CredGen returns the public-side material. For `leaf_cert`, a fresh client certificate is signed on the fly using the CA stored from the last server call.
+2. **Client phase** — The workload owner calls `GET /client_creds` with an admin token. CredGen returns the owner-side material. For `leaf_cert`, a fresh client certificate and private key are signed on the fly using the CA stored from the last server call.
+
+`client_creds` requires admin authentication for every secret type, even though some responses contain only public material, because the `leaf_cert` and `symmetric` responses contain private or shared secret material.
 
 ### Identity
 
-The VM's identity key is derived from its **init-data** (`name` and `ns` fields), which is cryptographically bound to the TEE instance via the attestation token. This prevents any third party from forging or overwriting another VM's credentials.
+The VM's identity key is derived from the `name` and `ns` fields of its **init-data**. Init-data is bound to the TEE instance via the attestation token, so a third party cannot forge or overwrite another VM's credentials.
 
-Owner-side POST requests identify the target VM via the same `name` and `ns` query parameters.
+The init-data must therefore be a JSON object with non-empty string `name` and `ns` fields, otherwise `GET /credentials` fails. For example, in a TOML init-data document:
+
+```toml
+version = "0.1.0"
+algorithm = "sha256"
+
+[data]
+"name" = "myvm"
+"ns"   = "default"
+```
+
+The `GET /credentials` request must also carry the same `name` and `ns` as query parameters; a request whose query values differ from the init-data is rejected. Owner-side requests identify the target VM with the same `name` and `ns` query parameters.
+
+### Query parameters are not validated against the VM
+
+Only `name` and `ns` are attested. All other query parameters (`secret_name`, `secret_type`, `kind`, `algorithm`, `size`) are chosen by the caller and are not authenticated; the plugin only checks that they are well-formed and that the requested combination is listed in `supported_types`. Any attested VM may therefore request any secret allowed by `supported_types` under its own identity.
+
+Plugin requests pass through the KBS resource policy. Use the policy, rather than the plugin, to restrict which attested guests may call the plugin.
 
 ### Cert expiry
 
-When a cert expires the VM re-attests and calls `GET /credentials` again. A fresh CA and server cert are generated. The owner's next `POST /client_creds` returns a client cert chaining to the new CA, consistent with the renewed server cert.
-
-## Testing with kbs-client
-
-The [`credgen-client`](https://github.com/salmanyam/trustee/tree/credgen-client) branch of `salmanyam/trustee` contains a `kbs-client` build with credgen support:
-
-```bash
-git clone -b credgen-client https://github.com/salmanyam/trustee.git
-cd trustee/trustee-client
-cargo build --release -p kbs-client
-```
-
-The binary will be at `target/release/kbs-client`.
+When a cert expires the VM re-attests and calls `GET /credentials` again. A fresh CA and server cert are generated. The owner's next `GET /client_creds` returns a client cert chaining to the new CA, consistent with the renewed server cert.
 
 ## Setup
 
@@ -101,7 +107,7 @@ supported_types = ["cert/leaf_cert/ec_ed25519", "cert/self_signed_ca/ec_p256", "
 | `rsa_bits` | `2048` | RSA key size in bits |
 | `supported_types` | all five | Allowed entries: `"cert/leaf_cert/ec_ed25519"`, `"cert/self_signed_ca/ec_p256"`, `"asymmetric/ec_ed25519"`, `"asymmetric/rsa"`, `"symmetric"` |
 
-End-entity cert validity defaults to **90 days** and can be overridden per-identity via `POST /update_cert`.
+End-entity (server and client) cert validity is fixed at **90 days**.
 
 ### 3. Start KBS
 
@@ -129,23 +135,27 @@ Generate credentials for the VM.
 **Endpoint**: `GET /kbs/v0/credgen/credentials`
 
 **Query Parameters**:
+- `name` (required) — VM name; must match the `name` in the VM's init-data
+- `ns` (required) — namespace; must match the `ns` in the VM's init-data
 - `secret_name` (required) — logical name for this secret (e.g. `grpc`)
 - `secret_type` (required) — `cert`, `asymmetric`, or `symmetric`
 - `kind` (required for `cert`) — `leaf_cert` or `self_signed_ca`
 - `algorithm` (required for `asymmetric`) — `ec_ed25519` or `rsa`
 - `size` (optional, `symmetric` only) — key length in bytes (`1`–`symmetric_key_size_max`); defaults to `32`
 
-The VM's `name` and `ns` are read from its **init-data**, not from the query string.
+The VM's identity is taken from its **init-data**. `name` and `ns` in the query string are only checked against it. See [Query parameters are not validated against the VM](#query-parameters-are-not-validated-against-the-vm) for the other parameters.
 
 **Examples**:
 
 ```http
-GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=leaf_cert
-GET /kbs/v0/credgen/credentials?secret_name=mycert&secret_type=cert&kind=self_signed_ca
-GET /kbs/v0/credgen/credentials?secret_name=sigkey&secret_type=asymmetric&algorithm=ec_ed25519
-GET /kbs/v0/credgen/credentials?secret_name=aeskey&secret_type=symmetric
-GET /kbs/v0/credgen/credentials?secret_name=aeskey16&secret_type=symmetric&size=16
+GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert
+GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=mycert&secret_type=cert&kind=self_signed_ca
+GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=sigkey&secret_type=asymmetric&algorithm=ec_ed25519
+GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=aeskey&secret_type=symmetric
+GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=aeskey16&secret_type=symmetric&size=16
 ```
+
+The request must be made by a client that has completed KBS attestation and can decrypt the TEE-encrypted response.
 
 **Response** (fields vary by type):
 
@@ -177,19 +187,18 @@ Example response for `cert/leaf_cert`:
 
 ## Owner/Client APIs (Admin Auth Required)
 
-These APIs require an admin bearer token.
+These APIs require an admin bearer token, passed as `Authorization: Bearer <token>`. Responses are not TEE-encrypted, so use TLS between the owner and the KBS.
 
-### POST /list_pods
+### POST /list_identities
 
 Return all identity keys that have credentials stored.
 
-**Endpoint**: `POST /kbs/v0/credgen/list_pods`
+**Endpoint**: `POST /kbs/v0/credgen/list_identities`
 
 ```bash
-../target/release/kbs-client \
-    --url http://localhost:8090 \
-    credgen --admin-token-file kbs/config/admin-token \
-    list-pods
+curl -X POST \
+    -H "Authorization: Bearer $(cat kbs/config/admin-token)" \
+    http://localhost:8090/kbs/v0/credgen/list_identities
 ```
 
 **Response**:
@@ -198,25 +207,23 @@ Return all identity keys that have credentials stored.
 ["myvm_default", "othervm_prod"]
 ```
 
-### POST /client_creds
+### GET /client_creds
 
-Return the public-side material for a secret previously generated for the VM.
+Return the owner-side material for a secret previously generated for the VM.
 
-**Endpoint**: `POST /kbs/v0/credgen/client_creds`
+**Endpoint**: `GET /kbs/v0/credgen/client_creds`
 
 **Query Parameters**:
 - `name` (required) — VM name (must match the value in the VM's init-data)
 - `ns` (required) — namespace
 - `secret_name` (required) — secret name
-- `secret_type` (required) — secret category
+- `secret_type` (required) — secret type
 - `kind` (required for `cert`) — `leaf_cert` or `self_signed_ca`
 - `algorithm` (required for `asymmetric`) — `ec_ed25519` or `rsa`
 
 ```bash
-../target/release/kbs-client \
-    --url http://localhost:8090 \
-    credgen --admin-token-file kbs/config/admin-token \
-    client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert"
+curl -H "Authorization: Bearer $(cat kbs/config/admin-token)" \
+    "http://localhost:8090/kbs/v0/credgen/client_creds?name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert"
 ```
 
 **Response** (fields vary by type):
@@ -228,72 +235,22 @@ Return the public-side material for a secret previously generated for the VM.
 | `asymmetric` | `Asymmetric` | `public_key` |
 | `symmetric` | `Symmetric` | `key` (identical to the value delivered to the VM) |
 
-### POST /update_cert
-
-Persist custom X.509 subject fields and validity for a given identity. Settings are applied on the next `GET /credentials` call for that identity.
-
-**Endpoint**: `POST /kbs/v0/credgen/update_cert`
-
-**Query Parameters**:
-- `name` (required) — VM name
-- `ns` (required) — namespace
-
-**Request Body** — JSON object with optional `"server"` and `"client"` keys, each a partial `TlsCertDetails`:
-
-```json
-{
-  "server": {
-    "country": "US",
-    "state": "California",
-    "locality": "San Francisco",
-    "organization": "My Org",
-    "org_unit": "Engineering",
-    "common_name": "VM Server",
-    "validity_days": 180
-  },
-  "client": {
-    "common_name": "Workload Owner",
-    "validity_days": 180
-  }
-}
-```
-
-To change only the expiry:
-
-```json
-{
-  "server": { "validity_days": 180 },
-  "client": { "validity_days": 180 }
-}
-```
-
-```bash
-../target/release/kbs-client \
-    --url http://localhost:8090 \
-    credgen --admin-token-file kbs/config/admin-token \
-    update-cert \
-    --query "name=myvm&ns=default" \
-    --spec-file cert-details.json
-```
-
 ## Typical Workflow
 
 1. **Start KBS** with the CredGen plugin enabled.
 2. **Set resource policy** to allow the credgen plugin.
-3. *(Optional)* **Customise cert subject fields** before the VM connects:
-   ```bash
-   kbs-client credgen update-cert --query "name=myvm&ns=default" --spec-file cert-details.json
-   ```
-4. **VM requests credentials** after attestation (identity from init-data):
+3. **VM requests credentials** after attestation (identity from init-data):
    ```http
-   GET /kbs/v0/credgen/credentials?secret_name=grpc&secret_type=cert&kind=leaf_cert
+   GET /kbs/v0/credgen/credentials?name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert
    ```
-5. **Owner lists known identities**:
+4. **Owner lists known identities**:
    ```bash
-   kbs-client credgen list-pods
+   curl -X POST -H "Authorization: Bearer $(cat kbs/config/admin-token)" \
+       http://localhost:8090/kbs/v0/credgen/list_identities
    ```
-6. **Owner retrieves client credentials**:
+5. **Owner retrieves client credentials**:
    ```bash
-   kbs-client credgen client-creds --query "name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert"
+   curl -H "Authorization: Bearer $(cat kbs/config/admin-token)" \
+       "http://localhost:8090/kbs/v0/credgen/client_creds?name=myvm&ns=default&secret_name=grpc&secret_type=cert&kind=leaf_cert"
    ```
-7. **Establish mutual TLS** between the VM (server) and the workload owner (client) using the matching credentials.
+6. **Establish mutual TLS** between the VM (server) and the workload owner (client) using the matching credentials.

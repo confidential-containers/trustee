@@ -161,12 +161,6 @@ impl SecretSpec {
 }
 
 #[derive(Deserialize)]
-struct CertDetailsWrapper {
-    client: Option<TlsCertDetails>,
-    server: Option<TlsCertDetails>,
-}
-
-#[derive(Deserialize)]
 struct SpecParams {
     secret_name: String,
     #[serde(flatten)]
@@ -207,13 +201,12 @@ impl Default for TlsCertDetails {
     }
 }
 
-impl TlsCertDetails {
-    pub fn set_common_name(&mut self, name: impl Into<String>) {
-        self.common_name = name.into();
-    }
-
-    pub fn set_validity_days(&mut self, days: u32) {
-        self.validity_days = days;
+/// Subject and validity for an end-entity cert issued to `role` (`"server"` or `"client"`).
+fn end_entity_cert_details(role: &str) -> TlsCertDetails {
+    TlsCertDetails {
+        common_name: role.to_string(),
+        validity_days: DEFAULT_CERT_VALIDITY_DAYS,
+        ..Default::default()
     }
 }
 
@@ -441,7 +434,6 @@ pub struct CredGenPlugin {
     pub limits_config: SettingsConfig,
 
     /// KBS key-value store. Credential entries: `"{id_key}/{secret_name}.{type}.{algo}"`.
-    /// Cert configs: `"{id_key}/__config.server"` / `"{id_key}/__config.client"`.
     store: KeyValueStorageInstance,
 }
 
@@ -558,16 +550,14 @@ impl CredGenPlugin {
     }
 
     /// Generate the [`CredGenEntry`] to persist and the [`ServerMaterial`] to return to the TEE.
-    async fn generate_server_material(
+    fn generate_server_material(
         &self,
         spec: &SecretSpec,
-        id_key: &str,
     ) -> Result<(CredGenEntry, ServerMaterial)> {
         match spec {
             SecretSpec::Cert(CertKind::LeafCert) => {
                 let ca = CredGenCA::new(&self.ca_config)?;
-                let server_config = self.load_cert_config(id_key, "server").await?;
-                let (key, cert) = ca.generate_credentials(&server_config)?;
+                let (key, cert) = ca.generate_credentials(&end_entity_cert_details("server"))?;
                 let entry = CredGenEntry::Cert(CertEntry::LeafCert {
                     ca_key: ca.key.clone(),
                     ca_cert: ca.cert.clone(),
@@ -582,9 +572,9 @@ impl CredGenPlugin {
 
             SecretSpec::Cert(CertKind::SelfSignedCa) => {
                 let key = KeyAlgorithm::EcP256.generate(self.limits_config.rsa_bits as u32)?;
-                let cert_details = self.load_cert_config(id_key, "server").await?;
                 let cert_pem =
-                    CredGenCA::generate_self_signed_cert(&key, &cert_details)?.to_pem()?;
+                    CredGenCA::generate_self_signed_cert(&key, &end_entity_cert_details("server"))?
+                        .to_pem()?;
                 let entry = CredGenEntry::Cert(CertEntry::SelfSignedCa {
                     cert_pem: cert_pem.clone(),
                 });
@@ -638,13 +628,16 @@ impl CredGenPlugin {
         }
 
         let (secret_name, spec, spec_key) = self.parse_spec_params(query)?;
-        let (entry, material) = self.generate_server_material(&spec, &id_key).await?;
+        let (entry, material) = self.generate_server_material(&spec)?;
 
         self.store
             .set(
                 &format!("{}/{}", id_key, spec_key),
                 &serde_json::to_vec(&entry)?,
-                SetParameters { overwrite: true },
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
             )
             .await
             .context("credgen: failed to write entry to store")?;
@@ -659,16 +652,11 @@ impl CredGenPlugin {
     }
 
     /// Generate the [`ClientMaterial`] to return to the workload owner from a stored entry.
-    async fn generate_client_material(
-        &self,
-        entry: &CredGenEntry,
-        id_key: &str,
-    ) -> Result<ClientMaterial> {
-        let client_config = self.load_cert_config(id_key, "client").await?;
+    fn generate_client_material(&self, entry: &CredGenEntry) -> Result<ClientMaterial> {
         match entry {
             CredGenEntry::Cert(CertEntry::LeafCert { ca_key, ca_cert }) => {
                 let ca = CredGenCA::init(ca_key.clone(), ca_cert.clone())?;
-                let (key, cert) = ca.generate_credentials(&client_config)?;
+                let (key, cert) = ca.generate_credentials(&end_entity_cert_details("client"))?;
                 Ok(ClientMaterial::Cert {
                     cert: cert.to_pem()?,
                     private_key: Some(key.private_key_to_pem_pkcs8()?),
@@ -687,7 +675,7 @@ impl CredGenPlugin {
         }
     }
 
-    /// `POST /client_creds` — return the public material for a previously generated secret.
+    /// `GET /client_creds` — return the public material for a previously generated secret.
     /// Identity comes from the query string (owner-side; no init_data). Requires admin auth.
     async fn build_client_response(&self, query: &HashMap<String, String>) -> Result<Vec<u8>> {
         self.validate_query(query)?;
@@ -709,7 +697,7 @@ impl CredGenPlugin {
             })?;
         let entry: CredGenEntry =
             serde_json::from_slice(&raw).context("credgen: failed to deserialize entry")?;
-        let material = self.generate_client_material(&entry, &id_key).await?;
+        let material = self.generate_client_material(&entry)?;
 
         Ok(serde_json::to_vec(&ClientSecret {
             secret_name,
@@ -720,8 +708,8 @@ impl CredGenPlugin {
         })?)
     }
 
-    /// `POST /list_pods` — return a JSON array of all identity keys in the store.
-    async fn list_pods(&self) -> Result<Vec<u8>> {
+    /// `POST /list_identities` — return a JSON array of all identity keys in the store.
+    async fn list_identities(&self) -> Result<Vec<u8>> {
         let all_keys = self
             .store
             .list()
@@ -734,74 +722,13 @@ impl CredGenPlugin {
         ids.dedup();
         Ok(serde_json::to_vec(&ids)?)
     }
-
-    /// Load cert config for `role` (`"server"` or `"client"`), falling back to defaults.
-    async fn load_cert_config(&self, id_key: &str, role: &str) -> Result<TlsCertDetails> {
-        let config_key = format!("{}/__config.{}", id_key, role);
-        match self
-            .store
-            .get(&config_key)
-            .await
-            .context("credgen: failed to read cert config")?
-        {
-            Some(raw) => {
-                serde_json::from_slice(&raw).context("credgen: failed to deserialize cert config")
-            }
-            None => {
-                let mut d = TlsCertDetails::default();
-                d.set_common_name(role);
-                d.set_validity_days(DEFAULT_CERT_VALIDITY_DAYS);
-                Ok(d)
-            }
-        }
-    }
-
-    /// `POST /update_cert` — persist custom cert subject fields for an identity.
-    /// Body: JSON `{"server": <TlsCertDetails>, "client": <TlsCertDetails>}` (both optional).
-    async fn update_cert_details(
-        &self,
-        query: &HashMap<String, String>,
-        data: &[u8],
-    ) -> Result<()> {
-        self.validate_query(query)?;
-        let id_key = self.identity_key_from_query(query);
-
-        let wrapper: CertDetailsWrapper = serde_json::from_slice(data)
-            .map_err(|e| anyhow!("Failed to deserialize JSON: {}", e))?;
-
-        if let Some(updates) = wrapper.server {
-            let config_key = format!("{}/__config.server", id_key);
-            self.store
-                .set(
-                    &config_key,
-                    &serde_json::to_vec(&updates)?,
-                    SetParameters { overwrite: true },
-                )
-                .await
-                .context("credgen: failed to write server cert config")?;
-        }
-
-        if let Some(updates) = wrapper.client {
-            let config_key = format!("{}/__config.client", id_key);
-            self.store
-                .set(
-                    &config_key,
-                    &serde_json::to_vec(&updates)?,
-                    SetParameters { overwrite: true },
-                )
-                .await
-                .context("credgen: failed to write client cert config")?;
-        }
-
-        Ok(())
-    }
 }
 
 #[async_trait::async_trait]
 impl ClientPlugin for CredGenPlugin {
     async fn handle(
         &self,
-        body: &[u8],
+        _body: &[u8],
         query: &HashMap<String, String>,
         path: &[&str],
         method: &Method,
@@ -812,44 +739,37 @@ impl ClientPlugin for CredGenPlugin {
             return Err(anyhow!("Illegal path. Only one path segment is supported").into());
         }
 
-        match method.as_str() {
-            "GET" => match path[0] {
-                "credentials" => Ok(self.build_server_response(query, init_data).await?),
-                _ => Err(anyhow!("{} not supported", path[0]).into()),
-            },
-            "POST" => match path[0] {
-                "list_pods" => Ok(self.list_pods().await?),
-                "client_creds" => Ok(self.build_client_response(query).await?),
-                "update_cert" => {
-                    self.update_cert_details(query, body).await?;
-                    Ok(vec![])
-                }
-                _ => Err(anyhow!("{} not supported", path[0]).into()),
-            },
-            _ => Err(anyhow!("Illegal HTTP method. Only GET and POST are supported").into()),
+        match (method.as_str(), path[0]) {
+            ("GET", "credentials") => Ok(self.build_server_response(query, init_data).await?),
+            ("GET", "client_creds") => Ok(self.build_client_response(query).await?),
+            ("POST", "list_identities") => Ok(self.list_identities().await?),
+            (m, p) => Err(anyhow!("{} {} not supported", m, p).into()),
         }
     }
 
-    /// Require admin auth for POST requests; GET requests use attestation-based auth.
+    /// Only `credentials` is called by the attested guest; every other endpoint is owner-side
+    /// and requires admin auth. `client_creds` stays admin-only for now because, depending on
+    /// the secret type, its response can include private or symmetric key material.
     async fn validate_auth(
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &[&str],
-        method: &Method,
+        path: &[&str],
+        _method: &Method,
     ) -> PluginResult<bool> {
-        Ok(method.as_str() != "GET")
+        Ok(path.first() != Some(&"credentials"))
     }
 
-    /// Encrypt GET responses (TEE JWE envelope); POST responses carry only public material.
+    /// Only the guest-facing `credentials` response carries private material and is encrypted
+    /// to the TEE key. Owner-side responses are returned over the admin-authenticated channel.
     async fn encrypted(
         &self,
         _body: &[u8],
         _query: &HashMap<String, String>,
-        _path: &[&str],
-        method: &Method,
+        path: &[&str],
+        _method: &Method,
     ) -> PluginResult<bool> {
-        Ok(method.as_str() == "GET")
+        Ok(path.first() == Some(&"credentials"))
     }
 }
 
@@ -1036,10 +956,9 @@ mod tests {
         assert!(CredGenCA::init(b"not a key".to_vec(), ca.cert.clone()).is_err());
         assert!(CredGenCA::init(ca.key.clone(), b"not a cert".to_vec()).is_err());
 
-        let mut details = TlsCertDetails::default();
-        details.set_common_name("server");
-        details.set_validity_days(90);
-        let (key, cert) = ca.generate_credentials(&details).unwrap();
+        let (key, cert) = ca
+            .generate_credentials(&end_entity_cert_details("server"))
+            .unwrap();
         assert!(!key.private_key_to_pem_pkcs8().unwrap().is_empty());
         assert!(!cert.to_pem().unwrap().is_empty());
 
@@ -1048,13 +967,13 @@ mod tests {
         let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
         let ec_key = EcKey::generate(&group).unwrap();
         let p256_key = openssl::pkey::PKey::from_ec_key(ec_key).unwrap();
-        let mut details = TlsCertDetails::default();
-        details.set_common_name("test");
-        assert!(!CredGenCA::generate_self_signed_cert(&p256_key, &details)
-            .unwrap()
-            .to_pem()
-            .unwrap()
-            .is_empty());
+        assert!(
+            !CredGenCA::generate_self_signed_cert(&p256_key, &end_entity_cert_details("test"))
+                .unwrap()
+                .to_pem()
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -1184,72 +1103,17 @@ mod tests {
         assert!(p.build_client_response(&q2).await.is_err());
     }
 
-    #[tokio::test]
-    async fn update_and_load_cert_config() {
-        let p = default_plugin().await;
-        let q = identity_query("pod1", "default");
-
-        let body = serde_json::to_vec(&serde_json::json!({
-            "server": { "common_name": "my-server", "validity_days": 30 },
-            "client": { "common_name": "my-client", "validity_days": 15 }
-        }))
-        .unwrap();
-
-        p.update_cert_details(&q, &body).await.unwrap();
-
-        let server_cfg = p.load_cert_config("pod1_default", "server").await.unwrap();
-        assert_eq!(server_cfg.common_name, "my-server");
-        assert_eq!(server_cfg.validity_days, 30);
-
-        let client_cfg = p.load_cert_config("pod1_default", "client").await.unwrap();
-        assert_eq!(client_cfg.common_name, "my-client");
-        assert_eq!(client_cfg.validity_days, 15);
-    }
-
-    #[tokio::test]
-    async fn load_cert_config_defaults_when_absent() {
-        let p = default_plugin().await;
-        let cfg = p.load_cert_config("pod1_default", "server").await.unwrap();
-        assert_eq!(cfg.common_name, "server");
+    #[rstest]
+    #[case("server")]
+    #[case("client")]
+    fn end_entity_cert_details_defaults(#[case] role: &str) {
+        let cfg = end_entity_cert_details(role);
+        assert_eq!(cfg.common_name, role);
         assert_eq!(cfg.validity_days, DEFAULT_CERT_VALIDITY_DAYS);
     }
 
     #[tokio::test]
-    async fn cert_config_applied_to_server_cert() {
-        let p = default_plugin().await;
-        let q = identity_query("pod1", "default");
-
-        let body = serde_json::to_vec(&serde_json::json!({
-            "server": { "common_name": "custom-cn" }
-        }))
-        .unwrap();
-        p.update_cert_details(&q, &body).await.unwrap();
-
-        let id = init_data("pod1", "default");
-        let sq = cert_query("pod1", "default", "grpc", "leaf_cert", "ec_ed25519");
-        let server_bytes = p.build_server_response(&sq, Some(&id)).await.unwrap();
-        let server: serde_json::Value = serde_json::from_slice(&server_bytes).unwrap();
-
-        let cert_der = server["cert"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|b| b.as_u64().unwrap() as u8)
-            .collect::<Vec<u8>>();
-        let cert = openssl::x509::X509::from_pem(&cert_der).unwrap();
-        let cn = cert
-            .subject_name()
-            .entries_by_nid(openssl::nid::Nid::COMMONNAME)
-            .next()
-            .unwrap()
-            .data()
-            .to_string()
-            .unwrap();
-        assert_eq!(cn, "custom-cn");
-    }
-
-    #[tokio::test]
-    async fn list_pods_returns_registered_identities() {
+    async fn list_identities_returns_registered_identities() {
         let p = default_plugin().await;
 
         let id1 = init_data("pod1", "default");
@@ -1267,17 +1131,38 @@ mod tests {
         .await
         .unwrap();
 
-        let list_bytes = p.list_pods().await.unwrap();
+        let list_bytes = p.list_identities().await.unwrap();
         let ids: Vec<String> = serde_json::from_slice(&list_bytes).unwrap();
         assert!(ids.contains(&"pod1_default".to_string()));
         assert!(ids.contains(&"pod2_prod".to_string()));
     }
 
     #[tokio::test]
-    async fn list_pods_empty_store() {
+    async fn list_identities_empty_store() {
         let p = default_plugin().await;
-        let list_bytes = p.list_pods().await.unwrap();
+        let list_bytes = p.list_identities().await.unwrap();
         let ids: Vec<String> = serde_json::from_slice(&list_bytes).unwrap();
         assert!(ids.is_empty());
+    }
+
+    #[rstest]
+    #[case("credentials", false, true)]
+    #[case("client_creds", true, false)]
+    #[case("list_identities", true, false)]
+    #[tokio::test]
+    async fn endpoint_auth_and_encryption(
+        #[case] endpoint: &str,
+        #[case] admin_auth: bool,
+        #[case] encrypted: bool,
+    ) {
+        let p = default_plugin().await;
+        let q = HashMap::new();
+        let path = [endpoint];
+        let m = Method::GET;
+        assert_eq!(
+            p.validate_auth(&[], &q, &path, &m).await.unwrap(),
+            admin_auth
+        );
+        assert_eq!(p.encrypted(&[], &q, &path, &m).await.unwrap(), encrypted);
     }
 }

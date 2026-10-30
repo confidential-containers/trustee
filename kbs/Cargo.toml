@@ -115,7 +115,6 @@ rsa.workspace = true
 rustls = { version = "0.23", default-features = false, features = [
     "ring",
 ], optional = true }
-serde_qs.workspace = true
 semver = "1.0.28"
 serde = { workspace = true, features = ["derive"] }
 spire-api = { version = "0.8", optional = true }
