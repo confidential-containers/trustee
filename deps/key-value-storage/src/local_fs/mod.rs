@@ -6,7 +6,12 @@
 //!
 //! Each key-value pair is stored in a separate file in the file system.
 
-use std::{fs, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs,
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -14,8 +19,14 @@ use tokio::sync::RwLock;
 use tracing::{debug, instrument};
 
 use crate::{
-    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, is_valid_key,
+    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, expires_at_millis,
+    is_valid_key, now_millis,
 };
+
+/// File holding each expiring key's Unix expiry time in milliseconds. `#` is
+/// not allowed in keys, so it can never collide with a stored value.
+const EXPIRY_INDEX: &str = "#expiry";
+const EXPIRY_INDEX_TMP: &str = "#expiry.tmp";
 
 /// Default directory path for the local file system.
 const DEFAULT_DIR_PATH: &str = "/opt/confidential-containers/storage/local_fs";
@@ -55,8 +66,57 @@ impl LocalFs {
             lock: RwLock::new(0),
         })
     }
+
+    fn file_path(&self, key: &str) -> PathBuf {
+        self.dir_path.join(key.replace('/', "\\x2F"))
+    }
+
+    async fn load_expiries(&self) -> anyhow::Result<HashMap<String, u64>> {
+        match tokio::fs::read(self.dir_path.join(EXPIRY_INDEX)).await {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Err(e) if e.kind() == ErrorKind::NotFound => Ok(HashMap::new()),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Replaces the index atomically, so a crash never leaves it half written.
+    async fn save_expiries(&self, expiries: &HashMap<String, u64>) -> anyhow::Result<()> {
+        let path = self.dir_path.join(EXPIRY_INDEX);
+        if expiries.is_empty() {
+            return remove_if_exists(&path).await;
+        }
+        let tmp = self.dir_path.join(EXPIRY_INDEX_TMP);
+        tokio::fs::write(&tmp, serde_json::to_vec(expiries)?).await?;
+        tokio::fs::rename(&tmp, &path).await?;
+        Ok(())
+    }
+
+    async fn is_expired(&self, key: &str) -> anyhow::Result<bool> {
+        let expiries = self.load_expiries().await?;
+        Ok(expiries.get(key).is_some_and(|at| *at <= now_millis()))
+    }
 }
 
+async fn remove_if_exists(path: &Path) -> anyhow::Result<()> {
+    match tokio::fs::remove_file(path).await {
+        Err(e) if e.kind() != ErrorKind::NotFound => Err(e.into()),
+        _ => Ok(()),
+    }
+}
+
+// The index and a value file cannot be updated together atomically. The index
+// is updated before a value is written and after one is deleted. A crash in
+// between leaves one of these:
+//
+// Case 1: a new key with a TTL, or a deleted key. The index has an entry for a
+//         missing file, which reads ignore and a later write purges.
+// Case 2: an existing key overwritten with a TTL. The old value keeps the new
+//         expiry; it is stale but still expires.
+// Case 3: an existing key that had a TTL, overwritten without one. The expiry
+//         is removed but the old value stays, so it never expires.
+//
+// Case 3 cannot happen today: only the KBS session map sets a TTL, it always
+// sets one, and no other caller writes to its namespace.
 #[async_trait]
 impl KeyValueStorage for LocalFs {
     #[instrument(skip_all, name = "LocalFs::set", fields(key = key))]
@@ -67,11 +127,31 @@ impl KeyValueStorage for LocalFs {
                 key: key.to_string(),
             });
         }
+        let set_failed = |source: anyhow::Error| KeyValueStorageError::SetKeyFailed {
+            source,
+            key: key.to_string(),
+        };
 
         let _guard = self.lock.write().await;
-        let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
+        let mut expiries = self.load_expiries().await.map_err(set_failed)?;
+        let now = now_millis();
+        let expired: Vec<String> = expiries
+            .iter()
+            .filter(|(_, at)| **at <= now)
+            .map(|(expired_key, _)| expired_key.clone())
+            .collect();
+        for expired_key in &expired {
+            remove_if_exists(&self.file_path(expired_key))
+                .await
+                .map_err(set_failed)?;
+            expiries.remove(expired_key);
+        }
 
+        let file_path = self.file_path(key);
         if !parameters.overwrite && file_path.exists() {
+            if !expired.is_empty() {
+                self.save_expiries(&expiries).await.map_err(set_failed)?;
+            }
             return Ok(SetResult::AlreadyExists);
         }
 
@@ -79,12 +159,18 @@ impl KeyValueStorage for LocalFs {
             debug!(file_path =? file_path, "file already exists, overwriting");
         }
 
-        tokio::fs::write(&file_path, value).await.map_err(|e| {
-            KeyValueStorageError::SetKeyFailed {
-                source: e.into(),
-                key: key.to_string(),
-            }
-        })?;
+        let expires_at = parameters.ttl.and_then(expires_at_millis);
+        let index_changed = match expires_at {
+            Some(at) => expiries.insert(key.to_string(), at) != Some(at),
+            None => expiries.remove(key).is_some(),
+        };
+        if index_changed || !expired.is_empty() {
+            self.save_expiries(&expiries).await.map_err(set_failed)?;
+        }
+
+        tokio::fs::write(&file_path, value)
+            .await
+            .map_err(|e| set_failed(e.into()))?;
 
         Ok(SetResult::Inserted)
     }
@@ -92,9 +178,16 @@ impl KeyValueStorage for LocalFs {
     #[instrument(skip_all, name = "LocalFs::get", fields(key = key))]
     async fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let _guard = self.lock.read().await;
-        let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
+        let file_path = self.file_path(key);
 
-        if !file_path.exists() {
+        let expired =
+            self.is_expired(key)
+                .await
+                .map_err(|source| KeyValueStorageError::GetKeyFailed {
+                    source,
+                    key: key.to_string(),
+                })?;
+        if expired || !file_path.exists() {
             return Ok(None);
         }
 
@@ -110,6 +203,12 @@ impl KeyValueStorage for LocalFs {
 
     async fn list(&self) -> Result<Vec<String>> {
         let _guard = self.lock.read().await;
+
+        let expiries = self
+            .load_expiries()
+            .await
+            .map_err(|source| KeyValueStorageError::ListKeysFailed { source })?;
+        let now = now_millis();
 
         let mut keys = Vec::new();
         let mut files = tokio::fs::read_dir(&self.dir_path).await.map_err(|e| {
@@ -127,12 +226,15 @@ impl KeyValueStorage for LocalFs {
                 })?
         {
             if let Some(file_name) = file.path().file_name() {
-                keys.push(
-                    file_name
-                        .to_string_lossy()
-                        .to_string()
-                        .replace("\\x2F", "/"),
-                );
+                let file_name = file_name.to_string_lossy();
+                if file_name.starts_with('#') {
+                    continue;
+                }
+                let key = file_name.replace("\\x2F", "/");
+                if expiries.get(&key).is_some_and(|at| *at <= now) {
+                    continue;
+                }
+                keys.push(key);
             }
         }
         Ok(keys)
@@ -140,9 +242,19 @@ impl KeyValueStorage for LocalFs {
 
     #[instrument(skip_all, name = "LocalFs::delete", fields(key = key))]
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        let delete_failed = |source: anyhow::Error| KeyValueStorageError::DeleteKeyFailed {
+            source,
+            key: key.to_string(),
+        };
+
         let _guard = self.lock.write().await;
-        let file_path = self.dir_path.join(key.replace('/', "\\x2F"));
+        let file_path = self.file_path(key);
+        let mut expiries = self.load_expiries().await.map_err(delete_failed)?;
+        let expires_at = expiries.remove(key);
         if !file_path.exists() {
+            if expires_at.is_some() {
+                self.save_expiries(&expiries).await.map_err(delete_failed)?;
+            }
             return Ok(None);
         }
 
@@ -154,13 +266,19 @@ impl KeyValueStorage for LocalFs {
                     key: key.to_string(),
                 })?;
 
-        tokio::fs::remove_file(&file_path).await.map_err(|e| {
-            KeyValueStorageError::DeleteKeyFailed {
-                source: e.into(),
-                key: key.to_string(),
-            }
-        })?;
-        Ok(Some(file))
+        tokio::fs::remove_file(&file_path)
+            .await
+            .map_err(|e| delete_failed(e.into()))?;
+        if expires_at.is_some() {
+            self.save_expiries(&expiries).await.map_err(delete_failed)?;
+        }
+
+        let live = expires_at.is_none_or(|at| at > now_millis());
+        Ok(live.then_some(file))
+    }
+
+    fn supports_ttl(&self) -> bool {
+        true
     }
 }
 
@@ -178,7 +296,14 @@ mod tests {
         };
         let local_fs = LocalFs::new(config, "test").unwrap();
         local_fs
-            .set("test/12/3", b"test", SetParameters { overwrite: true })
+            .set(
+                "test/12/3",
+                b"test",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let value = local_fs.get("test/12/3").await.unwrap().unwrap();
@@ -205,7 +330,14 @@ mod tests {
                 tokio::spawn(async move {
                     let value = format!("value_{i}");
                     let res = local_fs
-                        .set("key", value.as_bytes(), SetParameters { overwrite: false })
+                        .set(
+                            "key",
+                            value.as_bytes(),
+                            SetParameters {
+                                overwrite: false,
+                                ..Default::default()
+                            },
+                        )
                         .await
                         .unwrap();
                     (res, value)
@@ -223,5 +355,97 @@ mod tests {
         assert_eq!(inserted.len(), 1);
         let stored = local_fs.get("key").await.unwrap().unwrap();
         assert_eq!(stored, inserted[0].as_bytes());
+    }
+
+    fn new_local_fs(work_dir: &tempfile::TempDir) -> LocalFs {
+        let config = Config {
+            dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        LocalFs::new(config, "test").unwrap()
+    }
+
+    fn with_ttl(overwrite: bool, ttl: std::time::Duration) -> SetParameters {
+        SetParameters {
+            overwrite,
+            ttl: Some(ttl),
+        }
+    }
+
+    const HOUR: std::time::Duration = std::time::Duration::from_secs(3600);
+    const EXPIRED: std::time::Duration = std::time::Duration::ZERO;
+
+    #[tokio::test]
+    async fn test_local_fs_ttl() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let local_fs = new_local_fs(&work_dir);
+
+        // An expired entry is hidden from get, list and delete.
+        local_fs
+            .set("live", b"v1", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        local_fs
+            .set("gone", b"v1", with_ttl(false, EXPIRED))
+            .await
+            .unwrap();
+        assert_eq!(local_fs.get("gone").await.unwrap(), None);
+        assert_eq!(local_fs.list().await.unwrap(), vec!["live"]);
+        assert_eq!(local_fs.get("live").await.unwrap(), Some(b"v1".to_vec()));
+        assert_eq!(local_fs.delete("gone").await.unwrap(), None);
+
+        // Setting without overwrite onto an expired entry succeeds. The expired
+        // write must come right before it, since every set purges expired
+        // entries.
+        local_fs
+            .set("old", b"v1", with_ttl(false, EXPIRED))
+            .await
+            .unwrap();
+        assert!(local_fs.file_path("old").exists());
+        assert!(local_fs.is_expired("old").await.unwrap());
+        let res = local_fs
+            .set("old", b"v2", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::Inserted);
+        assert_eq!(local_fs.get("old").await.unwrap(), Some(b"v2".to_vec()));
+
+        // Setting without overwrite onto a live entry is refused.
+        let res = local_fs
+            .set("live", b"v2", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::AlreadyExists);
+        assert_eq!(local_fs.get("live").await.unwrap(), Some(b"v1".to_vec()));
+
+        // Any write purges expired entries, and an overwrite without a TTL
+        // makes the entry permanent.
+        local_fs
+            .set("gone", b"v1", with_ttl(false, EXPIRED))
+            .await
+            .unwrap();
+        assert!(local_fs.file_path("gone").exists());
+        let no_ttl = SetParameters {
+            overwrite: true,
+            ttl: None,
+        };
+        local_fs.set("live", b"v3", no_ttl).await.unwrap();
+        let expiries = local_fs.load_expiries().await.unwrap();
+        assert!(!local_fs.file_path("gone").exists());
+        assert!(!expiries.contains_key("gone"));
+        assert!(!expiries.contains_key("live"));
+        assert_eq!(local_fs.get("live").await.unwrap(), Some(b"v3".to_vec()));
+
+        // Delete removes the index entry, also for keys containing '/'.
+        local_fs
+            .set("a/b", b"v", with_ttl(true, HOUR))
+            .await
+            .unwrap();
+        assert_eq!(local_fs.delete("a/b").await.unwrap(), Some(b"v".to_vec()));
+        assert!(!local_fs.load_expiries().await.unwrap().contains_key("a/b"));
+
+        // No expiring entries left, so no index file either.
+        assert_eq!(local_fs.delete("old").await.unwrap(), Some(b"v2".to_vec()));
+        assert!(local_fs.load_expiries().await.unwrap().is_empty());
+        assert!(!local_fs.dir_path.join(EXPIRY_INDEX).exists());
     }
 }

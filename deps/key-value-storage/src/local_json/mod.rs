@@ -6,18 +6,58 @@
 //!
 //! All key-value pairs are stored in a single JSON file.
 
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
 
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::URL_SAFE};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, instrument};
 
-use crate::{KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult};
+use crate::{
+    KeyValueStorage, KeyValueStorageError, Result, SetParameters, SetResult, expires_at_millis,
+    now_millis,
+};
 
 /// Default file directory path for the local JSON file.
 const FILE_DIR_PATH: &str = "/opt/confidential-containers/storage/local_json";
+
+/// A value in the JSON file. Entries without a TTL keep the original plain
+/// base64 string, so files that never use TTL are unchanged.
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum StoredValue {
+    Plain(String),
+    Expiring {
+        value: String,
+        /// Unix time in milliseconds.
+        expires_at: u64,
+    },
+}
+
+impl StoredValue {
+    fn new(value: &[u8], ttl: Option<Duration>) -> Self {
+        let value = URL_SAFE.encode(value);
+        // A TTL too large to represent never expires.
+        match ttl.and_then(expires_at_millis) {
+            Some(expires_at) => Self::Expiring { value, expires_at },
+            None => Self::Plain(value),
+        }
+    }
+
+    fn is_live(&self, now: u64) -> bool {
+        match self {
+            Self::Plain(_) => true,
+            Self::Expiring { expires_at, .. } => *expires_at > now,
+        }
+    }
+
+    fn encoded(&self) -> &str {
+        match self {
+            Self::Plain(value) | Self::Expiring { value, .. } => value,
+        }
+    }
+}
 
 pub struct LocalJson {
     file_path: String,
@@ -78,14 +118,16 @@ impl KeyValueStorage for LocalJson {
                 key: key.to_string(),
             }
         })?;
-        let mut items: HashMap<String, String> = serde_json::from_slice(&file)
+        let mut items: HashMap<String, StoredValue> = serde_json::from_slice(&file)
             .map_err(|e| KeyValueStorageError::MalformedValue { source: e.into() })?;
-        let value_b64 = URL_SAFE.encode(value);
+        let now = now_millis();
+        items.retain(|_, stored| stored.is_live(now));
         if !parameters.overwrite && items.contains_key(key) {
             return Ok(SetResult::AlreadyExists);
         }
 
-        if items.insert(key.to_string(), value_b64).is_some() {
+        let stored = StoredValue::new(value, parameters.ttl);
+        if items.insert(key.to_string(), stored).is_some() {
             debug!(key = key, "key already exists, overwriting");
         }
 
@@ -112,13 +154,15 @@ impl KeyValueStorage for LocalJson {
                 key: key.to_string(),
             }
         })?;
-        let items: HashMap<String, String> =
+        let items: HashMap<String, StoredValue> =
             serde_json::from_slice(&file).map_err(|e| KeyValueStorageError::MalformedValue {
                 source: anyhow::anyhow!("failed to deserialize the file: {}", e),
             })?;
+        let now = now_millis();
         items
             .get(key)
-            .map(|v| URL_SAFE.decode(v))
+            .filter(|stored| stored.is_live(now))
+            .map(|stored| URL_SAFE.decode(stored.encoded()))
             .transpose()
             .map_err(|e| KeyValueStorageError::GetKeyFailed {
                 source: anyhow::anyhow!("failed to base64 decode the content inside json: {e}"),
@@ -133,11 +177,16 @@ impl KeyValueStorage for LocalJson {
                 source: anyhow::anyhow!("failed to read the file: {}", e),
             }
         })?;
-        let items: HashMap<String, String> =
+        let items: HashMap<String, StoredValue> =
             serde_json::from_slice(&file).map_err(|e| KeyValueStorageError::ListKeysFailed {
                 source: anyhow::anyhow!("failed to deserialize the file: {}", e),
             })?;
-        let keys = items.keys().cloned().collect();
+        let now = now_millis();
+        let keys = items
+            .into_iter()
+            .filter(|(_, stored)| stored.is_live(now))
+            .map(|(key, _)| key)
+            .collect();
         Ok(keys)
     }
 
@@ -150,14 +199,16 @@ impl KeyValueStorage for LocalJson {
                 key: key.to_string(),
             }
         })?;
-        let mut items: HashMap<String, String> =
+        let mut items: HashMap<String, StoredValue> =
             serde_json::from_slice(&file).map_err(|e| KeyValueStorageError::DeleteKeyFailed {
                 key: key.to_string(),
                 source: anyhow::anyhow!("failed to deserialize the file: {}", e),
             })?;
+        let now = now_millis();
         let value = items
             .remove(key)
-            .map(|v| URL_SAFE.decode(v))
+            .filter(|stored| stored.is_live(now))
+            .map(|stored| URL_SAFE.decode(stored.encoded()))
             .transpose()
             .map_err(|e| KeyValueStorageError::DeleteKeyFailed {
                 source: anyhow::anyhow!("failed to base64 decode value: {e}"),
@@ -175,6 +226,10 @@ impl KeyValueStorage for LocalJson {
                 key: key.to_string(),
             })?;
         Ok(value)
+    }
+
+    fn supports_ttl(&self) -> bool {
+        true
     }
 }
 
@@ -213,11 +268,25 @@ mod tests {
         };
         let storage = LocalJson::new(config, "key_value.json").unwrap();
         storage
-            .set("key", b"original", SetParameters { overwrite: true })
+            .set(
+                "key",
+                b"original",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let res = storage
-            .set("key", b"updated", SetParameters { overwrite: true })
+            .set(
+                "key",
+                b"updated",
+                SetParameters {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         assert_eq!(res, SetResult::Inserted);
@@ -233,11 +302,25 @@ mod tests {
         };
         let storage = LocalJson::new(config, "key_value.json").unwrap();
         storage
-            .set("key", b"original", SetParameters { overwrite: false })
+            .set(
+                "key",
+                b"original",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         let res = storage
-            .set("key", b"updated", SetParameters { overwrite: false })
+            .set(
+                "key",
+                b"updated",
+                SetParameters {
+                    overwrite: false,
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
         assert_eq!(res, SetResult::AlreadyExists);
@@ -273,5 +356,96 @@ mod tests {
             let value = storage.get(&format!("key_{i}")).await.unwrap();
             assert_eq!(value.as_deref(), Some(&b"value"[..]));
         }
+    }
+
+    fn new_storage(work_dir: &tempfile::TempDir) -> LocalJson {
+        let config = Config {
+            file_dir_path: work_dir.path().to_string_lossy().to_string(),
+        };
+        LocalJson::new(config, "key_value.json").unwrap()
+    }
+
+    fn with_ttl(overwrite: bool, ttl: Duration) -> SetParameters {
+        SetParameters {
+            overwrite,
+            ttl: Some(ttl),
+        }
+    }
+
+    const HOUR: Duration = Duration::from_secs(3600);
+    const EXPIRED: Duration = Duration::ZERO;
+
+    /// The raw JSON file, to inspect entries that get and list hide.
+    fn read_items(storage: &LocalJson) -> HashMap<String, serde_json::Value> {
+        let file = std::fs::read(&storage.file_path).unwrap();
+        serde_json::from_slice(&file).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_local_json_ttl() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let storage = new_storage(&work_dir);
+
+        // An expired entry is hidden from get, list and delete.
+        storage
+            .set("live", b"v1", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        storage
+            .set("gone", b"v1", with_ttl(false, EXPIRED))
+            .await
+            .unwrap();
+        assert_eq!(storage.get("gone").await.unwrap(), None);
+        assert_eq!(storage.list().await.unwrap(), vec!["live"]);
+        assert_eq!(storage.get("live").await.unwrap(), Some(b"v1".to_vec()));
+        assert_eq!(storage.delete("gone").await.unwrap(), None);
+        assert!(!read_items(&storage).contains_key("gone"));
+
+        // Setting without overwrite onto an expired entry succeeds.
+        storage
+            .set("old", b"v1", with_ttl(true, EXPIRED))
+            .await
+            .unwrap();
+        assert!(read_items(&storage).contains_key("old"));
+        let res = storage
+            .set("old", b"v2", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::Inserted);
+        assert_eq!(storage.get("old").await.unwrap(), Some(b"v2".to_vec()));
+
+        // Setting without overwrite onto a live entry is refused.
+        let res = storage
+            .set("live", b"v2", with_ttl(false, HOUR))
+            .await
+            .unwrap();
+        assert_eq!(res, SetResult::AlreadyExists);
+        assert_eq!(storage.get("live").await.unwrap(), Some(b"v1".to_vec()));
+
+        // Any successful write purges expired entries, and an overwrite without a
+        // TTL makes the entry permanent.
+        storage
+            .set("gone", b"v2", with_ttl(true, EXPIRED))
+            .await
+            .unwrap();
+        assert!(read_items(&storage).contains_key("gone"));
+        let no_ttl = SetParameters {
+            overwrite: true,
+            ttl: None,
+        };
+        storage.set("live", b"v3", no_ttl).await.unwrap();
+        let items = read_items(&storage);
+        assert!(!items.contains_key("gone"));
+        assert!(items["live"].is_string());
+        assert_eq!(storage.get("live").await.unwrap(), Some(b"v3".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn test_reads_file_written_without_ttl_support() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let storage = new_storage(&work_dir);
+        let legacy = format!(r#"{{"key": "{}"}}"#, URL_SAFE.encode(b"value"));
+        std::fs::write(&storage.file_path, legacy).unwrap();
+        assert_eq!(storage.get("key").await.unwrap(), Some(b"value".to_vec()));
     }
 }
