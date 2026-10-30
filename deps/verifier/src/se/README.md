@@ -345,7 +345,7 @@ allow if {
 EOF
 ```
 
-Where the values `se.version`, `se.attestation_phkh`, `se.image_phkh` and `se.tag` come from [retrive-the-rvps-field-for-an-ibm-se-image](#retrive-the-rvps-field-for-an-ibm-se-image). The value `se.user_data` comes from [initdata](https://github.com/confidential-containers/cloud-api-adaptor/blob/main/src/cloud-api-adaptor/docs/initdata.md). Please remove `input["se.user_data"] == "xxx"` if `initdata` is not used.
+Where the values `se.version`, `se.attestation_phkh`, `se.image_phkh` and `se.tag` come from [retrieving the attestation policy fields for IBM SE](#retrive-the-attestation-policy-fields-for-ibm-se). The value `se.user_data` comes from [initdata](https://github.com/confidential-containers/cloud-api-adaptor/blob/main/src/cloud-api-adaptor/docs/initdata.md). Please remove `input["se.user_data"] == "xxx"` if `initdata` is not used.
 
 #### Set the attestation policy
 ```bash
