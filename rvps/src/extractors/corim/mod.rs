@@ -14,6 +14,7 @@ use corim_rs::{
     ConciseMidTag, ConciseTagTypeChoice, Corim, ExtensionValue, MeasuredElementTypeChoice,
     RawValueTypeChoice,
 };
+use std::borrow::Cow;
 use tracing::debug;
 
 use crate::ReferenceValue;
@@ -121,6 +122,21 @@ fn extract_rvs_from_comid(comid: &ConciseMidTag) -> Result<Vec<ReferenceValue>> 
     Ok(rvs)
 }
 
+/// Returns the CoMID carried by `tag`, if it is one: either a natively
+/// parsed CoMID, or one carried as an opaque tagged byte string that
+/// corim_rs didn't decode itself.
+fn tag_as_comid<'a>(tag: &'a ConciseTagTypeChoice<'a>) -> Option<Cow<'a, ConciseMidTag<'a>>> {
+    match tag {
+        ConciseTagTypeChoice::Mid(comid) => Some(Cow::Borrowed(comid.as_ref())),
+        ConciseTagTypeChoice::Extension(ExtensionValue::Bytes(bytes)) => {
+            ciborium::from_reader::<ConciseMidTag, _>(bytes.as_ref())
+                .ok()
+                .map(Cow::Owned)
+        }
+        _ => None,
+    }
+}
+
 // Some CoRIMs are wrapped with ASN Header tags..
 // If we find CBOR tags 500 or 502 at the start of the CoRIM,
 // remove them.
@@ -165,19 +181,9 @@ impl Extractor for CorimExtractor {
         let mut rvs: Vec<ReferenceValue> = vec![];
 
         for tag in &corim_map.tags {
-            match tag {
-                ConciseTagTypeChoice::Mid(comid) => {
-                    rvs.extend(extract_rvs_from_comid(comid.as_ref())?);
-                }
-                ConciseTagTypeChoice::Extension(ExtensionValue::Bytes(bytes)) => {
-                    // Manually parse as CoMID
-                    if let Ok(comid) = ciborium::from_reader::<ConciseMidTag, _>(bytes.as_ref()) {
-                        rvs.extend(extract_rvs_from_comid(&comid)?);
-                    }
-                }
-                _ => {
-                    debug!("Skipping non-CoMID tag");
-                }
+            match tag_as_comid(tag) {
+                Some(comid) => rvs.extend(extract_rvs_from_comid(&comid)?),
+                None => debug!("Skipping non-CoMID tag"),
             }
         }
 
