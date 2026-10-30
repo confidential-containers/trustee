@@ -621,9 +621,9 @@ dependencies = [
  "base64 0.23.1",
  "cfg-if",
  "clap",
- "ear",
+ "ear 0.6.0",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types",
  "key-value-storage",
  "mobc",
@@ -1574,10 +1574,10 @@ dependencies = [
  "ciborium",
  "clap",
  "cose-rust",
- "ear",
+ "ear 0.5.0",
  "hex",
  "hex-literal",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "multimap 0.9.1",
  "openssl",
  "serde",
@@ -2675,10 +2675,30 @@ dependencies = [
  "ciborium",
  "cose-rust",
  "hex",
- "jsonwebtoken",
+ "jsonwebtoken 10.4.0",
  "lazy_static",
  "openssl",
  "phf 0.13.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ear"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579b9ca5846d627287a8760809645fdce2229aa60e93021c359680eb109addcd"
+dependencies = [
+ "base64 0.23.1",
+ "ciborium",
+ "cmw",
+ "cose-rust",
+ "hex",
+ "jsonwebtoken 11.0.0",
+ "lazy_static",
+ "openssl",
+ "phf 0.14.0",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -4176,7 +4196,7 @@ dependencies = [
  "attestation-service",
  "base64 0.23.1",
  "const_format",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs",
  "kbs-client",
  "key-value-storage",
@@ -4479,6 +4499,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "11.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881733cbc631fc9e472e24447ce32a64bedf2da498d6d8570b08edc87de71f65"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "getrandom 0.2.17",
+ "js-sys",
+ "pem",
+ "serde",
+ "serde_json",
+ "signature 2.2.0",
+ "simple_asn1",
+ "zeroize",
+]
+
+[[package]]
 name = "jwt-simple"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4547,7 +4585,7 @@ dependencies = [
  "google-cloud-secretmanager-v1",
  "hex",
  "josekit",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types",
  "key-value-storage",
  "kms",
@@ -4600,7 +4638,7 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "clap",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs_protocol",
  "reqwest 0.13.5",
  "serde",
@@ -4617,7 +4655,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4453d70e4a9a7db181a83661803dc296471957d16cb4ddd2af7a52d17eb234cc"
 dependencies = [
  "base64 0.22.1",
- "ear",
+ "ear 0.5.0",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -5627,8 +5665,19 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
 dependencies = [
- "phf_macros",
+ "phf_macros 0.13.1",
  "phf_shared 0.13.1",
+ "serde",
+]
+
+[[package]]
+name = "phf"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "010378780309880b08997fae13be7834dba947d36393bd372f2b1556deb2a2f6"
+dependencies = [
+ "phf_macros 0.14.0",
+ "phf_shared 0.14.0",
  "serde",
 ]
 
@@ -5643,13 +5692,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "phf_generator"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aeb62e0959d5a1bebc965f4d15d9e2b7cea002b6b0f5ba8cde6cc26738467100"
+dependencies = [
+ "fastrand",
+ "phf_shared 0.14.0",
+]
+
+[[package]]
 name = "phf_macros"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812f032b54b1e759ccd5f8b6677695d5268c588701effba24601f6932f8269ef"
 dependencies = [
- "phf_generator",
+ "phf_generator 0.13.1",
  "phf_shared 0.13.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "phf_macros"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fa8d0ca26d424d27630da600c6624696e7dec8bf7b3b492b383c5dc49e5e085"
+dependencies = [
+ "phf_generator 0.14.0",
+ "phf_shared 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -5669,6 +5741,15 @@ name = "phf_shared"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
 dependencies = [
  "siphasher",
 ]
@@ -8568,7 +8649,7 @@ dependencies = [
  "attestation-service",
  "clap",
  "dirs 7.0.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs",
  "nix",
  "openssl",
@@ -8875,13 +8956,13 @@ dependencies = [
  "chrono",
  "codicon",
  "csv-rs",
- "ear",
+ "ear 0.5.0",
  "eventlog",
  "hex",
  "http-cache-reqwest",
  "intel-tee-quote-verification-rs",
  "jsonwebkey 0.4.0",
- "jsonwebtoken",
+ "jsonwebtoken 11.0.0",
  "kbs-types",
  "key-value-storage",
  "nv-attestation-sdk",
