@@ -313,7 +313,7 @@ pub(crate) async fn api(
                     .register_reference_value(message)
                     .await
                     .map_err(|e| Error::RvpsError {
-                        message: format!("Failed to register reference value: {e}").to_string(),
+                        message: format!("Failed to register reference value: {e:#}").to_string(),
                     })?,
             )?;
 
