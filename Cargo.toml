@@ -33,7 +33,7 @@ clap = { version = "4", features = ["derive"] }
 config = "0.15.23"
 const_format = "0.2.36"
 educe = "0.8"
-ear = "0.5.0"
+ear = "0.6.0"
 hex = "0.4.3"
 kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "0485e874a67a53477841f7ac8de15b41aaf632e2", default-features = false }
 kbs-types = "0.18.0"
