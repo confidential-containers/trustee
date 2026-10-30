@@ -25,7 +25,7 @@ pub enum RvpsError {
     SerdeJson(#[from] serde_json::Error),
 
     #[cfg(feature = "rvps-grpc")]
-    #[error("Returned status: {0}")]
+    #[error(transparent)]
     Status(#[from] tonic::Status),
 
     #[cfg(feature = "rvps-grpc")]
