@@ -197,6 +197,21 @@ enum ConfigCommands {
         #[clap(long, action)]
         as_single_value: bool,
     },
+
+    /// Register reference values with the RVPS from a provenance file.
+    /// The request will be proxied through the KBS.
+    /// The RVPS doesn't authenticate the provenance, so it must be
+    /// verified before it is registered.
+    SetReferenceValue {
+        /// Provenance type, selecting the RVPS extractor that processes it,
+        /// e.g. "corim" or "swid".
+        #[clap(long, value_parser)]
+        r#type: String,
+
+        /// Provenance file path
+        #[clap(long, value_parser)]
+        provenance_file: PathBuf,
+    },
 }
 
 const DOCKER_COMPOSE_ADMIN_TOKEN_PATH: &str = "kbs/config/docker-compose/admin-token";
@@ -426,6 +441,23 @@ async fn main() -> Result<()> {
                         cli.url,
                         name,
                         rv,
+                        admin_token.clone(),
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!("Reference Values Updated");
+                }
+                ConfigCommands::SetReferenceValue {
+                    r#type,
+                    provenance_file,
+                } => {
+                    let provenance = std::fs::read(&provenance_file).inspect_err(|_| {
+                        eprintln!("Failed to read: {}", provenance_file.display())
+                    })?;
+                    kbs_client::set_rv(
+                        cli.url,
+                        &r#type,
+                        &provenance,
                         admin_token.clone(),
                         kbs_cert.clone(),
                     )

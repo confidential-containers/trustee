@@ -70,7 +70,7 @@ impl ReferenceValueProviderService for RvpsServer {
             .await
             .verify_and_extract(&request.message)
             .await
-            .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Register reference value: {e:#}")))?;
 
         let res = ReferenceValueRegisterResponse {};
         Ok(Response::new(res))

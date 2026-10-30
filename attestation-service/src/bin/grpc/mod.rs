@@ -325,7 +325,7 @@ impl ReferenceValueProviderService for Arc<RwLock<AttestationServer>> {
             .attestation_service
             .register_reference_value(&request.message)
             .await
-            .map_err(|e| Status::aborted(format!("Register reference value: {e}")))?;
+            .map_err(|e| Status::aborted(format!("Register reference value: {e:#}")))?;
 
         info!("RegisterReferenceValue succeeded.");
         let res = ReferenceValueRegisterResponse {};
