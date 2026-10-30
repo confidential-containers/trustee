@@ -48,6 +48,10 @@ nebula-ca-plugin = []
 # Spire plugin
 spire-plugin = ["spire-api"]
 
+# Use CredGen plugin to ephemerally provision cryptographic credentials
+# for a confidential VM (server) and its workload owner (client)
+credgen-plugin = []
+
 # Use HashiCorp Vault KV v1 as KBS backend
 vault = ["vaultrs"]
 
