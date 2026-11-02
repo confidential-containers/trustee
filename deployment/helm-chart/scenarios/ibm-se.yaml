@@ -41,10 +41,10 @@
 
 as:
   # Use an s390x AS image built with the se-verifier feature. The default
-  # staged coco-as-grpc image tag must match your cluster architecture (s390x).
+  # coco-as-grpc image tag must match your cluster architecture (s390x).
   image:
-    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
-    tag: "latest"
+    repository: ghcr.io/confidential-containers/attestation-service
+    tag: "v0.22.0"
   verifier:
     se:
       # Set via --set as.verifier.se.nodeName=<node> at install time.
