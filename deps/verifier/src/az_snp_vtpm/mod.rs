@@ -116,7 +116,13 @@ fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
 /// present) -- one register per distinct PCR index the log's events
 /// actually target, each seeded per `initial_seed_for_pcr`. Returns the
 /// parsed log on success, or `None` if the evidence carried no eventlog.
-fn verify_eventlog(cc_eventlog: Option<&str>, tpm_quote: &TpmQuote) -> Result<Option<CcEventLog>> {
+///
+/// Shared by the `az-snp-vtpm` and `az-tdx-vtpm` verifiers: both back onto
+/// the same Azure vTPM, so the PCR/DRTM seeding semantics are identical.
+pub(crate) fn verify_eventlog(
+    cc_eventlog: Option<&str>,
+    tpm_quote: &TpmQuote,
+) -> Result<Option<CcEventLog>> {
     let Some(el) = cc_eventlog.filter(|el| !el.is_empty()) else {
         warn!("No AAEL eventlog included inside the az-snp-vtpm evidence, skipping replay.");
         return Ok(None);
