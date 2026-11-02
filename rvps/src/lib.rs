@@ -22,6 +22,7 @@ pub use serde_json::Value;
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::extractors::ExtractorsConfig;
 
@@ -125,6 +126,12 @@ impl Rvps {
         let reference_value: ReferenceValue =
             serde_json::from_slice(&reference_value_vec).context("deserialize reference value")?;
 
+        // Not every storage backend expires entries, so check here.
+        if reference_value.expired() {
+            debug!("Reference value {reference_value_id} has expired");
+            return Ok(None);
+        }
+
         Ok(Some(reference_value.value()))
     }
 
@@ -135,5 +142,35 @@ impl Rvps {
     pub async fn delete_reference_value(&self, reference_value_id: &str) -> Result<bool> {
         let deleted = self.storage.delete(reference_value_id).await?;
         Ok(deleted.is_some())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeDelta, Utc};
+    use rstest::rstest;
+    use serde_json::json;
+
+    #[rstest]
+    #[case::expired(TimeDelta::hours(-1), None)]
+    #[case::valid(TimeDelta::hours(1), Some(json!(["value"])))]
+    #[tokio::test]
+    async fn query_skips_expired_reference_values(
+        #[case] expires_in: TimeDelta,
+        #[case] expected: Option<Value>,
+    ) {
+        let rvps = Rvps::new(Config::default()).await.unwrap();
+        let rv = ReferenceValue::new()
+            .unwrap()
+            .set_name("rv")
+            .set_expiration(Utc::now() + expires_in)
+            .set_value(json!(["value"]));
+        rvps.storage
+            .set("rv", &rv.to_bytes().unwrap(), SetParameters::default())
+            .await
+            .unwrap();
+
+        assert_eq!(rvps.query_reference_value("rv").await.unwrap(), expected);
     }
 }
