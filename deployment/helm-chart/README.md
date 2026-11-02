@@ -318,8 +318,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for AS Pods. |
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
-| as.image.repository | string | `"ghcr.io/confidential-containers/staged-images/coco-as-grpc"` | AS container image repository. |
-| as.image.tag | string | `"latest"` | AS container image tag. |
+| as.image.repository | string | `"ghcr.io/confidential-containers/attestation-service"` | AS container image repository. |
+| as.image.tag | string | `"v0.22.0"` | AS container image tag. |
 | as.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | as.nodeSelector | object | `{}` | Node label selection constraints for AS Pods. |
 | as.podAnnotations | object | `{}` | Extra Pod annotations. |
@@ -370,8 +370,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.extraVolumeMounts | list | `[]` | Extra volume mounts for the KBS container. |
 | kbs.extraVolumes | list | `[]` | Extra volumes to attach to the KBS Pod. |
 | kbs.image.pullPolicy | string | `"Always"` | KBS container image pull policy. |
-| kbs.image.repository | string | `"ghcr.io/confidential-containers/staged-images/kbs-grpc-as"` | KBS container image repository. |
-| kbs.image.tag | string | `"latest"` | KBS container image tag. |
+| kbs.image.repository | string | `"ghcr.io/confidential-containers/key-broker-service"` | KBS container image repository. |
+| kbs.image.tag | string | `"v0.22.0"` | KBS container image tag. |
 | kbs.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | kbs.nodeSelector | object | `{}` | Node label selection constraints for KBS Pods. |
 | kbs.podAnnotations | object | `{}` | Extra Pod annotations (for example Prometheus scrape or service mesh integration). |
@@ -410,8 +410,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | rvps.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for RVPS Pods. |
 | rvps.extraEnvVars | list | `[]` | Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
 | rvps.image.pullPolicy | string | `"Always"` | RVPS container image pull policy. |
-| rvps.image.repository | string | `"ghcr.io/confidential-containers/staged-images/rvps"` | RVPS container image repository. |
-| rvps.image.tag | string | `"latest"` | RVPS container image tag. |
+| rvps.image.repository | string | `"ghcr.io/confidential-containers/reference-value-provider-service"` | RVPS container image repository. |
+| rvps.image.tag | string | `"v0.22.0"` | RVPS container image tag. |
 | rvps.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | rvps.nodeSelector | object | `{}` | Node label selection constraints for RVPS Pods. |
 | rvps.podAnnotations | object | `{}` | Extra Pod annotations. |

@@ -1,0 +1,251 @@
+name: Release
+
+# Run this after the release PR (see release/release-guide.md) is merged.
+# The workflow publishes the release images by copying the staged images that the merge
+# to main already built into the release repos, then creates the git tag vX.Y.Z (the `version` input).
+# The GitHub release is created manually after the workflow run is successful.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version with a leading v, e.g. v0.23.0'
+        type: string
+        required: true
+      git-sha:
+        description: >-
+          Commit SHA to release (the merged release PR commit).
+          Defaults to the tip of main.
+        type: string
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  STAGED: ghcr.io/confidential-containers/staged-images
+  RELEASE: ghcr.io/confidential-containers
+
+jobs:
+  validate:
+    name: Validate release commit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read  # check out the release commit
+    outputs:
+      commit: ${{ steps.resolve.outputs.commit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git-sha || 'main' }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve release commit and check it is on main
+        id: resolve
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like vX.Y.Z" \
+              "with a leading v (got '${VERSION}')"
+            exit 1
+          fi
+          commit="$(git rev-parse HEAD)"
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "${commit}" origin/main; then
+            echo "::error::${commit} is not on main"
+            exit 1
+          fi
+          rc=0
+          git ls-remote --exit-code --tags origin \
+            "refs/tags/${VERSION}" >/dev/null || rc=$?
+          case "${rc}" in
+            0)
+              echo "::error::tag ${VERSION} already exists"
+              exit 1
+              ;;
+            2) ;;  # exit 2: no matching ref, so the tag does not exist
+            *)
+              echo "::error::git ls-remote failed (exit ${rc})"
+              exit 1
+              ;;
+          esac
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
+
+      - name: Install helm-docs
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
+
+      - name: Check that all versions match
+        env:
+          VERSION: ${{ inputs.version }}
+        run: release/release.sh --check --version "${VERSION#v}"
+
+  preflight:
+    name: Check that all staged artifacts exist
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: read  # read the staged images from GHCR
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+        with:
+          version: 1.0.0
+
+      - name: Login to GHCR Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the staged artifacts of the release commit
+        env:
+          COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in kbs-grpc-as kbs coco-as-grpc coco-as-restful rvps \
+              kbs-client-image; do
+            if ! docker buildx imagetools inspect \
+                "${STAGED}/${name}:${COMMIT}" >/dev/null 2>&1; then
+              echo "::error::missing ${STAGED}/${name}:${COMMIT}"
+              missing=1
+            fi
+          done
+          for arch in x86_64 s390x aarch64; do
+            if ! oras manifest fetch \
+                "${STAGED}/kbs-client:sample_only-${COMMIT}-${arch}" \
+                >/dev/null 2>&1; then
+              echo "::error::missing ${STAGED}/kbs-client:sample_only-${COMMIT}-${arch}"
+              missing=1
+            fi
+          done
+          if [[ "${missing}" -ne 0 ]]; then
+            echo "::error::Wait for the 'Staged Images' and 'Build and Push" \
+              "CLI artifacts' runs of ${COMMIT} on main to finish, then re-run."
+            exit 1
+          fi
+
+  publish-images:
+    name: Publish ${{ matrix.source }} as ${{ matrix.target }}
+    needs: [validate, preflight]
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write  # push the release images to GHCR
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: kbs-grpc-as
+            target: key-broker-service
+            tag_prefix: ''
+          - source: kbs
+            target: key-broker-service
+            tag_prefix: 'built-in-as-'
+          - source: coco-as-grpc
+            target: attestation-service
+            tag_prefix: ''
+          - source: coco-as-restful
+            target: attestation-service
+            tag_prefix: 'rest-'
+          - source: rvps
+            target: reference-value-provider-service
+            tag_prefix: ''
+          - source: kbs-client-image
+            target: kbs-client
+            tag_prefix: ''
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Login to GHCR Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag the staged image as the release image
+        env:
+          COMMIT: ${{ needs.validate.outputs.commit }}
+          VERSION: ${{ inputs.version }}
+          SOURCE: ${{ matrix.source }}
+          TARGET: ${{ matrix.target }}
+          TAG_PREFIX: ${{ matrix.tag_prefix }}
+        run: |
+          set -euo pipefail
+          src="${STAGED}/${SOURCE}:${COMMIT}"
+          dst="${RELEASE}/${TARGET}:${TAG_PREFIX}${VERSION}"
+          if ! docker buildx imagetools inspect "${src}" >/dev/null; then
+            echo "::error::${src} not found. Wait for the 'Staged Images'" \
+              "run of ${COMMIT} on main to finish, then re-run."
+            exit 1
+          fi
+          docker buildx imagetools create --tag "${dst}" "${src}"
+          docker buildx imagetools inspect "${dst}"
+
+  publish-kbs-client-binary:
+    name: Publish kbs-client binary (${{ matrix.arch }})
+    needs: [validate, preflight]
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write  # push the kbs-client binaries to GHCR
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, s390x, aarch64]
+    steps:
+      - name: Install ORAS
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+        with:
+          version: 1.0.0
+
+      - name: Login to GHCR Container Registry
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${GH_TOKEN}" |
+            oras login ghcr.io --username "${GH_ACTOR}" --password-stdin
+
+      - name: Copy the staged kbs-client binary to the release
+        env:
+          COMMIT: ${{ needs.validate.outputs.commit }}
+          VERSION: ${{ inputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          src="${STAGED}/kbs-client:sample_only-${COMMIT}-${ARCH}"
+          dst="${RELEASE}/kbs-client:sample_only-${VERSION}-${ARCH}"
+          oras copy "${src}" "${dst}"
+          oras manifest fetch "${dst}" >/dev/null
+
+  tag:
+    name: Create git tag
+    needs: [validate, publish-images, publish-kbs-client-binary]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write  # create the release tag
+    steps:
+      - name: Create tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ needs.validate.outputs.commit }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GH_REPO}/git/refs" \
+            -f ref="refs/tags/${VERSION}" -f sha="${COMMIT}" >/dev/null

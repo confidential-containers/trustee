@@ -94,7 +94,7 @@ alternative options that have been considered.
 │   └── eventlog/               # TCG event log parser
 ├── integration-tests/          # Workspace-level integration tests
 ├── protos/                     # Protocol Buffer definitions (attestation, reference)
-├── hack/                       # Helper scripts (e2e.sh, release-helper.sh)
+├── release/                    # Release script and guide
 ├── docker-compose.yml          # Full-stack local deployment
 ├── .github/workflows/          # CI/CD pipelines
 └── .devcontainer/              # Dev container configurations
