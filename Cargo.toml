@@ -55,7 +55,7 @@ regorus = { version = "0.11.0", default-features = false, features = [
 ] }
 rand = "0.10.2"
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
-rstest = "0.26.1"
+rstest = "0.28.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.150"
 serde_with = { version = "3.21.0", features = ["base64", "hex"] }
