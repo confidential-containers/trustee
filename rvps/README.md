@@ -146,6 +146,10 @@ RVPS supports the following extractors (enabled by default):
    - Default expiration time: 12 months
    - Default hash algorithm: `sha384`
 
+> [!NOTE]
+> Each reference value has an expiration, 12 months after registration unless
+> its extractor sets one. Once it has expired, RVPS no longer returns it.
+
 **Example Configuration:**
 
 ```json
