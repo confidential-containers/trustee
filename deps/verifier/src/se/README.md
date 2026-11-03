@@ -6,6 +6,7 @@ This is a document to guide developer run a KBS with IBM SE verifier locally for
 ## Index
 
 - [Deployment of KBS with IBM SE verifier](#deployment-of-kbs-with-ibm-se-verifier)
+- [Environment Variables and Configuration](#environment-variables-and-configuration)
 - [Admin authentication](#admin-authentication)
 - [Set attestation policy for IBM SE verifier](#set-attestation-policy)
 
@@ -95,7 +96,7 @@ cargo install --locked --debug --path kbs --no-default-features --features coco-
     └── encrypt_key.pub
 ```
 
-> Note: alternative is to use system variables listed in [ibmse.rs](./ibmse.rs) to overwrite the files.
+> Note: alternative is to use environment variables listed in [Environment Variables and Configuration](#environment-variables-and-configuration) to override these file paths.
 
 - Prepare the `kbs-config.toml`, similar as:
 ```toml
@@ -266,6 +267,54 @@ docker-compose up -d
 docker-compose logs kbs
 docker-compose down
 ```
+
+
+# Environment Variables and Configuration
+
+The IBM SE verifier can be configured via environment variables and through the Attestation Service configuration.
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `SE_ENABLE_FIRMWARE_VERIFICATION` | Overrides the `enable_firmware_verification` configuration setting (`"true"` to enable host firmware verification against the verification service endpoint) | `false` |
+| `SE_SKIP_CERTS_VERIFICATION` | Skips host key document certificate chain verification (development only) | `false` |
+| `CERTS_OFFLINE_VERIFICATION` | Enables offline certificate verification | `false` |
+| `DEFAULT_SE_HOST_KEY_DOCUMENTS_ROOT` | Path to directory containing Host Key Documents (HKDs) | `/run/confidential-containers/ibmse/hkds` |
+| `SE_CERTIFICATES_ROOT` | Path to directory containing CA certificates | `/run/confidential-containers/ibmse/certs` |
+| `SE_CERTIFICATE_ROOT_CA` | Path to root CA certificate | `/run/confidential-containers/ibmse/root_ca.crt` |
+| `SE_CERTIFICATE_REVOCATION_LISTS_ROOT` | Path to directory containing Certificate Revocation Lists (CRLs) | `/run/confidential-containers/ibmse/crls` |
+| `SE_IMAGE_HEADER_FILE` | Path to IBM SE image header file (`hdr.bin`) | `/run/confidential-containers/ibmse/hdr/hdr.bin` |
+| `SE_MEASUREMENT_ENCR_KEY_PRIVATE` | Path to measurement encryption private key PEM | `/run/confidential-containers/ibmse/rsa/encrypt_key.pem` |
+| `SE_MEASUREMENT_ENCR_KEY_PUBLIC` | Path to measurement encryption public key PEM | `/run/confidential-containers/ibmse/rsa/encrypt_key.pub` |
+
+## Verifier Configuration
+
+The IBM SE verifier can also be configured via the AS configuration file:
+
+- JSON format (`as-config.json`):
+  ```json
+  {
+      "verifier_config": {
+          "se_verifier": {
+              "enable_firmware_verification": true,
+              "firmware_verify_url": "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify"
+          }
+      }
+  }
+  ```
+
+- TOML format (`kbs-config.toml` when using built-in AS):
+  ```toml
+  [attestation_service.verifier_config.se_verifier]
+  enable_firmware_verification = true
+  firmware_verify_url = "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify"
+  ```
+
+| Property | Type | Description | Required | Default |
+|---|---|---|---|---|
+| `enable_firmware_verification` | Boolean | Enable host firmware attestation verification against the firmware service endpoint (can be overridden via `SE_ENABLE_FIRMWARE_VERIFICATION` env var) | No | `false` |
+| `firmware_verify_url` | String | Endpoint URL for the firmware attestation verification service | No | `https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify` |
 
 
 # Admin authentication

@@ -280,6 +280,14 @@ as:
       # resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume
       # `nodeAffinity`.
       nodeName: ""
+      # -- Enable firmware hash verification against the IBM firmware attestation API.
+      # Only effective on z17 systems. When true, guests without a firmware hash are rejected.
+      enableFirmwareVerification: false
+      # -- IBM firmware attestation API URL. Optional: if left empty, the chart falls back to
+      # the built-in default (`https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify`),
+      # so firmware verification still works without setting this field. Only set it to
+      # override the endpoint (e.g. a custom or mirrored service).
+      firmwareVerifyUrl: ""
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).
     type: ClusterIP
