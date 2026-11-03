@@ -4589,7 +4589,7 @@ dependencies = [
  "p256",
  "p521",
  "policy-engine",
- "polyval 0.6.2",
+ "polyval 0.7.3",
  "prometheus",
  "prost",
  "rand 0.10.3",
@@ -5888,7 +5888,6 @@ dependencies = [
  "cpufeatures 0.2.17",
  "opaque-debug",
  "universal-hash 0.5.1",
- "zeroize",
 ]
 
 [[package]]
