@@ -68,7 +68,7 @@ KBS2 is the relying party.
 
 Passport mode is good for use cases when resource provisioning and attestation are handled by separate entities.
 
-Usages and examples for background check mode can be found [here](./quickstart.md#passport-mode).
+Usages and examples for passport mode can be found [here](./quickstart.md#passport-mode).
 
 # Advanced Topics
 
