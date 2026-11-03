@@ -7664,13 +7664,13 @@ dependencies = [
 
 [[package]]
 name = "spiffe"
-version = "0.16.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7d0a770f9a8571eb96f9c319b3b55dd7118e3047bd3629b894882506b9e8295"
+checksum = "539d8f20779006e7e078d8ac7f30a7d7d77fdbbf1f343e1d4416c22772850fbf"
 dependencies = [
  "base64ct",
  "hyper-util",
- "pkcs8 0.10.2",
+ "pkcs8 0.11.0",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -7700,9 +7700,9 @@ checksum = "0134f9043ed38b087ac4f7d4af44c79e2c9e5094421fe3164f435ce585953b10"
 
 [[package]]
 name = "spire-api"
-version = "0.8.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d3b8a20d9ce0df083d76c4733759ad68b42613351c803cfb60ea10123093ecb"
+checksum = "6741aa7f964fb29853874db1f496eac654c9e064e67a42c565786c92ebb093c6"
 dependencies = [
  "futures",
  "prost",
