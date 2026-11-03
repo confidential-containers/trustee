@@ -5138,18 +5138,18 @@ dependencies = [
 
 [[package]]
 name = "msvc_spectre_libs"
-version = "0.2.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee5b811d1179acb6ebe2e04601d96dc1016ddf8cde1ca347f95ad8caf9009779"
+checksum = "a7d875b8a00f64a354b2ed7c4c6c92f294997b64bc079bacdf6b58bdcd4ba454"
 dependencies = [
  "msvc_spectre_libs_build",
 ]
 
 [[package]]
 name = "msvc_spectre_libs_build"
-version = "0.1.2"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5460ca8a958df6557bd924f4ed5118c6cc9704b0c2e97e8b8226b7e0771b65b"
+checksum = "feb7dc354576190586db234c41e482a81a16796f0cdf41203fe7b04e767ae9c5"
 dependencies = [
  "cc",
  "ohno",
@@ -5344,9 +5344,9 @@ dependencies = [
 
 [[package]]
 name = "ohno"
-version = "0.5.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c44f98fe807a6f36dc124f40d4293be0e79becbc9f0eb872e8369093063f54e"
+checksum = "c6f03365c20a62c82c5da4cd93abf43cec7115c7d9f84a55ea827e2b56d704a5"
 dependencies = [
  "ohno_macros",
  "typeid",
@@ -5354,18 +5354,18 @@ dependencies = [
 
 [[package]]
 name = "ohno_macros"
-version = "0.5.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5661077db6d7e20a1f0684eb8dbbd387a5b9e0e579cae56e654571826fdd9f8"
+checksum = "2a4ce72614cf218523160501f1c275d718c80083697d62d54186e41512429ba9"
 dependencies = [
  "ohno_macros_impl",
 ]
 
 [[package]]
 name = "ohno_macros_impl"
-version = "0.5.3"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c38e0868909494a94d368ab74c13384368b21af80bac5fe73d3d5883c5bb8eb9"
+checksum = "4a2711e52bb0de91b2d6a3c60636bac1827fb109003e235ed827dc9021287d0d"
 dependencies = [
  "proc-macro2",
  "quote",
