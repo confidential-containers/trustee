@@ -11,7 +11,7 @@ members = [
     "deps/key-value-storage",
     "deps/policy-engine",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
@@ -19,6 +19,7 @@ authors = ["The Confidential Container Authors"]
 description = "Confidential Container Tools and Components for the tenant side"
 documentation = "https://github.com/confidential-containers/kbs"
 edition = "2024"
+rust-version = "1.93.1"
 
 [workspace.dependencies]
 actix-web = "4"

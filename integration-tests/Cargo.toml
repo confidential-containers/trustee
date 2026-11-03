@@ -5,6 +5,7 @@ authors.workspace = true
 description.workspace = true
 documentation.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 kbs = { path = "../kbs" }
