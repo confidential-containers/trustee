@@ -491,10 +491,6 @@ impl AttestationService {
             })
             .context("verify TEE evidence failed")?;
 
-        ATTESTATION_SUCCESSES
-            .with_label_values(&[&tee_type_label])
-            .inc();
-
         let body = serde_json::to_string(&json!({
             "token": token,
         }))
@@ -504,6 +500,10 @@ impl AttestationService {
         session.attest(token);
         let cookie = session.cookie();
         self.session_map.insert(session).await?;
+
+        ATTESTATION_SUCCESSES
+            .with_label_values(&[&tee_type_label])
+            .inc();
 
         Ok(HttpResponse::Ok()
             .cookie(cookie)
