@@ -50,13 +50,14 @@ RUN cd kbs && make AS_FEATURE=${AS_FEATURE} FEATURES=${FEATURES} ALIYUN=${ALIYUN
     make ARCH=${ARCH} install-kbs
 
 # ubuntu:24.04
-FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
 ARG ARCH=x86_64
 
 WORKDIR /tmp
 
 ARG DCAP_VERSION=1_25_100
 RUN apt-get update && \
+    apt-get -y upgrade && \
     apt-get install -y \
     curl \
     gnupg \
