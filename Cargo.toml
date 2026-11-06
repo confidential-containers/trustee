@@ -36,9 +36,9 @@ const_format = "0.2.36"
 educe = "0.8"
 ear = "0.6.0"
 hex = "0.4.3"
-kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "0485e874a67a53477841f7ac8de15b41aaf632e2", default-features = false }
-kbs-types = "0.18.0"
-kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "0485e874a67a53477841f7ac8de15b41aaf632e2", default-features = false }
+kbs_protocol = { git = "https://github.com/confidential-containers/guest-components.git", rev = "d12449fe2d41a6b436f1c760c4df0e8bf6a27126", default-features = false }
+kbs-types = { git = "https://github.com/confidential-containers/kbs-types.git", rev = "1de87bd35bdd8b58a798b4d80fdc20d9830ac52d" }
+kms = { git = "https://github.com/confidential-containers/guest-components.git", rev = "d12449fe2d41a6b436f1c760c4df0e8bf6a27126", default-features = false }
 jsonwebtoken = { version = "11", default-features = false, features = [
     "aws_lc_rs",
     "use_pem",
