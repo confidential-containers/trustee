@@ -233,6 +233,17 @@ impl AttestationService {
         let session_map = SessionMap::new(session_storage_backend);
         if session_map.storage.supports_ttl() {
             info!("session storage expires sessions through its TTL");
+            // Sessions stored before TTL support have no expiry. Remove them
+            // once they have all timed out.
+            let cleanup_session_map = session_map.clone();
+            let legacy_timeout =
+                ::tokio::time::Duration::from_secs(60 * config.timeout.max(0) as u64);
+            ::tokio::spawn(async move {
+                ::tokio::time::sleep(legacy_timeout).await;
+                if let Err(err) = cleanup_session_map.cleanup_expired().await {
+                    warn!(?err, "failed to clean up sessions stored without a TTL");
+                }
+            });
         } else {
             info!("session storage has no TTL support, sweeping expired sessions every minute");
             // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
@@ -480,10 +491,6 @@ impl AttestationService {
             })
             .context("verify TEE evidence failed")?;
 
-        ATTESTATION_SUCCESSES
-            .with_label_values(&[&tee_type_label])
-            .inc();
-
         let body = serde_json::to_string(&json!({
             "token": token,
         }))
@@ -493,6 +500,10 @@ impl AttestationService {
         session.attest(token);
         let cookie = session.cookie();
         self.session_map.insert(session).await?;
+
+        ATTESTATION_SUCCESSES
+            .with_label_values(&[&tee_type_label])
+            .inc();
 
         Ok(HttpResponse::Ok()
             .cookie(cookie)
