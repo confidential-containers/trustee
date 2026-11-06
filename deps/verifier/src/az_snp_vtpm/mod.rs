@@ -30,8 +30,10 @@ use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sev::parser::ByteParser;
+use std::collections::BTreeMap;
 use thiserror::Error;
 use tracing::{debug, instrument, warn};
+use tss_esapi::interface_types::algorithm::HashingAlgorithm;
 use tss_esapi::structures::{Attest, AttestInfo};
 use tss_esapi::traits::UnMarshall;
 use x509_parser::prelude::*;
@@ -88,20 +90,47 @@ pub enum CertError {
 }
 
 pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, tpm_quote: &TpmQuote) -> Result<()> {
+    let attest = Attest::unmarshall(&tpm_quote.message).context("Failed to parse TPM message")?;
+    let AttestInfo::Quote { info } = attest.attested() else {
+        bail!("TPM attestation is not a quote");
+    };
+
+    let [pcr_selection] = info.pcr_selection().get_selections() else {
+        bail!("TPM quote should have 1 PCR bank selection");
+    };
+
+    if pcr_selection.hashing_algorithm() != HashingAlgorithm::Sha256 {
+        bail!("TPM quote has unexpected hashing algorithm");
+    }
+
+    // Map the PCR selection's bitmask to a vector of PCR indices (0-23) that are selected.
+    let pcr_slots: Vec<usize> = pcr_selection
+        .selected()
+        .iter()
+        .map(|&slot| (slot as u32).trailing_zeros() as usize)
+        .collect();
+
+    let pcr_map: BTreeMap<usize, &[u8]> = pcr_slots
+        .into_iter()
+        .zip(tpm_quote.pcrs.iter())
+        .map(|(slot, value)| (slot, value.as_slice()))
+        .collect();
+
+    let mut tpm_values = serde_json::Map::new();
+    for (slot, value) in pcr_map.iter() {
+        tpm_values.insert(format!("pcr{:02}", slot), Value::String(hex::encode(value)));
+    }
+
     let Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
-    let mut tpm_values = serde_json::Map::new();
-    for (i, pcr) in tpm_quote.pcrs.iter().enumerate() {
-        tpm_values.insert(format!("pcr{:02}", i), Value::String(hex::encode(pcr)));
-    }
+
     map.insert("tpm".to_string(), Value::Object(tpm_values));
-    if tpm_quote.pcrs.len() > INITDATA_PCR {
-        map.insert(
-            "init_data".into(),
-            Value::String(hex::encode(&tpm_quote.pcrs[INITDATA_PCR])),
-        );
+
+    if let Some(pcr) = pcr_map.get(&INITDATA_PCR) {
+        map.insert("init_data".into(), Value::String(hex::encode(pcr)));
     }
+
     let nonce = extract_nonce(&tpm_quote.message)?;
     map.insert("report_data".into(), Value::String(hex::encode(nonce)));
     Ok(())
@@ -455,6 +484,8 @@ mod tests {
 
     const REPORT: &[u8; 2600] = include_bytes!("../../test_data/az-snp-vtpm/hcl-report.bin");
     const TPM_QUOTE_V1_JSON: &str = include_str!("../../test_data/az-snp-vtpm/tpm-quote-v1.json");
+    const SPARSE_TPM_QUOTE_V1_JSON: &str =
+        include_str!("../../test_data/az-snp-vtpm/sparse-tpm-quote-v1.json");
     const REPORT_DATA: &[u8] = "challenge".as_bytes();
     const EVIDENCE_V0_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v0.json");
     const EVIDENCE_V1_JSON: &str = include_str!("../../test_data/az-snp-vtpm/evidence-v1.json");
@@ -766,6 +797,24 @@ mod tests {
         assert_eq!(init_data, hex::encode(&tpm_quote.pcrs[INITDATA_PCR]));
         let report_data = map.get("report_data").unwrap().as_str().unwrap();
         assert_eq!(report_data, hex::encode(REPORT_DATA));
+
+        // A sparse claim has been generated with "tpm2_quote -l sha256:0,1,2,3,4,5,6,7,11"
+        // There are 9 PCRs in this quote, and we do need to assert that the missing ones are
+        // not present in the claim and/or incorrectly mapped.
+        claim = json!({"some": "thing"});
+        let sparse_quote = serde_json::from_str(SPARSE_TPM_QUOTE_V1_JSON).unwrap();
+        extend_claim(&mut claim, &sparse_quote).unwrap();
+
+        let map = claim.as_object().unwrap();
+        assert_eq!(map.len(), 3);
+        assert_eq!(map.get("init_data"), None);
+        let tpm_map = map.get("tpm").unwrap().as_object().unwrap();
+        assert_eq!(tpm_map.len(), 9);
+        assert_eq!(tpm_map.get("pcr08"), None);
+
+        let last_pcr_value = sparse_quote.pcrs.last().unwrap();
+        let pcr11_claim = tpm_map.get("pcr11").unwrap().as_str().unwrap();
+        assert_eq!(hex::encode(last_pcr_value), pcr11_claim);
     }
 
     // Fixtures under test_data/az-snp-vtpm/aael-*.bin are raw AAEL eventlogs
