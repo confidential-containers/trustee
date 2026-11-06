@@ -308,7 +308,6 @@ dependencies = [
  "cfg-if",
  "cipher 0.4.4",
  "cpufeatures 0.2.17",
- "zeroize",
 ]
 
 [[package]]
@@ -4587,7 +4586,7 @@ dependencies = [
  "actix",
  "actix-web",
  "actix-web-httpauth",
- "aes 0.8.4",
+ "aes 0.9.3",
  "aes-gcm 0.11.1",
  "aes-kw",
  "anyhow",
