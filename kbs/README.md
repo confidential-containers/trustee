@@ -150,7 +150,7 @@ If you want a self-signed cert for test cases, please refer to [the document](do
 
 The KBS can use different backend storage. `LocalFs` will always be builtin.
 `ALIYUN` determines whether aliyun kms support will be built. The options
-are `true` or `false` (by defult). Please refer to [the document](docs/config.md#repository-configuration)
+are `true` or `false` (by defult). Please refer to [the document](docs/config.md#storage-backend-configuration)
 for more details.
 
 ## Experimental Features

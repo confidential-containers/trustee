@@ -20,7 +20,7 @@ Every ENON must have at least one Lighthouse, which is a node that has an static
 docker compose build --build-arg NEBULA_CA_PLUGIN=true
 ``` 
 
-2. Configure the `nebula-ca` plugin. For simple cases, the plugin default configurations should be enough, just add the lines below to the [KBS config](#kbs/config/docker-compose/kbs-config.toml). For more complex cases, see the [config.md](#kbs/docs/config.md).
+2. Configure the `nebula-ca` plugin. For simple cases, the plugin default configurations should be enough, just add the lines below to the [KBS config](../../config/docker-compose/kbs-config.toml). For more complex cases, see the [config.md](../config.md).
 
 ```toml
 [[plugins]]
