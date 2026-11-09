@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tokio::sync::{OnceCell, SetError};
 use tracing::{instrument, warn};
 
-use crate::{InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
+use crate::{DeviceName, InitDataHash, ReportData, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
 pub mod ibmse;
 
@@ -79,7 +79,7 @@ impl Verifier for SeVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let se_verifier = VERIFIER
             .get_or_try_init(|| async { SeVerifierImpl::new(None) })
             .await?;
@@ -89,7 +89,7 @@ impl Verifier for SeVerifier {
             );
         }
         let claims = se_verifier.evaluate(evidence, expected_report_data).await?;
-        Ok(vec![(claims, "cpu".to_string())])
+        Ok(vec![(claims, "se".to_string())])
     }
 
     async fn generate_supplemental_challenge(&self, tee_parameters: String) -> Result<String> {

@@ -16,7 +16,7 @@ use super::intel_dcap::{
     extend_using_custom_claims, pck::parse_platform_info,
 };
 use super::tdx::claims::generate_parsed_claim;
-use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
+use super::{DeviceName, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::{InitDataHash, ReportData};
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
@@ -53,7 +53,7 @@ impl Verifier for AzTdxVtpm {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("unexpected empty report data");
         };
@@ -105,7 +105,7 @@ impl Verifier for AzTdxVtpm {
         let ccel = verify_eventlog(evidence.cc_eventlog(), &tpm_quote)?;
         crate::extend_eventlog_claim(&mut claim, ccel)?;
 
-        Ok(vec![(claim, "cpu".to_string())])
+        Ok(vec![(claim, "az-tdx-vtpm".to_string())])
     }
 }
 

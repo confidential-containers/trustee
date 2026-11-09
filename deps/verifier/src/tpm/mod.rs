@@ -203,7 +203,7 @@ impl Verifier for TpmVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let guest_ev = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize TPM Evidence")?;
 
@@ -232,7 +232,7 @@ impl Verifier for TpmVerifier {
         let mut claims = parse_tee_evidence(&quote, &ak_public);
         extend_claim(&mut claims, &quote)?;
 
-        Ok(vec![(claims, "cpu".to_string())])
+        Ok(vec![(claims, "tpm".to_string())])
     }
 }
 

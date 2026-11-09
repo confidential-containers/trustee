@@ -17,8 +17,8 @@ use super::intel_dcap::{
     pck::parse_platform_info,
     quote::{Quote, parse_quote},
 };
+use super::{DeviceName, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use super::{InitDataHash, ReportData, regularize_data};
-use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 
 mod claims;
 
@@ -49,7 +49,7 @@ impl Verifier for SgxVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let tee_evidence =
             serde_json::from_value::<SgxEvidence>(evidence).context("Deserialize Quote failed.")?;
 
@@ -65,7 +65,7 @@ impl Verifier for SgxVerifier {
         .await
         .context("SGX Verifier")?;
 
-        Ok(vec![(claims, "cpu".to_string())])
+        Ok(vec![(claims, "sgx".to_string())])
     }
 }
 

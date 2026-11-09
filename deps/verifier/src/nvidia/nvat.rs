@@ -19,8 +19,11 @@ use nv_attestation_sdk::{
 };
 
 use super::eat::DetachedEat;
-use super::{Architecture, NvDeviceReportAndCert, check_nonce_match};
-use crate::{TeeClass, TeeEvidenceParsedClaim};
+use super::{
+    Architecture, DEVICE_NAME_NVIDIA_GPU, DEVICE_NAME_NVIDIA_SWITCH, NvDeviceReportAndCert,
+    check_nonce_match,
+};
+use crate::{DeviceName, TeeEvidenceParsedClaim};
 
 const NVAT_CONNECTION_TIMEOUT_MS: i64 = 10_000;
 const NVAT_REQUEST_TIMEOUT_MS: i64 = 60_000;
@@ -90,7 +93,7 @@ pub(super) async fn evaluate_devices(
     devices: Vec<NvDeviceReportAndCert>,
     expected_nonce: Vec<u8>,
     mode: NvatMode,
-) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
     tokio::task::spawn_blocking(move || evaluate_devices_blocking(devices, expected_nonce, mode))
         .await
         .context("NVAT verification task failed to join")?
@@ -100,7 +103,7 @@ fn evaluate_devices_blocking(
     devices: Vec<NvDeviceReportAndCert>,
     expected_nonce: Vec<u8>,
     mode: NvatMode,
-) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
     ensure_sdk_init()?;
 
     let nonce = Nonce::from_hex(&hex::encode(&expected_nonce)).context("build NVAT nonce")?;
@@ -114,7 +117,7 @@ fn evaluate_devices_blocking(
         }
     }
 
-    let mut all_claims: Vec<(TeeEvidenceParsedClaim, TeeClass)> = Vec::new();
+    let mut all_claims: Vec<(TeeEvidenceParsedClaim, DeviceName)> = Vec::new();
 
     if !gpu_devices.is_empty() {
         let evidence_json = devices_to_nvat_json(&gpu_devices, &expected_nonce)?;
@@ -155,7 +158,11 @@ fn evaluate_devices_blocking(
             warn!("NVAT gpu verdict negative: {}", result.result_message());
         }
         let eat_json = result.eat_json().context("read NVAT detached EAT")?;
-        all_claims.extend(claims_from_eat_json(&eat_json, "gpu")?);
+        all_claims.extend(claims_from_eat_json(
+            &eat_json,
+            "gpu",
+            DEVICE_NAME_NVIDIA_GPU,
+        )?);
     }
 
     if !switch_devices.is_empty() {
@@ -193,7 +200,11 @@ fn evaluate_devices_blocking(
             warn!("NVAT switch verdict negative: {}", result.result_message());
         }
         let eat_json = result.eat_json().context("read NVAT detached EAT")?;
-        all_claims.extend(claims_from_eat_json(&eat_json, "switch")?);
+        all_claims.extend(claims_from_eat_json(
+            &eat_json,
+            "switch",
+            DEVICE_NAME_NVIDIA_SWITCH,
+        )?);
     }
 
     Ok(all_claims)
@@ -263,18 +274,21 @@ fn build_http_options() -> Result<HttpOptions> {
         .context("build HTTP options")
 }
 
+/// `endpoint` is the NRAS/NVAT endpoint name (`gpu` or `switch`) used to
+/// look up the claims, `device_name` is the name reported with the results.
 fn claims_from_eat_json(
     eat_json: &str,
-    tee_class: &str,
-) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    endpoint: &str,
+    device_name: &str,
+) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
     let eat = DetachedEat::from_str(eat_json).context("parse NVAT detached EAT")?;
 
     eat.claims()?
         .into_iter()
         .map(|claims| {
-            debug!("NRAS {tee_class} EAT:\n{claims:#}");
-            check_nonce_match(&claims, tee_class)?;
-            Ok((claims, tee_class.to_string()))
+            debug!("NRAS {device_name} EAT:\n{claims:#}");
+            check_nonce_match(&claims, endpoint)?;
+            Ok((claims, device_name.to_string()))
         })
         .collect()
 }
@@ -402,7 +416,7 @@ mod tests {
         }));
         let eat = json!([["JWT", overall], {"GPU-0": device}]).to_string();
 
-        let claims = claims_from_eat_json(&eat, "gpu");
+        let claims = claims_from_eat_json(&eat, "gpu", DEVICE_NAME_NVIDIA_GPU);
         if !nonce_match {
             assert!(claims.is_err());
             return;
@@ -411,7 +425,7 @@ mod tests {
         let claims = claims.unwrap();
         assert_eq!(claims.len(), 1);
         let (value, class) = &claims[0];
-        assert_eq!(class, "gpu");
+        assert_eq!(class, "nvidia-gpu");
         assert_eq!(value["x-nvidia-overall-att-result"], true);
         assert_eq!(value["x-nvidia-gpu-arch-check"], true);
     }

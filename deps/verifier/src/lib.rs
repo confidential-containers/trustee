@@ -244,7 +244,7 @@ pub type TeeEvidenceParsedClaim = serde_json::Value;
 ///   parse older layouts, or reject evidence it is too old to understand with a
 ///   clear error, rather than failing with a cryptic deserialization message.
 pub type TeeEvidence = serde_json::Value;
-pub type TeeClass = String;
+pub type DeviceName = String;
 
 /// Insert a verified eventlog as a `uefi_event_logs` claim -- a no-op if
 /// `ccel` is `None`.
@@ -330,7 +330,7 @@ pub trait Verifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>>;
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>>;
 
     /// Generate the supplemental challenge
     ///

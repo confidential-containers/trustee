@@ -30,6 +30,14 @@ use crate::nvidia::nras_jwks::NrasJwks;
 use crate::nvidia::nras_response::NrasResponse;
 use crate::nvidia::report::NvidiaAttestationReport;
 
+/// Device name of NVIDIA GPU results (Hopper and Blackwell share one result shape).
+pub const DEVICE_NAME_NVIDIA_GPU: &str = "nvidia-gpu";
+/// Device name of NVIDIA NVSwitch results.
+pub const DEVICE_NAME_NVIDIA_SWITCH: &str = "nvidia-switch";
+/// Device name of the NVIDIA PPCIE topology summary. It is not a device, but a
+/// result derived from a valid set of GPU and switch results.
+pub const DEVICE_NAME_NVIDIA_PPCIE: &str = "nvidia-ppcie";
+
 const HOPPER_SIGNATURE_LENGTH: usize = 96;
 
 /// Only SPDM Version 1.1 is supported
@@ -185,7 +193,7 @@ fn check_nonce_match(claims: &Value, endpoint: &str) -> Result<()> {
 /// Check if a set of device claims constitutes a PPCIE configuration.
 /// If so, return claims describing the PPCIE topology.
 fn validate_ppcie(
-    all_devices_claims: Vec<(TeeEvidenceParsedClaim, TeeClass)>,
+    all_devices_claims: Vec<(TeeEvidenceParsedClaim, DeviceName)>,
 ) -> Result<TeeEvidenceParsedClaim> {
     if all_devices_claims.len() != 12 {
         bail!("PPCIE requires 12 devices.");
@@ -195,7 +203,7 @@ fn validate_ppcie(
     let mut switch_pdis: HashSet<String> = HashSet::new();
 
     for (claims, device_class) in all_devices_claims {
-        if device_class == "gpu" {
+        if device_class == DEVICE_NAME_NVIDIA_GPU {
             let gpu_switch_pdis = claims
                 .pointer("/x-nvidia-gpu-switch-pdis")
                 .ok_or(anyhow!("gpu must specify switch PDIs"))?
@@ -218,7 +226,7 @@ fn validate_ppcie(
             if switch_count != 4 {
                 bail!("Each GPU must be connectd to 4 switches");
             }
-        } else if device_class == "switch" {
+        } else if device_class == DEVICE_NAME_NVIDIA_SWITCH {
             let switch_pdi = claims
                 .pointer("/x-nvidia-switch-pdi")
                 .ok_or(anyhow!("switch must specify it's own PDI"))?
@@ -290,10 +298,10 @@ impl Nvidia {
     ) -> Result<(TeeEvidenceParsedClaim, String)> {
         let b64_engine = base64::engine::general_purpose::STANDARD;
 
-        let (tee_class, endpoint) = match device.arch {
-            Architecture::Blackwell => ("gpu", "gpu"),
-            Architecture::Hopper => ("gpu", "gpu"),
-            Architecture::LS10 => ("switch", "switch"),
+        let (device_name, endpoint) = match device.arch {
+            Architecture::Blackwell => (DEVICE_NAME_NVIDIA_GPU, "gpu"),
+            Architecture::Hopper => (DEVICE_NAME_NVIDIA_GPU, "gpu"),
+            Architecture::LS10 => (DEVICE_NAME_NVIDIA_SWITCH, "switch"),
         };
 
         // Try hex::decode() to see if someone uses the original encoding still.
@@ -343,14 +351,14 @@ impl Nvidia {
 
         let response = NrasResponse::from_str(&res.text().await?)?;
         let claims = response.claims()?;
-        debug!("NRAS {tee_class} EAT:\n{claims:#}");
+        debug!("NRAS {device_name} EAT:\n{claims:#}");
 
         response.validate(jwks)?;
 
         // Check that the nonce matches the expected report data.
         check_nonce_match(&claims, endpoint)?;
 
-        Ok((claims, tee_class.to_string()))
+        Ok((claims, device_name.to_string()))
     }
 
     fn evaluate_device_locally(
@@ -392,7 +400,10 @@ impl Nvidia {
         let value = serde_json::to_value(device_claims)
             .context("serializing NVIDIA evidence claims into JSON")?;
 
-        Ok((value as TeeEvidenceParsedClaim, "gpu".to_string()))
+        Ok((
+            value as TeeEvidenceParsedClaim,
+            DEVICE_NAME_NVIDIA_GPU.to_string(),
+        ))
     }
 }
 
@@ -404,7 +415,7 @@ impl Verifier for Nvidia {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         _expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let devices: NvDeviceEvidence = serde_json::from_value(evidence)
             .context("Failed to deserialize the NVIDIA device evidence")?;
         let mut all_devices_claims: Vec<(TeeEvidenceParsedClaim, String)> = Vec::new();
@@ -455,7 +466,7 @@ impl Verifier for Nvidia {
         }
 
         if let Ok(ppcie_claims) = validate_ppcie(all_devices_claims.clone()) {
-            all_devices_claims.push((ppcie_claims, "ppcie".to_string()));
+            all_devices_claims.push((ppcie_claims, DEVICE_NAME_NVIDIA_PPCIE.to_string()));
         }
 
         Ok(all_devices_claims)
