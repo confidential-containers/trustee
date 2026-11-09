@@ -1,15 +1,15 @@
 # Verifying NVIDIA devices with the Trustee Attestation Service
 
 This verifier has four modes.
-* **NvRemote** Uses the official NVIDIA Attestation SDK in conjunection with
+* **NvRemote** Uses the official NVIDIA Attestation SDK in conjunction with
 the NVIDIA Remote Attestation Service. Depends on `nvidia-nvat` feature.
 * **NvLocal** Uses the NVIDIA Attestation SDK in conjunction with a remote
 RIM and OCSP service. Depends on `nvidia-nvat` feature.
 * **Remote** Uses the NVIDIA Remote Attestation Service directly. This is similar
 to `NvRemote`, but does not depend on `libnvat`.
-* **Local** Extracts and verifies evidence locally with no dependencies. Only a
-small set of devices are supported. Users must provide reference values and policy.
-Revocation is not supported. 
+* **Local** Extracts and verifies evidence locally with no dependencies. Only
+Hopper GPUs are supported; for Blackwell GPUs use one of the modes above. Users
+must provide reference values and policy. Revocation is not supported.
 
 Using a mode that depends on a remote NVIDIA service for attestation
 assumes that the user has entered into a [licensing agreement](https://docs.nvidia.com/attestation/cloud-services/latest/license.html) with NVIDIA.
