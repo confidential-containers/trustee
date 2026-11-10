@@ -18,7 +18,7 @@ use tracing::info;
 
 use crate::attestation::{
     backend::{Attest, IndependentEvidence, make_nonce},
-    coco::DEFAULT_POLICY_ID,
+    coco::DEFAULT_POLICY_IDS,
 };
 
 use self::attestation::{
@@ -145,7 +145,7 @@ impl Attest for GrpcClientPool {
             verification_requests,
             policy_ids: policy_ids
                 .map(<[String]>::to_vec)
-                .unwrap_or_else(|| vec![DEFAULT_POLICY_ID.to_string()]),
+                .unwrap_or_else(|| DEFAULT_POLICY_IDS.map(String::from).to_vec()),
         });
 
         let mut client = self.pool.get().await?;

@@ -28,7 +28,7 @@ use crate::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
-    token::TokenVerifier,
+    token::{TOKEN_INIT_DATA_PATH_EAR, TokenVerifier},
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -451,17 +451,22 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims.pointer("/submods/cpu0/ear_verifier_claims/init_data");
+                let init_data = crate::token::pointer(&claims, TOKEN_INIT_DATA_PATH_EAR);
 
                 // Extract only custom extensions scoped to Trustee
+                // The first submod that has an extension wins.
                 let mut trustee_extensions = HashMap::new();
-                if let Some(submod) = claims
-                    .pointer("/submods/cpu0")
+                if let Some(submods) = claims
+                    .pointer("/submods")
                     .and_then(serde_json::Value::as_object)
                 {
-                    for (name, value) in submod {
-                        if name.starts_with("ear.trustee") {
-                            trustee_extensions.insert(name.clone(), value.clone());
+                    for submod in submods.values().filter_map(serde_json::Value::as_object) {
+                        for (name, value) in submod {
+                            if name.starts_with("ear.trustee") {
+                                trustee_extensions
+                                    .entry(name.clone())
+                                    .or_insert_with(|| value.clone());
+                            }
                         }
                     }
                 }

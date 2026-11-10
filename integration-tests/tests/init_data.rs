@@ -77,7 +77,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear_attester_claims\"][\"init_data\"] == \"{init_data_hash}\"
+    input[\"submods\"][\"cpu0\"][\"ear_attester_claims\"][_][_][\"init_data\"] == \"{init_data_hash}\"
 }
 ";
 

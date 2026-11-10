@@ -19,10 +19,11 @@ pub const TOKEN_TEE_PUBKEY_PATH_COCO: &str = "/customized_claims/runtime_data/te
 /// This is the legacy path for the EAR tee public key of EAR token before ID-4 version.
 /// TODO: Remove this when proper.
 pub const TOKEN_TEE_PUBKEY_PATH_EAR_LEGACY: &str =
-    "/submods/cpu0/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
+    "/submods/*/ear.veraison.annotated-evidence/runtime_data_claims/tee-pubkey";
 
 pub const TOKEN_TEE_PUBKEY_PATH_EAR: &str =
-    "/submods/cpu0/ear_verifier_claims/runtime_data/tee-pubkey";
+    "/submods/*/ear_verifier_claims/runtime_data/tee-pubkey";
+pub const TOKEN_INIT_DATA_PATH_EAR: &str = "/submods/*/ear_verifier_claims/init_data";
 pub const TOKEN_TEE_PUBKEY_PATH_VALUE: &str = "/tee-pubkey";
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Default)]
@@ -31,6 +32,8 @@ pub struct AttestationTokenVerifierConfig {
     /// The paths to the tee public key in the JWT body. For example,
     /// `/attester_runtime_data/tee-pubkey` refers to the key
     /// `attester_runtime_data.tee-pubkey` inside the JWT body claims.
+    /// A path segment `*` matches every key of an object, the first match is
+    /// used. See [`pointer`].
     ///
     /// If a JWT is received, the [`TokenVerifier`] will try to extract
     /// the tee public key from built-in ones ([`TOKEN_TEE_PUBKEY_PATH_ITA`],
@@ -66,6 +69,42 @@ pub struct AttestationTokenVerifierConfig {
     /// Default: false
     #[serde(default = "bool::default")]
     pub insecure_header_jwk: bool,
+}
+
+/// Like [`Value::pointer`], but a segment `*` matches every key of an object
+/// (in key order) and the first match wins.
+///
+/// An EAR token has one `submods` entry per policy, and the name of the entry
+/// is chosen by the policy. So `/submods/*/ear_verifier_claims/init_data` is
+/// the init data of the first submod that has any.
+pub fn pointer<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+    fn walk<'a>(value: &'a Value, segments: &[&str]) -> Option<&'a Value> {
+        let Some((segment, rest)) = segments.split_first() else {
+            return Some(value);
+        };
+        if *segment == "*" {
+            return value
+                .as_object()?
+                .values()
+                .find_map(|value| walk(value, rest));
+        }
+        // Same escaping as in `Value::pointer`.
+        let segment = segment.replace("~1", "/").replace("~0", "~");
+        match value {
+            Value::Object(map) => map.get(&segment),
+            Value::Array(list) => segment.parse::<usize>().ok().and_then(|i| list.get(i)),
+            _ => None,
+        }
+        .and_then(|value| walk(value, rest))
+    }
+
+    if path.is_empty() {
+        return Some(value);
+    }
+    walk(
+        value,
+        &path.strip_prefix('/')?.split('/').collect::<Vec<_>>(),
+    )
 }
 
 #[derive(Clone)]
@@ -111,7 +150,7 @@ impl TokenVerifier {
     /// specified in the config file.
     pub fn extract_tee_public_key(&self, claim: Value) -> Result<TeePubKey> {
         for path in &self.extra_teekey_paths {
-            if let Some(pkey_value) = claim.pointer(path) {
+            if let Some(pkey_value) = pointer(&claim, path) {
                 debug!("Extract tee public key from {path}");
                 return TeePubKey::deserialize(pkey_value).map_err(|_| Error::TeePubKeyParseFailed);
             }

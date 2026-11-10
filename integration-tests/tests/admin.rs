@@ -189,6 +189,9 @@ const DUMMY_POLICY: &str = "
 package policy
 import rego.v1
 
+devices := [\"sample\"]
+submod := \"cpu0\"
+
 default executables = 97
 ";
 
