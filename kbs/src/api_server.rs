@@ -552,3 +552,58 @@ async fn prometheus_metrics_middleware(
 
     Ok(res)
 }
+
+#[cfg(test)]
+mod tests {
+    use policy_engine::rego::Regorus;
+    use serde_json::{Value, json};
+
+    /// Whether the default resource policy lets `claims` access a resource.
+    fn default_policy_allows(claims: Value) -> bool {
+        Regorus::evaluate_sync(
+            Some(json!({"plugin": "resource"}).to_string()),
+            claims.to_string(),
+            include_str!("../sample_policies/default.rego").to_string(),
+            vec!["data.policy.allow".to_string()],
+            vec![],
+        )
+        .unwrap()
+        .eval_rules_result["data.policy.allow"]
+            .clone()
+            == Some(Value::Bool(true))
+    }
+
+    fn token_of(submods: Value) -> Value {
+        json!({ "submods": submods })
+    }
+
+    fn appraisal(device: &str, tee: &str) -> Value {
+        json!({"ear_attester_claims": {device: [{"tee": tee, "claims": {}}]}})
+    }
+
+    #[test]
+    fn test_default_policy_refuses_dummy_evidence() {
+        assert!(default_policy_allows(token_of(
+            json!({"cpu0": appraisal("tdx", "tdx")})
+        )));
+
+        // The dummy TEE and the dummy device are refused ...
+        assert!(!default_policy_allows(token_of(
+            json!({"cpu0": appraisal("sample", "sample")})
+        )));
+        assert!(!default_policy_allows(token_of(json!({
+            "cpu0": appraisal("tdx", "tdx"),
+            "gpu0": appraisal("sample-device", "sampledevice"),
+        }))));
+        // ... wherever they are, and next to other devices of the same appraisal.
+        assert!(!default_policy_allows(token_of(json!({
+            "cpu0": {"ear_attester_claims": {
+                "tdx": [{"tee": "tdx", "claims": {}}],
+                "sample": [{"tee": "sample", "claims": {}}],
+            }},
+        }))));
+        assert!(!default_policy_allows(token_of(json!({
+            "other": appraisal("sample", "sample"),
+        }))));
+    }
+}
