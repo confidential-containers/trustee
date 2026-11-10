@@ -18,16 +18,23 @@
 #        "submods": {
 #            "cpu0": {
 #                "ear_attester_claims": {
-#                    "tee": "sample",
-#                    "claims": {
-#                        "productId": "",
-#                        "svn": ""
-#                    }
+#                    "sample": [
+#                        {
+#                            "tee": "sample",
+#                            "claims": {
+#                                "productId": "",
+#                                "svn": ""
+#                            }
+#                        }
+#                    ]
 #                }
 #            }
 #        }
 #    }
 #    ```
+#    The claims of a device are in `ear_attester_claims.<device>[i]`. The
+#    name of the entry in `submods` is chosen by the attestation policy, `cpu0`
+#    is the one of the built-in policy for CPUs.
 #
 # 2. Resource Path data
 #    A KBS plugin call upon <plugin-name> to KBS server's path usually has format
@@ -83,5 +90,14 @@ plugin = data.plugin
 
 allow if {
 	plugin == "resource"
-	not input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "sample"
+	not has_sample_device
+}
+
+# The sample TEE and the sample device only produce dummy evidence. A device
+# of any of the submods is enough to refuse the request.
+has_sample_device if {
+	some submod in input.submods
+	some devices in submod.ear_attester_claims
+	some device in devices
+	device.tee in {"sample", "sampledevice"}
 }

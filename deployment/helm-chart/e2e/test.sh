@@ -61,7 +61,7 @@ kbs_client() {
 
 # Emit a resource policy that only releases resources when the attestation
 # evidence was produced by ${1}. The AS records the TEE type in
-# ear_attester_claims.tee, so matching that string asserts the requester
+# ear_attester_claims.<device>[i].tee, so matching that string asserts the requester
 # really attested as that TEE type.
 write_require_tee_policy() {
 	local tee="$1" out="$2"
@@ -72,7 +72,7 @@ import rego.v1
 default allow = false
 
 allow if {
-	input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "${tee}"
+	input["submods"]["cpu0"]["ear_attester_claims"][_][_]["tee"] == "${tee}"
 }
 EOF
 }
