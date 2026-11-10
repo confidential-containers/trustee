@@ -53,9 +53,9 @@ attestation and that the guest runtime binds to the workload.
 The default policy, which is roughly scoped to the CoCo runtime, includes logic
 for the following `validated identifiers`. These will be included in the `ear.trustee.identifiers`
 extension if the runtime provides/measures the required information.
-* `pod_image` a list of all the images used by the pod
-* `pod_image_count` the number of images used by a pod
-* `container_image_uids` a list of the uids that containers in a pod run with
+* `pod-image` a list of all the images used by the pod
+* `pod-image-count` the number of images used by a pod
+* `container_uids` a list of the uids that containers in a pod run with
 
 AS policies will be provided `input`.
 
