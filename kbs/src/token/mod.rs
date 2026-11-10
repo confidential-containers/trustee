@@ -159,3 +159,53 @@ impl TokenVerifier {
         Err(Error::NoTeePubKeyClaimFound)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_pointer_matches_every_submod() {
+        let claims = json!({"submods": {
+            "cpu0": {"ear_verifier_claims": {"devices": ["tdx"]}},
+            "tpm0": {"ear_verifier_claims": {"runtime_data": {"tee-pubkey": "key"}}},
+        }});
+
+        assert_eq!(
+            pointer(&claims, TOKEN_TEE_PUBKEY_PATH_EAR),
+            Some(&json!("key"))
+        );
+        assert_eq!(
+            pointer(&claims, "/submods/*/ear_verifier_claims/devices"),
+            Some(&json!(["tdx"]))
+        );
+        assert_eq!(
+            pointer(&claims, "/submods/*/ear_verifier_claims/init_data"),
+            None
+        );
+        assert_eq!(
+            pointer(&claims, "/submods/cpu0/ear_verifier_claims/devices/0"),
+            Some(&json!("tdx"))
+        );
+        // The paths without a wildcard behave as `Value::pointer` does.
+        assert_eq!(
+            pointer(&claims, "/submods/tpm0"),
+            claims.pointer("/submods/tpm0")
+        );
+        assert_eq!(pointer(&claims, ""), Some(&claims));
+        assert_eq!(pointer(&claims, "submods"), None);
+    }
+
+    #[test]
+    fn test_pointer_uses_the_first_submod_that_matches() {
+        let claims = json!({"submods": {
+            "b": {"x": 2},
+            "a": {"y": 0},
+            "c": {"x": 3},
+        }});
+        // `serde_json` keeps the keys sorted.
+        assert_eq!(pointer(&claims, "/submods/*/x"), Some(&json!(2)));
+    }
+}
