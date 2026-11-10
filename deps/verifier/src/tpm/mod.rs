@@ -11,9 +11,11 @@ use hex;
 use openssl::pkey::PKey;
 use serde::Deserialize;
 use serde_json::{self, json};
+use std::collections::BTreeMap;
 use std::result::Result::Ok;
 use tracing::{debug, instrument};
-use tss_esapi::structures::Signature;
+use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+use tss_esapi::structures::{Attest, AttestInfo, Signature};
 use tss_esapi::traits::UnMarshall;
 
 use super::*;
@@ -99,6 +101,47 @@ impl Quote {
         }
         Ok(pcrs)
     }
+
+    /// Extract PCR selection from the TPM quote message and return a mapping
+    /// of PCR slot numbers to their corresponding values from the pcrs array.
+    fn get_pcr_map(&self) -> Result<BTreeMap<usize, [u8; 32]>> {
+        let message_bytes = general_purpose::STANDARD
+            .decode(&self.message)
+            .context("Failed to decode message from base64")?;
+
+        let attest = Attest::unmarshall(&message_bytes).context("Failed to parse TPM message")?;
+        let AttestInfo::Quote { info } = attest.attested() else {
+            bail!("TPM attestation is not a quote");
+        };
+
+        let [pcr_selection] = info.pcr_selection().get_selections() else {
+            bail!("TPM quote should have 1 PCR bank selection");
+        };
+
+        if pcr_selection.hashing_algorithm() != HashingAlgorithm::Sha256 {
+            bail!("TPM quote has unexpected hashing algorithm");
+        }
+
+        // Map the PCR selection's bitmask to a vector of PCR indices that are selected.
+        let pcr_slots: Vec<usize> = pcr_selection
+            .selected()
+            .iter()
+            .map(|&slot| (slot as u32).trailing_zeros() as usize)
+            .collect();
+
+        let pcr_values = self.parse_pcr_values()?;
+        if pcr_slots.len() != pcr_values.len() {
+            bail!(
+                "PCR count mismatch: selection has {} slots but {} values provided",
+                pcr_slots.len(),
+                pcr_values.len()
+            );
+        }
+
+        let pcr_map: BTreeMap<usize, [u8; 32]> = pcr_slots.into_iter().zip(pcr_values).collect();
+
+        Ok(pcr_map)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -154,7 +197,7 @@ fn verify_nonce(quote: &VtpmQuote, expected_report_data: &[u8]) -> Result<()> {
     }
 }
 
-fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
+fn verify_init_data(expected: &InitDataHash, pcr_map: &BTreeMap<usize, [u8; 32]>) -> Result<()> {
     match expected {
         InitDataHash::Value(expected_init_data_hash) => {
             debug!("Check the binding of PCR{INITDATA_PCR}");
@@ -164,8 +207,9 @@ fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
             input[32..].copy_from_slice(expected_init_data_hash);
             let digest = openssl::sha::sha256(&input);
 
-            let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
-            let init_data_pcr = pcrs[INITDATA_PCR];
+            let init_data_pcr = pcr_map
+                .get(&INITDATA_PCR)
+                .ok_or_else(|| anyhow!("PCR{INITDATA_PCR} not found in quote"))?;
             if &digest == init_data_pcr {
                 Ok(())
             } else {
@@ -181,14 +225,16 @@ fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
     }
 }
 
-fn extend_claim(claim: &mut TeeEvidenceParsedClaim, quote: &VtpmQuote) -> Result<()> {
+fn extend_claim(
+    claim: &mut TeeEvidenceParsedClaim,
+    pcr_map: &BTreeMap<usize, [u8; 32]>,
+) -> Result<()> {
     let serde_json::Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
-    let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
-    for (i, pcr) in pcrs.iter().enumerate() {
+    for (slot, pcr) in pcr_map.iter() {
         map.insert(
-            format!("pcr{:02}", i),
+            format!("pcr{:02}", slot),
             serde_json::Value::String(hex::encode(pcr)),
         );
     }
@@ -206,6 +252,12 @@ impl Verifier for TpmVerifier {
     ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
         let guest_ev = serde_json::from_value::<Evidence>(evidence)
             .context("Failed to deserialize TPM Evidence")?;
+
+        // Extract PCR mapping before converting to VtpmQuote
+        let pcr_map = guest_ev
+            .tpm_quote
+            .get_pcr_map()
+            .context("Failed to extract PCR mapping")?;
 
         let quote = guest_ev
             .tpm_quote
@@ -226,23 +278,34 @@ impl Verifier for TpmVerifier {
         }
 
         // 4. Verify init data hash
-        verify_init_data(expected_init_data_hash, &quote)?;
+        verify_init_data(expected_init_data_hash, &pcr_map)?;
 
         // 5. Parse claims
-        let mut claims = parse_tee_evidence(&quote, &ak_public);
-        extend_claim(&mut claims, &quote)?;
+        let mut claims = parse_tee_evidence(&pcr_map, &quote, &ak_public);
+        extend_claim(&mut claims, &pcr_map)?;
 
         Ok(vec![(claims, "cpu".to_string())])
     }
 }
 
-pub fn parse_tee_evidence(quote: &VtpmQuote, ak_public: &str) -> TeeEvidenceParsedClaim {
-    let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
-    let claims_map = json!({
-        "init_data": hex::encode(pcrs[INITDATA_PCR]),
+pub fn parse_tee_evidence(
+    pcr_map: &BTreeMap<usize, [u8; 32]>,
+    quote: &VtpmQuote,
+    ak_public: &str,
+) -> TeeEvidenceParsedClaim {
+    let mut claims_map = json!({
         "report_data": hex::encode(quote.nonce().unwrap_or_default()),
         "ak_public": ak_public,
     });
+
+    // Only include init_data if PCR 8 is present
+    if let Some(init_data_pcr) = pcr_map.get(&INITDATA_PCR) {
+        claims_map
+            .as_object_mut()
+            .unwrap()
+            .insert("init_data".to_string(), json!(hex::encode(init_data_pcr)));
+    }
+
     claims_map as TeeEvidenceParsedClaim
 }
 
@@ -251,6 +314,7 @@ mod tests {
     use super::*;
 
     const TPM_EVIDENCE: &[u8] = include_bytes!("../../test_data/tpm_evidence.json");
+    const SPARSE_TPM_EVIDENCE: &[u8] = include_bytes!("../../test_data/sparse_tpm_evidence.json");
 
     #[test]
     fn test_deserialize_tpm_evidence_fixture() {
@@ -290,13 +354,17 @@ mod tests {
         // Test the parse_tee_evidence function with a real quote
         let tpm_evidence = serde_json::from_slice::<Evidence>(TPM_EVIDENCE)
             .expect("Failed to deserialize TPM Evidence");
+        let pcr_map = tpm_evidence
+            .tpm_quote
+            .get_pcr_map()
+            .expect("Failed to get PCR map");
         let quote = tpm_evidence
             .tpm_quote
             .to_quote()
             .context("Failed to convert quote from string format")
             .unwrap();
 
-        let claims = parse_tee_evidence(&quote, &tpm_evidence.ak_public);
+        let claims = parse_tee_evidence(&pcr_map, &quote, &tpm_evidence.ak_public);
 
         // Verify claims contain expected fields
         assert!(
@@ -324,6 +392,92 @@ mod tests {
             report_data.len(),
             128,
             "report_data should be 128 hex chars (64 bytes)"
+        );
+    }
+
+    #[test]
+    fn test_sparse_pcr_mapping() {
+        // Test that sparse PCR quotes are correctly mapped to slot numbers
+        // This sparse quote has 9 PCRs: slots 0,1,2,3,4,5,6,7,11
+        // Note: The fixture uses a message from az-snp-vtpm test data
+        let sparse_evidence = serde_json::from_slice::<Evidence>(SPARSE_TPM_EVIDENCE)
+            .expect("Failed to deserialize sparse TPM Evidence");
+
+        let pcr_map = sparse_evidence
+            .tpm_quote
+            .get_pcr_map()
+            .expect("Failed to get PCR map");
+
+        // Verify we have exactly 9 PCRs
+        assert_eq!(pcr_map.len(), 9, "Should have 9 PCRs in sparse quote");
+
+        // Verify the correct slots are present
+        for slot in 0..=7 {
+            assert!(
+                pcr_map.contains_key(&slot),
+                "PCR slot {} should be present",
+                slot
+            );
+        }
+        assert!(pcr_map.contains_key(&11), "PCR slot 11 should be present");
+
+        // Verify slot 8 is NOT present (this would be the bug case)
+        assert!(
+            !pcr_map.contains_key(&8),
+            "PCR slot 8 should NOT be present"
+        );
+
+        // Verify the last value corresponds to PCR 11, not PCR 8
+        let pcr11_value = pcr_map.get(&11).unwrap();
+        let expected_pcr11 =
+            hex::decode("2aa12c5cfb13e017d1c95f389d4803f51a4b3097f583e9da0c803b3bcef7e29d")
+                .unwrap();
+        assert_eq!(
+            &pcr11_value[..],
+            &expected_pcr11[..],
+            "PCR 11 value should match last entry in sparse evidence"
+        );
+
+        // Test that claims are correctly populated
+        // We create a mock VtpmQuote for claim generation since the fixture
+        // signature format is incompatible (it's from az-vtpm, not TPM verifier format)
+        let message_bytes = general_purpose::STANDARD
+            .decode(&sparse_evidence.tpm_quote.message)
+            .expect("Failed to decode message");
+        let quote_data = serde_json::json!({
+            "signature": vec![0u8; 256],  // Mock signature
+            "message": message_bytes,
+            "pcrs": sparse_evidence.tpm_quote.pcrs.iter()
+                .map(|s| hex::decode(s).unwrap())
+                .collect::<Vec<Vec<u8>>>()
+        });
+        let mock_quote =
+            serde_json::from_value::<VtpmQuote>(quote_data).expect("Failed to create mock quote");
+
+        let mut claims = parse_tee_evidence(&pcr_map, &mock_quote, &sparse_evidence.ak_public);
+        extend_claim(&mut claims, &pcr_map).expect("Failed to extend claim");
+
+        let claims_obj = claims.as_object().unwrap();
+
+        // Verify PCR claims are correctly mapped
+        assert!(claims_obj.contains_key("pcr00"), "Should have pcr00");
+        assert!(claims_obj.contains_key("pcr07"), "Should have pcr07");
+        assert!(claims_obj.contains_key("pcr11"), "Should have pcr11");
+        assert!(!claims_obj.contains_key("pcr08"), "Should NOT have pcr08");
+        assert!(!claims_obj.contains_key("pcr09"), "Should NOT have pcr09");
+        assert!(!claims_obj.contains_key("pcr10"), "Should NOT have pcr10");
+
+        // Verify init_data is not present (PCR 8 is missing)
+        assert!(
+            !claims_obj.contains_key("init_data"),
+            "init_data should not be present when PCR 8 is missing"
+        );
+
+        // Verify pcr11 claim matches the expected value
+        let pcr11_claim = claims_obj.get("pcr11").unwrap().as_str().unwrap();
+        assert_eq!(
+            pcr11_claim,
+            "2aa12c5cfb13e017d1c95f389d4803f51a4b3097f583e9da0c803b3bcef7e29d"
         );
     }
 }
