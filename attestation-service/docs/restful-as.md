@@ -193,8 +193,10 @@ RESTful CoCo-AS's endpoints are as following:
                                                     // "sha256", "sha384" or "sha512". If not specified, "sha384" will be selected.
         }
     ],
-    "policy_ids": ["default", "policy-1"]           // List of IDs of the policy used to check evidence. If
-                                                    // not provided, a "default" one will be used.
+    "policy_ids": ["default_cpu", "policy-1"]       // List of IDs of the policies used to check evidence. Each ID is
+                                                    // used as is. If not provided, the built-in policies
+                                                    // default_cpu, default_gpu, default_switch and
+                                                    // default_ppcie are used.
 }
 ```
 - `/policy`: receives policy setting request. The request POST payload is like

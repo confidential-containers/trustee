@@ -18,68 +18,79 @@
                 "storage-opaque": 0,
                 "sourced-data": 0
             },
-            "ear_appraisal_policy_ids": ["default"],
+            "ear_appraisal_policy_ids": [
+                "default_cpu"
+            ],
             "ear_attester_claims": {
-                "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "tee": "sgx",
-                "claims": {
-                    "advisory_ids": [
-                        "INTEL-SA-00586",
-                        "INTEL-SA-00614",
-                        "INTEL-SA-00615",
-                        "INTEL-SA-00657",
-                        "INTEL-SA-00730",
-                        "INTEL-SA-00738",
-                        "INTEL-SA-00767",
-                        "INTEL-SA-00828",
-                        "INTEL-SA-00837",
-                        "INTEL-SA-00960"
-                    ],
-                    "body": {
-                        "attributes.flags": "0700000000000000",
-                        "attributes.xfrm": "e700000000000000",
-                        "config_id": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                        "config_svn": "0000",
-                        "cpu_svn": "06060c0cffff00000000000000000000",
-                        "isv_ext_prod_id": "00000000000000000000000000000000",
-                        "isv_family_id": "00000000000000000000000000000000",
-                        "isv_prod_id": "0000",
-                        "isv_svn": "0000",
-                        "misc_select": "01000000",
-                        "mr_enclave": "8f173e4613ff05c52aaf04162d234edae8c9977eae47eb2299ae16a553011c68",
-                        "mr_signer": "83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e",
+                "sgx": [
+                    {
+                        "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                         "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                        "reserved1": "000000000000000000000000",
-                        "reserved2": "0000000000000000000000000000000000000000000000000000000000000000",
-                        "reserved3": "0000000000000000000000000000000000000000000000000000000000000000",
-                        "reserved4": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                    },
-                    "collateral_expiration_status": "0",
-                    "earliest_expiration_date": "2025-11-12T15:18:05Z",
-                    "earliest_issue_date": "2018-05-21T10:45:10Z",
-                    "header": {
-                        "att_key_data_0": "00000000",
-                        "att_key_type": "0200",
-                        "pce_svn": "0d00",
-                        "qe_svn": "0800",
-                        "user_data": "dccde9b31ce8860548173bb4a2a57a1600000000",
-                        "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
-                        "version": "0300"
-                    },
-                    "is_cached_keys": true,
-                    "is_dynamic_platform": true,
-                    "is_smt_enabled": true,
-                    "latest_issue_date": "2025-10-13T15:32:28Z",
-                    "pck_crl_num": 1,
-                    "platform_provider_id": "b9c92eb5053cb158956f4e68b6d82f52",
-                    "root_ca_crl_num": 1,
-                    "root_key_id": "46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993",
-                    "sgx_type": "Scalable",
-                    "tcb_date": "2021-11-10T00:00:00Z",
-                    "tcb_eval_num": 1,
-                    "tcb_status": "OutOfDate"
-                }
+                        "tee": "sgx",
+                        "claims": {
+                            "advisory_ids": [
+                                "INTEL-SA-00586",
+                                "INTEL-SA-00614",
+                                "INTEL-SA-00615",
+                                "INTEL-SA-00657",
+                                "INTEL-SA-00730",
+                                "INTEL-SA-00738",
+                                "INTEL-SA-00767",
+                                "INTEL-SA-00828",
+                                "INTEL-SA-00837",
+                                "INTEL-SA-00960"
+                            ],
+                            "body": {
+                                "attributes.flags": "0700000000000000",
+                                "attributes.xfrm": "e700000000000000",
+                                "config_id": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                                "config_svn": "0000",
+                                "cpu_svn": "06060c0cffff00000000000000000000",
+                                "isv_ext_prod_id": "00000000000000000000000000000000",
+                                "isv_family_id": "00000000000000000000000000000000",
+                                "isv_prod_id": "0000",
+                                "isv_svn": "0000",
+                                "misc_select": "01000000",
+                                "mr_enclave": "8f173e4613ff05c52aaf04162d234edae8c9977eae47eb2299ae16a553011c68",
+                                "mr_signer": "83d719e77deaca1470f6baf62a4d774303c899db69020f9c70ee1dfc08c7ce9e",
+                                "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                                "reserved1": "000000000000000000000000",
+                                "reserved2": "0000000000000000000000000000000000000000000000000000000000000000",
+                                "reserved3": "0000000000000000000000000000000000000000000000000000000000000000",
+                                "reserved4": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                            },
+                            "collateral_expiration_status": "0",
+                            "earliest_expiration_date": "2025-11-12T15:18:05Z",
+                            "earliest_issue_date": "2018-05-21T10:45:10Z",
+                            "header": {
+                                "att_key_data_0": "00000000",
+                                "att_key_type": "0200",
+                                "pce_svn": "0d00",
+                                "qe_svn": "0800",
+                                "user_data": "dccde9b31ce8860548173bb4a2a57a1600000000",
+                                "vendor_id": "939a7233f79c4ca9940a0db3957f0607",
+                                "version": "0300"
+                            },
+                            "is_cached_keys": true,
+                            "is_dynamic_platform": true,
+                            "is_smt_enabled": true,
+                            "latest_issue_date": "2025-10-13T15:32:28Z",
+                            "pck_crl_num": 1,
+                            "platform_provider_id": "b9c92eb5053cb158956f4e68b6d82f52",
+                            "root_ca_crl_num": 1,
+                            "root_key_id": "46e403bd34f05a3f2817ab9badcaacc7ffc98e0f261008cd30dae936cace18d5dcf58eef31463613de1570d516200993",
+                            "sgx_type": "Scalable",
+                            "tcb_date": "2021-11-10T00:00:00Z",
+                            "tcb_eval_num": 1,
+                            "tcb_status": "OutOfDate"
+                        }
+                    }
+                ]
+            },
+            "ear_verifier_claims": {
+                "devices": [
+                    "sgx"
+                ]
             }
         }
     },
