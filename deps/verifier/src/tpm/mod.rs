@@ -20,6 +20,9 @@ use super::*;
 
 const INITDATA_PCR: usize = 8;
 const TPM_REPORT_DATA_SIZE: usize = 32;
+// The full 24-PCR requirement must not be relaxed without implementing
+// proper PCR slot mapping (see az_snp_vtpm for reference).
+const PCR_COUNT: usize = 24;
 
 // TPM evidence format as sent by the TPM attester
 #[derive(Deserialize, Debug)]
@@ -127,6 +130,25 @@ fn verify_pcrs(quote: &VtpmQuote) -> Result<()> {
     Ok(())
 }
 
+/// Verify that the quote covers the full SHA-256 PCR bank.
+///
+/// The claims are derived from the PCR values by position, which is only
+/// unambiguous if the quote's selection covers the whole bank. A value list of
+/// the full size can only match the signed PCR digest if the digest was computed
+/// over the full selection as well, so checking the number of values is enough.
+///
+/// This check must not be removed without implementing proper PCR slot mapping
+/// from the quote's selection bitmask (see `az_snp_vtpm::extend_claim` for reference).
+fn verify_pcr_count(quote: &VtpmQuote) -> Result<()> {
+    let count = quote.pcrs_sha256().count();
+    if count != PCR_COUNT {
+        bail!("TPM quote must contain {PCR_COUNT} PCR values, got {count}");
+    }
+
+    debug!("TPM quote contains the full PCR bank ({PCR_COUNT} values)");
+    Ok(())
+}
+
 fn verify_nonce(quote: &VtpmQuote, expected_report_data: &[u8]) -> Result<()> {
     let nonce = quote.nonce()?;
 
@@ -217,18 +239,21 @@ impl Verifier for TpmVerifier {
         // 1. Verify the quote signature using the (now trusted) AK pubkey
         verify_signature(&quote, &ak_public)?;
 
-        // 2. Verify PCRs
+        // 2. Verify the quote covers the full PCR bank
+        verify_pcr_count(&quote)?;
+
+        // 3. Verify PCRs
         verify_pcrs(&quote)?;
 
-        // 3. Verify nonce/report data
+        // 4. Verify nonce/report data
         if let ReportData::Value(report_data) = expected_report_data {
             verify_nonce(&quote, report_data)?;
         }
 
-        // 4. Verify init data hash
+        // 5. Verify init data hash
         verify_init_data(expected_init_data_hash, &quote)?;
 
-        // 5. Parse claims
+        // 6. Parse claims
         let mut claims = parse_tee_evidence(&quote, &ak_public);
         extend_claim(&mut claims, &quote)?;
 
@@ -324,6 +349,43 @@ mod tests {
             report_data.len(),
             128,
             "report_data should be 128 hex chars (64 bytes)"
+        );
+    }
+
+    #[test]
+    fn test_rejects_partial_pcr_bank() {
+        let tpm_evidence = serde_json::from_slice::<Evidence>(TPM_EVIDENCE)
+            .expect("Failed to deserialize TPM Evidence");
+        let quote = tpm_evidence
+            .tpm_quote
+            .to_quote()
+            .expect("Should be able to convert quote to internal format");
+
+        // The fixture carries the full bank and must be accepted
+        verify_pcr_count(&quote).expect("Full PCR bank should be accepted");
+
+        // A quote shipping fewer values than the full bank must be rejected
+        let partial_data = json!({
+            "signature": vec![0u8; 256],
+            "message": general_purpose::STANDARD
+                .decode(&tpm_evidence.tpm_quote.message)
+                .expect("Failed to decode message"),
+            "pcrs": tpm_evidence
+                .tpm_quote
+                .pcrs
+                .iter()
+                .take(PCR_COUNT - 1)
+                .map(|pcr| hex::decode(pcr).expect("Failed to decode PCR"))
+                .collect::<Vec<Vec<u8>>>(),
+        });
+        let partial =
+            serde_json::from_value::<VtpmQuote>(partial_data).expect("Failed to build quote");
+
+        let err = verify_pcr_count(&partial).expect_err("Partial PCR bank should be rejected");
+        assert!(
+            err.to_string()
+                .contains("TPM quote must contain 24 PCR values, got 23"),
+            "unexpected error: {err}"
         );
     }
 }
