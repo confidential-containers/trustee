@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(feature = "credgen-plugin")]
+pub mod credgen;
 #[cfg(feature = "nebula-ca-plugin")]
 pub mod nebula_ca;
 #[cfg(feature = "pkcs11")]
@@ -15,6 +17,8 @@ pub mod spire;
 #[cfg(feature = "external-plugin")]
 pub mod external_plugin;
 
+#[cfg(feature = "credgen-plugin")]
+pub use credgen::{CredGenPlugin, CredGenPluginConfig};
 #[cfg(feature = "nebula-ca-plugin")]
 pub use nebula_ca::{NebulaCaPlugin, NebulaCaPluginConfig};
 #[cfg(feature = "pkcs11")]

@@ -7,6 +7,7 @@ VAULT ?= true
 GCP ?= false
 AWS ?= false
 EXTERNAL_PLUGIN ?= true
+CREDGEN_PLUGIN ?= false
 
 BUILD_ARCH := $(shell uname -m)
 ARCH ?= $(shell uname -m)
@@ -63,6 +64,10 @@ endif
 
 ifeq ($(SPIRE_PLUGIN), true)
   override FEATURES := $(FEATURES),spire-plugin
+endif
+
+ifeq ($(CREDGEN_PLUGIN), true)
+  override FEATURES := $(FEATURES),credgen-plugin
 endif
 
 ifeq ($(VAULT), true)
