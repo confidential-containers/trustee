@@ -19,8 +19,18 @@ fn main() -> Result<(), String> {
         .unwrap_or_else(|| "unknown".to_string());
     println!("cargo:rustc-env=KBS_GIT_HASH={}", git_hash);
 
-    let build_date =
-        chrono::Local::now().to_rfc3339_opts(chrono::format::SecondsFormat::Millis, false);
+    // Honor SOURCE_DATE_EPOCH, as shadow-rs already does for BUILD_TIME.
+    // https://reproducible-builds.org/docs/source-date-epoch/
+    let build_date = match std::env::var("SOURCE_DATE_EPOCH") {
+        Ok(epoch) => epoch
+            .parse()
+            .ok()
+            .and_then(|secs| chrono::DateTime::from_timestamp(secs, 0))
+            .ok_or_else(|| format!("invalid SOURCE_DATE_EPOCH: {epoch}"))?
+            .fixed_offset(),
+        Err(_) => chrono::Local::now().fixed_offset(),
+    }
+    .to_rfc3339_opts(chrono::format::SecondsFormat::Millis, false);
     println!("cargo:rustc-env=KBS_BUILD_DATE={}", build_date);
 
     #[cfg(feature = "coco-as-grpc")]
