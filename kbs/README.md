@@ -100,6 +100,10 @@ The parameters
 - `ALIYUN`: The kbs support aliyun KMS as secret storage backend. `true` to enable building this feature. By default it is `false`.
 - `EXTERNAL_PLUGIN`: Support for [external gRPC plugins](docs/ext_plugin.md). By default it is `true`. Set to `false` to build a KBS that cannot host external plugins.
 
+### Reproducible builds
+
+KBS supports [`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/docs/source-date-epoch/). With it set, the resource-only KBS (`--no-default-features`) builds reproducibly in a pinned build environment. Other feature sets have not been verified.
+
 ## External Plugins
 
 KBS supports external plugins written in any language with gRPC support.

@@ -12,7 +12,7 @@ avoid skewing the data with monitoring traffic.
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `kbs_build_info` | Gauge | `version`, `git_hash`, `build_date` | KBS binary build information. Value is dummy (always `1`).  Build information is in label values.|
+| `kbs_build_info` | Gauge | `version`, `git_hash`, `build_date` | KBS binary build information. Value is dummy (always `1`).  Build information is in label values. `build_date` honors `SOURCE_DATE_EPOCH` (see [Reproducible builds](../README.md#reproducible-builds)).|
 
 ### HTTP Server Metrics
 
