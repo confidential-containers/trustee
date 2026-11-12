@@ -1,5 +1,5 @@
 # Use CentOS Stream to build.
-FROM quay.io/centos/centos:stream9 AS builder
+FROM quay.io/centos/centos:stream9@sha256:280add9b43d478ff06de6ccc6285afa7f1d81d8a0ea0d63e292a2f87f1d5aedf AS builder
 
 # Install build dependencies from CentOS repos.
 RUN dnf -y --setopt=install_weak_deps=0 --enablerepo=crb install \
@@ -23,7 +23,7 @@ mkdir -p /root/trustee/lib64 && \
 ldd /usr/local/bin/kbs | sed 's@.*\s/@/@' | sed 's/\s.*//' | xargs -I {} cp {} /root/trustee/lib64
 
 # Package UBI image.
-FROM registry.access.redhat.com/ubi9
+FROM registry.access.redhat.com/ubi9@sha256:8b212f75a0e5a156ac28b1c5c030d2e8a07715254e19d522286118279399af81
 
 # Install runtime dependencies from Intel repo.
 COPY --from=builder /root/sgx_rpm_local_repo /root/sgx_rpm_local_repo
