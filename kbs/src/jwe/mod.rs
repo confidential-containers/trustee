@@ -16,7 +16,8 @@ use anyhow::{Context, Result, anyhow, bail};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
 use p256::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};
-use rsa::{BigUint, Oaep, Pkcs1v15Encrypt, RsaPublicKey, rand_core::OsRng, sha2::Sha256};
+use rand::rngs::SysRng;
+use rsa::{BoxedUint, Oaep, Pkcs1v15Encrypt, PublicKey, sha2::Sha256};
 use serde_json::{Map, json};
 use tracing::warn;
 use zeroize::Zeroizing;
@@ -95,16 +96,16 @@ fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<R
     let k_mod = URL_SAFE_NO_PAD
         .decode(k_mod)
         .context("base64 decode k_mod failed")?;
-    let n = BigUint::from_bytes_be(&k_mod);
+    let n = BoxedUint::from_be_slice_vartime(&k_mod);
     let k_exp = URL_SAFE_NO_PAD
         .decode(k_exp)
         .context("base64 decode k_exp failed")?;
-    let e = BigUint::from_bytes_be(&k_exp);
+    let e = BoxedUint::from_be_slice_vartime(&k_exp);
 
     let rsa_pub_key =
-        RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
+        PublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut OsRng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
+        .encrypt(&mut SysRng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {
@@ -139,17 +140,17 @@ fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Resul
     let k_mod = URL_SAFE_NO_PAD
         .decode(k_mod)
         .context("base64 decode k_mod failed")?;
-    let n = BigUint::from_bytes_be(&k_mod);
+    let n = BoxedUint::from_be_slice_vartime(&k_mod);
     let k_exp = URL_SAFE_NO_PAD
         .decode(k_exp)
         .context("base64 decode k_exp failed")?;
-    let e = BigUint::from_bytes_be(&k_exp);
+    let e = BoxedUint::from_be_slice_vartime(&k_exp);
 
     let rsa_pub_key =
-        RsaPublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
-    let padding = Oaep::new::<Sha256>();
+        PublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
+    let padding = Oaep::<Sha256>::new();
     let encrypted_key = rsa_pub_key
-        .encrypt(&mut OsRng, padding, aes_sym_key.as_slice())
+        .encrypt(&mut SysRng, padding, aes_sym_key.as_slice())
         .context("RSA encrypt sym key failed")?;
 
     Ok(Response {

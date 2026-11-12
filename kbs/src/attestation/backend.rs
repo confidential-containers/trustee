@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
-use rsa::rand_core::{OsRng, RngCore};
+use rand::{TryRng, rngs::SysRng};
 use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use serde::Deserialize;
 use serde_json::json;
@@ -64,7 +64,9 @@ const NONCE_SIZE_BYTES: usize = 32;
 pub async fn make_nonce() -> anyhow::Result<String> {
     let mut nonce: Vec<u8> = vec![0; NONCE_SIZE_BYTES];
 
-    OsRng.fill_bytes(&mut nonce[..]);
+    SysRng
+        .try_fill_bytes(&mut nonce[..])
+        .context("generate nonce")?;
 
     Ok(STANDARD.encode(&nonce))
 }
