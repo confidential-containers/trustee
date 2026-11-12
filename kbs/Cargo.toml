@@ -37,7 +37,7 @@ intel-trust-authority-as = ["as", "az-cvm-vtpm"]
 external-plugin = ["tonic", "tonic-prost", "prost", "backon", "rustls"]
 
 # Use aliyun KMS as KBS backend
-aliyun = ["kms/aliyun"]
+aliyun = ["dep:kms", "kms/aliyun"]
 
 # Use pkcs11 plugin
 pkcs11 = ["cryptoki"]
@@ -96,7 +96,7 @@ hex.workspace = true
 jsonwebtoken = { workspace = true, default-features = false }
 kbs-types.workspace = true
 key-value-storage.path = "../deps/key-value-storage"
-kms = { workspace = true, default-features = false }
+kms = { workspace = true, default-features = false, optional = true }
 mobc = { workspace = true, optional = true }
 p256 = { workspace = true, features = ["ecdh"] }
 p521 = { workspace = true, features = ["ecdh"] }
