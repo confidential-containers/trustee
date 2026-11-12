@@ -17,9 +17,8 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use kbs_types::{ProtectedHeader, Response, TeePubKey};
 use p256::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};
 use rand::rngs::SysRng;
-use rsa::{BoxedUint, Oaep, Pkcs1v15Encrypt, PublicKey, sha2::Sha256};
+use rsa::{BoxedUint, Oaep, PublicKey, sha2::Sha256};
 use serde_json::{Map, json};
-use tracing::warn;
 use zeroize::Zeroizing;
 
 /// OpenSSL-based Concat KDF (NIST SP 800-56A), matching guest-components implementation.
@@ -47,9 +46,6 @@ fn concat_kdf(alg: &str, target_length: usize, z: &[u8]) -> Result<Zeroizing<Vec
     Ok(output)
 }
 
-/// RSA PKCS#1 v1.5
-const RSA1_5_ALGORITHM: &str = "RSA1_5";
-
 /// RSAES OAEP using SHA-256 and MGF1 with SHA-256
 const RSA_OAEP256_ALGORITHM: &str = "RSA-OAEP-256";
 
@@ -67,56 +63,6 @@ const P521_CURVE: &str = "P-521";
 
 /// AES 256 GCM
 const AES_GCM_256_ALGORITHM: &str = "A256GCM";
-
-/// Use RSAv1.5 to encrypt the payload data.
-/// Warning: This algorithm is deprecated per
-/// <https://www.ietf.org/archive/id/draft-madden-jose-deprecate-none-rsa15-00.html#section-1.2>
-#[deprecated(note = "This algorithm is no longer recommended.")]
-fn rsa_1v15(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
-    warn!(
-        "Get JWE request using deprecated kcs#1 v1.5 encryption, which has potential security issues."
-    );
-    let aes_sym_key = Zeroizing::new(<[u8; 32]>::generate());
-    let cipher = Aes256Gcm::new_from_slice(aes_sym_key.as_slice())
-        .map_err(|e| anyhow!("invalid AES key length: {e}"))?;
-    let iv = <[u8; 12]>::generate();
-    let nonce = Nonce::from(iv);
-    let protected = ProtectedHeader {
-        alg: RSA1_5_ALGORITHM.to_string(),
-        enc: AES_GCM_256_ALGORITHM.to_string(),
-        other_fields: Map::new(),
-    };
-
-    let aad = protected.generate_aad().context("Generate JWE AAD")?;
-
-    let tag = cipher
-        .encrypt_inout_detached(&nonce, &aad, payload_data.as_mut_slice().into())
-        .map_err(|e| anyhow!("AES encrypt Resource payload failed: {e}"))?;
-
-    let k_mod = URL_SAFE_NO_PAD
-        .decode(k_mod)
-        .context("base64 decode k_mod failed")?;
-    let n = BoxedUint::from_be_slice_vartime(&k_mod);
-    let k_exp = URL_SAFE_NO_PAD
-        .decode(k_exp)
-        .context("base64 decode k_exp failed")?;
-    let e = BoxedUint::from_be_slice_vartime(&k_exp);
-
-    let rsa_pub_key =
-        PublicKey::new(n, e).context("Building RSA key from modulus and exponent failed")?;
-    let encrypted_key = rsa_pub_key
-        .encrypt(&mut SysRng, Pkcs1v15Encrypt, aes_sym_key.as_slice())
-        .context("RSA encrypt sym key failed")?;
-
-    Ok(Response {
-        protected,
-        encrypted_key,
-        iv: iv.into(),
-        ciphertext: payload_data,
-        aad: None,
-        tag: tag.to_vec(),
-    })
-}
 
 /// Use RSA-OAEP SHA-256 to encrypt the payload data.
 fn rsa_oaep256(k_mod: String, k_exp: String, mut payload_data: Vec<u8>) -> Result<Response> {
@@ -338,8 +284,6 @@ fn ecdh_es_a256kw_p521(x: String, y: String, mut payload_data: Vec<u8>) -> Resul
 pub fn jwe(tee_pub_key: TeePubKey, payload_data: Vec<u8>) -> Result<Response> {
     match tee_pub_key {
         TeePubKey::RSA { alg, k_mod, k_exp } => match &alg[..] {
-            #[allow(deprecated)]
-            RSA1_5_ALGORITHM => rsa_1v15(k_mod, k_exp, payload_data),
             RSA_OAEP256_ALGORITHM => rsa_oaep256(k_mod, k_exp, payload_data),
             others => bail!("algorithm {others} is not supported"),
         },
@@ -378,52 +322,9 @@ mod tests {
 
     use crate::jwe::{
         AES_GCM_256_ALGORITHM, ECDH_ES_A256KW, P256_CURVE, P521_CURVE, RSA_OAEP256_ALGORITHM,
-        RSA1_5_ALGORITHM,
     };
 
     use super::jwe;
-
-    #[allow(deprecated)]
-    #[test]
-    fn jwe_rsav15_compatibility() {
-        let test_data = b"this is a test data";
-
-        // Generate a 4096-bit RSA key pair
-        let rsa_key = Rsa::generate(4096).unwrap();
-        let k_mod = URL_SAFE_NO_PAD.encode(rsa_key.n().to_vec());
-        let k_exp = URL_SAFE_NO_PAD.encode(rsa_key.e().to_vec());
-        let tee_key = TeePubKey::RSA {
-            alg: RSA1_5_ALGORITHM.into(),
-            k_mod,
-            k_exp,
-        };
-
-        // Generate a JWE response
-        let response = jwe(tee_key, test_data.to_vec()).unwrap();
-        let response_string = serde_json::to_string(&response).unwrap();
-
-        // Decrypt with josekit crate
-        let decrypter = josekit::jwe::alg::rsaes::RsaesJweAlgorithm::Rsa1_5
-            .decrypter_from_pem(rsa_key.private_key_to_pem().unwrap())
-            .unwrap();
-        let mut header = JweHeader::new();
-        header.set_token_type("JWT");
-        header.set_content_encryption(AES_GCM_256_ALGORITHM);
-        let context = JweContext::new();
-        let (decrypted_data, header) = context
-            .deserialize_json(&response_string, &decrypter)
-            .unwrap();
-        assert_eq!(decrypted_data, test_data);
-
-        let mut jwe_header = JweHeader::new();
-        jwe_header
-            .set_claim("alg", Some(RSA1_5_ALGORITHM.into()))
-            .unwrap();
-        jwe_header
-            .set_claim("enc", Some(AES_GCM_256_ALGORITHM.into()))
-            .unwrap();
-        assert_eq!(header, jwe_header);
-    }
 
     #[test]
     fn jwe_rsa_oaep_compatibility() {
