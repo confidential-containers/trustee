@@ -22,7 +22,7 @@ RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
     rustup target add ${RUSTC_TARGET}; fi; \
     cargo install --bin rvps --path rvps ${TARGET_FLAG} --locked
 
-FROM debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
+FROM debian:latest@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/rvps"
 

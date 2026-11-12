@@ -2,10 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-# rust:1.95.0
-FROM --platform=${BUILDPLATFORM:-linux/amd64} \
-    docker.io/library/rust@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 \
-    AS builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:1.95.0@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 AS builder
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier
 
@@ -48,8 +45,7 @@ RUN if [ "$(uname -m)" != "${ARCH}" ]; then \
     rustup target add ${RUSTC_TARGET}; fi; \
     cargo install --path attestation-service --bin grpc-as --features grpc-bin,${VERIFIER},nvidia-nvat --locked ${TARGET_FLAG}
 
-# ubuntu:24.04
-FROM ubuntu@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+FROM ubuntu:24.04@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
 ARG ARCH=x86_64
 ARG VERIFIER=all-verifier
 
