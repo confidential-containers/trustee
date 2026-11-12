@@ -35,7 +35,6 @@ corim-rs = { git = "https://github.com/veraison/corim-rs", rev = "8d297d090521e1
 serde.workspace = true
 serde_json.workspace = true
 shadow-rs = { workspace = true, optional = true }
-sled = "0.34.7"
 strum.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
