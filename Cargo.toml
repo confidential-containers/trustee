@@ -19,7 +19,7 @@ authors = ["The Confidential Container Authors"]
 description = "Confidential Container Tools and Components for the tenant side"
 documentation = "https://github.com/confidential-containers/kbs"
 edition = "2024"
-rust-version = "1.93.1"
+rust-version = "1.94.1"
 
 [workspace.dependencies]
 actix-web = "4"
