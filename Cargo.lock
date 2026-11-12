@@ -573,7 +573,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attestation-agent"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -651,7 +651,7 @@ dependencies = [
 [[package]]
 name = "attester"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2120,7 +2120,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -4553,7 +4553,7 @@ dependencies = [
 [[package]]
 name = "kbs_protocol"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4627,7 +4627,7 @@ dependencies = [
 [[package]]
 name = "kms"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6025,7 +6025,7 @@ dependencies = [
 [[package]]
 name = "protos"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "prost",
  "tonic",
@@ -6597,7 +6597,7 @@ dependencies = [
 [[package]]
 name = "resource_uri"
 version = "0.1.0"
-source = "git+https://github.com/confidential-containers/guest-components.git?rev=d12449fe2d41a6b436f1c760c4df0e8bf6a27126#d12449fe2d41a6b436f1c760c4df0e8bf6a27126"
+source = "git+https://github.com/confidential-containers/guest-components.git?rev=6e9cfc043093ccf0abab1336aca07f546fc461ba#6e9cfc043093ccf0abab1336aca07f546fc461ba"
 dependencies = [
  "anyhow",
  "serde",
