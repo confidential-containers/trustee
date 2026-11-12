@@ -19,6 +19,27 @@ updates:
     cooldown:
       default-days: 7
 
+  - package-ecosystem: "docker"
+    directories:
+      - "/attestation-service/docker/as-grpc"
+      - "/attestation-service/docker/as-restful"
+      - "/kbs/docker"
+      - "/kbs/docker/coco-as-grpc"
+      - "/kbs/docker/intel-trust-authority"
+      - "/kbs/docker/kbs-client"
+      - "/kbs/docker/kbs-client-image"
+      - "/kbs/docker/rhel-ubi"
+      - "/rvps/docker"
+      - "/tools/trustee-cli"
+    schedule:
+      interval: "monthly"
+    groups:
+      docker:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
