@@ -28,8 +28,9 @@ strive to minimize it.
 
 The project is packaged and distributed downstream. Trustee doesn't provide machine-enforcable
 schemas for all its payloads and protocols yet, but we strive to avoid breakage for consumers
-when iterating. If it's unavoidable, we point it out expclicitly in commit messages, so it
-can be tracked and aggregated in release notes.
+when iterating. If it's unavoidable, we point it out explicitly in the commit message and the
+PR description, and the PR has to be labeled `BREAKING-CHANGE`, so it is listed in a separate
+section of the generated release notes.
 
 ## Relationship to Guest Components
 
