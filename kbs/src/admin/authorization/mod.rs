@@ -8,9 +8,9 @@ use actix_web::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::admin::{
+    AuthorizationDecision, Claims,
     authorization::regex_acl::{RegexAclAuthorizer, RegexAclConfig},
     error::*,
-    AuthorizationDecision, Claims,
 };
 
 pub mod regex_acl;

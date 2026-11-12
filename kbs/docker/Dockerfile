@@ -44,11 +44,25 @@ RUN if [ "${ARCH}" = "x86_64" ]; then curl -fsSL https://download.01.org/intel-s
     if [ "${ARCH}" = "x86_64" ]; then apt-get install -y --no-install-recommends \
     libsgx-dcap-quote-verify-dev; fi
 
+# Install libnvat from NVIDIA's apt repository
+ARG NVAT=true
+ARG NVAT_VERSION=2.0.0
+ENV NVAT_USE_SYSTEM_LIB=1
+RUN mkdir -p /opt/nvat-lib && if [ "${ARCH}" = "x86_64" ] && [ "${NVAT}" = "true" ]; then \
+    curl -fsSL -o /tmp/cuda-keyring.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i /tmp/cuda-keyring.deb && \
+    # Allow NVIDIA SHA-1 keys
+    mkdir -p /etc/crypto-policies/back-ends && \
+    printf '[hash_algorithms]\nsha1.second_preimage_resistance = 2028-02-01\n' > /etc/crypto-policies/back-ends/apt-sequoia.config && \
+    apt-get update && apt-get install --no-install-recommends -y "libnvat-dev=${NVAT_VERSION}*" && \
+    cp -a /usr/lib/x86_64-linux-gnu/libnvat.so* /opt/nvat-lib/ && \
+    rm -rf /tmp/cuda-keyring.deb; fi
+
 # Build and Install KBS
 WORKDIR /usr/src/trustee
 COPY . .
 
-RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} AWS=${AWS} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
+RUN cd kbs && make AS_FEATURE=coco-as-builtin FEATURES=pkcs11 ALIYUN=${ALIYUN} ARCH=${ARCH} VAULT=${VAULT} GCP=${GCP} AWS=${AWS} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} NVAT=${NVAT} && \
     make ARCH=${ARCH} install-kbs
 
 # ubuntu:24.04
@@ -77,5 +91,14 @@ RUN apt-get update && \
     fi && \
     apt clean all && \
     rm -rf /tmp/*
+
+# Install libnvat
+ARG NVAT=true
+COPY --from=builder /opt/nvat-lib/ /usr/local/lib/
+RUN if [ "${ARCH}" = "x86_64" ] && [ "${NVAT}" = "true" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends libcurl4 libxml2 libxmlsec1-openssl && \
+    ldconfig && \
+    apt clean all && \
+    rm -rf /var/lib/apt/lists/* /tmp/*; fi
 
 COPY --from=builder /usr/local/bin/kbs /usr/local/bin/kbs

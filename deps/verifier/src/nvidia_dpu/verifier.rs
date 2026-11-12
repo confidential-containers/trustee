@@ -13,9 +13,9 @@
 //! Note: report_data freshness binding is handled in the parent module (`mod.rs`)
 //! via `verify_report_data_binding()`, not in this file.
 
-use anyhow::{anyhow, bail, Context, Result};
-use p384::ecdsa::{signature::Verifier, Signature, VerifyingKey};
+use anyhow::{Context, Result, anyhow, bail};
 use p384::PublicKey;
+use p384::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tracing::debug;

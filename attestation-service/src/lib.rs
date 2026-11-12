@@ -13,7 +13,7 @@ pub use kbs_types::{Attestation, HashAlgorithm, Tee};
 use key_value_storage::KeyValueStorageError;
 pub use serde_json::Value;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use config::Config;
 use jsonwebtoken::jwk::JwkSet;
 use key_value_storage::StorageProvider;
@@ -373,24 +373,23 @@ fn parse_init_data(data: Option<InitDataInput>) -> Result<(Option<Vec<u8>>, Valu
                 // Transform certain claims from toml to json if they exist and are toml.
                 if let Value::Object(ref mut map) = claims {
                     for key in ["cdh.toml", "aa.toml"] {
-                        if let Some(Value::String(toml_str)) = map.get(key).cloned() {
-                            if let Ok(toml_value) = toml::from_str::<toml::Value>(&toml_str) {
-                                if let Ok(json_value) = serde_json::to_value(toml_value) {
-                                    map.insert(key.to_string(), json_value);
-                                }
-                            }
+                        if let Some(Value::String(toml_str)) = map.get(key).cloned()
+                            && let Ok(toml_value) = toml::from_str::<toml::Value>(&toml_str)
+                            && let Ok(json_value) = serde_json::to_value(toml_value)
+                        {
+                            map.insert(key.to_string(), json_value);
                         }
                     }
 
                     // If there is a policy rego file, replace the full policy file
                     // with some claims extracted from the file.
-                    if let Some(Value::String(rego_str)) = map.get("policy.rego").cloned() {
-                        if let Some(policy_data) = extract_policy_data(&rego_str) {
-                            // Since we found some policy claims, remove the original
-                            // policy rego from the claims.
-                            map.remove("policy.rego");
-                            map.insert("agent_policy_claims".to_string(), policy_data);
-                        }
+                    if let Some(Value::String(rego_str)) = map.get("policy.rego").cloned()
+                        && let Some(policy_data) = extract_policy_data(&rego_str)
+                    {
+                        // Since we found some policy claims, remove the original
+                        // policy rego from the claims.
+                        map.remove("policy.rego");
+                        map.insert("agent_policy_claims".to_string(), policy_data);
                     }
                 }
                 Ok((Some(digest), claims))
@@ -420,7 +419,7 @@ fn extract_policy_data(rego_content: &str) -> Option<Value> {
 mod tests {
     use assert_json_diff::assert_json_eq;
     use rstest::rstest;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use crate::{HashAlgorithm, RuntimeData};
 

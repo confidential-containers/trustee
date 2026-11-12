@@ -12,6 +12,7 @@ use core::result::Result::Ok;
 use ear::Ear;
 use std::str;
 use tracing::{debug, error};
+use veraison_apiclient::http::ConfigureHttp;
 
 const MEDIA_TYPE: &str = r#"application/eat-collection; profile="http://arm.com/CCA-SSD/1.0.0""#;
 

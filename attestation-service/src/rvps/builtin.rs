@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use core::result::Result::Ok;
 use key_value_storage::{KeyValueStorageType, StorageProvider};
 use reference_value_provider_service::{
-    extractors::ExtractorsConfig, Rvps, REFERENCE_VALUE_STORAGE_NAMESPACE,
+    REFERENCE_VALUE_STORAGE_NAMESPACE, Rvps, extractors::ExtractorsConfig,
 };
 use serde_json::Value;
 use std::sync::Arc;

@@ -108,15 +108,16 @@ A complete working example is in
 | Field | Type | Description |
 |---|---|---|
 | `body` | bytes | Response body returned to the caller |
-| `status_code` | int32 | HTTP status hint. `0` or `2xx` returns the body as-is. Non-2xx causes KBS to treat the call as a plugin error (caller receives 401) |
+| `status_code` | int32 | HTTP status hint. `0` or `2xx` returns the body as-is. `404` makes the caller receive 404. Any other non-2xx is treated as a plugin error (caller receives 401) |
 | `content_type` | string | Reserved for future use; currently ignored by KBS |
 
 ### Error Handling
 
-Plugin errors (gRPC failures, non-2xx `status_code`, or unregistered backend
-name) result in a `401 Unauthorized` response to the caller. Error details are
-logged server-side. This follows the KBS protocol convention that plugin errors
-yield 401 responses.
+A missing backend name in the path, an unregistered backend name, a gRPC
+`NOT_FOUND` status, or a `status_code` of `404` result in a `404 Not Found`
+response to the caller. All other plugin errors (gRPC failures or other non-2xx
+`status_code` values) result in `401 Unauthorized`. Error details are logged
+server-side.
 
 ---
 
@@ -253,8 +254,8 @@ it. Verify cert paths exist and are readable.
 
 **401 on requests**
 
-All plugin errors (gRPC failures, plugin returning non-2xx, unregistered
-sub-backend name) result in 401. Check the KBS server log for the specific
+Plugin errors other than not-found (gRPC failures, plugin returning a non-2xx
+status other than 404) result in 401. Check the KBS server log for the specific
 error message, which is logged at ERROR level alongside the request.
 
 **404 on requests**
@@ -263,7 +264,9 @@ error message, which is logged at ERROR level alongside the request.
 GET /kbs/v0/external/my-plugin/test -> 404 Not Found
 ```
 
-No plugin registered with the name `external`. Check `kbs-config.toml` for a
+Either the sub-backend name (`my-plugin` here) is not configured under the
+`external` plugin, the backend itself reported not-found, or no plugin is
+registered with the name `external`. Check `kbs-config.toml` for a
 `[[plugins]]` entry with `name = "external"`. If the binary was built with
 `EXTERNAL_PLUGIN=false` (or `--no-default-features` without `external-plugin`),
 that entry is not recognised at all and KBS fails to parse the config.

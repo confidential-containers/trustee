@@ -10,12 +10,13 @@
 //! * [PKCS_11 Base Specification v3.0](<https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/os/pkcs11-base-v3.0-os.html>)
 use crate::plugins::resource::{ResourceDesc, StorageBackend};
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use cryptoki::{
     context::{CInitializeArgs, CInitializeFlags, Pkcs11},
+    error::{Error, RvError},
     mechanism::{
-        rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
         Mechanism, MechanismType,
+        rsa::{PkcsMgfType, PkcsOaepParams, PkcsOaepSource},
     },
     object::{Attribute, AttributeInfo, AttributeType, KeyType, ObjectClass},
     session::{Session, UserType},
@@ -26,7 +27,7 @@ use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginError, PluginResult};
 
 /// Enum representing supported RSA mechanisms.
 #[derive(Educe, Deserialize, Clone, PartialEq, Default)]
@@ -95,9 +96,10 @@ impl TryFrom<Pkcs11Config> for Pkcs11Backend {
     fn try_from(config: Pkcs11Config) -> anyhow::Result<Self> {
         let rsa_mechanism = Arc::new(config.rsa_mechanism);
         let pkcs11 = Pkcs11::new(config.module).context("unable to open pkcs11 module")?;
-        pkcs11
-            .initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK))
-            .unwrap();
+        match pkcs11.initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK)) {
+            Ok(()) | Err(Error::Pkcs11(RvError::CryptokiAlreadyInitialized, _)) => {}
+            Err(e) => return Err(e).context("unable to initialize pkcs11 module"),
+        }
 
         let slots = pkcs11.get_slots_with_token()?;
         let slot_index = usize::from(config.slot_index);
@@ -129,16 +131,17 @@ impl ClientPlugin for Pkcs11Backend {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+        _trustee_extensions: &HashMap<String, serde_json::Value>,
+    ) -> PluginResult<Vec<u8>> {
         let desc = path.join("/");
 
         match &desc[..] {
-            "wrap-key" => self.wrap_key_handle(body, method).await,
+            "wrap-key" => Ok(self.wrap_key_handle(body, method).await?),
             _ => {
                 let (action, params) = desc.split_once('/').context("accessed path is invalid")?;
                 match action {
                     "resource" => self.resource_handle(params, body, method).await,
-                    _ => bail!("invalid path"),
+                    _ => Err(anyhow!("invalid path").into()),
                 }
             }
         }
@@ -150,11 +153,11 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         _path: &[&str],
         method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         match *method {
             Method::GET => Ok(false),
             Method::POST | Method::DELETE => Ok(true),
-            _ => bail!("invalid method"),
+            _ => Err(anyhow!("invalid method").into()),
         }
     }
 
@@ -164,30 +167,36 @@ impl ClientPlugin for Pkcs11Backend {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(true)
     }
 }
 
 #[async_trait::async_trait]
 impl StorageBackend for Pkcs11Backend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         let session = self.session.lock().await;
 
         // find object with matching label
         let attributes = vec![Attribute::Label(Vec::from(resource_desc.to_string()))];
-        let objects = session.find_objects(&attributes)?;
+        let objects = session
+            .find_objects(&attributes)
+            .context("unable to find objects")?;
 
         if objects.is_empty() {
-            bail!("Could not find object with label {}", resource_desc);
+            return Err(PluginError::NotFound(format!(
+                "Could not find object with label {resource_desc}"
+            )));
         }
         let object = objects[0];
 
         // check that object has a readable value attribute
         let value_attribute = vec![AttributeType::Value];
-        let attribute_map = session.get_attribute_info_map(object, &value_attribute)?;
+        let attribute_map = session
+            .get_attribute_info_map(object, &value_attribute)
+            .context("unable to fetch attribute info")?;
         let Some(AttributeInfo::Available(_size)) = attribute_map.get(&AttributeType::Value) else {
-            bail!("Key does not have value attribute available.");
+            return Err(anyhow!("Key does not have value attribute available.").into());
         };
 
         // get the value
@@ -198,7 +207,7 @@ impl StorageBackend for Pkcs11Backend {
         let value = value.first().ok_or(anyhow!("empty attributes returned"))?;
 
         let Attribute::Value(resource_bytes) = value else {
-            bail!("Failed to get value.");
+            return Err(anyhow!("Failed to get value.").into());
         };
 
         Ok(resource_bytes.clone())
@@ -238,7 +247,12 @@ impl StorageBackend for Pkcs11Backend {
 }
 
 impl Pkcs11Backend {
-    async fn resource_handle(&self, tag: &str, body: &[u8], method: &Method) -> Result<Vec<u8>> {
+    async fn resource_handle(
+        &self,
+        tag: &str,
+        body: &[u8],
+        method: &Method,
+    ) -> PluginResult<Vec<u8>> {
         let tag = ResourceDesc::try_from(tag).context("invalid path")?;
 
         match *method {
@@ -251,7 +265,9 @@ impl Pkcs11Backend {
                 self.delete_secret_resource(tag).await?;
                 Ok(vec![])
             }
-            _ => bail!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`"),
+            _ => {
+                Err(anyhow!("Illegal HTTP method. Only supports `GET`, `POST` and `DELETE`").into())
+            }
         }
     }
 
@@ -329,9 +345,9 @@ mod tests {
     use serial_test::serial;
     use std::process::Command;
 
-    static LOOKUP_LABEL: &'static str = "trustee-test";
-    static HSM_USER_PIN: &'static str = "12345678";
-    static SOFTHSM_PATH: &'static str = "/usr/lib/softhsm/libsofthsm2.so";
+    static LOOKUP_LABEL: &str = "trustee-test";
+    static HSM_USER_PIN: &str = "12345678";
+    static SOFTHSM_PATH: &str = "/usr/lib/softhsm/libsofthsm2.so";
 
     async fn before_test() {
         let status = Command::new("bash")

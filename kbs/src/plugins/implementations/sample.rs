@@ -7,10 +7,9 @@
 use std::collections::HashMap;
 
 use actix_web::http::Method;
-use anyhow::Result;
 use serde::Deserialize;
 
-use super::super::plugin_manager::ClientPlugin;
+use super::super::plugin_manager::{ClientPlugin, PluginResult};
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct SampleConfig {
@@ -38,7 +37,8 @@ impl ClientPlugin for Sample {
         _path: &[&str],
         _method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+        _trustee_extensions: &HashMap<String, serde_json::Value>,
+    ) -> PluginResult<Vec<u8>> {
         Ok("sample plugin response".as_bytes().to_vec())
     }
 
@@ -48,7 +48,7 @@ impl ClientPlugin for Sample {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(true)
     }
 
@@ -61,7 +61,7 @@ impl ClientPlugin for Sample {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(false)
     }
 }

@@ -8,17 +8,26 @@ in the attestation token.
 
 ## Claims Data Format
 
-Policy input is a JSON object composed from verifier output. In most cases, it follows this shape:
+Policy input (passed to AS Rego via `TransformedClaims::policy_input_json`)
+is a JSON object composed from verifier output. In most cases, it follows this shape:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
 | `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
 | `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
-| `init_data_claims` | object | Parsed init-data claims (present when init-data is provided and verified) |
-| `runtime_data_claims` | object | Parsed runtime-data claims (present when report-data is provided and verified) |
+| `init_data_claims` | object | Parsed init-data claims (present when init-data plaintext is provided and verified, omitted otherwise) |
+| `runtime_data_claims` | object | Parsed runtime-data claims (present when structured report-data is provided and verified, omitted otherwise) |
 
 `<tee-name>` matches the serialized [`Tee`](https://docs.rs/kbs-types/latest/kbs_types/enum.Tee.html) variant string (for example `az-tdx-vtpm`, not `az_tdx_vtpm`). In Rego, hyphenated keys must use bracket syntax, e.g. `input["az-tdx-vtpm"]`.
+
+On the issued EAR token (draft-04), the same data is split by authority:
+
+| Policy input | Token claim |
+| --- | --- |
+| `<tee-name>` | `ear_attester_claims.tee` + `ear_attester_claims.claims` |
+| raw `report_data`, raw `init_data` | `ear_attester_claims.report_data` / `.init_data` |
+| `runtime_data_claims`, `init_data_claims` | `ear_verifier_claims.runtime_data` / `.init_data` |
 
 Minimal example:
 
@@ -89,10 +98,18 @@ The following fields always exist.
 - `tdx.quote.size`: **Optional**. String (hex for 4 bytes). Quote body length. Only quote format V5 contains this field.
 - `tdx.td_attributes`: Object. Translated flags for `tdx.quote.body.td_attributes`.
   - `tdx.td_attributes.debug`: Boolean. Indicates whether the TD runs in TD debug mode (set to 1) or not (set to 0). In TD debug mode, the CPU state and private memory are accessible by the host VMM.
+  - `tdx.td_attributes.hgs_plus_prof`: Boolean. Indicates whether the TD is subject to HGS+ operation, which monitors the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.icssd`: Boolean. Indicates whether the TDX Module must use Instruction-Count-based Single-Step Defense to protect the TD against single-step attacks. This flag may only be set when the TDX Module supports ICSSD.
   - `tdx.td_attributes.key_locker`: Boolean. Indicates whether the TD is allowed to use Key Locker.
-  - `tdx.td_attributes.perfmon`: Boolean. Indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities.
-  - `tdx.td_attributes.protection_keys`: Boolean. Indicates whether the TD is allowed to use Supervisor Protection Keys.
+  - `tdx.td_attributes.lass`: Boolean. Indicates whether the TD is allowed to use Linear Address Space Separation. This flag may only be set when both the TDX Module and CPU support LASS.
+  - `tdx.td_attributes.migratable`: Boolean. Indicates whether the TD is migratable using a Migration TD. This flag may only be set when the TDX Module supports TD Migration.
+  - `tdx.td_attributes.perf_prof`: Boolean. Indicates whether the TD is subject to system profiling using performance-monitoring counters. These counters are not context-switched on TD entry and exit and monitor the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.perfmon`: Boolean. Indicates whether the TD is allowed to use Perfmon and PERF_METRICS capabilities. This flag may only be set when the TDX Module supports Performance Monitoring virtualization.
+  - `tdx.td_attributes.pmt_prof`: Boolean. Indicates whether the TD is subject to system profiling using core out-of-band telemetry, which monitors the TD as part of the whole system. This flag may be set when supported by the TDX Module, regardless of CPU support.
+  - `tdx.td_attributes.protection_keys`: Boolean. Indicates whether the TD is allowed to use Supervisor Protection Keys. This flag may only be set when both the TDX Module and CPU support PKS.
   - `tdx.td_attributes.septve_disable`: Boolean. Determines whether to disable EPT violation conversion to #VE on TD access of PENDING pages.
+  - `tdx.td_attributes.servtd_ext`: Boolean. Indicates whether `TDREPORT_STRUCT` contains a hash of `SERVTD_EXT_STRUCT` instead of `SERVTD_HASH`.
+  - `tdx.td_attributes.tpa`: Boolean. Indicates whether the TD is a TDX Connect Provisioning Agent. This flag may only be set when both the TDX Module and CPU support TDX Connect.
 - `tdx.advisory_ids`: String List. Intel® Product Security Center Advisories.
 - `tdx.collateral_expiration_status`: String. If none of the inputted collateral has expired as compared to the inputted `expiration_check_date`, it should be `"0"`.
 - `tdx.earliest_expiration_date`: String. Date time value in RFC3339 format - The earliest nextUpdate value, or expiration date, among all collaterals.
@@ -160,6 +177,7 @@ The following fields report the TD's current TCB level, as opposed to the level 
 - `["az-tdx-vtpm"].tpm`: Object. TPM PCR values.
   - `["az-tdx-vtpm"].tpm.pcr{01,..,n}`: String (hex). SHA256 PCR registers for the TEE's vTPM quote.
   - `["az-tdx-vtpm"].tpm.init_data`: **Optional**. String (hex). The register used as initdata digest (PCR 8).
+- `["az-tdx-vtpm"].uefi_event_logs`: **Optional**. Parsed per-event AAEL (Attestation Agent Eventlog) entries, present when the guest recorded runtime measurements (e.g. container image pulls). Replayed and matched against the PCR register each event actually targeted before being surfaced.
 
 > [!NOTE]
 > The TD Report and TD Quote are fetched during early boot in this TEE. Kernel, Initrd and rootfs are measured into the vTPM's registers.
@@ -189,7 +207,7 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 
 - `cca.realm`: Object. CCA Realm token claims.
   - `cca.realm.cca_realm_personalization_value`: String (Base64 Standard). Per Realm defined personalized value.
-  - `cca.realm.cca_realm_initial_measurement`: String (Base64 Standard). The initial measurement of the Realm.
+  - `cca.realm.cca_realm_initial_measurement`: String (hex). The initial measurement of the Realm.
   - `cca.realm.cca_realm_extensible_measurements`: String list. The extensible measurements of the Realm.
     - `cca.realm.cca_realm_extensible_measurements[i]`: String (Base64 Standard). The i-th extensible measurement of the Realm.
   - `cca.realm.cca_realm_hash_algo_id`: String (Base64 Standard). RMI hash algorithm.
@@ -197,12 +215,12 @@ CCA claims are grouped into `cca.realm` and `cca.platform`:
 - `cca.platform`: Object. CCA Platform token claims.
   - `cca.platform.cca_platform_instance_id`: String (Base64 Standard). Hardware platform instance ID.
   - `cca.platform.cca_platform_implementation_id`: String (Base64 Standard). Hardware implementation ID.
-- `cca.report_data`: String (Base64 Standard). report data derived from realm challenge
-- `cca.init_data`: String (Base64 Standard). init data digest field, the same as `cca.realm.cca_realm_personalization_value`.
+- `cca.report_data`: String (hex). report data derived from realm challenge
+- `cca.init_data`: String (hex). init data digest field, the same as `cca.realm.cca_realm_personalization_value`.
 
 ## NVIDIA
 
-The local verifier only supports Hopper and returns the following claims.
+The local verifier mode only supports Hopper and returns the following claims.
 
 - `arch`: Device architecture. Only `Hopper` is supported
 - `measurements`: List of measurements and its respective index
@@ -222,9 +240,14 @@ The local verifier only supports Hopper and returns the following claims.
 - `config.protected_pcie_status`: Protected PCIe status
 - `config.vbios_version`: Device VBIOS version
 
-The remote verifier exports the claims that come from NRAS, which are listed [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
-Claims version 3 is used. The `x-nvidia-overall-att-result` from the overall claims is included
+The `Remote`, `NvRemote` and `NvLocal` verifier modes all emit the same claims,
+which are based on the NRAS attestation token.
+See claims v3 [here](https://docs.nvidia.com/attestation/advanced-documentation/latest/claims-guide/gpu_claims.html).
+The `x-nvidia-overall-att-result` from the overall claims is included
 along with the full set of detached claims.
+
+The NVAT verifiers will not produce any claims if the overall attestation result
+is not positive, whereas the `remote` verifier will.
 
 ## NVIDIA DPU (DICE)
 

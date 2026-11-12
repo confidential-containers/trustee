@@ -5,7 +5,7 @@
 
 use super::{EventDataParser, EventDetails};
 use crate::ccel::device_paths::DevicePath;
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub struct EvBootServicesAppParser;
 

@@ -9,7 +9,7 @@
 //! want join an encrypted Nebula overlay network. More information can
 //! be found in the [plugin](#kbs/docs/plugins/nebula_ca.md) documentation.
 use actix_web::http::Method;
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use semver::{Version, VersionReq};
 use std::{
     collections::HashMap,
@@ -20,7 +20,7 @@ use std::{
 };
 use tempfile::tempdir_in;
 
-use crate::plugins::plugin_manager::ClientPlugin;
+use crate::plugins::plugin_manager::{ClientPlugin, PluginResult};
 
 /// Default Nebula CA name
 const DEFAULT_NEBULA_CA_NAME: &str = "Trustee Nebula CA plugin";
@@ -402,12 +402,13 @@ impl ClientPlugin for NebulaCaPlugin {
         path: &[&str],
         method: &Method,
         _init_data: Option<&serde_json::Value>,
-    ) -> Result<Vec<u8>> {
+        _trustee_extensions: &HashMap<String, serde_json::Value>,
+    ) -> PluginResult<Vec<u8>> {
         if path.len() != 1 {
-            bail!("Illegal path. Only one path segment is supported");
+            return Err(anyhow!("Illegal path. Only one path segment is supported").into());
         }
         if method.as_str() != "GET" {
-            bail!("Illegal HTTP method. Only GET is supported");
+            return Err(anyhow!("Illegal HTTP method. Only GET is supported").into());
         }
 
         // The Nebula CA plugin is stateless, so none of request types below should
@@ -418,7 +419,8 @@ impl ClientPlugin for NebulaCaPlugin {
             "credential" => {
                 let params = NebulaCredentialParams::try_from(query)?;
 
-                let credential_dir = tempdir_in(self.work_dir.as_path())?;
+                let credential_dir = tempdir_in(self.work_dir.as_path())
+                    .context("failed to create credential directory")?;
                 let node_key: PathBuf = credential_dir.path().to_owned().join("node.key");
                 let node_crt: PathBuf = credential_dir.path().to_owned().join("node.crt");
 
@@ -426,7 +428,7 @@ impl ClientPlugin for NebulaCaPlugin {
                     .create_credential(node_key.as_path(), node_crt.as_path(), &params)
                     .await?;
 
-                Ok(serde_json::to_vec(&credential)?)
+                Ok(serde_json::to_vec(&credential).context("failed to serialize credential")?)
             }
             _ => Err(anyhow!("{} not supported", path[0]))?,
         }
@@ -438,7 +440,7 @@ impl ClientPlugin for NebulaCaPlugin {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(false)
     }
 
@@ -448,15 +450,16 @@ impl ClientPlugin for NebulaCaPlugin {
         _query: &HashMap<String, String>,
         _path: &[&str],
         _method: &Method,
-    ) -> Result<bool> {
+    ) -> PluginResult<bool> {
         Ok(true)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use actix_web::web::Query;
     use rstest::rstest;
-    use std::ffi::OsString;
+    use std::{collections::HashMap, ffi::OsString};
 
     use super::NebulaCredentialParams;
 
@@ -529,7 +532,8 @@ mod tests {
         #[case] query: &str,
         #[case] expected: Option<Vec<OsString>>,
     ) {
-        let credential_params = NebulaCredentialParams::try_from(query);
+        let query = Query::<HashMap<String, String>>::from_query(query).unwrap();
+        let credential_params = NebulaCredentialParams::try_from(&*query);
         if expected.is_none() {
             assert!(credential_params.is_err())
         } else {

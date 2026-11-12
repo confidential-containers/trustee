@@ -2,15 +2,15 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, Result};
-use base64::{engine::general_purpose::STANDARD, Engine};
+use anyhow::{Result, anyhow, bail};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::json;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness, init_tracing};
 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
@@ -77,7 +77,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data\"] == \"{init_data_hash}\"
+    input[\"submods\"][\"cpu0\"][\"ear_attester_claims\"][\"init_data\"] == \"{init_data_hash}\"
 }
 ";
 
@@ -122,7 +122,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0] == \"-----BEGIN CERTIFICATE-----\\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\\n-----END CERTIFICATE-----\\n\"
+    input[\"submods\"][\"cpu0\"][\"ear_verifier_claims\"][\"init_data\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0] == \"-----BEGIN CERTIFICATE-----\\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\\n-----END CERTIFICATE-----\\n\"
 }
 ";
 
@@ -236,7 +236,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.veraison.annotated-evidence\"][\"init_data_claims\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
+    input[\"submods\"][\"cpu0\"][\"ear_verifier_claims\"][\"init_data\"][\"agent_policy_claims\"][\"containers\"][1][\"OCI\"][\"Process\"][\"Args\"][0] = \"/opt/bitnami/scripts/nginx/entrypoint.sh\"
 }
 ";
 
@@ -260,8 +260,11 @@ async fn check_validated_identifiers() -> Result<()> {
         .pointer("/submods/cpu0/ear.trustee.identifiers/validated")
         .ok_or(anyhow!("Could not find validated identifiers."))?;
 
-    let expected_identifiers =
-        json!({"container_images":["bitnami/nginx:latest"],"container_uids":[65535,1001]});
+    let expected_identifiers = json!({
+        "container_uids":[65535,1001],
+        "pod-image":["bitnami/nginx:latest"],
+        "pod-image-count":1,
+    });
 
     if *validated_identifiers == expected_identifiers {
         return Ok(());

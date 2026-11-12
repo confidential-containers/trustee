@@ -156,13 +156,27 @@ kbs:
     enabled: false
     # -- Secret containing the KBS HTTPS private key and certificate chain. Required when `enabled=true`.
     secretName: ""
+  # -- SPIRE plugin: delivers SPIFFE X.509-SVIDs to attested guests via an existing SPIRE
+  # deployment's Delegated Identity API. Requires a KBS image built with the `spire-plugin`
+  # cargo feature, and a cluster that already runs a SPIRE server + agent with the admin
+  # (Delegated Identity API) socket enabled and mounted on the host (this chart does not
+  # deploy SPIRE itself). See `scenarios/spire.yaml` and `kbs/docs/plugins/spire.md`.
+  spire:
+    # -- Enable the `spire` KBS plugin (renders a `[[plugins]] name = "spire"` block into the KBS config).
+    enabled: false
+    # -- Path to the SPIRE Agent admin (Delegated Identity API) socket, as seen
+    # inside the KBS container. Must be reachable, e.g. via a hostPath volume mount configured
+    # through `kbs.extraVolumes`/`kbs.extraVolumeMounts` (see `scenarios/spire.yaml`).
+    adminSocketPath: "/run/spire/sockets/admin.sock"
+    # -- Value used for the always-added `trustee:<value>` marker selector on every SVID request.
+    attestedSelectorValue: "true"
   image:
     # -- KBS container image repository.
-    repository: ghcr.io/confidential-containers/staged-images/kbs-grpc-as
+    repository: ghcr.io/confidential-containers/key-broker-service
     # -- KBS container image pull policy.
     pullPolicy: Always
     # -- KBS container image tag.
-    tag: "latest"
+    tag: "v0.22.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
@@ -204,19 +218,29 @@ as:
   replicaCount: 1
   image:
     # -- AS container image repository.
-    repository: ghcr.io/confidential-containers/staged-images/coco-as-grpc
+    repository: ghcr.io/confidential-containers/attestation-service
     # -- AS container image pull policy.
     pullPolicy: Always
     # -- AS container image tag.
-    tag: "latest"
+    tag: "v0.22.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   verifier:
     nvidia:
-      # -- NVIDIA verifier type: `Local` or `Remote`. When `Remote`, `verifierUrl` must be set.
+      # -- NVIDIA verifier type: `Local`, `Remote`, `NvLocal` or `NvRemote`. `NvLocal` and `NvRemote` are only available on x86_64.
       type: "Local"
-      # -- NRAS URL when `as.verifier.nvidia.type` is `Remote`.
+      # -- NRAS attestation endpoint (the `/v4/attest` path) when `as.verifier.nvidia.type` is `Remote`. Optional: if empty, the verifier uses its built-in default.
       verifierUrl: "https://nras.attestation.nvidia.com/v4/attest"
+      # -- NRAS base URL when `type` is `NvRemote`. Empty uses `https://nras.attestation.nvidia.com`.
+      nrasUrl: ""
+      # -- Remote RIM service base URL when `type` is `NvLocal`. Empty uses `https://rim.attestation.nvidia.com`.
+      rimUrl: ""
+      # -- Filesystem RIM store path when `type` is `NvLocal`. When set, used instead of `rimUrl`.
+      rimStorePath: ""
+      # -- OCSP service base URL when `type` is `NvLocal`. Empty uses `https://ocsp.ndis.nvidia.com`.
+      ocspUrl: ""
+      # -- NVIDIA cloud service key for `NvLocal`/`NvRemote`. Empty to omit.
+      serviceKey: ""
     dcap:
       # -- Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured.
       collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
@@ -256,6 +280,14 @@ as:
       # resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume
       # `nodeAffinity`.
       nodeName: ""
+      # -- Enable firmware hash verification against the IBM firmware attestation API.
+      # Only effective on z17 systems. When true, guests without a firmware hash are rejected.
+      enableFirmwareVerification: false
+      # -- IBM firmware attestation API URL. Optional: if left empty, the chart falls back to
+      # the built-in default (`https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify`),
+      # so firmware verification still works without setting this field. Only set it to
+      # override the endpoint (e.g. a custom or mirrored service).
+      firmwareVerifyUrl: ""
   service:
     # -- AS Service type (`ClusterIP` or `LoadBalancer`).
     type: ClusterIP
@@ -289,11 +321,11 @@ rvps:
   replicaCount: 1
   image:
     # -- RVPS container image repository.
-    repository: ghcr.io/confidential-containers/staged-images/rvps
+    repository: ghcr.io/confidential-containers/reference-value-provider-service
     # -- RVPS container image pull policy.
     pullPolicy: Always
     # -- RVPS container image tag.
-    tag: "latest"
+    tag: "v0.22.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:

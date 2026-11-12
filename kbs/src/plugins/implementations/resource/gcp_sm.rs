@@ -7,7 +7,8 @@
 // and the Aliyun KMS Instance secrets API that backs `aliyun_kms.rs`.
 
 use super::backend::{ResourceDesc, StorageBackend};
-use anyhow::{anyhow, bail, Context, Result};
+use crate::plugins::PluginResult;
+use anyhow::{Context, Result, anyhow, bail};
 use google_cloud_secretmanager_v1::client::SecretManagerService;
 use serde::Deserialize;
 use tracing::info;
@@ -41,7 +42,7 @@ fn secret_version_name(project_id: &str, secret: &str, version: &str) -> String 
 
 #[async_trait::async_trait]
 impl StorageBackend for GcpSmBackend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         info!(
             "Use GCP Secret Manager backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type
@@ -72,11 +73,15 @@ impl StorageBackend for GcpSmBackend {
         _resource_desc: ResourceDesc,
         _data: &[u8],
     ) -> Result<()> {
-        bail!("GCP Secret Manager backend does not support write operations; provision secrets via GCP APIs")
+        bail!(
+            "GCP Secret Manager backend does not support write operations; provision secrets via GCP APIs"
+        )
     }
 
     async fn delete_secret_resource(&self, _resource_desc: ResourceDesc) -> Result<()> {
-        bail!("GCP Secret Manager backend does not support delete operations; manage secret lifecycle via GCP APIs")
+        bail!(
+            "GCP Secret Manager backend does not support delete operations; manage secret lifecycle via GCP APIs"
+        )
     }
 }
 

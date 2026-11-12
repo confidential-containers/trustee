@@ -1,6 +1,6 @@
 self-hosted-runner:
   # Labels of self-hosted runner in array of string
   labels:
-    - ubuntu-24.04-s390x
+    - ubuntu-26.04-s390x
     - s390x-large
     - s390x

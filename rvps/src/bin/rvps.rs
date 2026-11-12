@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use shadow_rs::shadow;
 use tracing::{info, warn};
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::Subscriber};
 
 use reference_value_provider_service::config::Config;
 use reference_value_provider_service::server;

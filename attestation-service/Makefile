@@ -16,6 +16,12 @@ ifeq ($(RVPS_GRPC), true)
 	RVPS_FEATURES := rvps-grpc
 endif
 
+NVAT ?= true
+
+ifeq ($(NVAT), true)
+	NVAT_FEATURES := nvidia-nvat
+endif
+
 ifdef DEBUG
     release :=
     TARGET_DIR := $(TARGET_DIR)/debug
@@ -27,10 +33,10 @@ endif
 build: grpc-as restful-as
 
 grpc-as:
-	cargo build --bin grpc-as $(release) --features grpc-bin,$(VERIFIER),$(RVPS_FEATURES)
+	cargo build --bin grpc-as $(release) --features grpc-bin,$(VERIFIER),$(RVPS_FEATURES),$(NVAT_FEATURES)
 
 restful-as:
-	cargo build --bin restful-as $(release) --features restful-bin,$(VERIFIER),$(RVPS_FEATURES)
+	cargo build --bin restful-as $(release) --features restful-bin,$(VERIFIER),$(RVPS_FEATURES),$(NVAT_FEATURES)
 
 install:
 	for bin_name in $(BIN_NAMES); do \

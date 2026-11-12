@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - instance: ubuntu-24.04
-            test_features: "pkcs11,pqc-experimental"
+            test_features: "pkcs11,pqc-experimental,spire-plugin,nebula-ca-plugin,coco-as-nvidia-nvat"
           - instance: ubuntu-24.04-arm
             test_features: "coco-as-builtin,coco-as-grpc,intel-trust-authority-as,cca-attester,pkcs11"
           - instance: s390x-large
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           components: rustfmt, clippy
 
@@ -68,6 +68,9 @@ jobs:
           echo "directories.tokendir = ${RUNNER_TEMP}/softhsm/tokens" > "${RUNNER_TEMP}/softhsm/softhsm2.conf"
           export SOFTHSM2_CONF="${RUNNER_TEMP}/softhsm/softhsm2.conf"
           softhsm2-util --init-token --free --label "Trustee pkcs11 test" --so-pin 12345678 --pin 12345678
+
+      - name: Install NVIDIA Attestation SDK
+        uses: $/.github/actions/install-nvat-sdk
 
       - name: Run KBS lint/format/test
         timeout-minutes: 10
@@ -102,13 +105,16 @@ jobs:
           sudo apt-get install -y libsgx-dcap-quote-verify-dev
 
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           components: rustfmt, clippy
 
       - name: OPA policy.rego fmt and check
         working-directory: attestation-service
         run: make opa-check
+
+      - name: Install NVIDIA Attestation SDK
+        uses: $/.github/actions/install-nvat-sdk
 
       - name: Run fmt/clippy/test
         run: make test-as-unit
@@ -131,7 +137,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
           components: rustfmt, clippy
 
@@ -149,4 +155,77 @@ jobs:
 
       - name: Run trustee CLI lint/format/test
         run: make test-trustee-cli-unit
+
+  msrv:
+    name: Check workspace MSRV
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read MSRV
+        id: msrv
+        run: |
+          version="$(sed -n 's/^rust-version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)"
+          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Cargo.toml workspace rust-version must be x.y.z, got '${version}'" >&2
+            exit 1
+          fi
+          echo "msrv=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          toolchain: ${{ steps.msrv.outputs.msrv }}
+          cache-key: msrv
+
+      - name: Building dependencies installation
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev libtss2-dev
+          curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor --output /usr/share/keyrings/intel-sgx.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+          sudo apt-get update
+          sudo apt-get install -y libsgx-dcap-quote-verify-dev
+
+      - name: Install NVIDIA Attestation SDK
+        uses: $/.github/actions/install-nvat-sdk
+
+      - name: Confirm rustc matches rust-version
+        env:
+          MSRV: ${{ steps.msrv.outputs.msrv }}
+        run: |
+          actual="$(rustc --version | awk '{print $2}')"
+          if [ "${actual}" != "${MSRV}" ]; then
+            echo "expected rustc ${MSRV}, got $(rustc --version)" >&2
+            exit 1
+          fi
+
+      - name: Assert every workspace package declares that rust-version
+        env:
+          MSRV: ${{ steps.msrv.outputs.msrv }}
+        run: |
+          mismatched="$(cargo metadata --locked --no-deps --format-version 1 \
+            | jq -r --arg expected "${MSRV}" '
+                .packages[]
+                | select(.rust_version != $expected)
+                | "\(.name) rust-version=\(.rust_version // "unset")"
+              ')"
+          if [ -n "${mismatched}" ]; then
+            echo "Packages whose rust-version is not ${MSRV}:" >&2
+            echo "${mismatched}" >&2
+            exit 1
+          fi
+
+      - name: Check the workspace on the MSRV toolchain
+        run: |
+          cargo check --locked --workspace --all-targets
+          cargo check --locked --all-targets -p kbs \
+            --features pkcs11,pqc-experimental,spire-plugin,nebula-ca-plugin,coco-as-nvidia-nvat,vault
+          cargo check --locked --all-targets -p attestation-service --features nvidia-nvat
+          cargo check --locked --all-targets -p kbs-client --features all-attesters
 

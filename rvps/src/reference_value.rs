@@ -5,7 +5,7 @@
 
 //! reference value for RVPS
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Months, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::time::SystemTime;

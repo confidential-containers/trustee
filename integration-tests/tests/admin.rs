@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use openssl::pkey::PKey;
 use rstest::rstest;
 use serial_test::serial;
@@ -10,7 +10,7 @@ use tracing::info;
 
 extern crate integration_tests;
 use crate::integration_tests::common::{
-    init_tracing, KbsConfigType, PolicyType, TestHarness, ADMIN_ROLE,
+    ADMIN_ROLE, KbsConfigType, PolicyType, TestHarness, init_tracing,
 };
 
 //
@@ -55,7 +55,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
                 if e.to_string()
                     .contains("Cannot verify token with any of the issuers") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -70,7 +70,7 @@ async fn set_policy(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
                 if e.to_string()
                     .contains("DenyAll authorization_mode is enabled") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -144,7 +144,7 @@ async fn set_attestation_policy(
                 if e.to_string()
                     .contains("Cannot verify token with any of the issuers") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -159,7 +159,7 @@ async fn set_attestation_policy(
                 if e.to_string()
                     .contains("DenyAll authorization_mode is enabled") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -234,7 +234,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
                 if e.to_string()
                     .contains("Cannot verify token with any of the issuers") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -249,7 +249,7 @@ async fn set_secret(#[case] test_config: KbsConfigType, #[case] valid_key: bool)
                 if e.to_string()
                     .contains("DenyAll authorization_mode is enabled") =>
             {
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }

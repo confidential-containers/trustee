@@ -1,7 +1,8 @@
 [package]
 name = "key-value-storage"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [features]
 default = ["postgres", "redis"]
@@ -28,5 +29,5 @@ tracing.workspace = true
 [dev-dependencies]
 rstest.workspace = true
 tempfile.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 toml.workspace = true

@@ -4,7 +4,7 @@
 //
 
 use super::{EventDataParser, EventDetails};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub struct EvIplParser;
 

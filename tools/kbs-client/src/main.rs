@@ -4,14 +4,14 @@
 
 //! A Client for accessing admin and guest APIs of the KBS
 
-use anyhow::{bail, Result};
-use base64::engine::general_purpose::STANDARD;
+use anyhow::{Result, bail};
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use clap::{Args, Parser, Subcommand};
 use serde_json::json;
 use std::path::PathBuf;
 use tracing::warn;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[derive(Parser)]
 #[clap(name = "KBS client")]
@@ -38,10 +38,15 @@ enum Commands {
     /// Get confidential resource
     #[clap(arg_required_else_help = true)]
     GetResource {
-        /// KBS Resource path, e.g my_repo/resource_type/123abc
+        /// KBS Resource path, e.g my_repo/resource_type/123abc.
         /// Document: https://github.com/confidential-containers/attestation-agent/blob/main/docs/KBS_URI.md
         #[clap(long, value_parser)]
         path: String,
+
+        /// Name of the plugin to route the request to, e.g. `spire`. If unset,
+        /// the request is routed to the default "resource" plugin.
+        #[clap(long, value_parser)]
+        plugin: Option<String>,
 
         /// Custom TEE private Key (RSA) file path (PEM format)
         /// Used to protect the Respond Payload
@@ -192,6 +197,19 @@ enum ConfigCommands {
         #[clap(long, action)]
         as_single_value: bool,
     },
+
+    /// Register reference values with the RVPS from a provenance file.
+    /// The request will be proxied through the KBS.
+    SetReferenceValue {
+        /// Provenance type, selecting the RVPS extractor that processes it,
+        /// e.g. "corim" or "swid".
+        #[clap(long, value_parser)]
+        r#type: String,
+
+        /// Provenance file path
+        #[clap(long, value_parser)]
+        provenance_file: PathBuf,
+    },
 }
 
 const DOCKER_COMPOSE_ADMIN_TOKEN_PATH: &str = "kbs/config/docker-compose/admin-token";
@@ -210,8 +228,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let kbs_cert = match cli.cert_file {
-        Some(ref p) => vec![std::fs::read_to_string(p)
-            .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?],
+        Some(ref p) => vec![
+            std::fs::read_to_string(p)
+                .inspect_err(|_| eprintln!("Failed to read: {}", p.display()))?,
+        ],
         None => vec![],
     };
 
@@ -261,6 +281,7 @@ async fn main() -> Result<()> {
         }
         Commands::GetResource {
             path,
+            plugin,
             tee_key_file,
             attestation_token,
             init_data,
@@ -284,11 +305,14 @@ async fn main() -> Result<()> {
 
             if let Some(token) = token {
                 let Some(tee_key) = tee_key else {
-                    bail!("if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token.");
+                    bail!(
+                        "if `--attestation-token` is set, `--tee_key_file` argument should also be set, and the public part of TEE Key should be consistent with tee-pubkey in the token."
+                    );
                 };
                 let resource_bytes = kbs_client::get_resource_with_token(
                     &cli.url,
                     &path,
+                    plugin.as_deref(),
                     tee_key,
                     token,
                     kbs_cert.clone(),
@@ -299,6 +323,7 @@ async fn main() -> Result<()> {
                 let resource_bytes = kbs_client::get_resource_with_attestation(
                     &cli.url,
                     &path,
+                    plugin.as_deref(),
                     tee_key,
                     kbs_cert.clone(),
                     init_data,
@@ -414,6 +439,23 @@ async fn main() -> Result<()> {
                         cli.url,
                         name,
                         rv,
+                        admin_token.clone(),
+                        kbs_cert.clone(),
+                    )
+                    .await?;
+                    println!("Reference Values Updated");
+                }
+                ConfigCommands::SetReferenceValue {
+                    r#type,
+                    provenance_file,
+                } => {
+                    let provenance = std::fs::read(&provenance_file).inspect_err(|_| {
+                        eprintln!("Failed to read: {}", provenance_file.display())
+                    })?;
+                    kbs_client::set_rv(
+                        cli.url,
+                        &r#type,
+                        &provenance,
                         admin_token.clone(),
                         kbs_cert.clone(),
                     )

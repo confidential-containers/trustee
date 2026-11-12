@@ -68,7 +68,7 @@ KBS2 is the relying party.
 
 Passport mode is good for use cases when resource provisioning and attestation are handled by separate entities.
 
-Usages and examples for background check mode can be found [here](./quickstart.md#passport-mode).
+Usages and examples for passport mode can be found [here](./quickstart.md#passport-mode).
 
 # Advanced Topics
 
@@ -188,6 +188,10 @@ tests are in [`deps/policy-engine/test_data/`](../deps/policy-engine/test_data/)
 How KBS verifies attestation tokens, configures trust anchors, and relates AS
 token signing to KBS `[attestation_token]` settings is documented in
 [Attestation Token Verification](./docs/attestation_token_verification.md).
+
+### Rate Limiting
+Why per-client rate limiting belongs on the proxy in front of KBS is covered in
+[Rate Limiting](./docs/rate-limiting.md).
 
 ## Related Tools
 

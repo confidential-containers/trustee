@@ -8,9 +8,9 @@ use actix_web::HttpRequest;
 use serde::Deserialize;
 
 use crate::admin::{
+    Claims,
     authentication::bearer_jwt::{BearerJwtConfig, BearerJwtTokenVerifier},
     error::Result,
-    Claims,
 };
 
 pub mod bearer_jwt;

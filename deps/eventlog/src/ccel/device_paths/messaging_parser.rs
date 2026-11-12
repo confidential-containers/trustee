@@ -4,8 +4,8 @@
 //
 
 use super::{DevicePathParser, DeviceSubTypeParser};
-use anyhow::{anyhow, bail, Result};
-use scroll::{Pread, LE};
+use anyhow::{Result, anyhow, bail};
+use scroll::{LE, Pread};
 use std::net::Ipv4Addr;
 
 /// Parser for Type 3 - Messaging Device Path.

@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use shadow_rs::shadow;
 use tracing::info;
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::Subscriber};
 
 pub mod as_api {
     tonic::include_proto!("attestation");

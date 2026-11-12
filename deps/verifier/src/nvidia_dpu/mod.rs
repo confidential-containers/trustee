@@ -25,10 +25,10 @@ pub mod verifier;
 
 pub use verifier::{NvidiaDpuVerifier, NvidiaDpuVerifierConfig, VerificationReport};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use dice::{AliasCert, DeviceIdCert, DiceCertChain};
-use p384::ecdsa::{signature::Verifier, Signature, VerifyingKey};
+use p384::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use serde::Deserialize;
 use serde_with::{base64::Base64, serde_as};
 use tracing::{debug, info};
@@ -76,7 +76,9 @@ fn verify_report_data_binding(
 ) -> Result<()> {
     // Signature is mandatory — reject unsigned evidence to prevent replay attacks
     if report_data_signature.is_empty() {
-        bail!("report_data_signature is required — unsigned evidence rejected to prevent replay attacks");
+        bail!(
+            "report_data_signature is required — unsigned evidence rejected to prevent replay attacks"
+        );
     }
 
     let verifying_key = VerifyingKey::from(alias_pubkey);

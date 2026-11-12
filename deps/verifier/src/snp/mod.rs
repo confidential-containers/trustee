@@ -2,7 +2,7 @@ use super::*;
 
 use self::serde::{Deserialize, Serialize};
 use anyhow::anyhow;
-use asn1_rs::{oid, FromDer, Integer, OctetString, Oid};
+use asn1_rs::{FromDer, Integer, OctetString, Oid, oid};
 use async_trait::async_trait;
 use http_cache_reqwest::{
     Cache, CacheMode, HttpCache, HttpCacheOptions, MokaCacheBuilder, MokaManager,
@@ -16,7 +16,7 @@ use reqwest_middleware::ClientBuilder;
 use serde;
 use serde_json::json;
 use sev::{
-    certs::snp::{ca::Chain as CaChain, Certificate, Chain, Verifiable},
+    certs::snp::{Certificate, Chain, Verifiable, ca::Chain as CaChain},
     firmware::{
         guest::AttestationReport,
         host::{CertTableEntry, CertType},
@@ -53,12 +53,12 @@ impl SnpEvidence {
     }
 }
 
-pub(crate) const HW_ID_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .4);
-pub(crate) const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .8);
-pub(crate) const SNP_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .3);
-pub(crate) const TEE_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .2);
-pub(crate) const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .1);
-pub(crate) const FMC_SPL_OID: Oid<'static> = oid!(1.3.6 .1 .4 .1 .3704 .1 .3 .9);
+pub(crate) const HW_ID_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.4);
+pub(crate) const UCODE_SPL_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.3.8);
+pub(crate) const SNP_SPL_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.3.3);
+pub(crate) const TEE_SPL_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.3.2);
+pub(crate) const LOADER_SPL_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.3.1);
+pub(crate) const FMC_SPL_OID: Oid<'static> = oid!(1.3.6.1.4.1.3704.1.3.9);
 
 // KDS URL parameters
 const KDS_CERT_SITE: &str = "https://kdsintf.amd.com";
@@ -239,7 +239,9 @@ impl Snp {
     ) -> Result<Vec<u8>> {
         // Use attestation report to get data for URL
         if att_report.chip_id.as_slice() == [0; 64] {
-            bail!("Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request VCEK from KDS.");
+            bail!(
+                "Hardware ID is 0s on attestation report. Confirm that MASK_CHIP_ID is set to 0 to request VCEK from KDS."
+            );
         }
 
         let hw_id = self.parse_hw_id_from_vcek(att_report, proc_gen.clone());

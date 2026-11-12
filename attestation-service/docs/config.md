@@ -99,7 +99,7 @@ The `verifier_config` section allows for TEE-specific verifier configuration. Ea
 
 ##### NVIDIA GPU Verifier
 
-Available when the `nvidia-verifier` feature is enabled. See details in [`nvidia-verifier` documentation](../../deps/verifier/src/nvidia/README.md).
+Available when the `nvidia-verifier` feature is enabled. [More info](../../deps/verifier/src/nvidia/README.md).
 
 | Property          | Type                             | Description                                     | Required | Default |
 |-------------------|----------------------------------|-------------------------------------------------|----------|---------|
@@ -109,10 +109,39 @@ Available when the `nvidia-verifier` feature is enabled. See details in [`nvidia
 
 ###### NvidiaVerifierConfig
 
+The NVIDIA verifier provides four modes.
+The `NvLocal` and `NvRemote` modes use the official NVIDIA Attestation SDK,
+depend on the `nvidia-nvat` feature, and are x86 only.
+The `Local` and `Remote` modes have no dependencies.
+For more information, see the [here](../../deps/verifier/src/nvidia/README.md).
+
 | Property | Type   | Description                                                     | Required | Default |
 |----------|--------|-----------------------------------------------------------------|----------|---------|
-| `type`   | String | Verification type: `"Local"` or `"Remote"`                      | No       | `"Local"` |
-| `verifier_url` | String | Remote verifier URL (only for `"Remote"` type)            | No       | `https://nras.attestation.nvidia.com/v4/attest` |
+| `type`   | String | Verification type: `"Local"`, `"Remote"`, `"NvLocal"` or `"NvRemote"` | No | `"Local"` |
+
+Properties for `type = "Remote"`:
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `verifier_url` | String | NRAS attestation endpoint (the `/v4/attest` path)         | No       | `https://nras.attestation.nvidia.com/v4/attest` |
+
+Properties for `type = "NvRemote"` (NVAT SDK, x86_64 only):
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `nras_url` | String | NRAS base URL (e.g. `https://nras.attestation.nvidia.com`)    | No       | SDK default / `NVAT_NRAS_BASE_URL` |
+| `service_key` | String | NVIDIA cloud service key for NRAS                          | No       | -       |
+
+Properties for `type = "NvLocal"` (NVAT SDK, x86_64 only):
+
+| Property | Type   | Description                                                     | Required | Default |
+|----------|--------|-----------------------------------------------------------------|----------|---------|
+| `rim_url` | String | Remote RIM service base URL (ignored if `rim_store_path` set)  | No       | SDK default / `NVAT_RIM_STORE_BASE_URL` |
+| `rim_store_path` | String | Filesystem RIM store path (used instead of a remote store) | No | -   |
+| `ocsp_url` | String | OCSP service base URL                                         | No       | SDK default / `NVAT_OCSP_BASE_URL` |
+| `service_key` | String | NVIDIA cloud service key for RIM/OCSP                      | No       | -       |
+| `verify_rim_signature` | Boolean | Verify RIM signatures                             | No       | `true`  |
+| `verify_rim_cert_chain` | Boolean | Verify the RIM certificate chain                | No       | `true`  |
 
 ##### TPM Verifier
 
@@ -131,6 +160,34 @@ Available when the `tpm-verifier` feature is enabled.
 | `trusted_ak_keys_dir` | String | Directory containing trusted Attestation Key (AK) files | No       | `/etc/tpm/trusted_ak_keys`       |
 | `max_trusted_ak_keys` | Integer | Maximum number of trusted AK keys to load              | No       | `100`                            |
 
+
+##### SE Verifier
+
+Available when the `se-verifier` feature is enabled. [More info](../../deps/verifier/src/se/README.md#environment-variables-and-configuration).
+
+| Property      | Type                           | Description                      | Required | Default |
+|---------------|--------------------------------|----------------------------------|----------|---------|
+| `se_verifier` | [SeVerifierConfig][se-1]     | SE verifier configuration       | No       | -       |
+
+[se-1]: #severifierconfig
+
+###### SeVerifierConfig
+
+| Property                       | Type   | Description                                                                                                                                                                  | Required | Default  |
+|--------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------|
+| `enable_firmware_verification` | bool   | When `true`, the AS verifies the firmware hash against the IBM firmware attestation API. Only set to `true` if all attested guests run on IBM z17 or later (see note below). | No       | `false`  |
+| `firmware_verify_url`          | String | IBM firmware attestation API URL to verify the firmware hash.                                                                                                                | No       | see below |
+
+> **Note:** Firmware attestation is supported on IBM z17 only. Do not set
+> `enable_firmware_verification` to `true` for guests running on IBM z16 or earlier.
+> When enabled, the AS requests the firmware state in the attestation request and
+> fails the attestation if the Ultravisor does not return it. The z16 Ultravisor
+> rejects the firmware attestation flag, so every attestation would fail.
+
+Default `firmware_verify_url`:
+```
+https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify
+```
 ##### SNP Verifier
 
 Available when the `snp-verifier` feature is enabled. See details in [AMD SNP certificates caching guide](./amd-offline-certificate-cache.md).
@@ -337,6 +394,27 @@ Configuration with AMD SEV-SNP verifier using KDS:
     }
 }
 ```
+
+Configuration with IBM SE verifier and firmware verification enabled (z17):
+
+```json
+{
+    "rvps_config": {
+        "type": "BuiltIn"
+    },
+    "attestation_token_broker": {
+        "duration_min": 5
+    },
+    "verifier_config": {
+        "se_verifier": {
+            "enable_firmware_verification": true,
+            "firmware_verify_url": "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify"
+        }
+    }
+}
+```
+Optional: override the firmware verification endpoint (`firmware_verify_url`) to your custom endpoint for verification.
+The above is the default endpoint.
 
 Running with unified storage backend:
 

@@ -7,17 +7,17 @@
 //! serialize them into a JSON. The format will look like example available in test data:
 //! ./test_data/parse_tdx_claims_expected.json
 
-use anyhow::{bail, Result};
-use bitflags::{bitflags, Flags};
+use anyhow::{Result, bail};
+use bitflags::{Flags, bitflags};
 use serde_json::{Map, Value};
 
 use crate::intel_dcap::quote::Quote;
 use crate::{
+    TeeEvidenceParsedClaim,
     intel_dcap::{
         pck::PlatformInfo,
         quote::{QuoteV5Body, QuoteV5Type},
     },
-    TeeEvidenceParsedClaim,
 };
 
 macro_rules! body_field {
@@ -192,9 +192,17 @@ bitflags! {
     #[derive(Debug, Clone)]
     struct TdAttributesFlags: u64 {
         const DEBUG            = 1 << 0;
+        const HGS_PLUS_PROF    = 1 << 4;
+        const PERF_PROF        = 1 << 5;
+        const PMT_PROF         = 1 << 6;
+        const ICSSD            = 1 << 16;
+        const SERVTD_EXT       = 1 << 17;
+        const LASS             = 1 << 27;
         const SEPTVE_DISABLE   = 1 << 28;
+        const MIGRATABLE       = 1 << 29;
         const PROTECTION_KEYS  = 1 << 30;
         const KEY_LOCKER       = 1 << 31;
+        const TPA              = 1 << 62;
         const PERFMON          = 1 << 63;
     }
 }
@@ -296,7 +304,7 @@ mod tests {
     use crate::intel_dcap::quote::parse_quote;
     use crate::tdx::claims::PlatformConfigInfoError;
 
-    use super::{generate_parsed_claim, TdShimPlatformConfigInfo};
+    use super::{TdShimPlatformConfigInfo, generate_parsed_claim};
 
     use eventlog::CcEventLog;
     use rstest::rstest;

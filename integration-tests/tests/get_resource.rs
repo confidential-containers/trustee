@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use rstest::rstest;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serial_test::serial;
 use tracing::info;
 
 extern crate integration_tests;
-use crate::integration_tests::common::{init_tracing, KbsConfigType, PolicyType, TestHarness};
+use crate::integration_tests::common::{KbsConfigType, PolicyType, TestHarness, init_tracing};
 
 const SECRET_BYTES: &[u8; 8] = b"shhhhhhh";
 const SECRET_PATH: &str = "default/test/secret";
@@ -34,7 +34,7 @@ const SECRET_PATH: &str = "default/test/secret";
     false,
     EAR_CONTRAINDICATED_ATTESTATION_POLICY,
     None,
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 //
 // Tests that use a KBS Policy that checks the EAR status
@@ -46,7 +46,7 @@ const SECRET_PATH: &str = "default/test/secret";
     false,
     EAR_CONTRAINDICATED_ATTESTATION_POLICY,
     None,
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 #[case::policy_not_contraindicated(
     KbsConfigType::EarTokenRemoteRvps,
@@ -77,7 +77,7 @@ const SECRET_PATH: &str = "default/test/secret";
     true,
     EAR_RV_ATTESTATION_POLICY,
     Some(EAR_RV_ATTESTATION_POLICY),
-    Result::Err(anyhow!("request unauthorized"))
+    Result::Err(anyhow!("Access denied by policy"))
 )]
 #[case::device_not_contraindicated(
     KbsConfigType::EarTokenRemoteRvps,
@@ -120,6 +120,37 @@ async fn run_test(
     .await;
 
     unsafe { std::env::remove_var("ENABLE_SAMPLE_DEVICE") };
+    harness.cleanup().await?;
+    test_result
+}
+
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn get_missing_resource() -> Result<()> {
+    init_tracing();
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenBuiltInRvps.into()).await?;
+    let test_result = async {
+        harness.wait().await?;
+        harness.set_policy(PolicyType::AllowAll).await?;
+        harness
+            .set_attestation_policy(
+                EAR_CONTRAINDICATED_ATTESTATION_POLICY.to_string(),
+                "default_cpu".to_string(),
+            )
+            .await?;
+
+        let err = harness
+            .get_secret("default/test/missing".to_string(), None)
+            .await
+            .unwrap_err();
+        if !err.to_string().contains("KBS resource not found") {
+            bail!("expected a not-found error, got: {err}");
+        }
+        Ok(())
+    }
+    .await;
+
     harness.cleanup().await?;
     test_result
 }
@@ -191,7 +222,11 @@ async fn get_secret(
         }
         // If the test fails, make sure the error message matches.
         else {
-            if secret.unwrap_err().to_string() != expected_result.unwrap_err().to_string() {
+            if !secret
+                .unwrap_err()
+                .to_string()
+                .contains(&expected_result.unwrap_err().to_string())
+            {
                 bail!(
                     "Test is expected to fail, and it did fail, but with the wrong error message."
                 );
@@ -222,7 +257,7 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"cpu0\"][\"ear_status\"] != \"contraindicated\"
 }
 ";
 
@@ -233,8 +268,8 @@ import rego.v1
 default allow = false
 
 allow if {
-    input[\"submods\"][\"cpu0\"][\"ear.status\"] != \"contraindicated\"
-    input[\"submods\"][\"gpu0\"][\"ear.status\"] != \"contraindicated\"
+    input[\"submods\"][\"cpu0\"][\"ear_status\"] != \"contraindicated\"
+    input[\"submods\"][\"gpu0\"][\"ear_status\"] != \"contraindicated\"
 }
 ";
 

@@ -11,9 +11,9 @@
 //! The `from_der()` constructors parse X.509 fields into our domain structs,
 //! caching the raw TBS (to-be-signed) bytes for signature verification.
 
-use anyhow::{bail, Result};
-use p384::elliptic_curve::sec1::FromEncodedPoint;
+use anyhow::{Result, bail};
 use p384::PublicKey;
+use p384::elliptic_curve::sec1::FromEncodedPoint;
 use serde::{Deserialize, Serialize};
 use x509_parser::prelude::*;
 

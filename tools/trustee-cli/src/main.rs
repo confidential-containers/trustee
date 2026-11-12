@@ -12,7 +12,7 @@ use std::{
 };
 
 use dirs::home_dir;
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::Subscriber};
 mod keygen;
 mod run;
 

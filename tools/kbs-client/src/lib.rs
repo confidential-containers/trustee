@@ -4,18 +4,28 @@
 
 //! KBS client SDK.
 
-use anyhow::{anyhow, bail, Result};
-use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+use anyhow::{Result, anyhow, bail};
 use base64::Engine;
-use kbs_protocol::evidence_provider::NativeEvidenceProvider;
-use kbs_protocol::token_provider::TestTokenProvider;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use kbs_protocol::KbsClientBuilder;
 use kbs_protocol::KbsClientCapabilities;
+use kbs_protocol::ResourceUri;
+use kbs_protocol::evidence_provider::NativeEvidenceProvider;
+use kbs_protocol::token_provider::TestTokenProvider;
 use serde::Serialize;
 use serde_json::json;
 use tracing::warn;
 
 const KBS_URL_PREFIX: &str = "kbs/v0";
+
+/// Create resource URI from resource path and optional plugin.
+fn resource_uri(path: &str, plugin: Option<&str>) -> Result<ResourceUri> {
+    let uri = match plugin {
+        Some(plugin) => format!("kbs+{plugin}:///{path}"),
+        None => format!("kbs:///{path}"),
+    };
+    ResourceUri::try_from(uri.as_str()).map_err(|e| anyhow!(e))
+}
 
 /// Attestation and get a result token signed by attestation service
 /// Input parameters:
@@ -59,9 +69,12 @@ pub async fn attestation(
 /// - tee_key_pem: TEE private key file path (PEM format). This key must consistent with the public key in `token` claims.
 /// - token: Attestation Results Token file path.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
+/// - plugin: If set, the resource is fetched from this named plugin (`kbs+<plugin>://`)
+///   instead of the default `resource` plugin.
 pub async fn get_resource_with_token(
     url: &str,
     path: &str,
+    plugin: Option<&str>,
     tee_key_pem: String,
     token: String,
     kbs_root_certs_pem: Vec<String>,
@@ -76,10 +89,7 @@ pub async fn get_resource_with_token(
     }
     let mut client = client_builder.build()?;
 
-    let resource_kbs_uri = format!("kbs:///{path}");
-    let resource_bytes = client
-        .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
-        .await?;
+    let resource_bytes = client.get_resource(resource_uri(path, plugin)?).await?;
     Ok(resource_bytes)
 }
 
@@ -87,12 +97,15 @@ pub async fn get_resource_with_token(
 /// Input parameters:
 /// - url: KBS server root URL.
 /// - path: Resource path, format must be `<top>/<middle>/<tail>`, e.g. `alice/key/example`.
+/// - plugin: If set, the resource is fetched from this named plugin (`kbs+<plugin>://`)
+///   instead of the default `resource` plugin.
 /// - [tee_pubkey_pem]: Public key (PEM format) of the RSA key pair generated in TEE.
 /// - kbs_root_certs_pem: Custom HTTPS root certificate of KBS server. It can be left blank.
 /// - init_data: Plaintext init-data; should correspond to init-data measured at boot time.
 pub async fn get_resource_with_attestation(
     url: &str,
     path: &str,
+    plugin: Option<&str>,
     tee_key_pem: Option<String>,
     kbs_root_certs_pem: Vec<String>,
     init_data: Option<String>,
@@ -113,10 +126,7 @@ pub async fn get_resource_with_attestation(
 
     let mut client = client_builder.build()?;
 
-    let resource_kbs_uri = format!("kbs:///{path}");
-    let resource_bytes = client
-        .get_resource(serde_json::from_str(&format!("\"{resource_kbs_uri}\""))?)
-        .await?;
+    let resource_bytes = client.get_resource(resource_uri(path, plugin)?).await?;
     Ok(resource_bytes)
 }
 
@@ -294,17 +304,35 @@ pub async fn set_sample_rv(
     admin_token: Option<String>,
     kbs_root_certs_pem: Vec<String>,
 ) -> Result<()> {
+    let provenance = json!({key: value}).to_string();
+    set_rv(
+        url,
+        "sample",
+        provenance.as_bytes(),
+        admin_token,
+        kbs_root_certs_pem,
+    )
+    .await
+}
+
+/// Register reference values with the RVPS behind the KBS at <url>, by
+/// handing it `provenance` to be processed by the RVPS extractor registered
+/// for `provenance_type` (e.g. "corim", "swid").
+pub async fn set_rv(
+    url: String,
+    provenance_type: &str,
+    provenance: &[u8],
+    admin_token: Option<String>,
+    kbs_root_certs_pem: Vec<String>,
+) -> Result<()> {
     let http_client = build_http_client(kbs_root_certs_pem)?;
 
     let reference_value_url = format!("{}/{KBS_URL_PREFIX}/reference-value", url);
 
-    let provenance = json!({key: value}).to_string();
-    let provenance = STANDARD.encode(provenance);
-
     let message = json!({
         "version": "0.1.0",
-        "type": "sample",
-        "payload": provenance
+        "type": provenance_type,
+        "payload": STANDARD.encode(provenance)
     });
 
     let mut req = http_client

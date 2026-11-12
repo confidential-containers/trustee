@@ -8,27 +8,27 @@ pub(crate) mod compat;
 use self::compat::Evidence;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
-    get_common_name, get_oid_int, get_oid_octets, get_processor_generation, CERT_CHAINS, HW_ID_OID,
-    LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
+    CERT_CHAINS, HW_ID_OID, LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
+    get_common_name, get_oid_int, get_oid_octets, get_processor_generation,
 };
 use crate::{InitDataHash, ReportData};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek};
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::AttestationReport;
 use az_snp_vtpm::vtpm::QuoteError;
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 pub(crate) use compat::TpmQuote;
-use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
+use eventlog::{CcEventLog, ReferenceMeasurement, ccel::tcg_enum::TcgAlgorithm};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Verifier as OsslVerifier;
 use openssl::x509::X509;
 use openssl::{ec::EcKey, ecdsa, sha::sha384};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sev::parser::ByteParser;
 use thiserror::Error;
 use tracing::{debug, instrument, warn};
@@ -88,7 +88,7 @@ pub enum CertError {
 }
 
 pub(crate) fn extend_claim(claim: &mut TeeEvidenceParsedClaim, tpm_quote: &TpmQuote) -> Result<()> {
-    let Value::Object(ref mut map) = claim else {
+    let Value::Object(map) = claim else {
         bail!("failed to extend the claim, not an object");
     };
     let mut tpm_values = serde_json::Map::new();
@@ -116,7 +116,13 @@ fn extract_nonce(message: &[u8]) -> Result<Vec<u8>> {
 /// present) -- one register per distinct PCR index the log's events
 /// actually target, each seeded per `initial_seed_for_pcr`. Returns the
 /// parsed log on success, or `None` if the evidence carried no eventlog.
-fn verify_eventlog(cc_eventlog: Option<&str>, tpm_quote: &TpmQuote) -> Result<Option<CcEventLog>> {
+///
+/// Shared by the `az-snp-vtpm` and `az-tdx-vtpm` verifiers: both back onto
+/// the same Azure vTPM, so the PCR/DRTM seeding semantics are identical.
+pub(crate) fn verify_eventlog(
+    cc_eventlog: Option<&str>,
+    tpm_quote: &TpmQuote,
+) -> Result<Option<CcEventLog>> {
     let Some(el) = cc_eventlog.filter(|el| !el.is_empty()) else {
         warn!("No AAEL eventlog included inside the az-snp-vtpm evidence, skipping replay.");
         return Ok(None);
@@ -511,7 +517,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_user_data(#[case] tampered_evidence_json: &str) {
         let report_data = hex::decode(EVIDENCE_V2_REPORT_DATA).unwrap();
-        let evidence: Evidence = serde_json::from_str(&tampered_evidence_json).unwrap();
+        let evidence: Evidence = serde_json::from_str(tampered_evidence_json).unwrap();
         let hcl_report = HclReport::new(evidence.hcl_report().into()).unwrap();
         verify_user_data(&hcl_report, &report_data).unwrap();
 

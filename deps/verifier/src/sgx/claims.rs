@@ -38,12 +38,12 @@
 //! }
 //! ```
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
+use crate::TeeEvidenceParsedClaim;
 use crate::intel_dcap::pck::PlatformInfo;
 use crate::intel_dcap::quote::Quote;
-use crate::TeeEvidenceParsedClaim;
 
 macro_rules! parse_claim {
     ($map_name: ident, $key_name: literal, $field: ident) => {
@@ -157,7 +157,7 @@ mod tests {
             },
             "report_data": "74657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "init_data": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "platform_instance_id": "7a3a6941065cd5060bd93d3db2cfc0c8"
+            "platform_instance_id": "c8c0cfb23d3dd90b06d55c0641693a7a"
         });
 
         assert_json_eq!(expected, claims);

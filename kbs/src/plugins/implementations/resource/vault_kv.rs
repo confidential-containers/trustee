@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::backend::{ResourceDesc, StorageBackend};
+use crate::plugins::{PluginError, PluginResult};
 use anyhow::{Context, Result};
 use educe::Educe;
 use serde::Deserialize;
@@ -20,13 +21,25 @@ use vaultrs::{
 pub enum VaultError {
     #[error("Secret not found at path '{path}'")]
     SecretNotFound { path: String, source: anyhow::Error },
-    #[error("Secret exists at path '{path}' but missing required 'data' key. Available keys: {available_keys:?}")]
+    #[error(
+        "Secret exists at path '{path}' but missing required 'data' key. Available keys: {available_keys:?}"
+    )]
     DataKeyMissing {
         path: String,
         available_keys: Vec<String>,
     },
     #[error("Vault API error for path '{path}': {source}")]
     VaultApiError { path: String, source: anyhow::Error },
+}
+
+impl From<VaultError> for PluginError {
+    fn from(e: VaultError) -> Self {
+        if matches!(e, VaultError::SecretNotFound { .. }) {
+            PluginError::NotFound(e.to_string())
+        } else {
+            PluginError::Internal(e.into())
+        }
+    }
 }
 
 #[derive(Educe, Deserialize, Clone, PartialEq)]
@@ -58,7 +71,7 @@ pub struct VaultKvBackend {
 
 #[async_trait::async_trait]
 impl StorageBackend for VaultKvBackend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         let vault_path = format!(
             "{}/{}/{}",
             resource_desc.repository_name, resource_desc.resource_type, resource_desc.resource_tag
@@ -97,9 +110,9 @@ impl StorageBackend for VaultKvBackend {
         match value {
             Value::String(s) => Ok(s.into_bytes()),
             arr @ Value::Array(_) => {
-                serde_json::from_value(arr).context("invalid byte array in data")
+                Ok(serde_json::from_value(arr).context("invalid byte array in data")?)
             }
-            other => serde_json::to_vec(&other).context("failed to serialize data value"),
+            other => Ok(serde_json::to_vec(&other).context("failed to serialize data value")?),
         }
     }
 
@@ -262,8 +275,8 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::super::{
-        vault_kv::{VaultKvBackend, VaultKvBackendConfig},
         ResourceDesc, StorageBackend,
+        vault_kv::{VaultKvBackend, VaultKvBackendConfig},
     };
     use rstest::{fixture, rstest};
     use serde_json::json;

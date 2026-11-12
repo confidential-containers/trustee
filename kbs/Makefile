@@ -2,6 +2,7 @@ AS_TYPE ?= coco-as
 ALIYUN ?= false
 PQC_EXPERIMENTAL ?= false
 NEBULA_CA_PLUGIN ?= false
+SPIRE_PLUGIN ?= true
 VAULT ?= true
 GCP ?= false
 AWS ?= false
@@ -60,6 +61,10 @@ ifeq ($(NEBULA_CA_PLUGIN), true)
   override FEATURES := $(FEATURES),nebula-ca-plugin
 endif
 
+ifeq ($(SPIRE_PLUGIN), true)
+  override FEATURES := $(FEATURES),spire-plugin
+endif
+
 ifeq ($(VAULT), true)
   override FEATURES := $(FEATURES),vault
 endif
@@ -74,6 +79,11 @@ endif
 
 ifeq ($(EXTERNAL_PLUGIN), true)
   override FEATURES := $(FEATURES),external-plugin
+endif
+
+NVAT ?= true
+ifeq ($(NVAT), true)
+  override FEATURES := $(FEATURES),coco-as-nvidia-nvat
 endif
 
 ifeq ($(PQC_EXPERIMENTAL), true)
@@ -141,7 +151,7 @@ check:
 	cargo test -p kbs -p kbs-client -p integration-tests $(TEST_ARGUMENTS) -- --nocapture
 
 lint:
-	cargo clippy -p kbs -p kbs-client $(TEST_ARGUMENTS) -- -D warnings
+	cargo clippy -p kbs -p kbs-client $(TEST_ARGUMENTS) --all-targets -- -D warnings
 
 format:
 	cargo fmt -p kbs -p kbs-client -- --check --config format_code_in_doc_comments=true

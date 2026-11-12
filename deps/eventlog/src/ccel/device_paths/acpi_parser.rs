@@ -4,8 +4,8 @@
 //
 
 use super::{DevicePathParser, DeviceSubTypeParser};
-use anyhow::{anyhow, bail, Result};
-use scroll::{Pread, LE};
+use anyhow::{Result, anyhow, bail};
+use scroll::{LE, Pread};
 
 /// Parser for Type 2 - ACPI Device Path.
 /// Defined in section 10.3.3 of <https://uefi.org/specs/UEFI/2.10/10_Protocols_Device_Path_Protocol.html#acpi-device-path>

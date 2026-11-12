@@ -4,7 +4,7 @@
 //
 
 use super::device_paths;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 pub mod acpi_parser;
 pub mod bios_boot_spec_parser;
 pub mod hardware_parser;

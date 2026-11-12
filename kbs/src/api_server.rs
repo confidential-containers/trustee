@@ -5,20 +5,21 @@
 use std::collections::HashMap;
 
 use actix_web::{
-    http::{header::Header, Method},
+    App, HttpRequest, HttpResponse, HttpServer,
+    http::{Method, header::Header},
     middleware,
     web::{self, Query},
-    App, HttpRequest, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
 use key_value_storage::StorageProvider;
-use policy_engine::{rego::Regorus, PolicyEngine};
+use policy_engine::{PolicyEngine, rego::Regorus};
 use serde_json::json;
 use tracing::{info, warn};
 
 use crate::{
+    Error, Result,
     admin::Admin,
     config::KbsConfig,
     jwe::jwe,
@@ -28,7 +29,6 @@ use crate::{
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
     token::TokenVerifier,
-    Error, Result,
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -313,7 +313,7 @@ pub(crate) async fn api(
                     .register_reference_value(message)
                     .await
                     .map_err(|e| Error::RvpsError {
-                        message: format!("Failed to register reference value: {e}").to_string(),
+                        message: format!("Failed to register reference value: {e:#}").to_string(),
                     })?,
             )?;
 
@@ -390,15 +390,20 @@ pub(crate) async fn api(
             let body = body.to_vec();
             if plugin
                 .validate_auth(&body, &query, resource_path, request.method())
-                .await
-                .map_err(|e| Error::PluginInternalError { source: e })?
+                .await?
             {
                 // Plugin calls need to be authorized by the admin auth
                 core.admin.check_admin_access(&request)?;
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), None)
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        None,
+                        &HashMap::new(),
+                    )
+                    .await?;
 
                 Ok(HttpResponse::Ok().content_type("text/xml").body(response))
             } else {
@@ -446,18 +451,35 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims
-                    .pointer("/submods/cpu0/ear.veraison.annotated-evidence/init_data_claims");
+                let init_data = claims.pointer("/submods/cpu0/ear_verifier_claims/init_data");
+
+                // Extract only custom extensions scoped to Trustee
+                let mut trustee_extensions = HashMap::new();
+                if let Some(submod) = claims
+                    .pointer("/submods/cpu0")
+                    .and_then(serde_json::Value::as_object)
+                {
+                    for (name, value) in submod {
+                        if name.starts_with("ear.trustee") {
+                            trustee_extensions.insert(name.clone(), value.clone());
+                        }
+                    }
+                }
 
                 let response = plugin
-                    .handle(&body, &query, resource_path, request.method(), init_data)
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?;
+                    .handle(
+                        &body,
+                        &query,
+                        resource_path,
+                        request.method(),
+                        init_data,
+                        &trustee_extensions,
+                    )
+                    .await?;
 
                 if plugin
                     .encrypted(&body, &query, resource_path, request.method())
-                    .await
-                    .map_err(|e| Error::PluginInternalError { source: e })?
+                    .await?
                 {
                     let public_key = core.token_verifier.extract_tee_public_key(claims)?;
 

@@ -5,9 +5,9 @@
 use std::sync::{Arc, LazyLock};
 
 use actix_web::{HttpRequest, HttpResponse};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use kbs_types::{Attestation, Challenge, InitData, Request, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
 use rsa::rand_core::{OsRng, RngCore};
@@ -17,16 +17,16 @@ use serde_json::json;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
-use crate::attestation::session::{SessionMap, KBS_SESSION_ID};
+use crate::attestation::session::{KBS_SESSION_ID, SessionMap};
 use crate::prometheus::{
     ATTESTATION_ERRORS, ATTESTATION_FAILURES, ATTESTATION_REQUESTS, ATTESTATION_SUCCESSES,
     AUTH_ERRORS, AUTH_REQUESTS, AUTH_SUCCESSES,
 };
 
 use super::{
+    ATTESTATION_POLICY_SELECTOR_JSON_KEY, Error, Result,
     config::{AttestationConfig, AttestationServiceConfig},
     session::SessionStatus,
-    Error, Result, ATTESTATION_POLICY_SELECTOR_JSON_KEY,
 };
 
 const KBS_SESSION_STORAGE_NAMESPACE: &str = "kbs_protocol_session";
@@ -231,8 +231,22 @@ impl AttestationService {
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
         let session_map = SessionMap::new(session_storage_backend);
-        // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
-        {
+        if session_map.storage.supports_ttl() {
+            info!("session storage expires sessions through its TTL");
+            // Sessions stored before TTL support have no expiry. Remove them
+            // once they have all timed out.
+            let cleanup_session_map = session_map.clone();
+            let legacy_timeout =
+                ::tokio::time::Duration::from_secs(60 * config.timeout.max(0) as u64);
+            ::tokio::spawn(async move {
+                ::tokio::time::sleep(legacy_timeout).await;
+                if let Err(err) = cleanup_session_map.cleanup_expired().await {
+                    warn!(?err, "failed to clean up sessions stored without a TTL");
+                }
+            });
+        } else {
+            info!("session storage has no TTL support, sweeping expired sessions every minute");
+            // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
             let cleanup_session_map = session_map.clone();
             // Run periodic cleanup every minute when healthy.
             let cleanup_interval = ::tokio::time::Duration::from_secs(60);
@@ -402,7 +416,9 @@ impl AttestationService {
         let mut evidence_to_verify: Vec<IndependentEvidence> = vec![];
 
         if nonce != attestation.runtime_data.nonce {
-            bail!("the nonce in the handshake session is different from the client side in KBS protocol's Attestation message");
+            bail!(
+                "the nonce in the handshake session is different from the client side in KBS protocol's Attestation message"
+            );
         }
 
         let kbs_evidence_runtime_data = json!({
@@ -475,10 +491,6 @@ impl AttestationService {
             })
             .context("verify TEE evidence failed")?;
 
-        ATTESTATION_SUCCESSES
-            .with_label_values(&[&tee_type_label])
-            .inc();
-
         let body = serde_json::to_string(&json!({
             "token": token,
         }))
@@ -488,6 +500,10 @@ impl AttestationService {
         session.attest(token);
         let cookie = session.cookie();
         self.session_map.insert(session).await?;
+
+        ATTESTATION_SUCCESSES
+            .with_label_values(&[&tee_type_label])
+            .inc();
 
         Ok(HttpResponse::Ok()
             .cookie(cookie)
@@ -592,14 +608,18 @@ mod tests {
     fn test_resolve_policy_ids_without_map() {
         let policy_id_map = HashMap::new();
 
-        assert!(resolve_policy_ids(&policy_id_map, &json!({}))
-            .unwrap()
-            .is_none());
-        assert!(resolve_policy_ids(
-            &policy_id_map,
-            &json!({"attestation-policy-selector": "alice"})
-        )
-        .is_err());
+        assert!(
+            resolve_policy_ids(&policy_id_map, &json!({}))
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            resolve_policy_ids(
+                &policy_id_map,
+                &json!({"attestation-policy-selector": "alice"})
+            )
+            .is_err()
+        );
     }
 
     #[tokio::test]
@@ -633,7 +653,7 @@ mod tests {
             let found = nonces.contains(&nonce);
 
             // The nonces should be unique
-            assert_eq!(found, false);
+            assert!(!found);
 
             nonces.push(nonce);
         }

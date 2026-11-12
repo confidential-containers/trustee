@@ -1,7 +1,7 @@
 use anyhow::Result;
 use core::net::SocketAddr;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-use kbs::admin::{authentication::AuthenticationType, authorization::AuthorizerType, AdminConfig};
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
+use kbs::admin::{AdminConfig, authentication::AuthenticationType, authorization::AuthorizerType};
 use kbs::plugins::PluginsConfig;
 use kbs::plugins::RepositoryConfig;
 use kbs::{ApiServer, KbsConfig};
@@ -11,7 +11,7 @@ use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::x509::extension::SubjectAlternativeName;
-use openssl::x509::{X509NameBuilder, X509};
+use openssl::x509::{X509, X509NameBuilder};
 use serde::Serialize;
 use std::fs::write;
 use std::path::{Path, PathBuf};

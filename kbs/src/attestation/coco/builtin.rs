@@ -6,8 +6,8 @@ use crate::attestation::generate_extra_params;
 use anyhow::*;
 use async_trait::async_trait;
 use attestation_service::{
-    config::VerifierConfig, ear_token::EarTokenConfiguration, rvps::RvpsConfig, AttestationService,
-    HashAlgorithm, InitDataInput, RuntimeData, VerificationRequest,
+    AttestationService, HashAlgorithm, InitDataInput, RuntimeData, VerificationRequest,
+    config::VerifierConfig, ear_token::EarTokenConfiguration, rvps::RvpsConfig,
 };
 use kbs_types::{Challenge, Tee};
 use key_value_storage::{KeyValueStorageType, StorageBackendConfig, StorageProvider};
@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::attestation::{
-    backend::{make_nonce, Attest, IndependentEvidence},
+    backend::{Attest, IndependentEvidence, make_nonce},
     coco::DEFAULT_POLICY_ID,
 };
 

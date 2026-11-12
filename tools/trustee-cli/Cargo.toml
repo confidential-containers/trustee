@@ -5,6 +5,7 @@ authors.workspace = true
 description.workspace = true
 documentation.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [[bin]]
 name = "trustee"
@@ -14,7 +15,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 attestation-service = { path = "../../attestation-service" }
 clap = { workspace = true, features = ["string"] }
-dirs = "6.0.0"
+dirs = "7.0.0"
 kbs = { path = "../../kbs" }
 nix = { version = "0.31.3", features = ["user"] }
 openssl.workspace = true

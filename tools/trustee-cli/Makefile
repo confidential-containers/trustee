@@ -42,7 +42,7 @@ check:
 	cargo test -p trustee-cli
 
 lint:
-	cargo clippy -p trustee-cli -- -D warnings
+	cargo clippy -p trustee-cli --all-targets -- -D warnings
 
 format:
 	cargo fmt -p trustee-cli -- --check --config format_code_in_doc_comments=true

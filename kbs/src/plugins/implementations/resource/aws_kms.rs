@@ -8,7 +8,8 @@
 // API that backs `aliyun_kms.rs`).
 
 use super::backend::{ResourceDesc, StorageBackend};
-use anyhow::{anyhow, bail, Context, Result};
+use crate::plugins::PluginResult;
+use anyhow::{Context, Result, anyhow, bail};
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_secretsmanager::Client as SecretsManagerClient;
 use serde::Deserialize;
@@ -33,7 +34,7 @@ pub struct AwsKmsBackend {
 
 #[async_trait::async_trait]
 impl StorageBackend for AwsKmsBackend {
-    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> Result<Vec<u8>> {
+    async fn read_secret_resource(&self, resource_desc: ResourceDesc) -> PluginResult<Vec<u8>> {
         info!(
             "Use AWS Secrets Manager backend. Ignore {}/{}",
             resource_desc.repository_name, resource_desc.resource_type
@@ -54,9 +55,7 @@ impl StorageBackend for AwsKmsBackend {
         if let Some(string) = response.secret_string {
             return Ok(string.into_bytes());
         }
-        Err(anyhow!(
-            "AWS Secrets Manager returned no value for secret '{name}'"
-        ))
+        Err(anyhow!("AWS Secrets Manager returned no value for secret '{name}'").into())
     }
 
     async fn write_secret_resource(
@@ -64,11 +63,15 @@ impl StorageBackend for AwsKmsBackend {
         _resource_desc: ResourceDesc,
         _data: &[u8],
     ) -> Result<()> {
-        bail!("AWS Secrets Manager backend does not support write operations; provision secrets via AWS APIs")
+        bail!(
+            "AWS Secrets Manager backend does not support write operations; provision secrets via AWS APIs"
+        )
     }
 
     async fn delete_secret_resource(&self, _resource_desc: ResourceDesc) -> Result<()> {
-        bail!("AWS Secrets Manager backend does not support delete operations; manage secret lifecycle via AWS APIs")
+        bail!(
+            "AWS Secrets Manager backend does not support delete operations; manage secret lifecycle via AWS APIs"
+        )
     }
 }
 

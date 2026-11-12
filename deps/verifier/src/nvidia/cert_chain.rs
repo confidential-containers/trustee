@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{anyhow, bail, Result};
-use asn1_rs::{oid, FromDer};
+use anyhow::{Result, anyhow, bail};
+use asn1_rs::{FromDer, oid};
 use openssl::hash::MessageDigest;
 use openssl::stack::Stack;
-use openssl::x509::{store::X509StoreBuilder, X509StoreContext, X509};
+use openssl::x509::{X509, X509StoreContext, store::X509StoreBuilder};
 use std::sync::LazyLock;
 use x509_parser::prelude::X509Certificate;
 
@@ -138,7 +138,7 @@ impl NvidiaCertificateChain {
 }
 
 pub fn get_fwid_from_cert(cert: &X509) -> Result<String> {
-    let fwid_oid = oid!(2.23.133 .5 .4 .1);
+    let fwid_oid = oid!(2.23.133.5.4.1);
 
     // OpenSSL bindings do not expose custom extensions
     // Parse the key using x509_parser
@@ -165,11 +165,11 @@ pub fn certificate_fingerprint(cert: &X509) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{anyhow, Result};
+    use anyhow::{Result, anyhow};
     use openssl::x509::X509;
     use rstest::rstest;
 
-    use crate::nvidia::cert_chain::{get_fwid_from_cert, NvidiaCertificateChain};
+    use crate::nvidia::cert_chain::{NvidiaCertificateChain, get_fwid_from_cert};
 
     const EXPECTED_FWID: &str = "f5c384aebb579217a2c66b17ed0f28e6a9b8d639041acd7b4721cec004f7275494ba94bb5cdfdb3055ee051762b1f75d";
 

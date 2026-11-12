@@ -5,9 +5,9 @@
 //
 
 use crate::ccel::tcg_enum::{TcgAlgorithm, TcgEventType};
-use anyhow::{anyhow, bail, Result};
-use base64::{engine::general_purpose::STANDARD, Engine};
-use scroll::{Pread, LE};
+use anyhow::{Result, anyhow, bail};
+use base64::{Engine, engine::general_purpose::STANDARD};
+use scroll::{LE, Pread};
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -400,8 +400,8 @@ fn parse_digests(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ccel::tcg_enum::TcgAlgorithm;
     use crate::CcEventLog;
+    use crate::ccel::tcg_enum::TcgAlgorithm;
     use assert_json_diff::assert_json_eq;
     use rstest::rstest;
     use std::fs;

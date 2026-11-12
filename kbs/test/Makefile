@@ -66,7 +66,7 @@ allow if {
 	data["resource-path"][0] == "one"
 	data["resource-path"][1] == "two"
 	data["resource-path"][2] == "three"
-	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+	input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "$(TEE)"
 }
 endef
 export TEE_POLICY_REGO
@@ -79,7 +79,7 @@ default allow = false
 allow if {
 	data.plugin == "external"
 	data["resource-path"][0] == "echo-test"
-	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+	input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "$(TEE)"
 }
 endef
 export EXT_PLUGIN_POLICY_REGO
@@ -92,7 +92,7 @@ default allow = false
 allow if {
 	data.plugin == "external"
 	data["resource-path"][0] == "resource"
-	input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["$(TEE)"]
+	input["submods"]["cpu0"]["ear_attester_claims"]["tee"] == "$(TEE)"
 }
 endef
 export EXT_RESOURCE_PLUGIN_POLICY_REGO
@@ -217,7 +217,7 @@ $(ADMIN_TOKEN): $(KBS_KEY)
 	}
 
 $(TEE_KEY):
-	openssl genrsa -traditional -out "$(TEE_KEY)" 2048
+	openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt -out "$(TEE_KEY)"
 
 $(SECRET_FILE):
 	mkdir -p $$(dirname "$(SECRET_FILE)") && \

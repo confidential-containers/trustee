@@ -160,15 +160,37 @@ AS verifier config JSON fragment
 {{- if and $snpKdsStorePath (not $snpHasOfflineStore) -}}
 {{- fail "as.verifier.snp.vcekSources must contain an OfflineStore source when as.verifier.snp.kdsStoreHostPath is set, otherwise the mounted certificate store is never read" -}}
 {{- end -}}
+{{- $se := dig "verifier" "se" (dict) (default dict .Values.as) | default dict -}}
+{{- $seEnabled := default false (index $se "enableFirmwareVerification") -}}
+{{- $seUrl := default "https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify" (index $se "firmwareVerifyUrl") -}}
 {{- if $nv -}}
-{{- if eq $nv.type "Remote" -}}
-{{- $_ := required "as.verifier.nvidia.verifierUrl must be set when as.verifier.nvidia.type is Remote" (trim (default "" $nv.verifierUrl)) -}}
-{{- end -}}
 {{- $nvType := default "Local" $nv.type -}}
 "nvidia_verifier": {
     "type": "{{ $nvType }}"
-    {{- if eq $nv.type "Remote" }},
+    {{- if and (eq $nv.type "Remote") (trim (default "" $nv.verifierUrl)) }},
     "verifier_url": "{{ $nv.verifierUrl }}"
+    {{- end }}
+    {{- if eq $nv.type "NvRemote" }}
+    {{- if trim (default "" $nv.nrasUrl) }},
+    "nras_url": "{{ $nv.nrasUrl }}"
+    {{- end }}
+    {{- if trim (default "" $nv.serviceKey) }},
+    "service_key": "{{ $nv.serviceKey }}"
+    {{- end }}
+    {{- end }}
+    {{- if eq $nv.type "NvLocal" }}
+    {{- if trim (default "" $nv.rimUrl) }},
+    "rim_url": "{{ $nv.rimUrl }}"
+    {{- end }}
+    {{- if trim (default "" $nv.rimStorePath) }},
+    "rim_store_path": "{{ $nv.rimStorePath }}"
+    {{- end }}
+    {{- if trim (default "" $nv.ocspUrl) }},
+    "ocsp_url": "{{ $nv.ocspUrl }}"
+    {{- end }}
+    {{- if trim (default "" $nv.serviceKey) }},
+    "service_key": "{{ $nv.serviceKey }}"
+    {{- end }}
     {{- end }}
 }
 {{- end -}}
@@ -188,6 +210,14 @@ AS verifier config JSON fragment
 {{ if $snpVcekSources -}}
 "snp_verifier": {
     "vcek_sources": {{ $snpVcekSources | toJson }}
+}
+{{- end -}}
+{{- if and $se (or $nv $dcap $snpVcekSources) }},
+{{- end }}
+{{- if $se -}}
+"se_verifier": {
+    "enable_firmware_verification": {{ $seEnabled }},
+    "firmware_verify_url": "{{ $seUrl }}"
 }
 {{- end -}}
 {{- end }}

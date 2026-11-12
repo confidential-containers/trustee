@@ -37,6 +37,15 @@ acls = [{ role = "{{ include "coco-trustee.kbs.adminRole" . }}", allowed_endpoin
 name = "resource"
 storage_backend_type = "kvstorage"
 
+{{- $spire := (.Values.kbs | default dict).spire | default dict }}
+{{- if $spire.enabled }}
+
+[[plugins]]
+name = "spire"
+admin_socket_path = "{{ default "/run/spire/sockets/admin.sock" $spire.adminSocketPath }}"
+attested_selector_value = "{{ default "true" $spire.attestedSelectorValue }}"
+{{- end }}
+
 {{- $st := include "coco-trustee.storage.type" . | trim }}
 {{- $sst := include "coco-trustee.kbs.sessionStorageType" . | trim }}
 {{- $needLocalJson := or (eq $st "LocalJson") (eq $st "local_json") (eq $sst "LocalJson") (eq $sst "local_json") }}

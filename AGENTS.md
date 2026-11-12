@@ -94,7 +94,7 @@ alternative options that have been considered.
 │   └── eventlog/               # TCG event log parser
 ├── integration-tests/          # Workspace-level integration tests
 ├── protos/                     # Protocol Buffer definitions (attestation, reference)
-├── hack/                       # Helper scripts (e2e.sh, release-helper.sh)
+├── release/                    # Release script and guide
 ├── docker-compose.yml          # Full-stack local deployment
 ├── .github/workflows/          # CI/CD pipelines
 └── .devcontainer/              # Dev container configurations
@@ -105,6 +105,7 @@ alternative options that have been considered.
 ### Prerequisites
 
 - **Rust toolchain**: version pinned in `rust-toolchain.toml` (currently `1.95.0`)
+- **MSRV**: `1.94.1`, declared as `workspace.package.rust-version` and checked on every pull request
 - **Protobuf compiler** (`protoc`) for gRPC code generation
 - **OpenSSL** development libraries
 - **tpm2-tss** (for TPM verifier features)

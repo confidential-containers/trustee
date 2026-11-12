@@ -4,8 +4,8 @@
 //
 
 use base64::Engine;
-use eventlog::{ccel::tcg_enum::TcgAlgorithm, CcEventLog, ReferenceMeasurement};
-use reqwest::{get, Response as ReqwestResponse, StatusCode};
+use eventlog::{CcEventLog, ReferenceMeasurement, ccel::tcg_enum::TcgAlgorithm};
+use reqwest::{Response as ReqwestResponse, StatusCode, get};
 use std::{io::Cursor, path::Path};
 use tokio::fs;
 
@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use codicon::Decoder;
 use csv_rs::{
     api::guest::{AttestationReport, AttestationReportWrapper},
-    certs::{ca, csv, Verifiable},
+    certs::{Verifiable, ca, csv},
 };
 use serde_json::json;
 
@@ -321,7 +321,7 @@ fn verify_report_signature(
 
 #[cfg(test)]
 mod tests {
-    use crate::{csv::CsvVerifier, InitDataHash, ReportData, Verifier};
+    use crate::{InitDataHash, ReportData, Verifier, csv::CsvVerifier};
 
     #[tokio::test]
     async fn test_verify_csv_evidence() {

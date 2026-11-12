@@ -23,7 +23,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.pull_request.labels.*.name, 'tee-e2e')
-    uses: ./.github/workflows/workflow-call-build-docker-e2e-materials.yml
+    uses: $/.github/workflows/workflow-call-build-docker-e2e-materials.yml
     permissions:
       contents: read
 
@@ -33,7 +33,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.pull_request.labels.*.name, 'tee-e2e')
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    uses: $/.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:
@@ -51,7 +51,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.pull_request.labels.*.name, 'tee-e2e')
-    uses: ./.github/workflows/workflow-call-helm-e2e.yml
+    uses: $/.github/workflows/workflow-call-helm-e2e.yml
     permissions:
       contents: read
     with:

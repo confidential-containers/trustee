@@ -5,7 +5,7 @@
 // This implementation is based on SPDM 1.1.1
 // https://www.dmtf.org/sites/default/files/standards/documents/DSP0274_1.1.1.pdf
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use serde_json::Map;
 use serde_json::Value;
 use std::{collections::HashMap, fmt};

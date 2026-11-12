@@ -5,7 +5,7 @@
 // This implementation is based on SPDM 1.1.1
 // https://www.dmtf.org/sites/default/files/standards/documents/DSP0274_1.1.1.pdf
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::{fmt, mem::size_of};
 
 use super::SPDM_VERSION_SUPPORTED;

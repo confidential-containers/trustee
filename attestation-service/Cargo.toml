@@ -1,7 +1,8 @@
 [package]
 name = "attestation-service"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [features]
 default = ["grpc-bin", "rvps-grpc"]
@@ -16,6 +17,7 @@ hygon-dcu-verifier = ["verifier/hygon-dcu-verifier"]
 cca-verifier = ["verifier/cca-verifier"]
 se-verifier = ["verifier/se-verifier"]
 nvidia-verifier = ["verifier/nvidia-verifier"]
+nvidia-nvat = ["verifier/nvidia-nvat"]
 tpm-verifier = ["verifier/tpm-verifier"]
 
 rvps-grpc = ["prost", "tonic", "mobc"]
@@ -50,7 +52,7 @@ axum = { version = "0.8", default-features = false, features = [
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
-serde_json_canonicalizer = "0.3"
+serde_json_canonicalizer = "0.4"
 cfg-if.workspace = true
 clap = { workspace = true, optional = true }
 ear.workspace = true

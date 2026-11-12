@@ -9,12 +9,12 @@ use std::path::Path;
 
 use clap::Parser;
 use kbs::{
-    config::{Cli, KbsConfig},
     ApiServer,
+    config::{Cli, KbsConfig},
 };
 use shadow_rs::shadow;
 use tracing::{debug, info};
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::Subscriber};
 
 shadow!(build);
 

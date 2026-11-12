@@ -29,7 +29,7 @@ jobs:
         persist-credentials: false
 
     - name: Install Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+      uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
       with:
         components: rustfmt, clippy
 
@@ -46,6 +46,9 @@ jobs:
           ~/.cargo/registry/cache/
           target/
         key: rust-${{ hashFiles('./Cargo.lock') }}
+
+    - name: Install NVIDIA Attestation SDK
+      uses: $/.github/actions/install-nvat-sdk
 
     - name: Install CoCo-AS e2e dependencies
       run: make as-e2e-install-deps

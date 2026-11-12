@@ -10,7 +10,9 @@ use serde::Deserialize;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tracing::warn;
 
 pub mod error;
 pub use error::{KeyValueStorageError, Result};
@@ -34,6 +36,14 @@ pub use provider::{KvStorageProvider, StorageProvider};
 pub struct SetParameters {
     /// Whether to overwrite the existing value.
     pub overwrite: bool,
+
+    /// How long the entry lives before it expires. The type is a `Duration`, so
+    /// the caller picks the unit. Backends may round it up to whole
+    /// milliseconds. An overwrite replaces the previous TTL, and `None` means
+    /// the entry never expires; so does a TTL too large for the backend to
+    /// represent. Only honored when [`KeyValueStorage::supports_ttl`] returns
+    /// `true`.
+    pub ttl: Option<Duration>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -56,6 +66,12 @@ pub trait KeyValueStorage: Send + Sync {
     /// Delete a value for a key.
     /// Return the deleted value if it exists.
     async fn delete(&self, key: &str) -> Result<Option<Vec<u8>>>;
+
+    /// Whether the backend expires entries set with a TTL. Backends that
+    /// return `false` ignore `SetParameters::ttl`.
+    fn supports_ttl(&self) -> bool {
+        false
+    }
 }
 
 pub type KeyValueStorageInstance = Arc<dyn KeyValueStorage>;
@@ -180,9 +196,32 @@ pub struct StorageBackendConfig {
     pub backends: KeyValueStorageStructConfig,
 }
 
+/// Wall-clock Unix time in milliseconds, for backends whose expiry outlives the
+/// process.
+pub(crate) fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+
+/// When an entry set now with `ttl` expires, or `None` if that is too far away
+/// to represent (the entry never expires).
+pub(crate) fn expires_at_millis(ttl: Duration) -> Option<u64> {
+    let at = u64::try_from(ttl.as_nanos().div_ceil(1_000_000))
+        .ok()
+        .and_then(|millis| now_millis().checked_add(millis));
+    if at.is_none() {
+        warn!(
+            ?ttl,
+            "TTL too large to represent, the entry will never expire"
+        );
+    }
+    at
+}
+
 /// Check if the key is valid.
 ///
-/// The key is valid if it only contains ASCII alphanumeric characters, `-`, `_` or `.`.
+/// The key is valid if it only contains ASCII alphanumeric characters, `-`, `_`, `.` or `/`.
 /// No spaces and other special characters are allowed to prevent SQL injection.
 pub(crate) fn is_valid_key(key: &str) -> bool {
     key.chars()

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use jsonwebtoken::jwk::{Jwk, JwkSet};
 
 /// Accessing NRAS requires entering into a licensing agreement with NVIDIA.

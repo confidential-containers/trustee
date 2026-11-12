@@ -4,8 +4,8 @@
 //
 
 use super::{EventDataParser, EventDetails};
-use anyhow::{anyhow, Context, Result};
-use scroll::{Pread, LE};
+use anyhow::{Context, Result, anyhow};
+use scroll::{LE, Pread};
 use serde::Serialize;
 use serde_json::Value;
 

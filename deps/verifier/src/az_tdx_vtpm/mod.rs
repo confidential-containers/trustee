@@ -7,18 +7,18 @@ mod compat;
 
 use self::compat::Evidence;
 use super::az_snp_vtpm::{
-    extend_claim, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs, verify_tpm_signature,
-    verify_user_data, TpmQuote,
+    TpmQuote, extend_claim, verify_eventlog, verify_init_data, verify_tpm_nonce, verify_tpm_pcrs,
+    verify_tpm_signature, verify_user_data,
 };
-use super::intel_dcap::quote::{parse_quote, Quote as TdQuote};
+use super::intel_dcap::quote::{Quote as TdQuote, parse_quote};
 use super::intel_dcap::{
-    collateral::build_quote_collateral, ecdsa_quote_verification, extend_using_custom_claims,
-    pck::parse_platform_info, QcnlConfig,
+    QcnlConfig, collateral::build_quote_collateral, ecdsa_quote_verification,
+    extend_using_custom_claims, pck::parse_platform_info,
 };
 use super::tdx::claims::generate_parsed_claim;
 use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::{InitDataHash, ReportData};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use az_tdx_vtpm::hcl::HclReport;
 use tracing::{debug, instrument};
@@ -46,6 +46,7 @@ impl Verifier for AzTdxVtpm {
     /// 5. TD Report's report_data field matches hashed HCL variable data
     /// 6. User-data field in HCL variable data matches report_data
     /// 7. Init data hash matches TPM PCR[INITDATA_PCR]
+    /// 8. AAEL runtime eventlog (if present) replays against the TPM PCRs
     #[instrument(skip_all, name = "Azure vTPM TDX")]
     async fn evaluate(
         &self,
@@ -100,6 +101,9 @@ impl Verifier for AzTdxVtpm {
         let mut claim = generate_parsed_claim(&td_quote, None, &platform_info)?;
         extend_claim(&mut claim, &tpm_quote)?;
         extend_using_custom_claims(&mut claim, custom_claims)?;
+
+        let ccel = verify_eventlog(evidence.cc_eventlog(), &tpm_quote)?;
+        crate::extend_eventlog_claim(&mut claim, ccel)?;
 
         Ok(vec![(claim, "cpu".to_string())])
     }
@@ -231,5 +235,35 @@ mod tests {
         tpm_quote.pcrs[0][0] ^= 1;
 
         assert!(verify_tpm_pcrs(&tpm_quote).is_err());
+    }
+
+    /// Build a v2 evidence envelope from the v1 fixture by bumping the
+    /// version tag, so we can exercise the cc_eventlog accessor without a
+    /// dedicated v2 fixture file.
+    fn v2_evidence_json(cc_eventlog: Option<&str>) -> String {
+        let v1: serde_json::Value = serde_json::from_str(EVIDENCE_V1_JSON).unwrap();
+        let mut v2 = v1.clone();
+        v2["version"] = serde_json::json!(2);
+        if let Some(el) = cc_eventlog {
+            v2["cc_eventlog"] = serde_json::json!(el);
+        } else {
+            // Mimic an older v2 producer that never recorded AAEL: drop the
+            // field entirely, so deserialization must tolerate its absence.
+            v2.as_object_mut().unwrap().remove("cc_eventlog");
+        }
+        serde_json::to_string(&v2).unwrap()
+    }
+
+    #[rstest]
+    #[case::with_eventlog(Some("YWFlbC1wbGFjZWhvbGRlcg=="))]
+    #[case::without_eventlog(None)]
+    fn test_evidence_v2_cc_eventlog(#[case] cc_eventlog: Option<&str>) {
+        // Older v2 producers (pre-AAEL) emit no cc_eventlog key; the field
+        // must deserialize as None rather than failing.
+        let tee_evidence: TeeEvidence =
+            serde_json::from_str(&v2_evidence_json(cc_eventlog)).unwrap();
+        let evidence = serde_json::from_value::<Evidence>(tee_evidence).unwrap();
+        assert_eq!(evidence.version(), 2);
+        assert_eq!(evidence.cc_eventlog(), cc_eventlog);
     }
 }

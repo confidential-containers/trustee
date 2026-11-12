@@ -27,7 +27,7 @@ jobs:
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
           - component: kbs-client
             arch: s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             dockerfile: kbs/docker/kbs-client/Dockerfile
             output_path: kbs-client
             repo: ghcr.io/confidential-containers/staged-images/kbs-client
@@ -46,7 +46,7 @@ jobs:
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli
           - component: trustee-cli
             arch: s390x
-            instance: ubuntu-24.04-s390x
+            instance: ubuntu-26.04-s390x
             dockerfile: tools/trustee-cli/Dockerfile
             output_path: ./usr/local/bin/trustee
             repo: ghcr.io/confidential-containers/staged-images/trustee-cli
@@ -63,7 +63,7 @@ jobs:
 
     steps:
     - name: Install ORAS
-      uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+      uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
       with:
         version: 1.0.0
 
@@ -73,10 +73,10 @@ jobs:
         persist-credentials: false
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
     - name: Log in to ghcr.io
-      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
