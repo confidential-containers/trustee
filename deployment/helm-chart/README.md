@@ -319,7 +319,7 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/attestation-service"` | AS container image repository. |
-| as.image.tag | string | `"v0.22.0"` | AS container image tag. |
+| as.image.tag | string | `"v0.23.0"` | AS container image tag. |
 | as.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | as.nodeSelector | object | `{}` | Node label selection constraints for AS Pods. |
 | as.podAnnotations | object | `{}` | Extra Pod annotations. |
@@ -340,6 +340,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.verifier.nvidia.type | string | `"Local"` | NVIDIA verifier type: `Local`, `Remote`, `NvLocal` or `NvRemote`. `NvLocal` and `NvRemote` are only available on x86_64. |
 | as.verifier.nvidia.verifierUrl | string | `"https://nras.attestation.nvidia.com/v4/attest"` | NRAS attestation endpoint (the `/v4/attest` path) when `as.verifier.nvidia.type` is `Remote`. Optional: if empty, the verifier uses its built-in default. |
 | as.verifier.se.credsDir | string | `""` | Absolute path on the target node to the directory containing IBM SE attestation materials (`rsa/`, `certs/`, `crls/`, `hkds/`, `hdr/hdr.bin`). When non-empty, the chart creates a `local`-type PersistentVolume + PersistentVolumeClaim and mounts the directory at `/run/confidential-containers/ibmse/` on the AS Pod. Requires `as.verifier.se.nodeName`. |
+| as.verifier.se.enableFirmwareVerification | bool | `false` | Enable firmware hash verification against the IBM firmware attestation API. Only effective on z17 systems. When true, guests without a firmware hash are rejected. |
+| as.verifier.se.firmwareVerifyUrl | string | `""` | IBM firmware attestation API URL. Optional: if left empty, the chart falls back to the built-in default (`https://esupport.ibm.com/eccedge/ent/z/hmrs/firmware/attestation/v1/verify`), so firmware verification still works without setting this field. Only set it to override the endpoint (e.g. a custom or mirrored service). |
 | as.verifier.se.nodeName | string | `""` | Kubernetes node name where the IBM SE materials directory (`as.verifier.se.credsDir`) resides. Required when `as.verifier.se.credsDir` is set; used in the PersistentVolume `nodeAffinity`. |
 | as.verifier.snp.kdsStoreHostPath | string | `""` | Absolute path on the target node to the directory containing the AMD SNP offline VCEK certificate store (must contain a `vcek/` subdirectory). When non-empty, the chart creates a `local`-type PV + PVC and mounts it at `/opt/confidential-containers/attestation-service/kds-store` on the AS Pod, which is where an `OfflineStore` entry in `as.verifier.snp.vcekSources` reads from. Requires `as.verifier.snp.nodeName`. See [the offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for the directory layout. |
 | as.verifier.snp.nodeName | string | `""` | Kubernetes node name where the kds-store directory (`as.verifier.snp.kdsStoreHostPath`) resides. Required when `as.verifier.snp.kdsStoreHostPath` is set; used in the PV `nodeAffinity`. |
@@ -371,7 +373,7 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.extraVolumes | list | `[]` | Extra volumes to attach to the KBS Pod. |
 | kbs.image.pullPolicy | string | `"Always"` | KBS container image pull policy. |
 | kbs.image.repository | string | `"ghcr.io/confidential-containers/key-broker-service"` | KBS container image repository. |
-| kbs.image.tag | string | `"v0.22.0"` | KBS container image tag. |
+| kbs.image.tag | string | `"v0.23.0"` | KBS container image tag. |
 | kbs.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | kbs.nodeSelector | object | `{}` | Node label selection constraints for KBS Pods. |
 | kbs.podAnnotations | object | `{}` | Extra Pod annotations (for example Prometheus scrape or service mesh integration). |
@@ -411,7 +413,7 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | rvps.extraEnvVars | list | `[]` | Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
 | rvps.image.pullPolicy | string | `"Always"` | RVPS container image pull policy. |
 | rvps.image.repository | string | `"ghcr.io/confidential-containers/reference-value-provider-service"` | RVPS container image repository. |
-| rvps.image.tag | string | `"v0.22.0"` | RVPS container image tag. |
+| rvps.image.tag | string | `"v0.23.0"` | RVPS container image tag. |
 | rvps.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | rvps.nodeSelector | object | `{}` | Node label selection constraints for RVPS Pods. |
 | rvps.podAnnotations | object | `{}` | Extra Pod annotations. |

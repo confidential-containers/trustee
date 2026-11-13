@@ -176,7 +176,7 @@ kbs:
     # -- KBS container image pull policy.
     pullPolicy: Always
     # -- KBS container image tag.
-    tag: "v0.22.0"
+    tag: "v0.23.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
@@ -222,7 +222,7 @@ as:
     # -- AS container image pull policy.
     pullPolicy: Always
     # -- AS container image tag.
-    tag: "v0.22.0"
+    tag: "v0.23.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   verifier:
@@ -325,7 +325,7 @@ rvps:
     # -- RVPS container image pull policy.
     pullPolicy: Always
     # -- RVPS container image tag.
-    tag: "v0.22.0"
+    tag: "v0.23.0"
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
