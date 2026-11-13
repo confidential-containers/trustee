@@ -75,7 +75,7 @@ jobs:
           persist-credentials: false
       
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rustflags: ""
           cache: false
@@ -138,7 +138,7 @@ jobs:
         run: docker load --input "${RUNNER_TEMP}/docker-e2e-images/images.tar"
 
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rustflags: ""
           cache: false
@@ -172,7 +172,7 @@ jobs:
         persist-credentials: false
 
     - name: Install Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+      uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
       with:
         rustflags: ""
         cache: false
@@ -264,7 +264,7 @@ jobs:
         uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
 
       - name: Create k8s Kind Cluster
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # v1.15.2
         with:
           cluster_name: ${{ env.KIND_CLUSTER }}
 
