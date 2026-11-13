@@ -23,7 +23,7 @@ mkdir -p /root/trustee/lib64 && \
 ldd /usr/local/bin/kbs | sed 's@.*\s/@/@' | sed 's/\s.*//' | xargs -I {} cp {} /root/trustee/lib64
 
 # Package UBI image.
-FROM registry.access.redhat.com/ubi9:latest@sha256:8b212f75a0e5a156ac28b1c5c030d2e8a07715254e19d522286118279399af81
+FROM registry.access.redhat.com/ubi9:latest@sha256:1e9f0ed9fceafb40878bc1705ff124aa150e3fed873f18c42cdc2dded319e0a8
 
 # Install runtime dependencies from Intel repo.
 COPY --from=builder /root/sgx_rpm_local_repo /root/sgx_rpm_local_repo

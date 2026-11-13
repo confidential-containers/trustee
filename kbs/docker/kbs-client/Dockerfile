@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.85.1@sha256:e51d0265072d2d9d5d320f6a44dde6b9ef13653b035098febd68cce8fa7c0bc4 AS builder
+FROM docker.io/library/rust:1.99.0@sha256:81015672d6939b0265f09adf96d5de125482bb1330106076956b0518e74edc90 AS builder
 ARG ARCH=x86_64
 
 WORKDIR /usr/src/kbs
