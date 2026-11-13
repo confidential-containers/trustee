@@ -68,6 +68,10 @@
      --title v0.23.0 --generate-notes
    ```
 
+  > [!WARN] The generated notes list PRs labeled `BREAKING-CHANGE` in a separate "Breaking Changes"
+  >   section (configured in [`.github/release.yml`](../.github/release.yml)), so all PRs with
+  >   breaking changes merged in this release cycle **SHOULD** be labeled before the release is created.
+
 If the release workflow in step 5 fails, the cause is fixed and the workflow is run again. If the
 cause is outside the repo, the re-run uses the same `git-sha`. If it needs another PR, the re-run
 is against the merge commit of that PR. Retagging the images is safe to repeat. The tag is created
