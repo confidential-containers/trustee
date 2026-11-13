@@ -279,14 +279,28 @@ not covered by TBS nor report_data_signature, thus not integrity-protected.
 - `snp.reported_tcb_microcode`: Reported microcode version
 - `snp.reported_tcb_snp`: Reported SVN of SNP Firmware
 - `snp.reported_tcb_tee`: Reported SVN of ASP OS
+- `snp.launch_tcb_bootloader`: SVN of ASP bootloader when the guest was launched
+- `snp.launch_tcb_microcode`: Microcode version when the guest was launched
+- `snp.launch_tcb_snp`: SVN of SNP Firmware when the guest was launched
+- `snp.launch_tcb_tee`: SVN of ASP OS when the guest was launched
+- `snp.vmpl`: VMPL at which the report was requested (the verifier only accepts 0)
+- `snp.signing_key`: Integer. Key that signed the report (`SIGNING_KEY` field): 0 = VCEK, 1 = VLEK (other values are defined by the SNP ABI)
+- `snp.author_key_en`: Whether the digest of an ID block author key is present in the report
 
-The claims map only includes the reported TCB version.
+The claims map includes the reported and the launch TCB versions.
 An SEV-SNP Attestation Report contains four sets of TCB version information.
 Often all four values are the same, but sometimes the reported TCB might lag
 behind the true firmware version. This is done to minimize churn of policies
 and certificates while the provider updates to provisional firmware.
 The actual firmware must always be newer than or equal to the reported TCB.
 Generally, policies should be evaluated against the reported TCB.
+
+The launch TCB is the TCB in effect when the guest was launched. A guest keeps
+running through a live firmware update, and afterwards its reported TCB rises
+with the new firmware, while the guest itself was launched by the old one (SEV
+Secure Nested Paging Firmware ABI Specification, rev. 1.59, §4.1 and §7.3).
+A minimum on `reported_tcb_*` alone therefore accepts a guest that was launched
+before a fix; to reject it, apply the same minimum to `launch_tcb_*`.
 
 ## TPM
 
