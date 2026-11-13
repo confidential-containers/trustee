@@ -63,7 +63,7 @@ impl Regorus {
         .map_err(|e| PolicyError::EvalPolicyFailed(e.into()))?
     }
 
-    fn evaluate_sync(
+    pub fn evaluate_sync(
         data: Option<String>,
         input: String,
         policy: String,

@@ -28,7 +28,7 @@ use crate::{
         ACTIVE_CONNECTIONS, BUILD_INFO, KBS_POLICY_APPROVALS, KBS_POLICY_ERRORS, KBS_POLICY_EVALS,
         KBS_POLICY_VIOLATIONS, REQUEST_DURATION, REQUEST_SIZES, REQUEST_TOTAL,
     },
-    token::TokenVerifier,
+    token::{TOKEN_INIT_DATA_PATH_EAR, TokenVerifier},
 };
 
 const KBS_PREFIX: &str = "/kbs/v0";
@@ -451,17 +451,22 @@ pub(crate) async fn api(
                 }
                 KBS_POLICY_APPROVALS.inc();
 
-                let init_data = claims.pointer("/submods/cpu0/ear_verifier_claims/init_data");
+                let init_data = crate::token::pointer(&claims, TOKEN_INIT_DATA_PATH_EAR);
 
                 // Extract only custom extensions scoped to Trustee
+                // The first submod that has an extension wins.
                 let mut trustee_extensions = HashMap::new();
-                if let Some(submod) = claims
-                    .pointer("/submods/cpu0")
+                if let Some(submods) = claims
+                    .pointer("/submods")
                     .and_then(serde_json::Value::as_object)
                 {
-                    for (name, value) in submod {
-                        if name.starts_with("ear.trustee") {
-                            trustee_extensions.insert(name.clone(), value.clone());
+                    for submod in submods.values().filter_map(serde_json::Value::as_object) {
+                        for (name, value) in submod {
+                            if name.starts_with("ear.trustee") {
+                                trustee_extensions
+                                    .entry(name.clone())
+                                    .or_insert_with(|| value.clone());
+                            }
                         }
                     }
                 }
@@ -551,4 +556,59 @@ async fn prometheus_metrics_middleware(
     }
 
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use policy_engine::rego::Regorus;
+    use serde_json::{Value, json};
+
+    /// Whether the default resource policy lets `claims` access a resource.
+    fn default_policy_allows(claims: Value) -> bool {
+        Regorus::evaluate_sync(
+            Some(json!({"plugin": "resource"}).to_string()),
+            claims.to_string(),
+            include_str!("../sample_policies/default.rego").to_string(),
+            vec!["data.policy.allow".to_string()],
+            vec![],
+        )
+        .unwrap()
+        .eval_rules_result["data.policy.allow"]
+            .clone()
+            == Some(Value::Bool(true))
+    }
+
+    fn token_of(submods: Value) -> Value {
+        json!({ "submods": submods })
+    }
+
+    fn appraisal(device: &str, tee: &str) -> Value {
+        json!({"ear_attester_claims": {device: [{"tee": tee, "claims": {}}]}})
+    }
+
+    #[test]
+    fn test_default_policy_refuses_dummy_evidence() {
+        assert!(default_policy_allows(token_of(
+            json!({"cpu0": appraisal("tdx", "tdx")})
+        )));
+
+        // The dummy TEE and the dummy device are refused ...
+        assert!(!default_policy_allows(token_of(
+            json!({"cpu0": appraisal("sample", "sample")})
+        )));
+        assert!(!default_policy_allows(token_of(json!({
+            "cpu0": appraisal("tdx", "tdx"),
+            "gpu0": appraisal("sample-device", "sampledevice"),
+        }))));
+        // ... wherever they are, and next to other devices of the same appraisal.
+        assert!(!default_policy_allows(token_of(json!({
+            "cpu0": {"ear_attester_claims": {
+                "tdx": [{"tee": "tdx", "claims": {}}],
+                "sample": [{"tee": "sample", "claims": {}}],
+            }},
+        }))));
+        assert!(!default_policy_allows(token_of(json!({
+            "other": appraisal("sample", "sample"),
+        }))));
+    }
 }

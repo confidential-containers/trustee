@@ -1,5 +1,6 @@
 use anyhow::bail;
 use attestation_service::HashAlgorithm;
+use attestation_service::ear_token::DEFAULT_POLICY_IDS;
 use attestation_service::{
     AttestationService as Service, ServiceError, Tee, TeeEvidence, VerificationRequest,
     config::Config, config::ConfigError,
@@ -212,7 +213,7 @@ impl AttestationService for Arc<RwLock<AttestationServer>> {
             });
         }
         let policy_ids = match request.policy_ids.is_empty() {
-            true => vec!["default".into()],
+            true => DEFAULT_POLICY_IDS.map(String::from).to_vec(),
             false => request.policy_ids,
         };
 

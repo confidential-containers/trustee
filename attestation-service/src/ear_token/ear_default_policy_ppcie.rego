@@ -2,6 +2,12 @@ package policy
 
 import rego.v1
 
+# The result of the PPCIE topology is judged by this policy.
+devices := ["nvidia-ppcie"]
+
+# The name of the entry this policy produces in the token.
+submod := "ppcie0"
+
 default hardware := 0
 
 default executables := 0
@@ -10,7 +16,7 @@ default executables := 0
 # when a valid PPCIE topology is found.
 # Thus, the configuration is known to be valid.
 # For information about the switches and gpus used
-# in PPCIE, refer to the individual device submods.
+# in PPCIE, refer to the gpu0 and switch0 submods.
 default configuration := 2
 
 default file_system := 0

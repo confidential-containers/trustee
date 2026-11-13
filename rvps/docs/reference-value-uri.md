@@ -126,21 +126,23 @@ import rego.v1
 
 # Example: TDX executables check using RV URIs (recommended format with tag)
 executables := 3 if {
-    input.tdx
+    some d in input.devices
+    d.tee == "tdx"
 
     # RTMR measurements from RVPS using versioned URIs
-    input.tdx.quote.body.rtmr_1 == query_reference_value("rvps:///github.com/confidential-containers/tdx/rtmr_1:v0.18.0")
-    input.tdx.quote.body.rtmr_2 == query_reference_value("rvps:///github.com/confidential-containers/tdx/rtmr_2:v0.18.0")
+    d.claims.quote.body.rtmr_1 == query_reference_value("rvps:///github.com/confidential-containers/tdx/rtmr_1:v0.18.0")
+    d.claims.quote.body.rtmr_2 == query_reference_value("rvps:///github.com/confidential-containers/tdx/rtmr_2:v0.18.0")
 }
 
 # Example: TDX hardware check (mr_seam, tcb_svn, mr_td)
 hardware := 2 if {
-    input.tdx
+    some d in input.devices
+    d.tee == "tdx"
 
-    input.tdx.quote.header.tee_type == "81000000"
-    input.tdx.quote.body.mr_seam == query_reference_value("rvps:///github.com/confidential-containers/tdx/mr_seam:v0.18.0")
-    input.tdx.quote.body.tcb_svn == query_reference_value("rvps:///github.com/confidential-containers/tdx/tcb_svn:v0.18.0")
-    input.tdx.quote.body.mr_td == query_reference_value("rvps:///github.com/confidential-containers/tdx/mr_td:v0.18.0")
+    d.claims.quote.header.tee_type == "81000000"
+    d.claims.quote.body.mr_seam == query_reference_value("rvps:///github.com/confidential-containers/tdx/mr_seam:v0.18.0")
+    d.claims.quote.body.tcb_svn == query_reference_value("rvps:///github.com/confidential-containers/tdx/tcb_svn:v0.18.0")
+    d.claims.quote.body.mr_td == query_reference_value("rvps:///github.com/confidential-containers/tdx/mr_td:v0.18.0")
 }
 ```
 

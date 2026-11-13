@@ -76,7 +76,7 @@ const SECRET_PATH: &str = "default/test/secret";
     ],
     true,
     EAR_RV_ATTESTATION_POLICY,
-    Some(EAR_RV_ATTESTATION_POLICY),
+    Some(EAR_GPU_CONTRAINDICATED_ATTESTATION_POLICY),
     Result::Err(anyhow!("Access denied by policy"))
 )]
 #[case::device_not_contraindicated(
@@ -277,6 +277,38 @@ const EAR_CONTRAINDICATED_ATTESTATION_POLICY: &str = r#"
 package policy
 import rego.v1
 
+devices := ["sample"]
+submod := "cpu0"
+
+default hardware := 97
+default executables := 33
+default configuration := 36
+default file_system := 0
+default instance_identity := 0
+default runtime_opaque := 0
+default storage_opaque := 0
+default sourced_data := 0
+
+trust_claims := {
+	"executables": executables,
+	"hardware": hardware,
+	"configuration": configuration,
+	"file-system": file_system,
+	"instance-identity": instance_identity,
+	"runtime-opaque": runtime_opaque,
+	"storage-opaque": storage_opaque,
+	"sourced-data": sourced_data,
+}
+    
+"#;
+
+const EAR_GPU_CONTRAINDICATED_ATTESTATION_POLICY: &str = r#"
+package policy
+import rego.v1
+
+devices := ["sample-device"]
+submod := "gpu0"
+
 default hardware := 97
 default executables := 33
 default configuration := 36
@@ -303,6 +335,9 @@ const EAR_RV_ATTESTATION_POLICY: &str = r#"
 package policy
 import rego.v1
 
+devices := ["sample"]
+submod := "cpu0"
+
 default hardware := 97
 default executables := 33
 default configuration := 36
@@ -324,7 +359,9 @@ trust_claims := {
 }
 
 hardware := 2 if {
-    input.sample.svn in query_reference_value("svn")
+    some d in input.devices
+    d.tee == "sample"
+    d.claims.svn in query_reference_value("svn")
 }
 "#;
 
@@ -332,6 +369,9 @@ const EAR_DEVICE_RV_ATTESTATION_POLICY: &str = r#"
 package policy
 import rego.v1
 
+devices := ["sample-device"]
+submod := "gpu0"
+
 default hardware := 97
 default executables := 33
 default configuration := 36
@@ -353,6 +393,8 @@ trust_claims := {
 }
 
 hardware := 2 if {
-    input.sampledevice.svn in query_reference_value("device_svn")
+    some d in input.devices
+    d.tee == "sampledevice"
+    d.claims.svn in query_reference_value("device_svn")
 }
 "#;

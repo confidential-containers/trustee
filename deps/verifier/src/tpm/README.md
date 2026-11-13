@@ -13,7 +13,9 @@ The TPM verifier requires trusted AK public keys to be pre-configured.
 In order to check that the received AK is trusted, you need to configure the policy to include the following condition:
 
 ```rego
-input.tpm.ak_public in query_reference_value(<reference_name_for_trusted_ak>)
+some d in input.devices
+d.tee == "tpm"
+d.claims.ak_public in query_reference_value(<reference_name_for_trusted_ak>)
 ```
 In the default policy, the reference name is `trusted_ak`, but you can choose any name as long as it matches the one used in the policy.
 

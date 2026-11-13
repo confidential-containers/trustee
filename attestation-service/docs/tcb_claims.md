@@ -8,32 +8,39 @@ in the attestation token.
 
 ## Claims Data Format
 
-Policy input (passed to AS Rego via `TransformedClaims::policy_input_json`)
-is a JSON object composed from verifier output. In most cases, it follows this shape:
+Policy input (passed to AS Rego via `policy_input_json`) is a JSON object with the
+list `devices`, one entry per verifier result the policy judges. An entry has this shape:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
+| `device` | string | Name of the device the result belongs to, for example `tdx` or `nvidia-gpu` |
+| `tee` | string | Name of the TEE: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`, ... |
+| `claims` | object | TEE-specific claims, listed per TEE below |
 | `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
 | `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
 | `init_data_claims` | object | Parsed init-data claims (present when init-data plaintext is provided and verified, omitted otherwise) |
 | `runtime_data_claims` | object | Parsed runtime-data claims (present when structured report-data is provided and verified, omitted otherwise) |
 
-`<tee-name>` matches the serialized [`Tee`](https://docs.rs/kbs-types/latest/kbs_types/enum.Tee.html) variant string (for example `az-tdx-vtpm`, not `az_tdx_vtpm`). In Rego, hyphenated keys must use bracket syntax, e.g. `input["az-tdx-vtpm"]`.
+`tee` matches the serialized [`Tee`](https://docs.rs/kbs-types/latest/kbs_types/enum.Tee.html) variant string (for example `az-tdx-vtpm`, not `az_tdx_vtpm`). The per-TEE sections below list the claims as `<tee>.<field>`; in the policy input
+these fields are `d.claims.<field>` of the entry with `d.tee == "<tee>"`. For example `tdx.quote.body.mr_td` is
+`d.claims.quote.body.mr_td`. `report_data` and `init_data` that are listed under a TEE are not part of `claims`, they are
+the fields of the entry.
 
-On the issued EAR token (draft-04), the same data is split by authority:
+On the issued EAR token (draft-04), the same data is split by authority, see [The Attestation Token](./attestation_token.md):
 
 | Policy input | Token claim |
 | --- | --- |
-| `<tee-name>` | `ear_attester_claims.tee` + `ear_attester_claims.claims` |
-| raw `report_data`, raw `init_data` | `ear_attester_claims.report_data` / `.init_data` |
+| `tee`, `claims` | `ear_attester_claims.<device>[i].tee` + `.claims` |
+| raw `report_data`, raw `init_data` | `ear_attester_claims.<device>[i].report_data` / `.init_data` |
 | `runtime_data_claims`, `init_data_claims` | `ear_verifier_claims.runtime_data` / `.init_data` |
 
-Minimal example:
+Minimal example of an entry:
 
 ```json
 {
-  "tdx": {
+  "device": "tdx",
+  "tee": "tdx",
+  "claims": {
     "quote": {
       "body": {
         "mr_td": "<hex>"
@@ -297,7 +304,7 @@ Generally, policies should be evaluated against the reported TCB.
 
 ## Hygon DCU
 
-Each attestation report produces one set of claims under `hygondcu`. Multiple DCUs are evaluated separately (EAR token submods `dcu0`, `dcu1`, ... in evidence list order):
+Each attestation report produces one result of the device `hygon-dcu`, with one set of claims under `hygondcu`. The results of multiple DCUs are judged together by the policy that accepts `hygon-dcu`, and reported as a list in `ear_attester_claims["hygon-dcu"]`, in evidence list order:
 
 - `hygondcu.body`: Object. The report body of Hygon DCU.
   - `hygondcu.body.version`: Number. Firmware version.

@@ -34,14 +34,16 @@ fn serialize_canon_json<T: Serialize>(value: T) -> Result<Vec<u8>> {
 }
 
 pub type TeeEvidence = serde_json::Value;
-pub type TeeClass = String;
+/// Name of the device a verifier result belongs to, e.g. `tdx` or `nvidia-gpu`.
+/// Policies select the results they judge by this name.
+pub type DeviceName = String;
 
 /// Tee Claims are the output of the verifier plus some metadata
-/// that identifies the TEE type and class.
+/// that identifies the TEE type and the device.
 #[derive(Debug, Serialize)]
 pub struct TeeClaims {
     tee: Tee,
-    tee_class: TeeClass,
+    device: DeviceName,
     claims: TeeEvidenceParsedClaim,
     init_data_claims: serde_json::Value,
     runtime_data_claims: serde_json::Value,
@@ -249,10 +251,10 @@ impl AttestationService {
                 .await
                 .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
-            for (claims_from_tee_evidence, tee_class) in claims {
+            for (claims_from_tee_evidence, device) in claims {
                 info!(
                     tee =? verification_request.tee,
-                    tee_class = tee_class,
+                    device = device,
                     "Verifier/endorsement check passed.",
                 );
 
@@ -264,7 +266,7 @@ impl AttestationService {
                 );
                 tee_claims.push(TeeClaims {
                     tee: verification_request.tee,
-                    tee_class,
+                    device,
                     claims: claims_from_tee_evidence,
                     init_data_claims: init_data_claims.clone(),
                     runtime_data_claims: runtime_data_claims.clone(),

@@ -6,7 +6,7 @@
 pub(crate) mod compat;
 
 use self::compat::Evidence;
-use super::{TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
+use super::{DeviceName, TeeEvidence, TeeEvidenceParsedClaim, Verifier};
 use crate::snp::{
     CERT_CHAINS, HW_ID_OID, LOADER_SPL_OID, SNP_SPL_OID, TEE_SPL_OID, UCODE_SPL_OID,
     get_common_name, get_oid_int, get_oid_octets, get_processor_generation,
@@ -242,7 +242,7 @@ impl Verifier for AzSnpVtpm {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let ReportData::Value(expected_report_data) = expected_report_data else {
             bail!("unexpected empty report data");
         };
@@ -300,7 +300,7 @@ impl Verifier for AzSnpVtpm {
         let ccel = verify_eventlog(evidence.cc_eventlog(), tpm_quote)?;
         crate::extend_eventlog_claim(&mut claim, ccel)?;
 
-        Ok(vec![(claim, "cpu".to_string())])
+        Ok(vec![(claim, "az-snp-vtpm".to_string())])
     }
 }
 

@@ -9,6 +9,19 @@ pub mod broker;
 pub use broker::EarAttestationTokenBroker;
 
 pub mod claims;
+pub mod policy;
+
+/// The ids of the built-in policies.
+///
+/// Each of them selects the results of its own devices and produces its own
+/// entry in the token. They are what the Attestation Service evaluates if a
+/// request does not name any policy.
+pub const DEFAULT_POLICY_IDS: [&str; 4] = [
+    broker::DEFAULT_CPU_POLICY_ID,
+    broker::DEFAULT_GPU_POLICY_ID,
+    broker::DEFAULT_SWITCH_POLICY_ID,
+    broker::DEFAULT_PPCIE_POLICY_ID,
+];
 
 /// default token duration in minutes
 pub const DEFAULT_TOKEN_DURATION: i64 = 5;
