@@ -122,9 +122,11 @@ passport-resource-kbs:
 cli:
 	$(CARGO_ENV) cargo build -p kbs-client --locked --release --features $(RUST_CLI_FEATURES) $(TARGET_FLAG)
 
+# OPENSSL_STATIC makes pkg-config report the Libs.private of OpenSSL (e.g.
+# -lz -lzstd), which static libcrypto.a needs but doesn't record itself.
 .PHONY: cli-static-linux
 cli-static-linux:
-	$(CARGO_ENV) cargo build \
+	$(CARGO_ENV) OPENSSL_STATIC=1 cargo build \
       -p kbs-client \
       --target=$(ARCH)-unknown-linux-gnu \
       --config "target.$(ARCH)-unknown-linux-gnu.rustflags = '-C target-feature=+crt-static'" \
