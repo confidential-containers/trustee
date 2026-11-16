@@ -527,6 +527,17 @@ When true, render the Helm hook Job + RBAC that creates the release-scoped Secre
 {{- end }}
 
 {{/*
+Trustee component container image reference. Call with a dict:
+  (dict "image" .Values.kbs.image "context" $)
+An empty `tag` defaults to the chart appVersion with a leading `v`, matching the
+tags of the published Trustee release images.
+*/}}
+{{- define "coco-trustee.image" -}}
+{{- $tag := .image.tag | default (printf "v%s" .context.Chart.AppVersion) -}}
+{{- printf "%s:%s" .image.repository $tag -}}
+{{- end }}
+
+{{/*
 Internal: bootstrap hook Job images (defaults can be overridden in values.yaml).
 */}}
 {{- define "coco-trustee.internal.bootstrapKeysKeygenImage" -}}

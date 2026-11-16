@@ -31,6 +31,10 @@ helm uninstall trustee -n coco-trustee
 > [!NOTE]
 > When `secrets.useEphemeralGeneratedKeys` is `true` (default), a **post-delete** Helm hook removes the release-scoped `*-bootstrap-user-keys` Secret automatically.
 
+### Image versions
+
+By default the **KBS**, **AS** and **RVPS** images use the tag `v<appVersion>` from `Chart.yaml` (for example `v{{ template "chart.appVersion" . }}`), so the deployed images follow the chart release. Set `kbs.image.tag`, `as.image.tag` or `rvps.image.tag` to use a different tag.
+
 ## Typical scenarios
 
 ### Default: LocalFs storage

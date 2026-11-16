@@ -175,8 +175,8 @@ kbs:
     repository: ghcr.io/confidential-containers/key-broker-service
     # -- KBS container image pull policy.
     pullPolicy: Always
-    # -- KBS container image tag.
-    tag: "v0.23.0"
+    # -- KBS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
+    tag: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
@@ -221,8 +221,8 @@ as:
     repository: ghcr.io/confidential-containers/attestation-service
     # -- AS container image pull policy.
     pullPolicy: Always
-    # -- AS container image tag.
-    tag: "v0.23.0"
+    # -- AS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
+    tag: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   verifier:
@@ -324,8 +324,8 @@ rvps:
     repository: ghcr.io/confidential-containers/reference-value-provider-service
     # -- RVPS container image pull policy.
     pullPolicy: Always
-    # -- RVPS container image tag.
-    tag: "v0.23.0"
+    # -- RVPS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
+    tag: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
