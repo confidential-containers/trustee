@@ -55,16 +55,8 @@ cd "$(git rev-parse --show-toplevel)"
 CHART=deployment/helm-chart/Chart.yaml
 KUSTOMIZATION=kbs/config/kubernetes/base/kustomization.yaml
 ITA_KUSTOMIZATION=kbs/config/kubernetes/ita/kustomization.yaml
-HELM_IMAGE_PREFIX=ghcr.io/confidential-containers/
 README=deployment/helm-chart/README.md
 IMAGE_TAG="v${VERSION}"
-
-# Helm values files that pin release image tags (values.yaml and the scenarios).
-# Repositories under staged-images/ (CI images, e.g. the nightly scenario) are not release images.
-tag_files() {
-    git grep -F "repository: ${HELM_IMAGE_PREFIX}" -- 'deployment/helm-chart/*.yaml' |
-        { grep -vF "/staged-images/" || true; } | cut -d: -f1 | sort -u
-}
 
 # helm-docs output for the chart, printed to stdout (does not write README.md).
 render_readme() {
@@ -75,26 +67,6 @@ render_readme() {
 CARGO_TOMLS=()
 load_cargo_tomls() { mapfile -t CARGO_TOMLS < <(git ls-files -- '*Cargo.toml'); }
 
-# Print a helm values file with the tag after every release image repository set to IMAGE_TAG.
-# Fails if a repository line has no tag after it.
-set_tags() {
-    awk -v prefix="$HELM_IMAGE_PREFIX" -v tag="$IMAGE_TAG" '
-        index($0, "repository: " prefix) && !index($0, "/staged-images/") { pending = 1 }
-        pending && /^[[:space:]]*tag:/ { sub(/tag:.*/, "tag: \"" tag "\""); pending = 0 }
-        { print }
-        END { exit pending }
-    ' "$1"
-}
-
-# inplace <function> <file>: replace the file with the function's output, keeping its mode.
-inplace() {
-    local tmp
-    tmp=$(mktemp)
-    "$1" "$2" > "$tmp"
-    cat "$tmp" > "$2"
-    rm -f "$tmp"
-}
-
 edit() {
     if [[ -n "$TRUSTEE_REV" ]]; then
         [[ -z "$(git status --porcelain)" ]] || die "working tree is not clean; cannot switch to ${TRUSTEE_REV}"
@@ -103,9 +75,6 @@ edit() {
     load_cargo_tomls
 
     sed -i -E "s/^version: .*/version: ${VERSION}/; s/^appVersion: .*/appVersion: \"${VERSION}\"/" "$CHART"
-
-    local f
-    while read -r f; do inplace set_tags "$f"; done < <(tag_files)
 
     command -v helm-docs >/dev/null || die "helm-docs is needed to regenerate ${README}"
     helm-docs -c deployment/helm-chart
@@ -126,11 +95,6 @@ check() {
     load_cargo_tomls
     grep -qE "^version: ${VERSION}\$" "$CHART" || bad "$CHART version is not ${VERSION}"
     grep -qE "^appVersion: \"${VERSION}\"\$" "$CHART" || bad "$CHART appVersion is not \"${VERSION}\""
-
-    local tf
-    while read -r tf; do
-        set_tags "$tf" | cmp -s - "$tf" || bad "$tf: not every image tag is ${IMAGE_TAG}"
-    done < <(tag_files)
 
     command -v helm-docs >/dev/null || die "helm-docs is needed to check ${README}"
     [[ "$(render_readme)" == "$(cat "$README")" ]] ||

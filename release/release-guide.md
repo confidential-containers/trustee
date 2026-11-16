@@ -13,10 +13,6 @@
 
    Checklist of what the script updates (to be reviewed in the PR diff):
    - [ ] `deployment/helm-chart/Chart.yaml`: `version` and `appVersion` (`0.23.0`)
-   - [ ] `deployment/helm-chart/values.yaml` and `deployment/helm-chart/scenarios/*.yaml`: the tag
-         of every Trustee image from the release repos listed below (`v0.23.0`);
-         `scenarios/ibm-se-nightly-e2e.yaml` is for the nightly CI and stays on
-         `staged-images/...:latest`
    - [ ] `deployment/helm-chart/README.md`: regenerated with `helm-docs` (needs `helm-docs`
          installed)
    - [ ] `kbs/config/kubernetes/base/kustomization.yaml`: `newTag` (`built-in-as-v0.23.0`)
@@ -33,10 +29,11 @@
    build in the same PR if it does not.
 
    The version is passed as `X.Y.Z` (no leading `v`). It is used as is in `Chart.yaml` (`version`,
-   `appVersion`). The image tags in `values.yaml` and the scenarios (replacing `latest`) and the
-   kustomizations, and the git tag / GitHub release, use `v0.23.0` (kustomizations:
-   `built-in-as-v0.23.0` and `ita-as-v0.23.0`). `docker-compose.yml` is not changed: it stays on `latest`, because the
-   compose e2e builds and runs images under that name.
+   `appVersion`). The Helm chart does not pin any Trustee image tags: KBS, AS and RVPS default to
+   `v` + `appVersion` (`v0.23.0`). The kustomizations and the git tag / GitHub release use
+   `v0.23.0` (kustomizations: `built-in-as-v0.23.0` and `ita-as-v0.23.0`). `docker-compose.yml` is
+   not changed: it stays on `latest`, because the compose e2e builds and runs images under that
+   name.
 3. **A PR is opened** manually with the script's changes (the script only edits files; it does not
    commit, push or open a PR).
 4. **The PR is reviewed and merged.** The merge commit is the release commit. Before the merge, a

@@ -31,6 +31,22 @@ helm uninstall trustee -n coco-trustee
 > [!NOTE]
 > When `secrets.useEphemeralGeneratedKeys` is `true` (default), a **post-delete** Helm hook removes the release-scoped `*-bootstrap-user-keys` Secret automatically.
 
+### Image versions
+
+By default the **KBS**, **AS** and **RVPS** images use the tag `v<appVersion>` from `Chart.yaml` (for example `v0.23.0`), so the deployed images follow the chart release. Set `kbs.image.tag`, `as.image.tag` or `rvps.image.tag` to use a different tag.
+
+To pin an image to an immutable digest, set `<component>.image.digest`. The image is then pulled by digest. A `tag` set alongside it is kept in the reference for readability only:
+
+```bash
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set kbs.image.digest=sha256:<64 hex chars> \
+  --set as.image.digest=sha256:<64 hex chars> \
+  --set rvps.image.digest=sha256:<64 hex chars>
+```
+
+A digest not matching `sha256:<64 lowercase hex chars>` makes the install fail.
+
 ## Typical scenarios
 
 ### Default: LocalFs storage
@@ -317,9 +333,10 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 |-----|------|---------|-------------|
 | as.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for AS Pods. |
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| as.image.digest | string | `""` | AS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only. |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/attestation-service"` | AS container image repository. |
-| as.image.tag | string | `"v0.23.0"` | AS container image tag. |
+| as.image.tag | string | `""` | AS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty. |
 | as.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | as.nodeSelector | object | `{}` | Node label selection constraints for AS Pods. |
 | as.podAnnotations | object | `{}` | Extra Pod annotations. |
@@ -371,9 +388,10 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | kbs.extraEnvVars | list | `[]` | Extra environment variables to inject into the KBS container. |
 | kbs.extraVolumeMounts | list | `[]` | Extra volume mounts for the KBS container. |
 | kbs.extraVolumes | list | `[]` | Extra volumes to attach to the KBS Pod. |
+| kbs.image.digest | string | `""` | KBS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only. |
 | kbs.image.pullPolicy | string | `"Always"` | KBS container image pull policy. |
 | kbs.image.repository | string | `"ghcr.io/confidential-containers/key-broker-service"` | KBS container image repository. |
-| kbs.image.tag | string | `"v0.23.0"` | KBS container image tag. |
+| kbs.image.tag | string | `""` | KBS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty. |
 | kbs.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | kbs.nodeSelector | object | `{}` | Node label selection constraints for KBS Pods. |
 | kbs.podAnnotations | object | `{}` | Extra Pod annotations (for example Prometheus scrape or service mesh integration). |
@@ -411,9 +429,10 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | postgresql.service.ports.postgresql | int | `5432` | Bundled Postgres Service port (used in `POSTGRES_URL`). |
 | rvps.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for RVPS Pods. |
 | rvps.extraEnvVars | list | `[]` | Extra environment variables for the RVPS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| rvps.image.digest | string | `""` | RVPS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only. |
 | rvps.image.pullPolicy | string | `"Always"` | RVPS container image pull policy. |
 | rvps.image.repository | string | `"ghcr.io/confidential-containers/reference-value-provider-service"` | RVPS container image repository. |
-| rvps.image.tag | string | `"v0.23.0"` | RVPS container image tag. |
+| rvps.image.tag | string | `""` | RVPS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty. |
 | rvps.imagePullSecrets | list | `[]` | Optional image pull secrets for private registries. |
 | rvps.nodeSelector | object | `{}` | Node label selection constraints for RVPS Pods. |
 | rvps.podAnnotations | object | `{}` | Extra Pod annotations. |

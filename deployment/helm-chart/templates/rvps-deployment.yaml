@@ -48,7 +48,7 @@ spec:
         - name: rvps
           securityContext:
             {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
-          image: "{{ .Values.rvps.image.repository }}:{{ .Values.rvps.image.tag }}"
+          image: {{ include "coco-trustee.image" (dict "image" .Values.rvps.image "context" $ "name" "rvps") | quote }}
           imagePullPolicy: {{ .Values.rvps.image.pullPolicy }}
           command:
             - "rvps"
