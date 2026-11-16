@@ -177,6 +177,8 @@ kbs:
     pullPolicy: Always
     # -- KBS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
     tag: ""
+    # -- KBS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only.
+    digest: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:
@@ -223,6 +225,8 @@ as:
     pullPolicy: Always
     # -- AS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
     tag: ""
+    # -- AS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only.
+    digest: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   verifier:
@@ -326,6 +330,8 @@ rvps:
     pullPolicy: Always
     # -- RVPS container image tag. Defaults to the chart `appVersion` with a leading `v` when empty.
     tag: ""
+    # -- RVPS container image digest (`sha256:<hex>`). When set, the image is pinned by digest; `tag` is then optional and informational only.
+    digest: ""
   # -- Optional image pull secrets for private registries.
   imagePullSecrets: []
   service:

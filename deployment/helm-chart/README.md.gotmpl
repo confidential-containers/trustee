@@ -35,6 +35,18 @@ helm uninstall trustee -n coco-trustee
 
 By default the **KBS**, **AS** and **RVPS** images use the tag `v<appVersion>` from `Chart.yaml` (for example `v{{ template "chart.appVersion" . }}`), so the deployed images follow the chart release. Set `kbs.image.tag`, `as.image.tag` or `rvps.image.tag` to use a different tag.
 
+To pin an image to an immutable digest, set `<component>.image.digest`. The image is then pulled by digest. A `tag` set alongside it is kept in the reference for readability only:
+
+```bash
+helm upgrade --install trustee ./deployment/helm-chart \
+  --namespace coco-trustee --create-namespace \
+  --set kbs.image.digest=sha256:<64 hex chars> \
+  --set as.image.digest=sha256:<64 hex chars> \
+  --set rvps.image.digest=sha256:<64 hex chars>
+```
+
+A digest not matching `sha256:<64 lowercase hex chars>` makes the install fail.
+
 ## Typical scenarios
 
 ### Default: LocalFs storage

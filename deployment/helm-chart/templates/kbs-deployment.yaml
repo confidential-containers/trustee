@@ -58,7 +58,7 @@ spec:
           {{- $needDataVolume := or $needLocalFs $needLocalJson }}
           securityContext:
             {{- include "coco-trustee.containerSecurityContext" . | nindent 12 }}
-          image: {{ include "coco-trustee.image" (dict "image" .Values.kbs.image "context" $) | quote }}
+          image: {{ include "coco-trustee.image" (dict "image" .Values.kbs.image "context" $ "name" "kbs") | quote }}
           imagePullPolicy: {{ .Values.kbs.image.pullPolicy }}
           command:
             - "/usr/local/bin/kbs"

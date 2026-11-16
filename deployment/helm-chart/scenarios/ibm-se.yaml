@@ -42,8 +42,8 @@
 as:
   # Use an s390x AS image built with the se-verifier feature. The default
   # coco-as-grpc image must match your cluster architecture (s390x). The tag
-  # defaults to the chart appVersion (v<appVersion>); set as.image.tag to
-  # override it.
+  # defaults to the chart appVersion (v<appVersion>); set as.image.tag or
+  # as.image.digest to override it.
   image:
     repository: ghcr.io/confidential-containers/attestation-service
   verifier:
