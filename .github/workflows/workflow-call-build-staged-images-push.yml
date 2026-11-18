@@ -216,25 +216,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - tag: kbs-client-image
-            docker_file: kbs/docker/kbs-client-image/Dockerfile
+          - attesters: all-attesters
             instance: ubuntu-24.04
-          - tag: kbs-client-image
-            docker_file: kbs/docker/kbs-client-image/Dockerfile
-            instance: ubuntu-26.04-s390x
-          - tag: kbs-client-image
-            docker_file: kbs/docker/kbs-client-image/Dockerfile
+          - attesters: cca-attester,tpm-attester
             instance: ubuntu-24.04-arm
+          - attesters: se-attester
+            instance: ubuntu-26.04-s390x
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Build ${{ matrix.tag }}
+      - name: Build kbs-client-image (${{ matrix.instance }})
         uses: $/.github/actions/build-single-image
         with:
           ghcr_token: ${{ secrets.ghcr_token }}
-          docker_file: ${{ matrix.docker_file }}
-          tag: ${{ matrix.tag }}
+          docker_file: kbs/docker/kbs-client-image/Dockerfile
+          tag: kbs-client-image
+          build_args: --build-arg attesters=${{ matrix.attesters }}
           push: true

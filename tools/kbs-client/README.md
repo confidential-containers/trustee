@@ -40,6 +40,28 @@ installed into the system as:
 sudo make -C ../../kbs install-cli
 ```
 
+### Building a container image
+
+Build the client image from the repository root, selecting a comma-separated
+list of attesters with the `attesters` build argument:
+```shell
+docker build -f kbs/docker/kbs-client-image/Dockerfile \
+	--build-arg attesters=tdx-attester,az-tdx-vtpm-attester \
+	-t kbs-client .
+```
+
+Usage example:
+```shell
+docker run --rm kbs-client kbs-client --version
+```
+
+Omitting the `attesters` argument builds the sample-only variant, intended for
+testing rather than production attestation. Use `attesters=all-attesters` to
+enable all attesters on amd64.
+
+See the [client image documentation](../../kbs/docker/kbs-client-image/README.md)
+for toolchain configuration, published images, and attester-specific dependencies.
+
 ## Examples
 
 Get a resource from the KBS (after attesting)
