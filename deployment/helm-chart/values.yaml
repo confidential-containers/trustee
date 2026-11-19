@@ -242,7 +242,8 @@ as:
       # -- NVIDIA cloud service key for `NvLocal`/`NvRemote`. Empty to omit.
       serviceKey: ""
     dcap:
-      # -- Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured.
+      # -- Intel DCAP collateral service URL, or a `file://` URL for offline verification.
+      # Required when `as.verifier.dcap` is configured.
       collateral_service: "https://api.trustedservices.intel.com/sgx/certification/v4/"
       # -- DCAP TCB update type (for example `early`).
       tcb_update_type: "early"

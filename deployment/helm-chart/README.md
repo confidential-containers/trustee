@@ -249,6 +249,44 @@ helm upgrade --install trustee ./deployment/helm-chart \
 
 Sources are tried in the order given, so appending `--set 'as.verifier.snp.vcekSources[1].type=KDS'` keeps AMD KDS as a fallback for certificates that are missing locally. See [the AMD offline certificate cache guide](../../attestation-service/docs/amd-offline-certificate-cache.md) for how to build the `vcek/` directory and when it has to be refreshed.
 
+### Offline DCAP collateral from a Secret
+
+Create a Secret whose key contains the JSON file produced by the
+[Intel PCS Client Tool](https://github.com/intel/confidential-computing.tee.dcap/tree/main/tools/PcsClientTool):
+
+```bash
+kubectl create secret generic dcap-collateral \
+  -n coco-trustee \
+  --from-file=collateral.json=/path/to/collateral.json \
+  --dry-run=client -o yaml |
+  kubectl apply --server-side -f -
+```
+
+> [!NOTE]
+> DCAP collateral typically expires in fixed intervals.
+> Run the same command with a newly generated JSON file to update the Secret before it expires.
+
+Mount the Secret into the AS container and configure the verifier with an absolute `file://` URL:
+
+```yaml
+as:
+  verifier:
+    dcap:
+      collateral_service: file:///run/confidential-containers/dcap/collateral.json
+      tcb_update_type: early
+  extraVolumes:
+    - name: dcap-collateral
+      secret:
+        secretName: dcap-collateral
+  extraVolumeMounts:
+    - name: dcap-collateral
+      mountPath: /run/confidential-containers/dcap
+      readOnly: true
+```
+
+> [!NOTE]
+> The Secret must exist in the same namespace as the Helm release.
+
 ### SPIRE plugin
 
 The **`spire`** KBS plugin delivers SPIFFE X.509-SVIDs to attested guests via an existing SPIRE deployment's Delegated Identity API. It requires a KBS image built with the `spire-plugin` cargo feature, and a cluster that already runs a SPIRE server + agent with the admin (Delegated Identity API) socket enabled and mounted on the host — **this chart does not deploy SPIRE itself**.
@@ -332,7 +370,7 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 | as.service.port | int | `50004` | AS Service port. |
 | as.service.type | string | `"ClusterIP"` | AS Service type (`ClusterIP` or `LoadBalancer`). |
 | as.tolerations | list | `[]` | Tolerations for scheduling AS Pods onto tainted nodes. |
-| as.verifier.dcap.collateral_service | string | `"https://api.trustedservices.intel.com/sgx/certification/v4/"` | Intel DCAP collateral service URL. Required when `as.verifier.dcap` is configured. |
+| as.verifier.dcap.collateral_service | string | `"https://api.trustedservices.intel.com/sgx/certification/v4/"` | Intel DCAP collateral service URL, or a `file://` URL for offline verification. Required when `as.verifier.dcap` is configured. |
 | as.verifier.dcap.tcb_update_type | string | `"early"` | DCAP TCB update type (for example `early`). |
 | as.verifier.nvidia.nrasUrl | string | `""` | NRAS base URL when `type` is `NvRemote`. Empty uses `https://nras.attestation.nvidia.com`. |
 | as.verifier.nvidia.ocspUrl | string | `""` | OCSP service base URL when `type` is `NvLocal`. Empty uses `https://ocsp.ndis.nvidia.com`. |
