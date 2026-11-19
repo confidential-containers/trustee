@@ -125,6 +125,9 @@ spec:
             - name: ibmse
               mountPath: /run/confidential-containers/ibmse
             {{- end }}
+            {{- with .Values.as.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: config
           configMap:
@@ -152,6 +155,9 @@ spec:
         - name: ibmse
           persistentVolumeClaim:
             claimName: {{ include "coco-trustee.names.ibmse.pvc" . }}
+        {{- end }}
+        {{- with .Values.as.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.as.nodeSelector }}
       nodeSelector:
