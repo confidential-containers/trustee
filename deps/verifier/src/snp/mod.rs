@@ -247,7 +247,7 @@ impl Snp {
             }
         };
 
-        kds::fetch(&vcek_url, &att_report, proc_gen).await
+        kds::fetch(&vcek_url).await
     }
 }
 
@@ -413,7 +413,18 @@ impl Verifier for Snp {
                 let vcek = Certificate::from_bytes(&vcek_buf)
                     .context("Failed to convert KDS VCEK into certificate")?;
 
-                verify_vcek_chain(&vcek, &proc_gen)?;
+                let chain = Chain {
+                    ca: CaChain {
+                        ark: vendor_certs.ark.clone(),
+                        ask: vendor_certs.ask.clone(),
+                    },
+                    vek: vcek.clone(),
+                };
+
+                // Verify the chain and return vek if succesful
+                chain
+                    .verify()
+                    .context("Certificate chain from KDS failed verification")?;
 
                 // Return the vcek
                 vcek.clone()
@@ -461,22 +472,6 @@ impl Verifier for Snp {
         let json = json!(claims_map);
         Ok(vec![(json, "cpu".to_string())])
     }
-}
-
-fn verify_vcek_chain(vcek: &Certificate, proc_gen: &ProcessorGeneration) -> Result<()> {
-    let vendor = CERT_CHAINS
-        .get(proc_gen)
-        .context("Unknown processor generation")?;
-    Chain {
-        ca: CaChain {
-            ark: vendor.ark.clone(),
-            ask: vendor.ask.clone(),
-        },
-        vek: vcek.clone(),
-    }
-    .verify()
-    .context("VCEK certificate chain failed verification")?;
-    Ok(())
 }
 
 /// Retrieves the octet string value for a given OID from a certificate's extensions.
