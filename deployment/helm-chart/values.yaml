@@ -305,6 +305,10 @@ as:
       memory: 4Gi
   # -- Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`).
   extraEnvVars: []
+  # -- Extra volumes to attach to the AS Pod.
+  extraVolumes: []
+  # -- Extra volume mounts for the AS container.
+  extraVolumeMounts: []
   # -- Extra Pod annotations.
   podAnnotations: {}
   # -- Pod-level security context overrides.

@@ -317,6 +317,8 @@ Default **`values.yaml`** is intentionally small. Fixed on-disk paths for **Loca
 |-----|------|---------|-------------|
 | as.affinity | object | `{}` | Affinity and anti-affinity scheduling rules for AS Pods. |
 | as.extraEnvVars | list | `[]` | Extra environment variables for the AS container (for example `HTTP(S)_PROXY` and `NO_PROXY`). |
+| as.extraVolumeMounts | list | `[]` | Extra volume mounts for the AS container. |
+| as.extraVolumes | list | `[]` | Extra volumes to attach to the AS Pod. |
 | as.image.pullPolicy | string | `"Always"` | AS container image pull policy. |
 | as.image.repository | string | `"ghcr.io/confidential-containers/attestation-service"` | AS container image repository. |
 | as.image.tag | string | `"v0.23.0"` | AS container image tag. |
