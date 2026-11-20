@@ -28,7 +28,6 @@ updates:
       - "/kbs/docker/intel-trust-authority"
       - "/kbs/docker/kbs-client"
       - "/kbs/docker/kbs-client-image"
-      - "/kbs/docker/rhel-ubi"
       - "/rvps/docker"
       - "/tools/trustee-cli"
     schedule:

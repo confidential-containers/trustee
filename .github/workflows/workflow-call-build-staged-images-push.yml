@@ -76,13 +76,6 @@ jobs:
             platform: linux/s390x
             instance: ubuntu-26.04-s390x
             build_args: --build-arg BUILDPLATFORM=linux/s390x --build-arg ARCH=s390x
-
-          - name: RHEL UBI AS
-            tag: rhel-ubi
-            docker_file: kbs/docker/rhel-ubi/Dockerfile
-            platform: linux/amd64
-            instance: ubuntu-24.04
-            build_args: --build-arg BUILDPLATFORM=linux/amd64 --build-arg ARCH=x86_64
     runs-on: ${{ matrix.instance }}
     steps:
       - name: Checkout code
