@@ -50,6 +50,9 @@ pub mod tpm;
 #[cfg(feature = "nvidia-dpu-verifier")]
 pub mod nvidia_dpu;
 
+#[cfg(feature = "nitro-enclave-verifier")]
+pub mod nitro_enclave;
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct VerifierConfig {
     #[cfg(feature = "nvidia-verifier")]
@@ -211,6 +214,16 @@ pub async fn to_verifier(
                     Ok(Box::new(nvidia_dpu::NvidiaDpuVerifier::new(config)?) as Box<dyn Verifier + Send + Sync>)
                 } else {
                     bail!("feature `nvidia-dpu-verifier` is not enabled for `verifier` crate.")
+                }
+            }
+        }
+
+        Tee::AwsNitroEnclave => {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "nitro-enclave-verifier")] {
+                    Ok(Box::<nitro_enclave::NitroEnclave>::default() as Box<dyn Verifier + Send + Sync>)
+                } else {
+                    bail!("feature `nitro-enclave-verifier` is not enabled for `verifier` crate.")
                 }
             }
         }
