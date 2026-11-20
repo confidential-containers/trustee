@@ -648,6 +648,15 @@ pub(crate) fn parse_tee_evidence(report: &AttestationReport) -> TeeEvidenceParse
         "reported_tcb_tee": report.reported_tcb.tee,
         "reported_tcb_snp": report.reported_tcb.snp,
         "reported_tcb_microcode": report.reported_tcb.microcode,
+        "launch_tcb_bootloader": report.launch_tcb.bootloader,
+        "launch_tcb_tee": report.launch_tcb.tee,
+        "launch_tcb_snp": report.launch_tcb.snp,
+        "launch_tcb_microcode": report.launch_tcb.microcode,
+
+        // request and signing key info
+        "vmpl": report.vmpl,
+        "signing_key": report.key_info.signing_key(),
+        "author_key_en": report.key_info.author_key_en(),
 
         // platform info
         "platform_tsme_enabled": report.plat_info.tsme_enabled(),
@@ -1122,6 +1131,52 @@ mod tests {
         hex::decode(report_data).expect("report_data should be valid hex");
         hex::decode(init_data).expect("init_data should be valid hex");
         hex::decode(chip_id).expect("chip_id should be valid hex");
+    }
+
+    #[test]
+    fn test_launch_tcb_vmpl_and_key_info_in_parsed_claims() {
+        use sev::firmware::host::TcbVersion;
+
+        // VCEK-signed report: launch TCB equals reported TCB
+        let report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        let claims = parse_tee_evidence(&report);
+        assert_eq!(claims["launch_tcb_bootloader"], 3);
+        assert_eq!(claims["launch_tcb_tee"], 0);
+        assert_eq!(claims["launch_tcb_snp"], 8);
+        assert_eq!(claims["launch_tcb_microcode"], 115);
+        assert_eq!(claims["vmpl"], 0);
+        assert_eq!(claims["signing_key"], 0);
+        assert_eq!(claims["author_key_en"], false);
+
+        // VLEK-signed report requested at VMPL 1, launch microcode differs from reported
+        let report = AttestationReport::from_bytes(VLEK_REPORT).unwrap();
+        let claims = parse_tee_evidence(&report);
+        assert_eq!(claims["reported_tcb_microcode"], 217);
+        assert_eq!(claims["launch_tcb_microcode"], 219);
+        assert_eq!(claims["vmpl"], 1);
+        assert_eq!(claims["signing_key"], 1);
+        assert_eq!(claims["author_key_en"], false);
+
+        // Launch TCB of a real guest (SNP firmware 1.58.2), with the reported TCB
+        // raised afterwards as by a live firmware update: the launch values stay.
+        let mut report = AttestationReport::from_bytes(VCEK_REPORT).unwrap();
+        report.launch_tcb = TcbVersion {
+            fmc: None,
+            bootloader: 12,
+            tee: 0,
+            snp: 28,
+            microcode: 28,
+        };
+        report.reported_tcb = TcbVersion {
+            snp: 29,
+            ..report.launch_tcb
+        };
+        let claims = parse_tee_evidence(&report);
+        assert_eq!(claims["reported_tcb_snp"], 29);
+        assert_eq!(claims["launch_tcb_bootloader"], 12);
+        assert_eq!(claims["launch_tcb_tee"], 0);
+        assert_eq!(claims["launch_tcb_snp"], 28);
+        assert_eq!(claims["launch_tcb_microcode"], 28);
     }
 
     #[test]
