@@ -229,6 +229,65 @@ async fn get_resource_with_policy_init_data() -> Result<()> {
 
 const POLICY_INIT_DATA: &str = include_str!("init-data-with-policy.toml");
 
+#[serial(integration_ports)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// Check that the KBS resource policy can query reference values from RVPS
+// and compare them to a field in the Init-Data.
+async fn kbs_policy_checks_init_data_against_rv() -> Result<()> {
+    init_tracing();
+
+    let harness = TestHarness::new(KbsConfigType::EarTokenRemoteRvps.into()).await?;
+
+    // Set Secret
+    info!("TEST: setting secret");
+    harness
+        .set_secret(SECRET_PATH.to_string(), SECRET_BYTES.to_vec())
+        .await?;
+
+    // Register the approved extra root certificates as a reference value.
+    info!("TEST: setting reference value for approved root certs");
+    harness
+        .set_reference_value(
+            "approved-extra-root-certs".to_string(),
+            json!([APPROVED_ROOT_CERT]),
+        )
+        .await?;
+
+    // Set KBS Policy that cross-checks init-data against RVPS
+    info!("TEST: setting KBS policy");
+    harness
+        .set_policy(PolicyType::Custom(KBS_POLICY_CHECK_ROOT_CERTS_RV))
+        .await?;
+
+    // Get Secret
+    info!("TEST: getting secret");
+    let res = harness
+        .get_secret(SECRET_PATH.to_string(), Some(SIMPLE_INIT_DATA.to_string()))
+        .await;
+
+    harness.cleanup().await?;
+
+    if res? != SECRET_BYTES {
+        bail!("Secret retrieved, but secret has wrong value");
+    }
+    Ok(())
+}
+
+const APPROVED_ROOT_CERT: &str = "-----BEGIN CERTIFICATE-----\nMIIFTDCCAvugAwIBAgIBADBGBgkqhkiG9w0BAQowOaAPMA0GCWCGSAFlAwQCAgUA\noRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAgUAogMCATCjAwIBATB7MRQwEgYD\nVQQLDAtFbmdpbmVlcmluZzELMAkGA1UEBhMCVVMxFDASBgNVBAcMC1NhbnRhIENs\nYXJhMQswCQYDVQQIDAJDQTEfMB0GA1UECgwWQWR2YW5jZWQgTWljcm8gRGV2aWNl\n-----END CERTIFICATE-----\n";
+
+const KBS_POLICY_CHECK_ROOT_CERTS_RV: &str = "
+package policy
+import rego.v1
+
+default allow = false
+
+allow if {
+    approved := query_reference_value(\"approved-extra-root-certs\")
+    cert := input[\"submods\"][\"cpu0\"][\"ear_verifier_claims\"][\"init_data\"][\"cdh.toml\"][\"image\"][\"extra_root_certificates\"][0]
+    cert in approved
+}
+";
+
 const INIT_DATA_FOR_OPA_POLICY: &str = "
 package policy
 import rego.v1
