@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.95.0@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 AS builder
+FROM docker.io/library/rust:1.99.1@sha256:8a4e90c7946b74626488b1446f712c0fe0ed1a596cbd3d871684bc9c5433ae07 AS builder
 ARG ALIYUN=false
 ARG VAULT=false
 ARG EXTERNAL_PLUGIN=true
@@ -12,7 +12,7 @@ RUN apt-get update && apt install -y git cmake protobuf-compiler libprotobuf-dev
 RUN cd kbs && make AS_FEATURE=intel-trust-authority-as ALIYUN=${ALIYUN} VAULT=${VAULT} EXTERNAL_PLUGIN=${EXTERNAL_PLUGIN} && \
     make install-kbs
 
-FROM ubuntu:24.04@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+FROM ubuntu:25.10@sha256:7cc5e35f6567ee8c66d2abb4aab0fd866669e6207c237c3a8f0947a5c7f17092
 
 LABEL org.opencontainers.image.source="https://github.com/confidential-containers/trustee/kbs"
 

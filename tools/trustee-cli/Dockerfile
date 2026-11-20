@@ -1,4 +1,4 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:1.95.0@sha256:f49565f188ee00bc2a18dd418183f2c5f23ef7d6e691890517ed341a598f67c3 AS builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} docker.io/library/rust:1.99.1@sha256:8a4e90c7946b74626488b1446f712c0fe0ed1a596cbd3d871684bc9c5433ae07 AS builder
 ARG ARCH=x86_64
 ARG ALIYUN=false
 
@@ -40,7 +40,7 @@ COPY . .
 
 RUN cd tools/trustee-cli && make ARCH=${ARCH} && make ARCH=${ARCH} install
 
-FROM ubuntu:24.04@sha256:7c06e91f61fa88c08cc74f7e1b7c69ae24910d745357e0dfe1d2c0322aaf20f9
+FROM ubuntu:25.10@sha256:7cc5e35f6567ee8c66d2abb4aab0fd866669e6207c237c3a8f0947a5c7f17092
 ARG ARCH=x86_64
 
 WORKDIR /tmp
