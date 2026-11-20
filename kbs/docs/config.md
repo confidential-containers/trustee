@@ -563,7 +563,7 @@ sockets = ["0.0.0.0:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 [attestation_token]
 
@@ -748,7 +748,7 @@ type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50001"
 
 [admin]
-type = "DenyAll"
+authorization_mode = "DenyAll"
 
 [storage_backend]
 storage_type = "memory"
@@ -770,7 +770,7 @@ type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50001"
 
 [admin]
-type = "DenyAll"
+authorization_mode = "DenyAll"
 
 [storage_backend]
 storage_type = "memory"
@@ -798,7 +798,7 @@ type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50001"
 
 [admin]
-type = "DenyAll"
+authorization_mode = "DenyAll"
 
 [storage_backend]
 storage_type = "memory"
@@ -826,7 +826,7 @@ type = "coco_as_grpc"
 as_addr = "http://127.0.0.1:50001"
 
 [admin]
-type = "DenyAll"
+authorization_mode = "DenyAll"
 
 [storage_backend]
 storage_type = "memory"

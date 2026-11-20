@@ -5,7 +5,7 @@ sockets = ["127.0.0.1:8080"]
 insecure_http = true
 
 [admin]
-type = "InsecureAllowAll"
+authorization_mode = "InsecureAllowAll"
 
 [attestation_service]
 type = "coco_as_builtin"
