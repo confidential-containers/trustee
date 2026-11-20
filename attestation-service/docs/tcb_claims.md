@@ -13,7 +13,7 @@ is a JSON object composed from verifier output. In most cases, it follows this s
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`) |
+| `<tee-name>` | object | TEE-specific claims (for example: `tdx`, `sgx`, `snp`, `se`, `tpm`, `nvidia`, `hygondcu`, `az-tdx-vtpm`, `az-snp-vtpm`, `sample`, `csv`, `cca`, `aws-nitro-enclave`) |
 | `report_data` | string | Hex/base64-encoded report data extracted from evidence (format depends on verifier) |
 | `init_data` | string | Hex/base64-encoded init-data hash extracted from evidence (when supported) |
 | `init_data_claims` | object | Parsed init-data claims (present when init-data plaintext is provided and verified, omitted otherwise) |
@@ -262,6 +262,59 @@ The NVIDIA DPU verifier validates attestation evidence using the TCG DICE
 
 Note: `FirmwareLayer.name` and `FirmwareLayer.version` are informational only —
 not covered by TBS nor report_data_signature, thus not integrity-protected.
+
+## AWS Nitro Enclaves
+
+The Nitro Enclave verifier checks the attestation document the Nitro Secure
+Module issues:
+- its COSE_Sign1 ES384 signature, by a signing certificate that is not a CA and
+  allows digitalSignature;
+- the certificate chain to the pinned AWS Nitro Enclaves Root (G1);
+- `nonce` against the expected report data and `user_data` against the
+  expected InitData digest, both compared exactly;
+- it refuses debug mode (all-zero PCR0, PCR1 or PCR2).
+
+- `aws-nitro-enclave.pcr0`: Enclave image file (EIF) measurement (hex, 48 bytes)
+- `aws-nitro-enclave.pcr1`: Kernel and bootstrap measurement (hex, 48 bytes)
+- `aws-nitro-enclave.pcr2`: Application measurement (hex, 48 bytes)
+- `aws-nitro-enclave.pcr8`: EIF signing certificate measurement (hex, 48 bytes; all zeros for an unsigned image)
+- `aws-nitro-enclave.module_id`: NSM module identifier
+- `aws-nitro-enclave.timestamp`: Document creation time (milliseconds since the Unix epoch)
+- `aws-nitro-enclave.digest`: PCR hash algorithm, always `SHA384`
+- `aws-nitro-enclave.public_key`: The document's optional `public_key` (hex). It is not the KBS TEE key, which travels in the runtime data.
+- `report_data`: The document's `nonce` (hex)
+- `init_data`: The document's `user_data` (hex)
+
+PCRs are lowercase hex: register `nitro_pcr0`, `nitro_pcr1`, `nitro_pcr2` and
+`nitro_pcr8` reference values as lowercase hex in a list, as `nitro-cli
+describe-enclaves` prints them. PCR3 (parent instance IAM role) and PCR4
+(parent instance ID) describe the host, not the workload, and are not reported.
+
+The InitData binding rests on the enclave's measured image: the code that
+places the digest in `user_data` is part of PCR0. It is not a host-set register
+like SNP `HOST_DATA`. The image must bind the digest at startup, before any
+workload can reach the attestation agent: start the agent with
+`--initdata-toml`. The first bind wins for the life of that agent process. A
+process that binds nothing produces documents without `user_data` (so
+`trustee-attester --initdata` is refused on Nitro), and code in the image that
+talks to the NSM, or to the gRPC agent's `BindInitData` before it is bound, can
+choose `user_data`. A policy that relies on InitData should require the
+`init_data` it expects.
+
+Freshness comes from `nonce`. When the verifier is called without report data,
+nothing ties the document to the request, and a captured document stays
+acceptable for as long as its leaf certificate is valid (a few hours; three in
+the documents tested).
+
+The default policy reports:
+- `hardware` 2 for every document the verifier accepts;
+- `executables` 3 only when PCR0, PCR1 and PCR2 all match their reference values;
+- `configuration` 2 only when PCR8 matches `nitro_pcr8`.
+
+With PCR8 unregistered the result is a warning, which a resource policy that
+requires an affirming token refuses. An unsigned image has an all-zero PCR8, so
+registering zeros as `nitro_pcr8` accepts any unsigned image whose PCR0-2 match.
+Sign production images and register the signing certificate's PCR8 instead.
 
 ## AMD SEV-SNP
 

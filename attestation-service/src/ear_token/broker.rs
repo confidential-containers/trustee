@@ -522,6 +522,93 @@ mod tests {
         );
     }
 
+    /// Evaluate the default CPU policy's trust claims for `input`, answering
+    /// `query_reference_value` from `reference_values`.
+    fn eval_default_cpu_trust_claims(
+        input: serde_json::Value,
+        reference_values: serde_json::Value,
+    ) -> serde_json::Value {
+        let mut engine = regorus::Engine::new();
+        engine
+            .add_extension(
+                "query_reference_value".to_string(),
+                1,
+                Box::new(move |params: Vec<regorus::Value>| {
+                    let id = params[0].as_string()?.to_string();
+                    let value = reference_values.get(&id).cloned().unwrap_or_default();
+                    Ok(serde_json::from_value(value)?)
+                }),
+            )
+            .unwrap();
+        let ext = sha256_extend_extension();
+        engine
+            .add_extension(ext.name, ext.id, ext.extension)
+            .unwrap();
+        engine
+            .add_policy(
+                "default_cpu".to_string(),
+                include_str!("ear_default_policy_cpu.rego").to_string(),
+            )
+            .unwrap();
+        engine.set_input_json(&input.to_string()).unwrap();
+        let claims = engine
+            .eval_rule("data.policy.trust_claims".to_string())
+            .unwrap();
+        serde_json::from_str(&claims.to_json_str().unwrap()).unwrap()
+    }
+
+    fn nitro_input() -> serde_json::Value {
+        json!({"aws-nitro-enclave": {
+            "pcr0": "a0".repeat(48),
+            "pcr1": "a1".repeat(48),
+            "pcr2": "a2".repeat(48),
+            "pcr8": "a8".repeat(48),
+        }})
+    }
+
+    fn nitro_reference_values() -> serde_json::Value {
+        json!({
+            "nitro_pcr0": ["a0".repeat(48)],
+            "nitro_pcr1": ["a1".repeat(48)],
+            "nitro_pcr2": ["a2".repeat(48)],
+            "nitro_pcr8": ["a8".repeat(48)],
+        })
+    }
+
+    #[test]
+    fn test_default_cpu_policy_affirms_a_nitro_enclave_matching_reference_values() {
+        let claims = eval_default_cpu_trust_claims(nitro_input(), nitro_reference_values());
+        assert_eq!(claims["hardware"], 2);
+        assert_eq!(claims["executables"], 3);
+        assert_eq!(claims["configuration"], 2);
+    }
+
+    #[rstest::rstest]
+    #[case("nitro_pcr0")]
+    #[case("nitro_pcr1")]
+    #[case("nitro_pcr2")]
+    fn test_default_cpu_policy_rejects_nitro_executables_off_reference(#[case] off: &str) {
+        let mut reference_values = nitro_reference_values();
+        reference_values[off] = json!(["ff".repeat(48)]);
+        let claims = eval_default_cpu_trust_claims(nitro_input(), reference_values);
+        assert_eq!(claims["executables"], 33);
+    }
+
+    #[test]
+    fn test_default_cpu_policy_rejects_a_nitro_signer_off_reference() {
+        let mut reference_values = nitro_reference_values();
+        reference_values["nitro_pcr8"] = json!(["ff".repeat(48)]);
+        let claims = eval_default_cpu_trust_claims(nitro_input(), reference_values);
+        assert_eq!(claims["configuration"], 36);
+    }
+
+    #[test]
+    fn test_default_cpu_policy_does_not_affirm_nitro_without_its_claims() {
+        let claims = eval_default_cpu_trust_claims(json!({}), nitro_reference_values());
+        assert_eq!(claims["hardware"], 97);
+        assert_eq!(claims["executables"], 33);
+    }
+
     #[test]
     fn test_sha256_extend_extension_rejects_bad_params() {
         let mut extend = sha256_extend_extension().extension;

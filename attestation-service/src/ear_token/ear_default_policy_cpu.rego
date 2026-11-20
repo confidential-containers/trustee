@@ -368,6 +368,30 @@ configuration := 0 if {
 	input.cca
 }
 
+##### AWS Nitro Enclaves
+# The verifier checks the COSE_Sign1 signature, the certificate chain to the
+# AWS Nitro Enclaves root, and refuses debug mode (all-zero PCR0-2) before
+# this policy runs, so a successful appraisal means genuine Nitro hardware.
+hardware := 2 if {
+	input["aws-nitro-enclave"]
+}
+
+# PCR0 is the enclave image, PCR1 the kernel and bootstrap, PCR2 the application.
+executables := 3 if {
+	input["aws-nitro-enclave"]
+
+	input["aws-nitro-enclave"].pcr0 in query_reference_value("nitro_pcr0")
+	input["aws-nitro-enclave"].pcr1 in query_reference_value("nitro_pcr1")
+	input["aws-nitro-enclave"].pcr2 in query_reference_value("nitro_pcr2")
+}
+
+# PCR8 is the certificate the enclave image was signed with.
+configuration := 2 if {
+	input["aws-nitro-enclave"]
+
+	input["aws-nitro-enclave"].pcr8 in query_reference_value("nitro_pcr8")
+}
+
 #################################
 # EXTENSIONS
 #

@@ -18,6 +18,7 @@ all-verifier = [
     "se-verifier",
     "nvidia-verifier",
     "tpm-verifier",
+    "nitro-enclave-verifier",
 ]
 tdx-verifier = [
     "eventlog",
@@ -62,6 +63,7 @@ nvidia-verifier = ["jsonwebtoken", "asn1-rs", "openssl", "x509-parser"]
 nvidia-nvat = ["nv-attestation-sdk", "tokio/rt", "nvidia-verifier"]
 tpm-verifier = ["az-cvm-vtpm", "openssl", "tss-esapi"]
 nvidia-dpu-verifier = ["p384", "serde_with", "x509-parser"]
+nitro-enclave-verifier = ["coset", "openssl", "x509-parser"]
 
 [dependencies]
 anyhow.workspace = true
@@ -80,6 +82,7 @@ az-tdx-vtpm = { version = "0.8.1", default-features = false, features = [
 base64.workspace = true
 cfg-if.workspace = true
 codicon = { version = "3.0", optional = true }
+coset = { version = "0.4.2", optional = true }
 csv-rs = { version = "0.1.0", optional = true, default-features = false, features = [
     "network",
 ] }
