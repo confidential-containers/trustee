@@ -380,7 +380,7 @@ impl Verifier for Snp {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let SnpEvidence {
             attestation_report: report,
             cert_chain,
@@ -537,7 +537,7 @@ impl Verifier for Snp {
 
         let claims_map = parse_tee_evidence(&report);
         let json = json!(claims_map);
-        Ok(vec![(json, "cpu".to_string())])
+        Ok(vec![(json, "snp".to_string())])
     }
 }
 

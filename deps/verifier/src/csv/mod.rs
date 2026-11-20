@@ -93,7 +93,7 @@ impl Verifier for CsvVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let CsvEvidence {
             attestation_report: report_wrapper,
             cert_chain,
@@ -178,7 +178,7 @@ impl Verifier for CsvVerifier {
                     "anonce": hex::encode(anonce.to_le_bytes()),
                     "serial_number": String::from_utf8(serial_number)?.trim_end_matches('\0'),
                 });
-                Ok(vec![(claims, "cpu".to_string())])
+                Ok(vec![(claims, "csv".to_string())])
             }
             AttestationReport::V2(attestation_report_v2) => {
                 let policy = attestation_report_v2.tee_info.policy;
@@ -256,7 +256,7 @@ impl Verifier for CsvVerifier {
                         serde_json::to_value(ccel.clone().log)?,
                     );
                 }
-                Ok(vec![(claims, "cpu".to_string())])
+                Ok(vec![(claims, "csv".to_string())])
             }
         }
     }

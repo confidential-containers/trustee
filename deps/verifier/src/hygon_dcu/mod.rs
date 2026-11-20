@@ -11,7 +11,7 @@ use serde_json::json;
 use tracing::{instrument, warn};
 
 use crate::{
-    InitDataHash, ReportData, TeeClass, TeeEvidence, TeeEvidenceParsedClaim, Verifier,
+    DeviceName, InitDataHash, ReportData, TeeEvidence, TeeEvidenceParsedClaim, Verifier,
     regularize_data,
 };
 
@@ -20,7 +20,7 @@ struct DcuEvidence {
     attestation_reports: Vec<AttestationReport>,
 }
 
-pub const HYGON_DCU_TEE_CLASS: &str = "dcu";
+pub const HYGON_DCU_DEVICE_NAME: &str = "hygon-dcu";
 
 #[derive(Debug, Default)]
 pub struct HygonDcuVerifier {}
@@ -33,7 +33,7 @@ impl Verifier for HygonDcuVerifier {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let tee_evidence = serde_json::from_value::<DcuEvidence>(evidence)?;
 
         let expected_report_data = match expected_report_data {
@@ -69,7 +69,7 @@ impl Verifier for HygonDcuVerifier {
                     },
                     "report_data": hex::encode(report.body.user_data),
                 });
-                (value, HYGON_DCU_TEE_CLASS.to_string())
+                (value, HYGON_DCU_DEVICE_NAME.to_string())
             })
             .collect();
         Ok(claims)

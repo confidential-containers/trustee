@@ -2,6 +2,32 @@ package policy
 
 import rego.v1
 
+# The results of these devices are judged by this policy. All of them are
+# passed to the policy together as `input.devices`, one entry per result.
+# Every entry has a `device` field with the name of the device, a `tee` field with
+# the name of the TEE, and the verifier claims under `claims`,
+# e.g. `input.devices[_].claims`.
+devices := [
+	"sample",
+	"tdx",
+	"snp",
+	"az-snp-vtpm",
+	"az-tdx-vtpm",
+	"tpm",
+	"se",
+	"cca",
+	"sgx",
+	"csv",
+]
+
+# The name of the entry this policy produces in the token.
+submod := "cpu0"
+
+# Note that the rules below are satisfied by any result in `input.devices`.
+# If one attestation carries several CPU results that disagree on a claim,
+# evaluation fails instead of picking one of them. Use dedicated policies
+# to judge such combinations.
+
 # This policy validates multiple TEE platforms
 # The policy is meant to capture the TCB requirements
 # for confidential containers.
@@ -63,14 +89,14 @@ trust_claims := {
 # "Only a recognized genuine set of approved executables have
 #  been loaded during the boot process."
 executables := 3 if {
+	some d in input.devices
 	# Short circuit the rest of the conditions, if the platform is not set.
 	# Creating a simple entry like this will skip executing the first
 	# extension in the block.
-	input.sample
-
+	d.tee == "sample"
 	# The sample attester does not report any launch digest.
 	# This is an example of how a real platform might validate executables.
-	input.sample.launch_digest in query_reference_value("launch_digest")
+	d.claims.launch_digest in query_reference_value("launch_digest")
 }
 
 # For the `hardware` trust claim, the value 2 stands for
@@ -78,11 +104,11 @@ executables := 3 if {
 #  verifications needed to demonstrate that these are genuine/
 #  supported.
 hardware := 2 if {
-	input.sample
-
-	input.sample.svn in query_reference_value("svn")
-	input.sample.platform_version.major == query_reference_value("major_version")
-	input.sample.platform_version.minor >= query_reference_value("minimum_minor_version")
+	some d in input.devices
+	d.tee == "sample"
+	d.claims.svn in query_reference_value("svn")
+	d.claims.platform_version.major == query_reference_value("major_version")
+	d.claims.platform_version.minor >= query_reference_value("minimum_minor_version")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -93,27 +119,27 @@ hardware := 2 if {
 # For the sample platform, the debug claim is always false.
 # The sample platform should only be used for testing.
 configuration := 2 if {
-	input.sample
-
-	input.sample.debug == false
+	some d in input.devices
+	d.tee == "sample"
+	d.claims.debug == false
 }
 
 ##### SNP
 executables := 3 if {
-	input.snp
-
+	some d in input.devices
+	d.tee == "snp"
 	# In the future, we might calculate this measurement here various components
-	input.snp.measurement in query_reference_value("snp_launch_measurement")
+	d.claims.measurement in query_reference_value("snp_launch_measurement")
 }
 
 hardware := 2 if {
-	input.snp
-
+	some d in input.devices
+	d.tee == "snp"
 	# Check the reported TCB to validate the ASP FW
-	input.snp.reported_tcb_bootloader in query_reference_value("snp_bootloader")
-	input.snp.reported_tcb_microcode in query_reference_value("snp_microcode")
-	input.snp.reported_tcb_snp in query_reference_value("snp_snp_svn")
-	input.snp.reported_tcb_tee in query_reference_value("snp_tee_svn")
+	d.claims.reported_tcb_bootloader in query_reference_value("snp_bootloader")
+	d.claims.reported_tcb_microcode in query_reference_value("snp_microcode")
+	d.claims.reported_tcb_snp in query_reference_value("snp_snp_svn")
+	d.claims.reported_tcb_tee in query_reference_value("snp_tee_svn")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -121,16 +147,16 @@ hardware := 2 if {
 #
 # For this, we compare all the configuration fields.
 configuration := 2 if {
-	input.snp
-
-	input.snp.policy_debug_allowed == false
-	input.snp.policy_migrate_ma == false
-	input.snp.platform_smt_enabled == query_reference_value("snp_smt_enabled")
-	input.snp.platform_tsme_enabled == query_reference_value("snp_tsme_enabled")
-	input.snp.policy_abi_major == query_reference_value("snp_guest_abi_major")
-	input.snp.policy_abi_minor == query_reference_value("snp_guest_abi_minor")
-	input.snp.policy_single_socket == query_reference_value("snp_single_socket")
-	input.snp.policy_smt_allowed == query_reference_value("snp_smt_allowed")
+	some d in input.devices
+	d.tee == "snp"
+	d.claims.policy_debug_allowed == false
+	d.claims.policy_migrate_ma == false
+	d.claims.platform_smt_enabled == query_reference_value("snp_smt_enabled")
+	d.claims.platform_tsme_enabled == query_reference_value("snp_tsme_enabled")
+	d.claims.policy_abi_major == query_reference_value("snp_guest_abi_major")
+	d.claims.policy_abi_minor == query_reference_value("snp_guest_abi_minor")
+	d.claims.policy_single_socket == query_reference_value("snp_single_socket")
+	d.claims.policy_smt_allowed == query_reference_value("snp_smt_allowed")
 }
 
 # For the `configuration` trust claim 3 stands for
@@ -141,47 +167,47 @@ configuration := 2 if {
 # configuration value, but we make sure that some key
 # configurations (like debug_allowed) are set correctly.
 else := 3 if {
-	input.snp
-
-	input.snp.policy_debug_allowed == false
-	input.snp.policy_migrate_ma == false
+	some d in input.devices
+	d.tee == "snp"
+	d.claims.policy_debug_allowed == false
+	d.claims.policy_migrate_ma == false
 }
 
 ##### TDX
 executables := 3 if {
-	input.tdx
-
+	some d in input.devices
+	d.tee == "tdx"
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	input.tdx.quote.body.rtmr_1 in query_reference_value("rtmr_1")
-	input.tdx.quote.body.rtmr_2 in query_reference_value("rtmr_2")
-	tdx_uefi_event_tdvfkernel_ok
-	tdx_uefi_event_tdvfkernelparams_ok
+	d.claims.quote.body.rtmr_1 in query_reference_value("rtmr_1")
+	d.claims.quote.body.rtmr_2 in query_reference_value("rtmr_2")
+	tdx_uefi_event_tdvfkernel_ok(d)
+	tdx_uefi_event_tdvfkernelparams_ok(d)
 }
 
 # Support for Grub boot used by GKE
 else := 4 if {
-	input.tdx
-
+	some d in input.devices
+	d.tee == "tdx"
 	# Check the kernel, initrd, and cmdline (including dmverity parameters) measurements
-	input.tdx.quote.body.rtmr_1 in query_reference_value("rtmr_1")
-	input.tdx.quote.body.rtmr_2 in query_reference_value("rtmr_2")
+	d.claims.quote.body.rtmr_1 in query_reference_value("rtmr_1")
+	d.claims.quote.body.rtmr_2 in query_reference_value("rtmr_2")
 }
 
 hardware := 2 if {
-	input.tdx
-
+	some d in input.devices
+	d.tee == "tdx"
 	# Check the quote is a TDX quote signed by Intel SGX Quoting Enclave
-	input.tdx.quote.header.tee_type == "81000000"
-	input.tdx.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
+	d.claims.quote.header.tee_type == "81000000"
+	d.claims.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
 	# Check TDX Module hash
-	# input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
+	# d.claims.quote.body.mr_seam in query_reference_value("mr_seam")
 	#
 	# Check OVMF code hash
-	input.tdx.quote.body.mr_td in query_reference_value("mr_td")
+	d.claims.quote.body.mr_td in query_reference_value("mr_td")
 
 	# Check TCB status (covers quote.body.tcb_svn claim check)
-	input.tdx.tcb_status == "UpToDate"
+	d.claims.tcb_status == "UpToDate"
 
 	# Check minimum TCB date
 	# An alternative check to tcb_status is to define a minimum acceptable
@@ -194,34 +220,34 @@ hardware := 2 if {
 	# Example: in some cases, "OutOfDate" tcb_status can be accepted as long as
 	# the tcb_date is not older than a given date from a past TCB Recovery event:
 	# min_tcb_date := "2025-08-13T00:00:00Z"
-	# attester_tcb_date_ns := time.parse_rfc3339_ns(input.tdx.tcb_date)
+	# attester_tcb_date_ns := time.parse_rfc3339_ns(d.claims.tcb_date)
 	# min_tcb_date_ns := time.parse_rfc3339_ns(min_tcb_date)
 	# attester_tcb_date_ns >= min_tcb_date_ns
 
 	# Check collateral expiration status
-	input.tdx.collateral_expiration_status == "0"
+	d.claims.collateral_expiration_status == "0"
 	# Check against allowed advisory ids
 	# allowed_advisory_ids := {"INTEL-SA-00837"}
-	# attester_advisory_ids := {id | id := input.attester_advisory_ids[_]}
+	# attester_advisory_ids := {id | id := d.attester_advisory_ids[_]}
 	# object.subset(allowed_advisory_ids, attester_advisory_ids)
 
 	# Check against disallowed advisory ids
 	# disallowed_advisory_ids := {"INTEL-SA-00837"}
-	# attester_advisory_ids := {id | id := input.tdx.advisory_ids[_]} # convert array to set
+	# attester_advisory_ids := {id | id := d.claims.advisory_ids[_]} # convert array to set
 	# intersection := attester_advisory_ids & disallowed_advisory_ids
 	# count(intersection) == 0
 }
 
 configuration := 2 if {
-	input.tdx
-
+	some d in input.devices
+	d.tee == "tdx"
 	# Check the TD has the expected attributes (e.g., debug not enabled) and features.
-	input.tdx.td_attributes.debug == false
-	input.tdx.quote.body.xfam in query_reference_value("xfam")
+	d.claims.td_attributes.debug == false
+	d.claims.quote.body.xfam in query_reference_value("xfam")
 }
 
-tdx_uefi_event_tdvfkernel_ok if {
-	event := input.tdx.uefi_event_logs[_]
+tdx_uefi_event_tdvfkernel_ok(d) if {
+	event := d.claims.uefi_event_logs[_]
 	event.type_name == "EV_EFI_BOOT_SERVICES_APPLICATION"
 	"File(kernel)" in event.details.device_paths
 
@@ -229,8 +255,8 @@ tdx_uefi_event_tdvfkernel_ok if {
 	digest.digest == query_reference_value("tdvfkernel")
 }
 
-tdx_uefi_event_tdvfkernelparams_ok if {
-	event := input.tdx.uefi_event_logs[_]
+tdx_uefi_event_tdvfkernelparams_ok(d) if {
+	event := d.claims.uefi_event_logs[_]
 	event.type_name == "EV_EVENT_TAG"
 	event.details.string == "LOADED_IMAGE::LoadOptions"
 
@@ -240,20 +266,20 @@ tdx_uefi_event_tdvfkernelparams_ok if {
 
 ##### Azure vTPM SNP
 executables := 3 if {
-	input["az-snp-vtpm"]
-
-	input["az-snp-vtpm"].measurement in query_reference_value("measurement")
-	input["az-snp-vtpm"].tpm.pcr11 in query_reference_value("snp_pcr11")
+	some d in input.devices
+	d.tee == "az-snp-vtpm"
+	d.claims.measurement in query_reference_value("measurement")
+	d.claims.tpm.pcr11 in query_reference_value("snp_pcr11")
 }
 
 hardware := 2 if {
-	input["az-snp-vtpm"]
-
+	some d in input.devices
+	d.tee == "az-snp-vtpm"
 	# Check the reported TCB to validate the ASP FW
-	input["az-snp-vtpm"].reported_tcb_bootloader in query_reference_value("tcb_bootloader")
-	input["az-snp-vtpm"].reported_tcb_microcode in query_reference_value("tcb_microcode")
-	input["az-snp-vtpm"].reported_tcb_snp in query_reference_value("tcb_snp")
-	input["az-snp-vtpm"].reported_tcb_tee in query_reference_value("tcb_tee")
+	d.claims.reported_tcb_bootloader in query_reference_value("tcb_bootloader")
+	d.claims.reported_tcb_microcode in query_reference_value("tcb_microcode")
+	d.claims.reported_tcb_snp in query_reference_value("tcb_snp")
+	d.claims.reported_tcb_tee in query_reference_value("tcb_tee")
 }
 
 # For the 'configuration' trust claim 2 stands for
@@ -261,63 +287,65 @@ hardware := 2 if {
 #
 # For this, we compare all the configuration fields.
 configuration := 2 if {
-	input["az-snp-vtpm"]
-
-	input["az-snp-vtpm"].platform_smt_enabled in query_reference_value("smt_enabled")
-	input["az-snp-vtpm"].platform_tsme_enabled in query_reference_value("tsme_enabled")
-	input["az-snp-vtpm"].policy_abi_major in query_reference_value("abi_major")
-	input["az-snp-vtpm"].policy_abi_minor in query_reference_value("abi_minor")
-	input["az-snp-vtpm"].policy_single_socket in query_reference_value("single_socket")
-	input["az-snp-vtpm"].policy_smt_allowed in query_reference_value("smt_allowed")
+	some d in input.devices
+	d.tee == "az-snp-vtpm"
+	d.claims.platform_smt_enabled in query_reference_value("smt_enabled")
+	d.claims.platform_tsme_enabled in query_reference_value("tsme_enabled")
+	d.claims.policy_abi_major in query_reference_value("abi_major")
+	d.claims.policy_abi_minor in query_reference_value("abi_minor")
+	d.claims.policy_single_socket in query_reference_value("single_socket")
+	d.claims.policy_smt_allowed in query_reference_value("smt_allowed")
 }
 
 ##### Azure vTPM TDX
 executables := 3 if {
-	input["az-tdx-vtpm"]
-
-	input["az-tdx-vtpm"].tpm.pcr11 in query_reference_value("tdx_pcr11")
+	some d in input.devices
+	d.tee == "az-tdx-vtpm"
+	d.claims.tpm.pcr11 in query_reference_value("tdx_pcr11")
 }
 
 hardware := 2 if {
-	input["az-tdx-vtpm"]
-
+	some d in input.devices
+	d.tee == "az-tdx-vtpm"
 	# Check the quote is a TDX quote signed by Intel SGX Quoting Enclave
-	input["az-tdx-vtpm"].quote.header.tee_type == "81000000"
-	input["az-tdx-vtpm"].quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
+	d.claims.quote.header.tee_type == "81000000"
+	d.claims.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
 
 	# Check TDX Module hash
-	# input.tdx.quote.body.mr_seam in query_reference_value("mr_seam")
+	# d.claims.quote.body.mr_seam in query_reference_value("mr_seam")
 	#
 	# Check OVMF code hash
-	input["az-tdx-vtpm"].quote.body.mr_td in query_reference_value("mr_td")
+	d.claims.quote.body.mr_td in query_reference_value("mr_td")
 
 	# Check TCB status (covers quote.body.tcb_svn claim check)
-	input["az-tdx-vtpm"].tcb_status == "UpToDate"
+	d.claims.tcb_status == "UpToDate"
 
 	# Check minimum TCB date (See TDX section for details.)
 }
 
 configuration := 2 if {
-	input["az-tdx-vtpm"]
-
-	input["az-tdx-vtpm"].quote.body.xfam in query_reference_value("xfam")
+	some d in input.devices
+	d.tee == "az-tdx-vtpm"
+	d.claims.quote.body.xfam in query_reference_value("xfam")
 }
 
 ##### TPM
 hardware := 2 if {
-	input.tpm
+	some d in input.devices
+	d.tee == "tpm"
 }
 
 executables := 3 if {
-	input.tpm
+	some d in input.devices
+	d.tee == "tpm"
+	d.claims.pcr11 in query_reference_value("tpm_pcr11")
 
-	input.tpm.pcr11 in query_reference_value("tpm_pcr11")
-
-	input.tpm.ak_public in query_reference_value("trusted_aks")
+	d.claims.ak_public in query_reference_value("trusted_aks")
 }
 
 configuration := 0 if {
-	input.tpm
+	some d in input.devices
+	d.tee == "tpm"
 }
 
 ##### IBM Secure Execution for Linux (SEL)
@@ -327,15 +355,18 @@ configuration := 0 if {
 # If the field exists, it means the verifaction is successful.
 # This is a 'trust-the-verifier' approach.
 executables := 3 if {
-	input.se
+	some d in input.devices
+	d.tee == "se"
 }
 
 hardware := 2 if {
-	input.se
+	some d in input.devices
+	d.tee == "se"
 }
 
 configuration := 2 if {
-	input.se
+	some d in input.devices
+	d.tee == "se"
 }
 
 ##### Arm CCA
@@ -343,15 +374,18 @@ configuration := 2 if {
 # cryptographically verified by the verifier before this policy runs, so hardware,
 # instance identity, and runtime opacity are implied by a successful appraisal.
 hardware := 2 if {
-	input.cca
+	some d in input.devices
+	d.tee == "cca"
 }
 
 instance_identity := 2 if {
-	input.cca
+	some d in input.devices
+	d.tee == "cca"
 }
 
 runtime_opaque := 2 if {
-	input.cca
+	some d in input.devices
+	d.tee == "cca"
 }
 
 # For the `executables` trust claim, the value 3 stands for
@@ -359,13 +393,14 @@ runtime_opaque := 2 if {
 #  been loaded during the boot process."
 # the RIM (realm initial measurement) must match
 executables := 3 if {
-	input.cca
-
-	input.cca.realm["cca-realm-initial-measurement"] in query_reference_value("cca.rim/digests")
+	some d in input.devices
+	d.tee == "cca"
+	d.claims.realm["cca-realm-initial-measurement"] in query_reference_value("cca.rim/digests")
 }
 
 configuration := 0 if {
-	input.cca
+	some d in input.devices
+	d.tee == "cca"
 }
 
 #################################
@@ -400,11 +435,18 @@ validated_identifiers := object.union_n([
     pod_image_count_id,
 ])
 
+# The init data claims. They are derived from the init data of the request,
+# so every device of the request reports the same ones.
+init_data_claims := claims if {
+	some d in input.devices
+	claims := d.init_data_claims
+}
+
 # Container images used in a pod.
 # For now, take whatever reference is in the policy data.
 # In the future, this should be coupled to an image signature policy.
 container_images := [img |
-    container := input["init_data_claims"]["agent_policy_claims"]["containers"][_]
+    container := init_data_claims.agent_policy_claims.containers[_]
     img := container["OCI"]["Annotations"]["io.kubernetes.cri.image-name"]
 ]
 
@@ -418,7 +460,7 @@ pod_image_count_id := {"pod-image-count": count(container_images)} if {
 
 # The UID that each container runs with
 container_uids := [img |
-    container := input["init_data_claims"]["agent_policy_claims"]["containers"][_]
+    container := init_data_claims.agent_policy_claims.containers[_]
     img := container["OCI"]["Process"]["User"]["UID"]
 ]
 

@@ -50,7 +50,7 @@ impl Verifier for Tdx {
         evidence: TeeEvidence,
         expected_report_data: &ReportData,
         expected_init_data_hash: &InitDataHash,
-    ) -> Result<Vec<(TeeEvidenceParsedClaim, TeeClass)>> {
+    ) -> Result<Vec<(TeeEvidenceParsedClaim, DeviceName)>> {
         let tdx_evidence = serde_json::from_value::<TdxEvidence>(evidence)
             .context("Deserialize TDX Evidence failed.")?;
 
@@ -64,7 +64,7 @@ impl Verifier for Tdx {
         .await
         .context("TDX Verifier")?;
 
-        Ok(vec![(claims, "cpu".to_string())])
+        Ok(vec![(claims, "tdx".to_string())])
     }
 }
 

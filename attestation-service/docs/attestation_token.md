@@ -4,17 +4,21 @@ The Attestation Service generates an EAR attestation token, which contains many 
 
 For the general structure of the attestation token, refer to the [EAR specification](https://datatracker.ietf.org/doc/draft-ietf-rats-ear/).
 
-Generally speaking, the attestation token will include an Appraisal for each device
-that is part of the TCB (including the CPU).
+Generally speaking, the attestation token will include an Appraisal for each
+attestation policy that has been applied, see [Policy](./policy.md).
 These appraisals can be accessed through the `submods` field in the EAR Token.
-Each submod is given a generic key constructed from the CPU class and the device count.
-For instance, the CPU submod will be called `cpu0`.
-If a GPU has been attested as part of the guest, there will be a `gpu0` submod.
-If there is more than one GPU, there will be additional `gpuN` submods.
-Hygon DCU attestation uses `dcu0` and additional `dcuN` submods in the same way.
+The key of a submod is the `submod` that the policy declares, and the id of the
+policy is in `ear_appraisal_policy_ids` of the submod.
 
-`cpu0` is considered to be the primary attester and has some special
-information associated with it.
+An appraisal judges all the verifier results of the devices the policy accepts, together.
+For instance, the built-in policies produce the submods `cpu0` (CPU), `gpu0`
+(all GPUs), `switch0` (all NVIDIA switches) and `ppcie0`. A GPU that has been
+attested as part of the guest does not get a submod of its own, neither do the
+other GPUs. Hygon DCUs are judged together by the policy that accepts `hygon-dcu`.
+
+`cpu0` of the built-in policies is considered to be the primary attester and
+has some special information associated with it. KBS looks for the key of the
+guest and the InitData in all of the submods, and uses the first one that has them.
 
 # ReportData and InitData
 
@@ -41,20 +45,53 @@ attestation token.
 
 Both InitData and ReportData will usually be included in the attestation token.
 Raw values extracted from evidence are under `ear_attester_claims` of the
-`cpu0` appraisal. Parsed JSON that has been bound to the evidence is under
-`ear_verifier_claims`:
+appraisal. Parsed JSON that has been bound to the evidence is under
+`ear_verifier_claims`.
 
-- Raw hash and report bytes: `ear_attester_claims.init_data` and
-  `ear_attester_claims.report_data`
-- TEE type and hardware claims: `ear_attester_claims.tee` and
-  `ear_attester_claims.claims`
-- Parsed data: `ear_verifier_claims.init_data` and
-  `ear_verifier_claims.runtime_data`
+`ear_attester_claims` is keyed by the name of the device. The value is a list
+with an entry per device of that name, even if there is only one, because a node can
+have several devices of a kind, such as GPUs, and the shape of the token must not
+depend on how many there are. The entries are in the order of the evidence.
 
-The `ear_verifier_claims` entries are only emitted when the client supplied the
-corresponding plaintext and the verifier bound it to the evidence. If only a
-digest (InitData) or raw bytes (ReportData) were supplied, there is nothing to
-report and the key is omitted entirely rather than set to `null`.
+```json
+"ear_attester_claims": {
+  "tdx": [
+    { "tee": "tdx", "claims": { }, "report_data": "...", "init_data": "..." }
+  ],
+  "nvidia-gpu": [
+    { "tee": "nvidia", "claims": { } },
+    { "tee": "nvidia", "claims": { } }
+  ]
+}
+```
+
+- Raw hash and report bytes of a device: `report_data` and `init_data` of its entry
+- TEE type and hardware claims of a device: `tee` and `claims` of its entry
+
+`ear_verifier_claims` belongs to the request, not to a device. It is reported once
+per appraisal:
+
+```json
+"ear_verifier_claims": {
+  "init_data": { },
+  "runtime_data": { },
+  "devices": ["tdx", "nvidia-gpu"]
+}
+```
+
+- Parsed data: `init_data` and `runtime_data`
+- `devices`: the names of all devices of the appraisal, whose evidence has been verified
+
+The `init_data` and `runtime_data` entries are only emitted when the client
+supplied the corresponding plaintext and the verifier bound it to the evidence.
+If only a digest (InitData) or raw bytes (ReportData) were supplied, there is
+nothing to report and the key is omitted entirely rather than set to `null`.
+
+The devices of a request are assumed to agree on this data. Not every device
+has it, so it is merged key by key. The runtime data of the primary evidence,
+for example, has the key `additional-evidence` that the runtime data of the additional
+evidence has not (it is only reported if `verbose_token` is set). The result is the
+union. If two devices disagree on the value of a key, no token is issued.
 
 If plaintext InitData is provided, the Attestation Service applies
 transformations that make it easier to consume.
@@ -71,8 +108,7 @@ corresponding data.
 
 # Hardware Claims
 
-`ear_attester_claims.claims` holds hardware-specific claims extracted by the
-verifiers, and `ear_attester_claims.tee` names the TEE (for example `tdx`,
-`snp`). The AS policy input still nests those claims under the TEE name; only
-the issued token uses the `tee` + `claims` shape. Field definitions are listed
-in the [TCB Claims](./tcb_claims.md) document.
+`claims` of an entry in `ear_attester_claims` holds hardware-specific claims extracted by the
+verifiers, and `tee` names the TEE (for example `tdx`, `snp`). The AS policy input
+has the same fields: `d.tee` and `d.claims` for every `d` in `input.devices`. Field
+definitions are listed in the [TCB Claims](./tcb_claims.md) document.

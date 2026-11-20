@@ -35,8 +35,8 @@ use tracing::{debug, info};
 
 use crate::{InitDataHash, ReportData, TeeEvidenceParsedClaim};
 
-/// TEE class identifier for NVIDIA DPU DICE attestation.
-pub const TEE_CLASS_NVIDIA_DPU: &str = "nvidia-dpu";
+/// Device name for NVIDIA DPU DICE attestation.
+pub const DEVICE_NAME_NVIDIA_DPU: &str = "nvidia-dpu";
 
 /// Top-level evidence structure received from the NVIDIA DPU attester.
 #[derive(Debug, Deserialize)]
@@ -156,6 +156,6 @@ impl crate::Verifier for NvidiaDpuVerifier {
         }
 
         info!("NVIDIA DPU verifier: evidence verified successfully");
-        Ok(vec![(claims, TEE_CLASS_NVIDIA_DPU.to_string())])
+        Ok(vec![(claims, DEVICE_NAME_NVIDIA_DPU.to_string())])
     }
 }

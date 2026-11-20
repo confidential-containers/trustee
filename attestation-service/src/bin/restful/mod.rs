@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{HttpRequest, HttpResponse, ResponseError, body::BoxBody, web};
 use anyhow::{Context, anyhow, bail};
+use attestation_service::ear_token::DEFAULT_POLICY_IDS;
 use attestation_service::{
     AttestationService, HashAlgorithm, InitDataInput as InnerInitDataInput,
     RuntimeData as InnerRuntimeData, VerificationRequest,
@@ -182,8 +183,8 @@ pub async fn attestation(
     }
 
     let policy_ids = if request.policy_ids.is_empty() {
-        info!("no policy specified. `default` will be used");
-        vec!["default".into()]
+        info!("no policy specified. The built-in policies will be used");
+        DEFAULT_POLICY_IDS.map(String::from).to_vec()
     } else {
         request.policy_ids
     };
