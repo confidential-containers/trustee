@@ -4,15 +4,10 @@ use self::serde::{Deserialize, Serialize};
 use anyhow::anyhow;
 use asn1_rs::{FromDer, Integer, OctetString, Oid, oid};
 use async_trait::async_trait;
-use http_cache_reqwest::{
-    Cache, CacheMode, HttpCache, HttpCacheOptions, MokaCacheBuilder, MokaManager,
-};
 use openssl::{
     nid::Nid,
     x509::{self, X509},
 };
-use reqwest::{Response as ReqwestResponse, StatusCode};
-use reqwest_middleware::ClientBuilder;
 use serde;
 use serde_json::json;
 use sev::{
@@ -23,17 +18,13 @@ use sev::{
     },
 };
 use std::{
-    collections::HashMap,
-    fmt::Write,
-    hash::Hash,
-    path::Path,
-    result::Result::Ok,
-    sync::{LazyLock, OnceLock},
-    time::Instant,
+    collections::HashMap, fmt::Write, hash::Hash, path::Path, result::Result::Ok, sync::LazyLock,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 use tracing::{debug, instrument, warn};
 use x509_parser::prelude::*;
+
+mod kds;
 
 #[derive(Serialize, Deserialize)]
 pub struct SnpEvidence {
@@ -102,12 +93,6 @@ pub(crate) static CERT_CHAINS: LazyLock<HashMap<ProcessorGeneration, VendorCerti
         map
     });
 
-static VCEK_CACHE_MANAGER: OnceLock<MokaManager> = OnceLock::new();
-
-fn init_cache_manager() -> MokaManager {
-    MokaManager::new(MokaCacheBuilder::new(1024).build())
-}
-
 // convert TCB values into corresponding filename prefix for offline cert
 // caching (only used for OfflineStore option)
 fn format_tcb_prefix(att_report: &AttestationReport) -> String {
@@ -133,23 +118,6 @@ impl Snp {
         Ok(Snp {
             verifier_config: config.unwrap_or_default(),
         })
-    }
-
-    fn build_vcek_client(&self) -> reqwest_middleware::ClientWithMiddleware {
-        let client_options = HttpCacheOptions {
-            cache_status_headers: true,
-            ..Default::default()
-        };
-
-        let cache = Cache(HttpCache {
-            mode: CacheMode::Default,
-            manager: VCEK_CACHE_MANAGER.get_or_init(init_cache_manager).clone(),
-            options: client_options,
-        });
-
-        ClientBuilder::new(reqwest::Client::new())
-            .with(cache)
-            .build()
     }
 
     /// Fetches VCEK by trying each configured source in order until one succeeds
@@ -279,42 +247,7 @@ impl Snp {
             }
         };
 
-        let client = self.build_vcek_client();
-        let start = Instant::now();
-
-        let vcek_rsp: ReqwestResponse = client
-            .get(vcek_url.clone())
-            .send()
-            .await
-            .context("Unable to send request for VCEK")?;
-
-        let duration = start.elapsed();
-
-        // Log cache status if available, otherwise log direct fetch
-        if let Some(cache_status) = vcek_rsp.headers().get("x-cache") {
-            debug!(
-                "VCEK fetch: {:?} from {:?} ({:?})",
-                cache_status, vcek_url, duration
-            );
-        } else {
-            debug!(
-                "VCEK fetch: direct from KDS {:?} ({:?})",
-                vcek_url, duration
-            );
-        }
-
-        match vcek_rsp.status() {
-            StatusCode::OK => {
-                let vcek_rsp_bytes: Vec<u8> = vcek_rsp
-                    .bytes()
-                    .await
-                    .context("Unable to parse VCEK")?
-                    .to_vec();
-                Ok(vcek_rsp_bytes)
-            }
-
-            status => bail!("Unable to fetch VCEK from URL: {status:?}, {vcek_url:?}"),
-        }
+        kds::fetch(&vcek_url).await
     }
 }
 
