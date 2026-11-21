@@ -296,10 +296,6 @@ impl KeyValueStorage for LocalFs {
         let live = expires_at.is_none_or(|at| at > now_millis());
         Ok(live.then_some(file))
     }
-
-    fn supports_ttl(&self) -> bool {
-        true
-    }
 }
 
 #[cfg(test)]

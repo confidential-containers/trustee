@@ -191,10 +191,6 @@ impl KeyValueStorage for RedisClient {
                 key: key.to_string(),
             })
     }
-
-    fn supports_ttl(&self) -> bool {
-        true
-    }
 }
 
 #[cfg(test)]

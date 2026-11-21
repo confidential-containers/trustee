@@ -227,10 +227,6 @@ impl KeyValueStorage for LocalJson {
             })?;
         Ok(value)
     }
-
-    fn supports_ttl(&self) -> bool {
-        true
-    }
 }
 
 #[cfg(test)]
