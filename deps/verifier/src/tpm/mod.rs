@@ -181,9 +181,13 @@ fn verify_init_data(expected: &InitDataHash, quote: &VtpmQuote) -> Result<()> {
         InitDataHash::Value(expected_init_data_hash) => {
             debug!("Check the binding of PCR{INITDATA_PCR}");
 
-            // sha256(0x00 * 32 || expected_init_data_hash)
+            // AA extends the PCR with the first 32 bytes of the initdata digest:
+            // sha256(0x00 * 32 || digest[..32])
+            let truncated = expected_init_data_hash
+                .first_chunk::<32>()
+                .context("initdata digest is shorter than 32 bytes")?;
             let mut input = [0u8; 64];
-            input[32..].copy_from_slice(expected_init_data_hash);
+            input[32..].copy_from_slice(truncated);
             let digest = openssl::sha::sha256(&input);
 
             let pcrs: Vec<&[u8; 32]> = quote.pcrs_sha256().collect();
@@ -350,6 +354,19 @@ mod tests {
             128,
             "report_data should be 128 hex chars (64 bytes)"
         );
+    }
+
+    #[test]
+    fn test_verify_init_data_of_any_length() {
+        let tpm_evidence = serde_json::from_slice::<Evidence>(TPM_EVIDENCE)
+            .expect("Failed to deserialize TPM Evidence");
+        let quote = tpm_evidence.tpm_quote.to_quote().unwrap();
+
+        // Neither matches the fixture's PCR8, and neither may panic.
+        for len in [16, 48] {
+            let digest = vec![0xaa; len];
+            verify_init_data(&InitDataHash::Value(&digest), &quote).unwrap_err();
+        }
     }
 
     #[test]
