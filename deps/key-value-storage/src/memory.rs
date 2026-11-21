@@ -134,10 +134,6 @@ impl KeyValueStorage for MemoryKeyValueStorage {
             .map(|entry| entry.value);
         Ok(res)
     }
-
-    fn supports_ttl(&self) -> bool {
-        true
-    }
 }
 
 #[cfg(test)]

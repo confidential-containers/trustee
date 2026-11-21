@@ -274,10 +274,6 @@ impl KeyValueStorage for PostgresClient {
 
         Ok(None)
     }
-
-    fn supports_ttl(&self) -> bool {
-        true
-    }
 }
 
 #[cfg(test)]
@@ -373,7 +369,6 @@ mod tests {
         let client = PostgresClient::new(test_config(), "ttl_test")
             .await
             .unwrap();
-        assert!(client.supports_ttl());
 
         // The first write runs the purge; later ones skip it for a minute, so
         // the expired row stays in the table for the checks below.

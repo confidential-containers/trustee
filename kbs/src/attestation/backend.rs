@@ -233,51 +233,16 @@ impl AttestationService {
             .map_err(|e| Error::SessionStorageInitialization { source: e })?;
 
         let session_map = SessionMap::new(session_storage_backend);
-        if session_map.storage.supports_ttl() {
-            info!("session storage expires sessions through its TTL");
-            // Sessions stored before TTL support have no expiry. Remove them
-            // once they have all timed out.
-            let cleanup_session_map = session_map.clone();
-            let legacy_timeout =
-                ::tokio::time::Duration::from_secs(60 * config.timeout.max(0) as u64);
-            ::tokio::spawn(async move {
-                ::tokio::time::sleep(legacy_timeout).await;
-                if let Err(err) = cleanup_session_map.cleanup_expired().await {
-                    warn!(?err, "failed to clean up sessions stored without a TTL");
-                }
-            });
-        } else {
-            info!("session storage has no TTL support, sweeping expired sessions every minute");
-            // Start background cleanup of expired session records in the `kbs_protocol_session` namespace.
-            let cleanup_session_map = session_map.clone();
-            // Run periodic cleanup every minute when healthy.
-            let cleanup_interval = ::tokio::time::Duration::from_secs(60);
-            // Use exponential backoff on failures to avoid noisy retry loops during outages.
-            let cleanup_retry_initial_interval = ::tokio::time::Duration::from_secs(5);
-            let cleanup_retry_max_interval = ::tokio::time::Duration::from_secs(300);
-            ::tokio::spawn(async move {
-                let mut retry_interval = cleanup_retry_initial_interval;
-                loop {
-                    match cleanup_session_map.cleanup_expired().await {
-                        Ok(()) => {
-                            retry_interval = cleanup_retry_initial_interval;
-                            ::tokio::time::sleep(cleanup_interval).await;
-                        }
-                        Err(err) => {
-                            warn!(
-                                ?err,
-                                retry_secs = retry_interval.as_secs(),
-                                "failed to clean up expired session records"
-                            );
-                            ::tokio::time::sleep(retry_interval).await;
-                            retry_interval = retry_interval
-                                .saturating_mul(2)
-                                .min(cleanup_retry_max_interval);
-                        }
-                    }
-                }
-            });
-        }
+        // Sessions stored before TTL support have no expiry. Remove them once
+        // they have all timed out.
+        let cleanup_session_map = session_map.clone();
+        let legacy_timeout = ::tokio::time::Duration::from_secs(60 * config.timeout.max(0) as u64);
+        ::tokio::spawn(async move {
+            ::tokio::time::sleep(legacy_timeout).await;
+            if let Err(err) = cleanup_session_map.cleanup_expired().await {
+                warn!(?err, "failed to clean up expired sessions");
+            }
+        });
         Ok(Self {
             inner,
             timeout: config.timeout,
