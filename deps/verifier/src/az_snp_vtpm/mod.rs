@@ -431,9 +431,13 @@ pub(crate) fn verify_init_data(expected: &InitDataHash, pcrs: &[&[u8; 32]]) -> R
 
     debug!("Check the binding of PCR{INITDATA_PCR}");
 
-    // sha256(0x00 * 32 || expected_init_data_hash)
+    // AA extends the PCR with the first 32 bytes of the initdata digest:
+    // sha256(0x00 * 32 || digest[..32])
+    let truncated = expected_init_data_hash
+        .first_chunk::<32>()
+        .context("initdata digest is shorter than 32 bytes")?;
     let mut input = [0u8; 64];
-    input[32..].copy_from_slice(expected_init_data_hash);
+    input[32..].copy_from_slice(truncated);
     let digest = openssl::sha::sha256(&input);
 
     let init_data_pcr = pcrs[INITDATA_PCR];
@@ -763,6 +767,10 @@ mod tests {
         pcr_refs[INITDATA_PCR] = &digest;
 
         verify_init_data(&InitDataHash::Value(&init_data_hash), &pcr_refs).unwrap();
+
+        // A longer digest, e.g. SHA-384, is truncated to 32 bytes as AA does.
+        let sha384 = [&init_data_hash[..], &[0xaa; 16]].concat();
+        verify_init_data(&InitDataHash::Value(&sha384), &pcr_refs).unwrap();
     }
 
     #[test]
@@ -775,6 +783,9 @@ mod tests {
         let init_data_hash = InitDataHash::Value(&init_data);
 
         verify_init_data(&init_data_hash, &pcr_refs).unwrap_err();
+
+        // Shorter than 32 bytes, so it can't be what AA extended.
+        verify_init_data(&InitDataHash::Value(&[0; 16]), &pcr_refs).unwrap_err();
     }
 
     #[test]
