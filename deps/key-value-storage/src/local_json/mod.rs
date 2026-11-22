@@ -6,12 +6,17 @@
 //!
 //! All key-value pairs are stored in a single JSON file.
 
-use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::URL_SAFE};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::{io::AsyncWriteExt, sync::RwLock};
 use tracing::{debug, instrument};
 
 use crate::{
@@ -105,6 +110,23 @@ impl LocalJson {
             lock: RwLock::new(0),
         })
     }
+
+    /// Replace the file through a synced temp file, so a crash leaves either
+    /// the old or the new contents and never a partial file.
+    async fn save(&self, contents: &[u8]) -> std::io::Result<()> {
+        let path = Path::new(&self.file_path);
+        let tmp = format!("{}.tmp", self.file_path);
+        let mut file = tokio::fs::File::create(&tmp).await?;
+        file.write_all(contents).await?;
+        file.sync_all().await?;
+        tokio::fs::rename(&tmp, path).await?;
+        // The rename only lasts once the directory is synced.
+        let dir = path
+            .parent()
+            .filter(|dir| !dir.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        tokio::fs::File::open(dir).await?.sync_all().await
+    }
 }
 
 #[async_trait]
@@ -136,12 +158,12 @@ impl KeyValueStorage for LocalJson {
                 source: e.into(),
                 key: key.to_string(),
             })?;
-        tokio::fs::write(&self.file_path, new_contents)
-            .await
-            .map_err(|e| KeyValueStorageError::SetKeyFailed {
+        self.save(new_contents.as_bytes()).await.map_err(|e| {
+            KeyValueStorageError::SetKeyFailed {
                 source: e.into(),
                 key: key.to_string(),
-            })?;
+            }
+        })?;
         Ok(SetResult::Inserted)
     }
 
@@ -219,7 +241,7 @@ impl KeyValueStorage for LocalJson {
                 key: key.to_string(),
                 source: e.into(),
             })?;
-        tokio::fs::write(&self.file_path, contents)
+        self.save(&contents)
             .await
             .map_err(|e| KeyValueStorageError::DeleteKeyFailed {
                 source: anyhow::anyhow!("failed to write back to the file: {}", e),
@@ -356,6 +378,27 @@ mod tests {
             let value = storage.get(&format!("key_{i}")).await.unwrap();
             assert_eq!(value.as_deref(), Some(&b"value"[..]));
         }
+    }
+
+    #[tokio::test]
+    async fn test_write_replaces_a_leftover_temp_file() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let storage = new_storage(&work_dir);
+        // A write that crashed before its rename leaves a partial temp file.
+        let tmp = format!("{}.tmp", storage.file_path);
+        std::fs::write(&tmp, "{\"partial").unwrap();
+
+        storage
+            .set("key", b"value", SetParameters::default())
+            .await
+            .unwrap();
+        assert_eq!(storage.get("key").await.unwrap().unwrap(), b"value");
+        assert!(!Path::new(&tmp).exists());
+
+        std::fs::write(&tmp, "{\"partial").unwrap();
+        storage.delete("key").await.unwrap();
+        assert!(storage.list().await.unwrap().is_empty());
+        assert!(!Path::new(&tmp).exists());
     }
 
     fn new_storage(work_dir: &tempfile::TempDir) -> LocalJson {
