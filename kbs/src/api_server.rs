@@ -222,7 +222,7 @@ fn kbs_policy_extensions(core: &web::Data<ApiServer>) -> Vec<RegorusExtension> {
         let attestation_service = core.attestation_service.clone();
         extensions.push(RegorusExtension {
             name: "query_reference_value".to_string(),
-            id: 1,
+            nargs: 1,
             extension: Box::new(move |params: Vec<regorus::Value>| {
                 use anyhow::{Context, anyhow, bail};
                 use std::time::Duration;

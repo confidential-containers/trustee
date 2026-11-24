@@ -18,7 +18,7 @@ pub const EVAL_RULE: &str = "data.policy.result";
 
 pub struct RegorusExtension {
     pub name: String,
-    pub id: u8,
+    pub nargs: u8,
     pub extension: Box<dyn Extension + Send + Sync>,
 }
 
@@ -28,7 +28,7 @@ pub struct RegorusExtension {
 fn sha256_extension() -> RegorusExtension {
     RegorusExtension {
         name: "sha256".to_string(),
-        id: 1,
+        nargs: 1,
         extension: Box::new(|params: Vec<regorus::Value>| {
             if params.len() != 1 {
                 anyhow::bail!("sha256 extension requires exactly one parameter");
@@ -131,10 +131,10 @@ impl Regorus {
 
         for extension in extensions {
             engine
-                .add_extension(extension.name.clone(), extension.id, extension.extension)
+                .add_extension(extension.name.clone(), extension.nargs, extension.extension)
                 .map_err(|e| PolicyError::AddRegorusExtensionFailed {
                     name: extension.name,
-                    id: extension.id,
+                    nargs: extension.nargs,
                     source: e,
                 })?;
         }
