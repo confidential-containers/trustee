@@ -142,7 +142,7 @@ The results of the policy evaluation will be reflected in the token.
 
 **Note**: Please refer to the [Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/) documentation for more information about Rego.
 
-If the policy is not updated, the AS will use the [default policy](src/ear_token/ear_default_policy_cpu.rego).
+If the request names no policy, the AS will use the built-in policies `default_cpu`, `default_gpu`, `default_switch` and `default_ppcie`, see [Policy](docs/policy.md).
 
 > [!NOTE]
 > Only EAR token is supported, and Simple token is removed.

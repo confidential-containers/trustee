@@ -113,7 +113,7 @@ enum ConfigCommands {
         #[clap(long, value_parser)]
         r#type: Option<String>,
 
-        /// Policy ID, e.g "default"
+        /// Policy ID, e.g "default_cpu". The id is used as is by the Attestation Service
         #[clap(long, value_parser)]
         id: Option<String>,
 

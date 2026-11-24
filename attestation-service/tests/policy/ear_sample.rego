@@ -2,6 +2,12 @@ package policy
 
 import rego.v1
 
+# The results of these devices are judged by this policy.
+devices := ["sample"]
+
+# The name of the entry this policy produces in the token.
+submod := "cpu0"
+
 # This policy validates multiple TEE platforms
 # The policy is meant to capture the TCB requirements
 # for confidential containers.
@@ -63,14 +69,14 @@ trust_claims := {
 # "Only a recognized genuine set of approved executables have
 #  been loaded during the boot process."
 executables := 3 if {
+	some d in input.devices
 	# Short circuit the rest of the conditions, if the platform is not set.
 	# Creating a simple entry like this will skip executing the first
 	# extension in the block.
-	input.sample
-
+	d.tee == "sample"
 	# The sample attester does not report any launch digest.
 	# This is an example of how a real platform might validate executables.
-	input.sample.launch_digest in data.reference.launch_digest
+	d.claims.launch_digest in data.reference.launch_digest
 }
 
 # For the `hardware` trust claim, the value 2 stands for
@@ -78,8 +84,9 @@ executables := 3 if {
 #  verifications needed to demonstrate that these are genuine/
 #  supported.
 hardware := 2 if {
-	input.sample
-	input.sample.svn in data.reference.svn
-	input.sample.platform_version.major == data.reference.major_version
-	input.sample.platform_version.minor >= data.reference.minimum_minor_version
+	some d in input.devices
+	d.tee == "sample"
+	d.claims.svn in data.reference.svn
+	d.claims.platform_version.major == data.reference.major_version
+	d.claims.platform_version.minor >= data.reference.minimum_minor_version
 }

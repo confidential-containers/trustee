@@ -18,16 +18,23 @@
 #        "submods": {
 #            "cpu0": {
 #                "ear_attester_claims": {
-#                    "tee": "sample",
-#                    "claims": {
-#                        "productId": "",
-#                        "svn": ""
-#                    }
+#                    "sample": [
+#                        {
+#                            "tee": "sample",
+#                            "claims": {
+#                                "productId": "",
+#                                "svn": ""
+#                            }
+#                        }
+#                    ]
 #                }
 #            }
 #        }
 #    }
 #    ```
+#    The claims of a device are in `ear_attester_claims.<device>[i]`. The
+#    name of the entry in `submods` is chosen by the attestation policy, `cpu0`
+#    is the one of the built-in policy for CPUs.
 #
 # 2. Resource Path data
 #    A KBS plugin call upon <plugin-name> to KBS server's path usually has format
