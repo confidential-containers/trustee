@@ -52,9 +52,12 @@ const PCR_LEN: usize = 48;
 const BOOT_PCRS: [u64; 3] = [0, 1, 2];
 
 /// PCRs reported as claims: the image, kernel and bootstrap, application, and
-/// the EIF signing certificate. PCR3 (parent IAM role) and PCR4 (parent
-/// instance ID) describe the host, not the workload.
-const REPORTED_PCRS: [u64; 4] = [0, 1, 2, 8];
+/// the EIF signing certificate, and PCR17 when present: an EKS Nitro Sandbox
+/// measures the pod's Cedar policy there, which identifies the workload (the
+/// guest image in PCR0-2 is the same for every pod on the node type). PCR3
+/// (parent IAM role) and PCR4 (parent instance ID) describe the host, not the
+/// workload.
+const REPORTED_PCRS: [u64; 5] = [0, 1, 2, 8, 17];
 
 /// ES384 signatures in COSE are raw `r || s`, 48 bytes each.
 const ES384_SIGNATURE_LEN: usize = 96;

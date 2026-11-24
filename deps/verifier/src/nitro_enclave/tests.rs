@@ -332,6 +332,29 @@ async fn accepts_a_valid_document_and_reports_its_claims() {
 }
 
 #[tokio::test]
+async fn reports_pcr17_for_a_nitro_sandbox_pod() {
+    // An EKS Nitro Sandbox measures the pod's Cedar policy into PCR17; that, not the
+    // guest image, is what tells one workload from another.
+    let pki = Pki::new();
+    let mut doc = Doc::new(&pki);
+    doc.pcrs.push((17, pcr(0xb7)));
+    let doc = doc.sign(&pki.leaf_key, iana::Algorithm::ES384);
+
+    let claims = evaluate(
+        &pki.verifier(),
+        &doc,
+        &ReportData::Value(&REPORT_DATA),
+        &InitDataHash::Value(&INIT_DATA_DIGEST),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(claims["pcr17"], json!(hex::encode(pcr(0xb7))));
+    assert_eq!(claims["pcr0"], json!(hex::encode(pcr(0xa0))));
+    assert!(claims.get("pcr3").is_none() && claims.get("pcr4").is_none());
+}
+
+#[tokio::test]
 async fn accepts_the_tagged_cose_sign1_form() {
     let pki = Pki::new();
     let doc = Doc::new(&pki)
