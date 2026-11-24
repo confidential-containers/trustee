@@ -15,7 +15,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 #[derive(Parser)]
 #[clap(name = "KBS client")]
-#[clap(author, version, about = "A command line client tool for KBS APIs.", long_about = None)]
+#[clap(author, version = get_version(), about = "A command line client tool for KBS APIs.", long_about = None)]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -213,6 +213,19 @@ enum ConfigCommands {
 }
 
 const DOCKER_COMPOSE_ADMIN_TOKEN_PATH: &str = "kbs/config/docker-compose/admin-token";
+
+fn get_version() -> &'static str {
+    static VERSION_MESSAGE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    VERSION_MESSAGE
+        .get_or_init(|| {
+            format!(
+                "{}\n\nEnabled attesters: {}",
+                env!("CARGO_PKG_VERSION"),
+                attester::get_supported_attesters().join(", ")
+            )
+        })
+        .as_str()
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
