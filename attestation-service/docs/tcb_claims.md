@@ -278,6 +278,7 @@ Module issues:
 - `aws-nitro-enclave.pcr1`: Kernel and bootstrap measurement (hex, 48 bytes)
 - `aws-nitro-enclave.pcr2`: Application measurement (hex, 48 bytes)
 - `aws-nitro-enclave.pcr8`: EIF signing certificate measurement (hex, 48 bytes; all zeros for an unsigned image)
+- `aws-nitro-enclave.pcr17`: on an EKS Nitro Sandbox, the pod's Cedar policy measurement (hex, 48 bytes); absent on an enclave
 - `aws-nitro-enclave.module_id`: NSM module identifier
 - `aws-nitro-enclave.timestamp`: Document creation time (milliseconds since the Unix epoch)
 - `aws-nitro-enclave.digest`: PCR hash algorithm, always `SHA384`
