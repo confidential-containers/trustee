@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use key_value_storage::KeyValueStorageInstance;
 use regorus::Extension;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use tracing::{info, instrument};
 
 use crate::{EngineTrait, EvaluationResult, PolicyEngine, PolicyError, Result};
@@ -17,8 +18,33 @@ pub const EVAL_RULE: &str = "data.policy.result";
 
 pub struct RegorusExtension {
     pub name: String,
-    pub id: u8,
+    pub nargs: u8,
     pub extension: Box<dyn Extension + Send + Sync>,
+}
+
+/// Regorus does not have any crypto extensions.
+/// Provide basic crypto capabilities for manipulating
+/// policy fields and reference values.
+fn sha256_extension() -> RegorusExtension {
+    RegorusExtension {
+        name: "sha256".to_string(),
+        nargs: 1,
+        extension: Box::new(|params: Vec<regorus::Value>| {
+            if params.len() != 1 {
+                anyhow::bail!("sha256 extension requires exactly one parameter");
+            }
+            let input = params[0]
+                .as_string()
+                .map_err(|_| anyhow::anyhow!("sha256 extension parameter must be a string"))?;
+            let digest = Sha256::digest(input.as_bytes());
+            Ok(regorus::Value::from(hex::encode(digest)))
+        }),
+    }
+}
+
+/// Extensions that can be used with AS or KBS policy
+fn default_extensions() -> Vec<RegorusExtension> {
+    vec![sha256_extension()]
 }
 
 #[derive(Debug, Clone, Default)]
@@ -72,6 +98,8 @@ impl Regorus {
     ) -> Result<EvaluationResult> {
         let mut engine = regorus::Engine::new();
 
+        let extensions = default_extensions().into_iter().chain(extensions);
+
         let policy_hash = {
             use sha2::Digest;
             let mut hasher = sha2::Sha384::new();
@@ -103,10 +131,10 @@ impl Regorus {
 
         for extension in extensions {
             engine
-                .add_extension(extension.name.clone(), extension.id, extension.extension)
+                .add_extension(extension.name.clone(), extension.nargs, extension.extension)
                 .map_err(|e| PolicyError::AddRegorusExtensionFailed {
                     name: extension.name,
-                    id: extension.id,
+                    nargs: extension.nargs,
                     source: e,
                 })?;
         }

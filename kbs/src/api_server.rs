@@ -14,9 +14,12 @@ use actix_web_httpauth::headers::authorization::{Authorization, Bearer};
 use anyhow::Context;
 use base64::Engine;
 use key_value_storage::StorageProvider;
-use policy_engine::{PolicyEngine, rego::Regorus};
+use policy_engine::{
+    PolicyEngine,
+    rego::{Regorus, RegorusExtension},
+};
 use serde_json::json;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
     Error, Result,
@@ -209,6 +212,57 @@ impl ApiServer {
             .map_err(|e| Error::HTTPFailed { source: e.into() })?
             .run())
     }
+}
+
+fn kbs_policy_extensions(core: &web::Data<ApiServer>) -> Vec<RegorusExtension> {
+    let mut extensions = vec![];
+
+    #[cfg(feature = "as")]
+    {
+        let attestation_service = core.attestation_service.clone();
+        extensions.push(RegorusExtension {
+            name: "query_reference_value".to_string(),
+            nargs: 1,
+            extension: Box::new(move |params: Vec<regorus::Value>| {
+                use anyhow::{Context, anyhow, bail};
+                use std::time::Duration;
+
+                if params.len() != 1 {
+                    bail!("query_reference_value extension requires exactly one parameter");
+                }
+                let reference_value_id = params[0]
+                    .as_string()
+                    .context("query_reference_value extension parameter must be a string")?
+                    .to_string();
+                debug!("KBS policy: query reference value from RVPS: {reference_value_id}");
+
+                let attestation_service = attestation_service.clone();
+                let result = tokio::runtime::Handle::current().block_on(async move {
+                    tokio::time::timeout(Duration::from_secs(10), async {
+                        attestation_service
+                            .query_reference_value(&reference_value_id)
+                            .await
+                    })
+                    .await
+                    .map_err(|e| anyhow!("Get Reference Value from RVPS timeout: {e:?}"))?
+                });
+
+                match result {
+                    Ok(json_str) => {
+                        let json_value: serde_json::Value = serde_json::from_str(&json_str)?;
+                        let value: regorus::Value = serde_json::from_value(json_value)?;
+                        Ok(value)
+                    }
+                    Err(e) => {
+                        warn!("KBS policy: query_reference_value failed: {e:#}");
+                        Ok(regorus::Value::Null)
+                    }
+                }
+            }),
+        });
+    }
+
+    extensions
 }
 
 /// APIs
@@ -418,6 +472,9 @@ pub(crate) async fn api(
                 let claim_str = serde_json::to_string(&claims)?;
 
                 KBS_POLICY_EVALS.inc();
+
+                let extensions = kbs_policy_extensions(&core);
+
                 // TODO: add policy filter support for other plugins
                 if !core
                     .policy_engine
@@ -426,7 +483,7 @@ pub(crate) async fn api(
                         claim_str,
                         KBS_POLICY_ID,
                         vec![KBS_POLICY_RULE.to_string()],
-                        vec![],
+                        extensions,
                     )
                     .await
                     .inspect_err(|_| KBS_POLICY_ERRORS.inc())?

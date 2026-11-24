@@ -357,8 +357,6 @@ fn parse_runtime_data(
     }
 }
 
-/// Get the expected init data and potential claims due to the given input
-/// and the hash algorithm
 fn parse_init_data(data: Option<InitDataInput>) -> Result<(Option<Vec<u8>>, Value)> {
     match data {
         Some(value) => match value {
@@ -370,14 +368,22 @@ fn parse_init_data(data: Option<InitDataInput>) -> Result<(Option<Vec<u8>>, Valu
 
                 let mut claims = serde_json::to_value(initdata.data)?;
 
-                // Transform certain claims from toml to json if they exist and are toml.
+                // If the Init-Data contains TOML or JSON files, parse these as JSON
+                // and replace the original string Values with the parsed Value.
                 if let Value::Object(ref mut map) = claims {
-                    for key in ["cdh.toml", "aa.toml"] {
-                        if let Some(Value::String(toml_str)) = map.get(key).cloned()
-                            && let Ok(toml_value) = toml::from_str::<toml::Value>(&toml_str)
-                            && let Ok(json_value) = serde_json::to_value(toml_value)
-                        {
-                            map.insert(key.to_string(), json_value);
+                    for (key, value) in map.iter_mut() {
+                        if let Value::String(raw) = &*value {
+                            if key.ends_with(".toml") {
+                                if let Ok(toml_value) = toml::from_str::<toml::Value>(raw)
+                                    && let Ok(json_value) = serde_json::to_value(toml_value)
+                                {
+                                    *value = json_value;
+                                }
+                            } else if key.ends_with(".json")
+                                && let Ok(json_value) = serde_json::from_str::<Value>(raw)
+                            {
+                                *value = json_value;
+                            }
                         }
                     }
 

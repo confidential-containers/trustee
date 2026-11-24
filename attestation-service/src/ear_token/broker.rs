@@ -46,7 +46,7 @@ fn hex_param(value: &regorus::Value) -> Result<Vec<u8>> {
 fn sha256_extend_extension() -> RegorusExtension {
     RegorusExtension {
         name: "sha256_extend".to_string(),
-        id: 2,
+        nargs: 2,
         extension: Box::new(|params: Vec<regorus::Value>| {
             if params.len() != 2 {
                 bail!("sha256_extend extension requires exactly two parameters");
@@ -198,7 +198,7 @@ impl EarAttestationTokenBroker {
                 let rvps_client = rvps_client.clone();
                 let extension = RegorusExtension {
                     name: "query_reference_value".to_string(),
-                    id: 1,
+                    nargs: 1,
                     extension: Box::new(move |params: Vec<regorus::Value>| {
                         if params.len() != 1 {
                             bail!("query_reference_value extension requires exactly one parameter");
@@ -481,7 +481,7 @@ mod tests {
         let mut engine = regorus::Engine::new();
         let ext = sha256_extend_extension();
         engine
-            .add_extension(ext.name, ext.id, ext.extension)
+            .add_extension(ext.name, ext.nargs, ext.extension)
             .unwrap();
         engine
             .add_policy("".to_string(), policy.to_string())

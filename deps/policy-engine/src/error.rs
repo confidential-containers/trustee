@@ -51,10 +51,10 @@ pub enum PolicyError {
     #[error("Failed to eval policy: {0}")]
     EvalPolicyFailed(#[source] anyhow::Error),
 
-    #[error("Failed to add regorus extension: {name} with id {id}: {source}")]
+    #[error("Failed to add regorus extension: {name} with nargs {nargs}: {source}")]
     AddRegorusExtensionFailed {
         name: String,
-        id: u8,
+        nargs: u8,
         #[source]
         source: anyhow::Error,
     },
