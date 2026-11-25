@@ -26,6 +26,9 @@ use super::{ExternalPlugin, ExternalPluginConfig};
 #[cfg(feature = "spire-plugin")]
 use super::{SpirePlugin, SpirePluginConfig};
 
+#[cfg(feature = "credgen-plugin")]
+use super::{CredGenPlugin, CredGenPluginConfig};
+
 type ClientPluginInstance = Arc<dyn ClientPlugin>;
 
 /// Errors a plugin returns to the KBS, which maps each variant to an HTTP
@@ -110,6 +113,10 @@ pub enum PluginsConfig {
     #[cfg(feature = "spire-plugin")]
     #[serde(alias = "spire")]
     SpirePlugin(SpirePluginConfig),
+
+    #[cfg(feature = "credgen-plugin")]
+    #[serde(alias = "credgen")]
+    CredGenPlugin(CredGenPluginConfig),
 }
 
 impl Display for PluginsConfig {
@@ -126,6 +133,8 @@ impl Display for PluginsConfig {
             PluginsConfig::Provisioner(_) => f.write_str("provisioner"),
             #[cfg(feature = "spire-plugin")]
             PluginsConfig::SpirePlugin(_) => f.write_str("spire"),
+            #[cfg(feature = "credgen-plugin")]
+            PluginsConfig::CredGenPlugin(_) => f.write_str("credgen"),
         }
     }
 }
@@ -178,6 +187,14 @@ impl PluginsConfig {
                 let spire = SpirePlugin::try_from(spire_config)
                     .context("Initialize 'spire' plugin failed")?;
                 Arc::new(spire) as _
+            }
+
+            #[cfg(feature = "credgen-plugin")]
+            PluginsConfig::CredGenPlugin(config) => {
+                let plugin = CredGenPlugin::new(config, storage_provider)
+                    .await
+                    .context("Initialize 'credgen' plugin failed")?;
+                Arc::new(plugin) as _
             }
         };
 
