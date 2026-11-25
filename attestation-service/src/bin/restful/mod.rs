@@ -93,6 +93,7 @@ fn to_tee(tee: &str) -> anyhow::Result<Tee> {
         "az-tdx-vtpm" => Tee::AzTdxVtpm,
         "se" => Tee::Se,
         "hygondcu" => Tee::HygonDcu,
+        "aws-nitro-enclave" => Tee::AwsNitroEnclave,
         other => bail!("tee `{other} not supported`"),
     };
 
@@ -329,4 +330,19 @@ pub async fn get_jwks(cocoas: web::Data<Arc<RwLock<AttestationService>>>) -> Res
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RemovePolicyRequest {
     pub policy_ids: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_tee_maps_aws_nitro_enclave() {
+        assert_eq!(to_tee("aws-nitro-enclave").unwrap(), Tee::AwsNitroEnclave);
+    }
+
+    #[test]
+    fn to_tee_refuses_unknown_names() {
+        assert!(to_tee("nitro").is_err());
+    }
 }

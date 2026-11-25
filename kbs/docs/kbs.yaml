@@ -316,7 +316,7 @@ components:
           type: string
         tee:
           type: string
-          enum: [az-snp-vtpm, az-tdx-vtpm, nvidia, sgx, snp, tdx, cca, csv, se, hygondcu, tpm, sample, sampledevice]
+          enum: [az-snp-vtpm, az-tdx-vtpm, nvidia, sgx, snp, tdx, cca, csv, se, hygondcu, tpm, aws-nitro-enclave, sample, sampledevice]
         extra-params:
           description: >-
             Freely formatted JSON object used for HW-TEE specific attestation

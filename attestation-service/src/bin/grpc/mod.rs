@@ -54,6 +54,7 @@ fn to_kbs_tee(tee: &str) -> anyhow::Result<Tee> {
         "hygondcu" => Tee::HygonDcu,
         "nvidia" => Tee::Nvidia,
         "tpm" => Tee::Tpm,
+        "aws-nitro-enclave" => Tee::AwsNitroEnclave,
         other => bail!("Unsupported TEE type: {other}"),
     };
 
@@ -457,4 +458,22 @@ pub async fn start(
 
     builder.add_routes(routes).serve(socket).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_kbs_tee_maps_aws_nitro_enclave() {
+        assert_eq!(
+            to_kbs_tee("aws-nitro-enclave").unwrap(),
+            Tee::AwsNitroEnclave
+        );
+    }
+
+    #[test]
+    fn to_kbs_tee_refuses_unknown_names() {
+        assert!(to_kbs_tee("nitro").is_err());
+    }
 }

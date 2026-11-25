@@ -85,6 +85,7 @@ Please refer to the individual verifiers for the specific format of the evidence
 - IBM Secure Execution (SE): [SeEvidence](../deps/verifier/src/se/mod.rs)
 - NVIDIA: [NvDeviceEvidence](../deps/verifier/src/nvidia/mod.rs)
 - (v)TPM: [TpmEvidence](../deps/verifier/src/tpm/mod.rs)
+- AWS Nitro Enclaves: [NitroEnclaveEvidence](../deps/verifier/src/nitro_enclave/mod.rs)
 
 ## Output
 
@@ -119,6 +120,7 @@ Supported Verifier Drivers:
 - `se`: Verifier Driver for IBM Secure Execution (SE).
 - `nvidia`: Verifier Driver for NVIDIA Devices.
 - `tpm`: Verifier Driver for Trusted Platform Module (TPM)
+- `nitro-enclave`: Verifier Driver for AWS Nitro Enclaves.
 > [!WARNING]  
 > **TPM Device Note**: TPM devices (except Azure vTPM series) are not bound to TEE endorsement.
 > When using TPM as a standalone attestation device (not integrated with Azure vTPM), you must ensure that you
@@ -130,7 +132,7 @@ Supported Verifier Drivers:
 The AS supports a different set of verifier drivers based on the target architecture:
 
 - **x86_64**: All verifier drivers are included via `all-verifier`
-- **aarch64**: `cca` is included
+- **aarch64**: `cca` and `nitro-enclave` are included
 - **s390x**: `snp`, `nvidia` and `se` are included
 
 ### Policy Engine
