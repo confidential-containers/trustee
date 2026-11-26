@@ -1,0 +1,34 @@
+[package]
+name = "attestation-proxy"
+version.workspace = true
+authors.workspace = true
+description = "A demonstration reverse proxy authorized by Trustee attestation tokens"
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+bytes = "1"
+clap = { workspace = true, features = ["derive"] }
+config.workspace = true
+kbs = { path = "../../kbs", default-features = false }
+key-value-storage = { path = "../../deps/key-value-storage", default-features = false }
+pingora = { version = "0.9.1", default-features = false, features = ["openssl", "proxy"] }
+policy-engine = { path = "../../deps/policy-engine" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url = "2"
+
+[dev-dependencies]
+actix-web.workspace = true
+jsonwebtoken.workspace = true
+kbs = { path = "../../kbs", default-features = false, features = ["coco-as-builtin"] }
+kbs-client = { path = "../kbs-client", default-features = false }
+reqwest.workspace = true
+tempfile.workspace = true

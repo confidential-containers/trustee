@@ -1,0 +1,41 @@
+# Copyright (c) 2026 by The Trustee Authors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+# Build from the workspace root:
+# podman build -f tools/attestation-proxy/Containerfile -t attestation-proxy .
+FROM docker.io/library/rust:1.95.0-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    git \
+    libssl-dev \
+    pkg-config \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use the installed Git client for Git dependencies and their submodules.
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+WORKDIR /usr/src/trustee
+COPY . .
+
+RUN cargo build --locked --release -p attestation-proxy
+
+FROM registry.fedoraproject.org/fedora:44 AS runtime
+
+RUN dnf install -y --setopt=install_weak_deps=False \
+    ca-certificates \
+    libgcc \
+    openssl-libs \
+    shadow-utils \
+    && dnf clean all \
+    && groupadd --gid 10001 attestation-proxy \
+    && useradd --uid 10001 --gid 10001 --no-create-home \
+        --shell /usr/sbin/nologin attestation-proxy \
+    && install -d -o 10001 -g 10001 /etc/attestation-proxy
+
+COPY --from=builder /usr/src/trustee/target/release/attestation-proxy /usr/local/bin/attestation-proxy
+
+WORKDIR /etc/attestation-proxy
+USER 10001:10001
