@@ -1,0 +1,26 @@
+# e2e_test supplies the loopback socket and temporary LocalFs storage directory.
+[http_server]
+insecure_http = true
+worker_count = 1
+
+[attestation_token]
+trusted_certs_paths = ["../../attestation-service/tests/fixtures/jwk/cert-chain.pem"]
+
+[attestation_service]
+type = "coco_as_builtin"
+
+[attestation_service.attestation_token_broker]
+duration_min = 5
+
+[attestation_service.attestation_token_broker.signer]
+key_path = "../../attestation-service/tests/fixtures/jwk/signing-key.pem"
+cert_path = "../../attestation-service/tests/fixtures/jwk/cert-chain.pem"
+
+[attestation_service.rvps_config]
+type = "BuiltIn"
+
+[admin]
+authorization_mode = "DenyAll"
+
+[storage_backend]
+storage_type = "LocalFs"

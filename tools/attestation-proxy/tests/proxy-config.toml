@@ -1,0 +1,6 @@
+# e2e_test prepends the loopback listener and upstream addresses.
+[attestation]
+trusted_certs_paths = ["../../attestation-service/tests/fixtures/jwk/cert-chain.pem"]
+
+[policy]
+path = "../../kbs/sample_policies/affirming.rego"

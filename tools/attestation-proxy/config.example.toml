@@ -1,0 +1,25 @@
+# Bind to loopback by default. Use TLS before exposing this listener.
+listen_address = "127.0.0.1:8081"
+
+# The destination is fixed so the service cannot be used as an open proxy.
+# Do not include a path, query, username, or password.
+upstream_url = "http://127.0.0.1:8080"
+upstream_timeout_seconds = 30
+max_token_bytes = 65536
+
+# Uncomment to terminate TLS in the proxy.
+# [tls]
+# certificate_path = "/etc/attestation-proxy/tls.crt"
+# private_key_path = "/etc/attestation-proxy/tls.key"
+
+[attestation]
+trusted_certs_paths = ["/etc/attestation-proxy/trustee-token-ca.pem"]
+trusted_jwk_sets = []
+extra_teekey_paths = []
+insecure_header_jwk = false
+
+[policy]
+# Relative to the process's working directory. Edit the Rego file to set
+# issuer, TEE types, appraisal requirements, and AS policy IDs.
+path = "tools/attestation-proxy/policy.rego"
+
