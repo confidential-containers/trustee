@@ -42,6 +42,12 @@ sudo make -C ../../kbs install-cli
 
 ## Examples
 
+Show the tool version and the feature attesters included in the binary:
+
+```shell
+./kbs-client --version
+```
+
 Get a resource from the KBS (after attesting)
 
 ```shell
